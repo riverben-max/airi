@@ -219,9 +219,11 @@ export async function setupServerChannel(params: { lifecycle: Lifecycle }): Prom
     channelServerConfigStore.update(storedConfig)
   }
 
+  const { authToken: storedAuthToken, ...configToSpread } = storedConfig
+
   const serverChannel = createServer({
-    ...storedConfig,
-    auth: { token: storedConfig.authToken },
+    ...configToSpread,
+    auth: { token: storedAuthToken || '' },
     port: getServerChannelPort(),
     hostname: storedConfig.hostname || env.SERVER_RUNTIME_HOSTNAME || '127.0.0.1',
     tlsConfig: storedConfig.tlsConfig ? await getOrCreateCertificate() : null,
