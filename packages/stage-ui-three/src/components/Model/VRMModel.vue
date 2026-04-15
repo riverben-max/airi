@@ -166,23 +166,25 @@ let currentLoadId = 0
 
 // Setup Pointer Interaction
 useEventListener('mousedown', (e) => {
-  if (vrm.value && camera.value) {
+  if (modelStore.interactionMode === 'tactile' && vrm.value && camera.value) {
     vrmClothTug.startTug({ x: e.clientX, y: e.clientY }, camera.value, vrm.value)
   }
 })
 
 useEventListener('mousemove', (e) => {
-  if (vrm.value && camera.value) {
+  if (modelStore.interactionMode === 'tactile' && vrm.value && camera.value) {
     vrmClothTug.handleTug({ x: e.clientX, y: e.clientY }, camera.value)
   }
 })
 
 useEventListener('mouseup', () => {
-  vrmClothTug.endTug()
+  if (modelStore.interactionMode === 'tactile') {
+    vrmClothTug.endTug()
+  }
 })
 
 useEventListener('dblclick', (e) => {
-  if (vrm.value && camera.value) {
+  if (modelStore.interactionMode === 'tactile' && vrm.value && camera.value) {
     vrmClothTug.toggleMesh({ x: e.clientX, y: e.clientY }, camera.value, vrm.value)
   }
 })

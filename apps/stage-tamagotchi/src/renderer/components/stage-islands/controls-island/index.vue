@@ -853,7 +853,7 @@ function triggerWardrobeItem(id: string) {
         <!-- Main Logic Column (Chevron + Handlebar) -->
         <div flex flex-col gap-1>
           <ControlButtonTooltip side="left">
-            <ControlButton :button-style="adjustStyleClasses.button" @click="expanded = !expanded">
+            <ControlButton :button-style="adjustStyleClasses.button" @click.stop="expanded = !expanded" @mousedown.stop>
               <div
                 :class="[adjustStyleClasses.icon, expanded ? 'rotate-180' : 'rotate-0']"
                 i-solar:alt-arrow-up-line-duotone scale-110 transition-all duration-300
@@ -869,7 +869,7 @@ function triggerWardrobeItem(id: string) {
             <ControlButton
               :button-style="adjustStyleClasses.button"
               cursor-move
-              @mousedown="startDraggingWindow()"
+              @mousedown.stop="startDraggingWindow()"
             >
               <div
                 i-ph:arrows-out-cardinal
