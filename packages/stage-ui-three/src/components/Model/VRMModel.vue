@@ -181,6 +181,12 @@ useEventListener('mouseup', () => {
   vrmClothTug.endTug()
 })
 
+useEventListener('dblclick', (e) => {
+  if (vrm.value && camera.value) {
+    vrmClothTug.toggleMesh({ x: e.clientX, y: e.clientY }, camera.value, vrm.value)
+  }
+})
+
 // Animation related ref
 const vrmAnimationMixer = ref<AnimationMixer>()
 const { onBeforeRender, stop, start } = useLoop()

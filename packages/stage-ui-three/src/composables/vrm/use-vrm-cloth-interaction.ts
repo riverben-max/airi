@@ -37,7 +37,7 @@ export function useVRMClothInteraction() {
 
   const grabPoint = new Vector3() // Local point in vrm.scene where grab started
 
-  function spawnPuff(point: Vector3, scene: THREE.Object3D) {
+  function spawnPuff(point: Vector3, scene: THREE.Object3D, isVanish = false) {
     // Convert world point to local space of the scene
     const localPoint = point.clone()
     scene.worldToLocal(localPoint)
@@ -59,13 +59,19 @@ export function useVRMClothInteraction() {
       depthTest: false,
     })
 
-    // Randomized Color
-    const hue = Math.random()
-    material.color.setHSL(hue, 0.8, 0.6)
+    // Randomized Color or "Vanish" Purple
+    if (isVanish) {
+      material.color.setHSL(0.8, 0.9, 0.4) // Dark Purple/Void
+    }
+    else {
+      const hue = Math.random()
+      material.color.setHSL(hue, 0.8, 0.6)
+    }
 
     const puff = new Sprite(material)
     puff.position.copy(localPoint)
-    puff.scale.set(0.05, 0.05, 0.05)
+    const size = isVanish ? 0.3 : 0.05 // Vanish puffs are MUCH larger
+    puff.scale.set(size, size, size)
     scene.add(puff)
     puffs.value.push(puff)
   }
@@ -137,6 +143,34 @@ export function useVRMClothInteraction() {
     }
     else {
       console.log('[WIRED] Raycast missed all cloth meshes.')
+    }
+  }
+
+  /**
+   * Toggle visibility of a specific mesh (Vanish feature)
+   */
+  function toggleMesh(event: { x: number, y: number }, camera: THREE.Camera, vrm: VRM) {
+    if (!vrm || modelStore.interactionMode !== 'tactile')
+      return
+
+    mouse.x = (event.x / window.innerWidth) * 2 - 1
+    mouse.y = -(event.y / window.innerHeight) * 2 + 1
+    raycaster.setFromCamera(mouse, camera)
+
+    const allMeshes: Object3D[] = []
+    vrm.scene.traverse((obj) => {
+      if ((obj as any).isMesh)
+        allMeshes.push(obj)
+    })
+
+    const intersects = raycaster.intersectObjects(allMeshes, true)
+    if (intersects.length > 0) {
+      const hit = intersects[0]
+      hit.object.visible = !hit.object.visible
+      console.log(`[WIRED] Experimental: Toggled visibility for "${hit.object.name}" -> ${hit.object.visible}`)
+
+      // Spawn a large "Vanish" puff
+      spawnPuff(hit.point, vrm.scene, true)
     }
   }
 
@@ -248,6 +282,7 @@ export function useVRMClothInteraction() {
     isDragging,
     currentTension,
     startTug,
+    toggleMesh,
     handleTug,
     endTug,
     update,
