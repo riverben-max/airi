@@ -162,6 +162,11 @@ const AiriExtensionSchema = looseObject({
     chatCount: number(),
     totalTurns: number(),
   })),
+  active_state: optional(looseObject({
+    displayModelId: optional(string()),
+    activeBackgroundId: optional(string()),
+    active_expressions: optional(record(string(), number())),
+  })),
 })
 
 /**

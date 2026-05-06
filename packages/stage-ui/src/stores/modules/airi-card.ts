@@ -196,6 +196,11 @@ export interface AiriExtension {
     totalTurns: number
   }
   active_concepts?: string[]
+  active_state?: {
+    displayModelId?: string
+    activeBackgroundId?: string | null
+    active_expressions?: Record<string, number>
+  }
 }
 
 export interface AiriCard extends Card {
@@ -406,7 +411,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
 
     // 3. Sync Models & Parameters (ONLY if not prevented)
     if (!isModelSyncPrevented.value || force) {
-      const newModelId = extension.modules?.displayModelId
+      const newModelId = extension.active_state?.displayModelId ?? extension.modules?.displayModelId
       const modelChanged = newModelId && newModelId !== stageModelStore.stageModelSelected
 
       if (newModelId && (force || modelChanged)) {
@@ -416,7 +421,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
       }
 
       // 3.5 Sync Manifestation Expressions (Unified for VRM/Live2D)
-      const nextExpressions = extension.modules?.active_expressions
+      const nextExpressions = extension.active_state?.active_expressions
       if (nextExpressions) {
         // Apply to both stores; the respective renderer will pick it up
         if (Object.keys(nextExpressions).length > 0) {
@@ -567,39 +572,46 @@ export const useAiriCardStore = defineStore('airi-card', () => {
         },
         vrm: existingExtension?.modules?.vrm,
         live2d: existingExtension?.modules?.live2d,
-        // Manifestation Bridge: Fold the Active Concept Stack using "last defined wins"
-        // for override groups (modelId, backgroundId) and merge for additive groups (expressions).
-        ...(() => {
-          const activeConcepts = (existingExtension as any)?.active_concepts || []
-          const visualAssets = (existingExtension as any)?.visual_assets || {}
-          const autonomousEnabled = existingExtension?.artistry?.autonomousEnabled ?? false
-
-          let foldedModelId = resolvedDisplayModelId
-          let foldedBackgroundId = resolvedActiveBackgroundId
-
-          // Iterate bottom-to-top: last override wins
-          for (const conceptId of activeConcepts) {
-            const concept = visualAssets[conceptId]
-            if (!concept)
-              continue
-
-            // Model: last defined wins (exclusionary)
-            if (concept.manifestation?.modelId && concept.manifestation.modelId !== 'inherit') {
-              foldedModelId = concept.manifestation.modelId
-            }
-
-            // Background: last defined wins, but ONLY when Director is OFF
-            if (!autonomousEnabled && concept.manifestation?.backgroundId && concept.manifestation.backgroundId !== 'inherit') {
-              foldedBackgroundId = concept.manifestation.backgroundId
-            }
-          }
-
-          return {
-            displayModelId: foldedModelId,
-            activeBackgroundId: foldedBackgroundId,
-          }
-        })(),
+        displayModelId: resolvedDisplayModelId,
+        activeBackgroundId: resolvedActiveBackgroundId,
       },
+      active_state: (() => {
+        const activeConcepts = (existingExtension as any)?.active_concepts || []
+        const visualAssets = (existingExtension as any)?.visual_assets || {}
+        const autonomousEnabled = existingExtension?.artistry?.autonomousEnabled ?? false
+
+        let foldedModelId = resolvedDisplayModelId
+        let foldedBackgroundId = resolvedActiveBackgroundId
+        const foldedExpressions: Record<string, number> = {}
+
+        // Iterate bottom-to-top: last override wins
+        for (const conceptId of activeConcepts) {
+          const concept = visualAssets[conceptId]
+          if (!concept)
+            continue
+
+          // Model: last defined wins (exclusionary)
+          if (concept.manifestation?.modelId && concept.manifestation.modelId !== 'inherit') {
+            foldedModelId = concept.manifestation.modelId
+          }
+
+          // Background: last defined wins, but ONLY when Director is OFF
+          if (!autonomousEnabled && concept.manifestation?.backgroundId && concept.manifestation.backgroundId !== 'inherit') {
+            foldedBackgroundId = concept.manifestation.backgroundId
+          }
+
+          // Expressions: additive/merge (if concepts support expressions)
+          if ((concept as any).manifestation?.expressions) {
+            Object.assign(foldedExpressions, (concept as any).manifestation.expressions)
+          }
+        }
+
+        return {
+          displayModelId: foldedModelId,
+          activeBackgroundId: foldedBackgroundId,
+          active_expressions: foldedExpressions,
+        }
+      })(),
       artistry: {
         ...existingExtension?.artistry,
         widgetInstruction: existingExtension?.artistry?.widgetInstruction ?? defaultArtistry.widgetInstruction,
