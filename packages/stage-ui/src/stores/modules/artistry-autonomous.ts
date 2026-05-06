@@ -185,6 +185,109 @@ export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () 
   }
 
   /**
+   * Browser-safe ComfyUI generator fallback
+   */
+  async function generateComfyUIWeb(params: {
+    prompt: string
+    model?: string
+    provider?: string
+    options?: Record<string, any>
+    globals?: any
+  }): Promise<{ imageUrl?: string, base64?: string, error?: string }> {
+    const serverUrl = (params.globals?.comfyuiServerUrl || 'http://localhost:8188').replace(/\/+$/, '')
+    const savedWorkflows = params.globals?.comfyuiSavedWorkflows || []
+    const activeWorkflowId = params.globals?.comfyuiActiveWorkflow || ''
+
+    const templateId = params.model || activeWorkflowId
+    const template = savedWorkflows.find((w: any) => w.id === templateId)
+
+    if (!template) {
+      return { error: 'No ComfyUI workflow template found.' }
+    }
+
+    try {
+      // 1. Prepare Workflow (standard injection)
+      const prompt = JSON.parse(JSON.stringify(template.workflow))
+      const overrides: Record<string, any> = {}
+
+      // Inject prompt into first exposed text field
+      for (const [nodeTitle, fields] of Object.entries(template.exposedFields as Record<string, string[]>)) {
+        if (fields.includes('text')) {
+          overrides[nodeTitle] = { text: params.prompt }
+          break
+        }
+      }
+
+      // Apply overrides
+      for (const nodeId in prompt) {
+        const node = prompt[nodeId]
+        const title = node._meta?.title
+        if (title && overrides[title]) {
+          for (const [field, value] of Object.entries(overrides[title])) {
+            if ((template.exposedFields as any)[title]?.includes(field)) {
+              node.inputs[field] = value
+            }
+          }
+        }
+        // Randomize seed
+        if (node.inputs && 'seed' in node.inputs && (template.exposedFields as any)[title]?.includes('seed')) {
+          node.inputs.seed = Math.floor(Math.random() * 1e15)
+        }
+      }
+
+      // 2. Queue Prompt
+      const queueResp = await fetch(`${serverUrl}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+
+      if (!queueResp.ok)
+        throw new Error(`ComfyUI Error: ${await queueResp.text()}`)
+
+      const { prompt_id } = await queueResp.json()
+
+      // 3. Poll for result
+      const start = Date.now()
+      while (Date.now() - start < 1000 * 60 * 5) { // 5 min timeout
+        await new Promise(r => setTimeout(r, 3000))
+        const histResp = await fetch(`${serverUrl}/history/${prompt_id}`)
+        if (!histResp.ok)
+          continue
+
+        const histData = await histResp.json()
+        if (histData[prompt_id]) {
+          const outputs = histData[prompt_id].outputs
+          for (const nodeId in outputs) {
+            const nodeOutput = outputs[nodeId]
+            if (nodeOutput.images && nodeOutput.images.length > 0) {
+              const img = nodeOutput.images[0]
+              const imageUrl = `${serverUrl}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${encodeURIComponent(img.type || 'output')}`
+
+              // Download as base64 for the journal
+              const imgResp = await fetch(imageUrl)
+              const blob = await imgResp.blob()
+              const reader = new FileReader()
+              const base64Promise = new Promise<string>((resolve) => {
+                reader.onloadend = () => resolve(reader.result as string)
+                reader.readAsDataURL(blob)
+              })
+              const base64 = await base64Promise
+
+              return { imageUrl, base64 }
+            }
+          }
+          break
+        }
+      }
+      throw new Error('Timeout waiting for ComfyUI result.')
+    }
+    catch (err: any) {
+      return { error: err.message }
+    }
+  }
+
+  /**
    * Safe IPC Invoker for headless generation
    */
   const widgetsAdd = defineInvokeEventa<string | undefined, any>('eventa:invoke:electron:windows:widgets:add')
@@ -198,7 +301,21 @@ export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () 
         addWidget: defineInvoke(context, widgetsAdd),
       }
     }
-    return null
+
+    // Web Fallback
+    return {
+      generate: async (payload: any) => {
+        if (payload.provider === 'comfyui') {
+          artistLog('Using Web Fallback for ComfyUI generation...')
+          return await generateComfyUIWeb(payload)
+        }
+        return { error: `Web generation not supported for ${payload.provider}. Please use Electron for Replicate/OpenAI.` }
+      },
+      addWidget: async (payload: any) => {
+        artistLog('Widget spawning is disabled in Web environment.', payload)
+        toast.info('Scene generated! Check your Gallery.')
+      },
+    }
   }
 
   /**
