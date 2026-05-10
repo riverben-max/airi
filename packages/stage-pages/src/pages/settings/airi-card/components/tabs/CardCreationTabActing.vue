@@ -38,7 +38,7 @@ function toggleIdleAnimation(name: string) {
     </p>
 
     <div class="input-list ml-auto mr-auto w-90% flex flex-col gap-8">
-      <div v-if="!isLive2d" class="border border-neutral-200 rounded-xl p-4 dark:border-neutral-700">
+      <div class="border border-neutral-200 rounded-xl p-4 dark:border-neutral-700">
         <div class="mb-1 text-sm text-neutral-800 font-medium dark:text-neutral-200">
           Idle Loop / Cycle Animations
         </div>

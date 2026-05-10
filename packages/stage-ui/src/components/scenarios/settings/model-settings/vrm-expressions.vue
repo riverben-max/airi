@@ -13,15 +13,17 @@ const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 const modelStore = useModelStore()
 const { availableExpressions, activeExpressions, emotionMappings, favoriteExpression } = storeToRefs(modelStore)
 
+const uniqueExpressions = computed(() => [...new Set(availableExpressions.value)])
+
 // Categorize: Presets have mixed case (e.g., "happy", "MouthLeft"), Custom are all lowercase
 const presets = computed(() =>
-  availableExpressions.value.filter(e => e !== e.toLowerCase()),
+  uniqueExpressions.value.filter(e => e !== e.toLowerCase()),
 )
 const custom = computed(() =>
-  availableExpressions.value.filter(e => e === e.toLowerCase()),
+  uniqueExpressions.value.filter(e => e === e.toLowerCase()),
 )
 
-const hasExpressions = computed(() => availableExpressions.value.length > 0)
+const hasExpressions = computed(() => uniqueExpressions.value.length > 0)
 
 // === Layer 1: Toggle ===
 function toggleExpression(name: string) {
@@ -233,7 +235,7 @@ function deleteOutfit(id: string) {
     <template v-else>
       <div class="flex items-center justify-between px-2 pt-1">
         <span class="text-xs text-neutral-500 dark:text-neutral-400">
-          {{ availableExpressions.length }} expressions · {{ isBuildingOutfit ? 'select multiple' : 'hold to map' }}
+          {{ uniqueExpressions.length }} expressions · {{ isBuildingOutfit ? 'select multiple' : 'hold to map' }}
         </span>
         <div class="flex gap-2">
           <button

@@ -2,6 +2,7 @@
 import { defaultModelParameters, useLive2d } from '@proj-airi/stage-ui-live2d'
 import { OPFSCacheV2 } from '@proj-airi/stage-ui-live2d/utils/opfs-loader'
 import { Button, Checkbox, FieldRange, SelectTab } from '@proj-airi/ui'
+import { useDebounceFn } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuRoot, DropdownMenuTrigger } from 'reka-ui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -10,6 +11,7 @@ import { useI18n } from 'vue-i18n'
 import Live2DCustomization from './live2d-customization.vue'
 
 import { useLHackStore } from '../../../../stores'
+import { useAiriCardStore } from '../../../../stores/modules/airi-card'
 import { useSettings } from '../../../../stores/settings'
 import { Section } from '../../../layouts'
 import { ColorPalette } from '../../../widgets'
@@ -47,6 +49,101 @@ const selectedRuntimeMotion = ref<string>('')
 const selectedRuntimeMotionName = ref<string>('')
 const runtimeMotions = ref<Array<{ name: string, fullPath: string, displayPath: string, group: string, index: number }>>([])
 const showMotionSelector = ref(false)
+
+const airiCardStore = useAiriCardStore()
+const { activeCard, activeCardId } = storeToRefs(airiCardStore)
+
+const motionMappings = ref<Record<string, string>>({})
+const hiddenMotions = ref<string[]>([])
+const showHiddenMotions = ref(false)
+const filterRenamedOnly = ref(false)
+const editingMotionKey = ref<string | null>(null)
+const editingMotionValue = ref('')
+
+const saveLive2dState = useDebounceFn(() => {
+  if (!activeCard.value || !activeCardId.value)
+    return
+
+  const extensions = JSON.parse(JSON.stringify(activeCard.value.extensions))
+  if (!extensions.airi)
+    extensions.airi = { modules: {} }
+  if (!extensions.airi.modules)
+    extensions.airi.modules = {}
+
+  extensions.airi.modules.live2d = {
+    ...extensions.airi.modules.live2d,
+    motionMappings: { ...motionMappings.value },
+    hiddenMotions: [...hiddenMotions.value],
+  }
+
+  airiCardStore.updateCard(activeCardId.value, { extensions })
+}, 1000)
+
+watch([motionMappings, hiddenMotions], () => {
+  saveLive2dState()
+}, { deep: true })
+
+watch(activeCard, (card) => {
+  if (card?.extensions?.airi?.modules?.live2d) {
+    const live2dData = card.extensions.airi.modules.live2d
+    motionMappings.value = live2dData.motionMappings || {}
+    hiddenMotions.value = live2dData.hiddenMotions || []
+  }
+}, { immediate: true })
+const filteredMotions = computed(() => {
+  return runtimeMotions.value.filter((motion) => {
+    // Filter hidden
+    if (!showHiddenMotions.value && hiddenMotions.value.includes(motion.fullPath)) {
+      return false
+    }
+    // Filter renamed
+    if (filterRenamedOnly.value && !motionMappings.value[motion.fullPath]) {
+      return false
+    }
+    return true
+  })
+})
+
+function getDisplayName(motion: any) {
+  return motionMappings.value[motion.fullPath] || motion.name
+}
+
+function isHidden(fullPath: string) {
+  return hiddenMotions.value.includes(fullPath)
+}
+
+function toggleVisibility(fullPath: string) {
+  if (hiddenMotions.value.includes(fullPath)) {
+    hiddenMotions.value = hiddenMotions.value.filter(p => p !== fullPath)
+  }
+  else {
+    hiddenMotions.value = [...hiddenMotions.value, fullPath]
+  }
+}
+
+function startEditing(motion: any) {
+  editingMotionKey.value = motion.fullPath
+  editingMotionValue.value = motionMappings.value[motion.fullPath] || ''
+}
+
+function saveMotionName(fullPath: string) {
+  if (editingMotionValue.value.trim() === '') {
+    const updated = { ...motionMappings.value }
+    delete updated[fullPath]
+    motionMappings.value = updated
+  }
+  else {
+    motionMappings.value = { ...motionMappings.value, [fullPath]: editingMotionValue.value.trim() }
+  }
+  editingMotionKey.value = null
+  editingMotionValue.value = ''
+}
+
+function cancelEditing() {
+  editingMotionKey.value = null
+  editingMotionValue.value = ''
+}
+
 const fpsOptions = computed(() => [
   { value: 0, label: t('settings.live2d.fps.options.unlimited') },
   { value: 60, label: '60' },
@@ -244,69 +341,104 @@ onUnmounted(() => {
 
     <!-- Animations Tab -->
     <div v-else-if="activeCustomizationTab === 'animations'">
-      <div :class="['flex', 'items-center', 'justify-between']">
-        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Idle Animation</span>
-        <div data-motion-selector :class="['relative', 'flex', 'flex-col', 'items-end', 'gap-1']">
-          <DropdownMenuRoot v-model:open="showMotionSelector">
-            <DropdownMenuTrigger
-              :title="selectedRuntimeMotion"
-              :class="['flex', 'items-center', 'gap-2', 'border', 'rounded', 'bg-neutral-100', 'px-4', 'py-2', 'text-sm', 'text-neutral-700', 'font-medium', 'transition-colors', 'dark:border-neutral-700', 'dark:bg-neutral-800', 'hover:bg-neutral-200', 'dark:text-neutral-300', 'dark:hover:bg-neutral-700']"
-            >
-              <span :class="['max-w-32', 'truncate']">{{ selectedRuntimeMotionName || 'Select Motion' }}</span>
-              <div
-                :class="[showMotionSelector ? 'i-solar:alt-arrow-up-line-duotone' : 'i-solar:alt-arrow-down-line-duotone', 'text-xs', 'transition-transform']"
-              />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuPortal>
-              <DropdownMenuContent
-                :class="['bg-white', 'dark:bg-neutral-800', 'border', 'border-neutral-200', 'dark:border-neutral-700', 'z-50', 'max-h-80', 'min-w-64', 'overflow-y-auto', 'rounded-lg', 'shadow-lg']"
-                align="end"
-                side="bottom"
-                :side-offset="4"
+      <div :class="['w-full']">
+        <div data-motion-selector :class="['relative', 'flex', 'flex-col', 'gap-2']">
+          <!-- Controls Bar -->
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <div class="flex gap-1">
+              <Button
+                size="sm"
+                :variant="showHiddenMotions ? 'primary' : 'secondary'"
+                @click="showHiddenMotions = !showHiddenMotions"
               >
-                <div v-if="runtimeMotions.length === 0" :class="['p-4', 'text-sm', 'text-neutral-500', 'dark:text-neutral-400']">
-                  No motions available
+                <template #icon>
+                  <div :class="showHiddenMotions ? 'i-solar:eye-bold-duotone' : 'i-solar:eye-closed-bold-duotone'" />
+                </template>
+                {{ showHiddenMotions ? 'Showing Hidden' : 'Hide Hidden' }}
+              </Button>
+              <Button
+                size="sm"
+                :variant="filterRenamedOnly ? 'primary' : 'secondary'"
+                @click="filterRenamedOnly = !filterRenamedOnly"
+              >
+                <template #icon>
+                  <div class="i-solar:pen-bold-duotone" />
+                </template>
+                {{ filterRenamedOnly ? 'Renamed Only' : 'All' }}
+              </Button>
+            </div>
+            <div class="text-xs text-neutral-500">
+              {{ filteredMotions.length }} motions
+            </div>
+          </div>
+
+          <!-- Fixed Height Scrollable List -->
+          <div class="max-h-[300px] overflow-y-auto border border-neutral-200 rounded-lg bg-white dark:border-neutral-700 dark:bg-neutral-900">
+            <div v-if="filteredMotions.length === 0" class="p-4 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              No motions match filters
+            </div>
+            <div
+              v-for="motion in filteredMotions"
+              :key="motion.fullPath"
+              :class="[
+                'flex items-center justify-between px-4 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-b-0 transition-colors',
+                selectedRuntimeMotion === motion.displayPath ? 'bg-primary-50/50 dark:bg-primary-900/20' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
+              ]"
+            >
+              <!-- Left Side: Name and Path -->
+              <div class="min-w-0 flex-1 cursor-pointer" @click="handleMotionSelect(motion)">
+                <div class="flex items-center gap-2">
+                  <!-- Active Indicator -->
+                  <div v-if="selectedRuntimeMotion === motion.displayPath" class="h-2 w-2 rounded-full bg-primary-500" />
+
+                  <!-- Name (Editable) -->
+                  <div v-if="editingMotionKey === motion.fullPath" class="flex flex-1 items-center gap-1" @click.stop>
+                    <input
+                      v-model="editingMotionValue"
+                      type="text"
+                      :placeholder="motion.name"
+                      class="max-w-[230px] w-full border-b border-primary-500 bg-transparent text-sm dark:text-neutral-100 focus:outline-none"
+                      @keydown.enter="saveMotionName(motion.fullPath)"
+                      @keydown.esc="cancelEditing"
+                    >
+                    <button class="text-xs text-green-500 hover:text-green-600" @click="saveMotionName(motion.fullPath)">
+                      <div class="i-solar:check-circle-bold-duotone text-lg" />
+                    </button>
+                    <button class="text-xs text-red-500 hover:text-red-600" @click="cancelEditing">
+                      <div class="i-solar:close-circle-bold-duotone text-lg" />
+                    </button>
+                  </div>
+                  <div v-else class="max-w-[230px] truncate text-sm text-neutral-900 font-medium dark:text-neutral-100">
+                    {{ getDisplayName(motion) }}
+                  </div>
                 </div>
-                <DropdownMenuItem
-                  :class="[
-                    'w-full', 'px-4', 'py-2.5', 'text-left', 'transition-colors', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-700',
-                    'cursor-pointer', 'outline-none',
-                    {
-                      'bg-neutral-100 dark:bg-neutral-700': selectedRuntimeMotion === '',
-                    },
-                  ]"
-                  @click="handleMotionSelect({ name: 'None', displayPath: '', group: '', index: 0 })"
+                <div class="ml-4 max-w-[230px] truncate text-xs text-neutral-500 dark:text-neutral-400">
+                  {{ motion.displayPath }}
+                </div>
+              </div>
+
+              <!-- Right Side: Actions -->
+              <div class="flex items-center gap-1" @click.stop>
+                <!-- Edit Button -->
+                <button
+                  class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                  title="Rename"
+                  @click="startEditing(motion)"
                 >
-                  <div :class="['text-sm', 'text-neutral-900', 'font-medium', 'dark:text-neutral-100']">
-                    None
-                  </div>
-                  <div :class="['truncate', 'text-xs', 'text-neutral-500', 'dark:text-neutral-400']">
-                    Unset idle animation
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  v-for="motion in runtimeMotions"
-                  :key="motion.fullPath"
-                  :class="[
-                    'w-full', 'px-4', 'py-2.5', 'text-left', 'transition-colors', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-700',
-                    'cursor-pointer', 'outline-none',
-                    {
-                      'bg-neutral-100 dark:bg-neutral-700': selectedRuntimeMotion === motion.displayPath,
-                    },
-                  ]"
-                  @click="handleMotionSelect(motion)"
+                  <div class="i-solar:pen-bold-duotone text-sm" />
+                </button>
+
+                <!-- Visibility Toggle -->
+                <button
+                  class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                  :title="isHidden(motion.fullPath) ? 'Show' : 'Hide'"
+                  @click="toggleVisibility(motion.fullPath)"
                 >
-                  <div :class="['text-sm', 'text-neutral-900', 'font-medium', 'dark:text-neutral-100']">
-                    {{ motion.name }}
-                  </div>
-                  <div :class="['truncate', 'text-xs', 'text-neutral-500', 'dark:text-neutral-400']">
-                    {{ motion.displayPath }}
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+                  <div :class="isHidden(motion.fullPath) ? 'i-solar:eye-closed-bold-duotone' : 'i-solar:eye-bold-duotone'" class="text-sm" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

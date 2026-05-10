@@ -68,6 +68,7 @@ let animationManager: SpineAnimationManager | undefined
 let skeleton: Skeleton | undefined
 let animationState: AnimationState | undefined
 let loadedVariants: SpineModelVariant[] = []
+let prevActiveAnimations: Record<string, boolean> = {}
 
 const canvas = toRef(() => props.canvas)
 const modelSrc = toRef(() => props.modelSrc)
@@ -247,8 +248,8 @@ async function loadModel() {
           animationState.update(delta * animationSpeed.value)
           animationState.apply(skeleton)
           // Physics was added in Spine 4.2; older runtimes take no argument.
-          if (spine.Physics)
-            skeleton.updateWorldTransform(spine.Physics.update)
+          if (spine.Physics && (spine.Physics as any).update)
+            skeleton.updateWorldTransform((spine.Physics as any).update)
           else
             (skeleton as any).updateWorldTransform()
         },
@@ -414,6 +415,7 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
     }
     else if (!isActive && isPlaying) {
       animationState.setEmptyAnimation(trackIndex, props.defaultMixDuration)
+      skeleton.setToSetupPose()
     }
   })
 }
@@ -473,7 +475,19 @@ watch(currentAnimation, () => {
 }, { deep: true })
 
 watch(activeAnimations, (newVal) => {
-  applyActiveAnimations(newVal[props.modelId] || {})
+  const current = newVal[props.modelId] || {}
+
+  for (const name in prevActiveAnimations) {
+    if (prevActiveAnimations[name] && !current[name]) {
+      console.log(`[Spine] Animation removed: ${name}`)
+      if (skeleton) {
+        skeleton.setToSetupPose()
+      }
+    }
+  }
+
+  prevActiveAnimations = { ...current }
+  applyActiveAnimations(current)
 }, { deep: true })
 
 watch(currentSkin, (skinName) => {

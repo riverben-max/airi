@@ -282,7 +282,12 @@ const sceneOptions = computed(() => {
 
 const actingModelExpressionOptions = computed(() => {
   if (isLive2d.value) {
-    return live2dExpressions.value.map(e => e.name).sort((a, b) => a.localeCompare(b))
+    const exps = live2dExpressions.value.map(e => e.name)
+    const motions = live2dStore.availableMotions.map((m) => {
+      const name = m.fileName.split('/').pop() || m.fileName
+      return name.replace('.motion3.json', '').replace('.json', '')
+    })
+    return [...new Set([...exps, ...motions])].sort((a, b) => a.localeCompare(b))
   }
   if (isSpine.value) {
     return spineAnimations.value.map(a => a.name).sort((a, b) => a.localeCompare(b))
@@ -293,6 +298,13 @@ const actingModelExpressionOptions = computed(() => {
 })
 
 const actingIdleAnimationOptions = computed(() => {
+  if (isLive2d.value) {
+    return live2dStore.availableMotions.map((m) => {
+      const name = m.fileName.split('/').pop() || m.fileName
+      const cleanName = name.replace('.motion3.json', '').replace('.json', '')
+      return { label: cleanName, value: cleanName }
+    }).sort((a, b) => a.label.localeCompare(b.label))
+  }
   if (isSpine.value) {
     return spineAnimations.value.map(a => ({ label: a.name, value: a.name }))
   }
@@ -348,7 +360,27 @@ function appendUniqueLine(target: typeof selectedActingModelExpressionPrompt, li
 }
 
 function insertModelExpression(name: string) {
-  appendUniqueLine(selectedActingModelExpressionPrompt, `- \`${name}\``)
+  if (isLive2d.value) {
+    const isExpression = live2dExpressions.value.some(e => e.name === name)
+    const isMotion = live2dStore.availableMotions.some((m) => {
+      const displayName = m.fileName.split('/').pop() || m.fileName
+      const cleanName = displayName.replace('.motion3.json', '').replace('.json', '')
+      return displayName === name || cleanName === name
+    })
+
+    if (isExpression) {
+      appendUniqueLine(selectedActingModelExpressionPrompt, `- <|ACT:emotion:"${name}"|>`)
+    }
+    else if (isMotion) {
+      appendUniqueLine(selectedActingModelExpressionPrompt, `- <|ACT:motion:"${name}"|>`)
+    }
+    else {
+      appendUniqueLine(selectedActingModelExpressionPrompt, `- \`${name}\``)
+    }
+  }
+  else {
+    appendUniqueLine(selectedActingModelExpressionPrompt, `- \`${name}\``)
+  }
 }
 
 function insertSpeechTag(tag: string, description?: string) {

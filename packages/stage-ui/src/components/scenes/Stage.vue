@@ -272,7 +272,19 @@ const emotionsQueue = createQueue<EmotionPayload>({
             currentMotion.value = { group: motionGroup }
           }
           else {
-            console.warn('[Stage] No Live2D explicit mapping, name match, or motion found for:', emotionName)
+            // New fallback: try to find motion by name in availableMotions (Ground Truth)
+            const matchedMotion = live2dStore.availableMotions.find((m: any) => {
+              const name = m.fileName.split('/').pop() || m.fileName
+              const cleanName = name.replace('.motion3.json', '').replace('.json', '')
+              return name === emotionName || m.fileName === emotionName || cleanName === emotionName
+            })
+            if (matchedMotion) {
+              currentMotion.value = { group: matchedMotion.motionName, index: matchedMotion.motionIndex }
+              console.log('[Stage] Triggered Live2D motion from dropdown name:', emotionName)
+            }
+            else {
+              console.warn('[Stage] No Live2D explicit mapping, name match, or motion found for:', emotionName)
+            }
           }
         }
       }
