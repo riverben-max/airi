@@ -21,5 +21,7 @@ export async function loadSpineRuntime(version: SpineVersion): Promise<typeof im
       return await import('@esotericsoftware/spine-webgl-4-1') as unknown as typeof import('@esotericsoftware/spine-webgl')
     case '4.2':
       return await import('@esotericsoftware/spine-webgl')
+    default:
+      throw new Error(`Spine version ${version} is not supported yet.`)
   }
 }

@@ -159,13 +159,19 @@ function handleAddVRMModel(file: FileList | null) {
   displayModelStore.addDisplayModel(DisplayModelFormat.VRM, file[0])
 }
 
-function handleAddSpineModel(file: FileList | null) {
+async function handleAddSpineModel(file: FileList | null) {
   if (file === null || file.length === 0)
     return
   if (!file[0].name.endsWith('.zip'))
     return
 
-  displayModelStore.addDisplayModel(DisplayModelFormat.SpineZip, file[0])
+  try {
+    await displayModelStore.addDisplayModel(DisplayModelFormat.SpineZip, file[0])
+  }
+  catch (error) {
+    console.error('[Model Selector] Failed to add Spine model:', error)
+    toast.error(error instanceof Error ? error.message : 'Failed to add Spine model.')
+  }
 }
 
 async function handleAddVrmaAnimation(file: FileList | null) {

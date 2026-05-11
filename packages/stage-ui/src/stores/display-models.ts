@@ -126,6 +126,10 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     }
     else if (format === DisplayModelFormat.SpineZip) {
       const previewImage = await generateSpinePreview(file)
+      if (!previewImage) {
+        console.warn('[DisplayModels] Failed to generate preview or unsupported Spine version. Skipping import.')
+        return
+      }
       newDisplayModel.previewImage = previewImage
     }
 

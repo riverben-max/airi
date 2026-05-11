@@ -25,8 +25,13 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
     let detectedVersion = assets.layout.skeletonFormat === 'binary'
       ? detectSpineVersionFromBinary(assets.rawData[assets.layout.skeletonPath] as Uint8Array)
       : detectSpineVersionFromJson(assets.rawData[assets.layout.skeletonPath] as string)
-    if (!detectedVersion)
-      detectedVersion = '4.2'
+
+    console.log(`[Spine] Detected version for preview: ${detectedVersion}`)
+
+    if (!detectedVersion) {
+      console.warn('[Spine] Failed to detect version for preview. Aborting.')
+      throw new Error('Failed to detect Spine version.')
+    }
     const spine = await loadSpineRuntime(detectedVersion)
 
     const previewWidth = 720
@@ -148,7 +153,7 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
   }
   catch (err) {
     console.error('[Spine] Preview generation failed:', err)
-    return undefined
+    throw err
   }
   finally {
     if (canvas?.isConnected)

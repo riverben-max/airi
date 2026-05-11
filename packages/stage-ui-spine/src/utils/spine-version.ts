@@ -12,27 +12,40 @@
  * - A `SpineVersion` ('4.0' | '4.1' | '4.2') or `undefined` if undetectable.
  */
 
-export type SpineVersion = '4.0' | '4.1' | '4.2'
+export type SpineVersion = string
 
 /**
  * Detects the Spine editor version from a binary `.skel` file.
  *
  * The binary format header is:
- * - int32 hashLow
- * - int32 hashHigh
- * - varint-length-prefixed string: version (e.g. "4.2.18")
+ * - string: hash
+ * - string: version (e.g. "4.2.18" or "3.8.99")
+ * Strings are varint-length-prefixed.
  */
 export function detectSpineVersionFromBinary(data: Uint8Array): SpineVersion | undefined {
   try {
-    // Skip 8 bytes of hash (two int32s)
-    let offset = 8
-    // Read varint-encoded string length
-    const { value: strLen, bytesRead } = readVarint(data, offset)
-    offset += bytesRead
-    if (strLen <= 0 || offset + strLen > data.byteLength)
+    let offset = 0
+    // Read hash string length
+    const { value: hashLenEncoded, bytesRead: hashBytes } = readVarint(data, offset)
+    offset += hashBytes
+
+    if (hashLenEncoded > 1) {
+      const hashLen = hashLenEncoded - 1
+      offset += hashLen
+    }
+
+    // Read version string length
+    const { value: verLenEncoded, bytesRead: verBytes } = readVarint(data, offset)
+    offset += verBytes
+
+    if (verLenEncoded <= 1)
       return undefined
 
-    const versionStr = new TextDecoder().decode(data.slice(offset, offset + strLen))
+    const verLen = verLenEncoded - 1
+    if (offset + verLen > data.byteLength)
+      return undefined
+
+    const versionStr = new TextDecoder().decode(data.slice(offset, offset + verLen))
     return parseSpineVersionString(versionStr)
   }
   catch {
@@ -65,10 +78,7 @@ function parseSpineVersionString(version: string): SpineVersion | undefined {
   const match = version.match(/^(\d+)\.(\d+)/)
   if (!match)
     return undefined
-  const key = `${match[1]}.${match[2]}` as SpineVersion
-  if (key === '4.0' || key === '4.1' || key === '4.2')
-    return key
-  return undefined
+  return `${match[1]}.${match[2]}`
 }
 
 /**
