@@ -27,12 +27,14 @@ const props = withDefaults(defineProps<{
   defaultMixDuration?: number
   idleAnimationEnabled?: boolean
   maxFps?: number
+  interactionMode?: 'orbit' | 'tactile'
 }>(), {
   paused: false,
   premultipliedAlpha: false,
   defaultMixDuration: 0.2,
   idleAnimationEnabled: true,
   maxFps: 0,
+  interactionMode: 'orbit',
 })
 
 const emits = defineEmits<{
@@ -70,6 +72,7 @@ let animationState: AnimationState | undefined
 let loadedVariants: SpineModelVariant[] = []
 let prevActiveAnimations: Record<string, boolean> = {}
 let model0Motions: Record<string, any> = {}
+let model0HitAreas: any[] = []
 let loadedBlobUrls: Record<string, string> | undefined
 /** Single audio instance for model0 motions — prevents overlapping playback. */
 let currentSpineAudio: HTMLAudioElement | null = null
@@ -80,7 +83,69 @@ const canvas = toRef(() => props.canvas)
 const modelSrc = toRef(() => props.modelSrc)
 const paused = toRef(() => props.paused)
 
+function onCanvasClick(event: MouseEvent) {
+  if (!canvas.value || !skeleton || props.interactionMode !== 'tactile')
+    return
+
+  const rect = canvas.value.getBoundingClientRect()
+  const clickX = event.clientX - rect.left
+  const clickY = event.clientY - rect.top
+
+  // Scale click coordinates to match canvas physical pixels (Retina display handling)
+  const realClickX = clickX * (canvas.value.width / canvas.value.clientWidth)
+  const realClickY = clickY * (canvas.value.height / canvas.value.clientHeight)
+
+  console.log(`[Spine] Canvas clicked at client: (${clickX}, ${clickY}), real: (${realClickX.toFixed(2)}, ${realClickY.toFixed(2)})`)
+
+  for (const area of model0HitAreas) {
+    const bone = skeleton.findBone(area.name)
+    if (!bone)
+      continue
+
+    // Convert bone world position to canvas pixels
+    // Origin is at the center of the canvas!
+    // Spine Y goes UP, Canvas Y goes DOWN
+    const boneCanvasX = canvas.value.width / 2 + bone.worldX * skeleton.scaleX
+    const boneCanvasY = canvas.value.height / 2 - bone.worldY * skeleton.scaleY
+
+    const radius = 50 // pixels
+    const dist = Math.sqrt((realClickX - boneCanvasX) ** 2 + (realClickY - boneCanvasY) ** 2)
+
+    if (dist < radius) {
+      console.log(`[Spine] Hit detected on bone: ${area.name}`)
+
+      const motionName = `tap_${area.name}`
+      const motionConfig = model0Motions[motionName]
+
+      if (motionConfig && motionConfig.length > 0) {
+        const randomIndex = Math.floor(Math.random() * motionConfig.length)
+        const config = motionConfig[randomIndex]
+
+        // Use track 5 for hit motions (one-shot)
+        const trackIndex = 5
+        if (animationState) {
+          animationState.setAnimation(trackIndex, config.file, false)
+        }
+
+        // Play audio (if leader)
+        const hash = window.location.hash || '#/'
+        const isStage = hash === '#/' || hash.startsWith('#/stage')
+        if (isStage && config.sound && loadedBlobUrls && loadedBlobUrls[config.sound]) {
+          if (currentSpineAudio) {
+            currentSpineAudio.pause()
+            currentSpineAudio.currentTime = 0
+          }
+          currentSpineAudio = new Audio(loadedBlobUrls[config.sound])
+          currentSpineAudio.play().catch(e => console.error('[Spine] Failed to play audio:', e))
+        }
+      }
+      break // Only trigger one hit per click
+    }
+  }
+}
+
 function disposeSpine() {
+  canvas.value?.removeEventListener('click', onCanvasClick)
   if (spineCanvas) {
     try {
       spineCanvas.dispose()
@@ -237,6 +302,9 @@ async function loadModel() {
                     }
                   }
                 }
+                if (model0.hit_areas) {
+                  model0HitAreas = model0.hit_areas
+                }
               }
               catch (e) {
                 console.error('[Spine] Failed to parse model0.json:', e)
@@ -257,6 +325,7 @@ async function loadModel() {
             // Apply active independent animations.
             applyActiveAnimations(activeAnimations.value[props.modelId] || {})
 
+            canvas.value?.addEventListener('click', onCanvasClick)
             emits('modelLoaded')
             resolve()
           }

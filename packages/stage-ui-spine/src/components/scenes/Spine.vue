@@ -16,6 +16,7 @@ withDefaults(defineProps<{
   idleAnimationEnabled?: boolean
   maxFps?: number
   renderScale?: number
+  interactionMode?: 'orbit' | 'tactile'
 }>(), {
   paused: false,
   premultipliedAlpha: false,
@@ -23,6 +24,7 @@ withDefaults(defineProps<{
   idleAnimationEnabled: true,
   maxFps: 0,
   renderScale: 1,
+  interactionMode: 'orbit',
 })
 
 const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
@@ -71,6 +73,7 @@ defineExpose({
         :default-mix-duration="defaultMixDuration"
         :idle-animation-enabled="idleAnimationEnabled"
         :max-fps="maxFps"
+        :interaction-mode="interactionMode"
       />
     </SpineCanvas>
   </Screen>

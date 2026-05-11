@@ -1097,6 +1097,7 @@ defineExpose({
         :model-id="stageModelSelected"
         :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
         :paused="paused"
+        :interaction-mode="vrmStore.interactionMode"
       />
     </div>
   </div>
