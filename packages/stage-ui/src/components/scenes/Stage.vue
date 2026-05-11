@@ -14,6 +14,7 @@ import { createLive2DLipSync } from '@proj-airi/model-driver-lipsync'
 import { wlipsyncProfile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
 import { createPlaybackManager, createSpeechPipeline } from '@proj-airi/pipelines-audio'
 import { Live2DScene, useLive2d } from '@proj-airi/stage-ui-live2d'
+import { MMDScene } from '@proj-airi/stage-ui-mmd'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene, useCustomVrmAnimationsStore, useModelStore } from '@proj-airi/stage-ui-three'
 import { animations } from '@proj-airi/stage-ui-three/assets/vrm'
@@ -33,6 +34,7 @@ import { EMOTION_EmotionMotionName_value, EMOTION_VRMExpressionName_value, Emoti
 import { useAudioContext, useSpeakingStore } from '../../stores/audio'
 import { useBackgroundStore } from '../../stores/background'
 import { useChatOrchestratorStore } from '../../stores/chat'
+import { DisplayModelFormat, useDisplayModelsStore } from '../../stores/display-models'
 import { useModsServerChannelStore } from '../../stores/mods/api/channel-server'
 import { useAiriCardStore } from '../../stores/modules'
 import { useAutonomousArtistryStore } from '../../stores/modules/artistry-autonomous'
@@ -77,6 +79,7 @@ const {
   live2dForceAutoBlinkEnabled,
   live2dShadowEnabled,
   live2dMaxFps,
+  mmdTextureMap,
 } = storeToRefs(settingsStore)
 const { mouthOpenSize } = storeToRefs(useSpeakingStore())
 const { audioContext } = useAudioContext()
@@ -94,6 +97,8 @@ const live2dStore = useLive2d()
 const vrmStore = useModelStore()
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
 const viewUpdateCleanups: Array<() => void> = []
+
+const displayModelsStore = useDisplayModelsStore()
 
 // Caption + Presentation broadcast channels
 type CaptionChannelEvent
@@ -273,7 +278,7 @@ const emotionsQueue = createQueue<EmotionPayload>({
           }
           else {
             // New fallback: try to find motion by name in availableMotions (Ground Truth)
-            const motionMappings = activeCard.value?.extensions?.airi?.modules?.live2d?.motionMappings || {}
+            const motionMappings = (activeCard.value as any)?.extensions?.airi?.modules?.live2d?.motionMappings || {}
             const matchedMotion = live2dStore.availableMotions.find((m: any) => {
               const name = m.fileName.split('/').pop() || m.fileName
               const cleanName = name.replace('.motion3.json', '').replace('.json', '')
@@ -296,7 +301,7 @@ const emotionsQueue = createQueue<EmotionPayload>({
         // eslint-disable-next-line no-console
         console.log('[Stage] Spine emotion/motion processing:', { name: emotionName, intensity })
         if (spineViewerRef.value) {
-          spineViewerRef.value.setEmotion(emotionName, intensity)
+          spineViewerRef.value.setEmotion(emotionName as any, intensity)
         }
         else {
           console.warn('[Stage] spineViewerRef is NULL')
@@ -1098,9 +1103,20 @@ defineExpose({
         :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
         :paused="paused"
         :interaction-mode="vrmStore.interactionMode"
-        :x-offset="xOffset"
-        :y-offset="yOffset"
-        :scale="scale"
+        :x-offset="xOffset !== undefined ? Number(xOffset) : undefined"
+        :y-offset="yOffset !== undefined ? Number(yOffset) : undefined"
+        :scale="scale !== undefined ? Number(scale) : undefined"
+      />
+      <MMDScene
+        v-if="stageModelRenderer === 'mmd' && stageModelSelectedUrl"
+        ref="mmdViewerRef"
+        v-model:state="componentState"
+        :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
+        :model-src="stageModelSelectedUrl"
+        :paused="paused"
+        :current-audio-source="currentAudioSource"
+        :texture-map="mmdTextureMap"
+        @error="console.error"
       />
     </div>
   </div>

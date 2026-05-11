@@ -1,6 +1,9 @@
+import type { MmdTextureFile } from '../utils/mmd-zip-extractor'
+
 import localforage from 'localforage'
 
 import { loadLive2DModelPreview as generateLive2DPreview } from '@proj-airi/stage-ui-live2d/utils/live2d-preview'
+import { loadMmdModelPreview as generateMmdPreview } from '@proj-airi/stage-ui-mmd/utils/mmd-preview'
 import { loadSpineModelPreview as generateSpinePreview } from '@proj-airi/stage-ui-spine/utils/spine-preview'
 import { loadVrmModelPreview as generateVrmPreview } from '@proj-airi/stage-ui-three/utils/vrm-preview'
 import { until } from '@vueuse/core'
@@ -74,6 +77,10 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     try {
       await localforage.iterate<{ format: DisplayModelFormat, file: File, importedAt: number, previewImage?: string }, void>((val, key) => {
         if (key.startsWith('display-model-')) {
+          if (!val.file) {
+            console.warn(`[DisplayModels] Model ${key} is missing file property! Skipping.`, val)
+            return
+          }
           models.push({ id: key, format: val.format, type: 'file', file: val.file, name: val.file.name, importedAt: val.importedAt, previewImage: val.previewImage })
         }
       })
@@ -132,11 +139,44 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
       }
       newDisplayModel.previewImage = previewImage
     }
+    else if (format === DisplayModelFormat.PMXZip || format === DisplayModelFormat.PMXDirectory || format === DisplayModelFormat.PMD) {
+      const previewImage = await generateMmdPreview(file)
+      newDisplayModel.previewImage = previewImage
+    }
 
     displayModels.value.unshift(newDisplayModel)
 
     localforage.setItem<DisplayModelFile>(newDisplayModel.id, newDisplayModel)
       .catch(err => console.error(err))
+  }
+
+  async function addDisplayModelWithTextures(format: DisplayModelFormat, modelFile: File, textureFiles: MmdTextureFile[]) {
+    await until(displayModelsFromIndexedDBLoading).toBe(false)
+    const newDisplayModel: DisplayModelFile = { id: `display-model-${nanoid()}`, format, type: 'file', file: modelFile, name: modelFile.name, importedAt: Date.now() }
+
+    displayModels.value.unshift(newDisplayModel)
+
+    // Persist model file
+    await localforage.setItem<DisplayModelFile>(newDisplayModel.id, newDisplayModel)
+      .catch(err => console.error(err))
+
+    // Persist texture files keyed by model ID
+    if (textureFiles.length > 0) {
+      await localforage.setItem(`${newDisplayModel.id}-textures`, textureFiles)
+        .catch(err => console.error(err))
+    }
+
+    return newDisplayModel
+  }
+
+  async function getDisplayModelTextures(id: string): Promise<MmdTextureFile[]> {
+    try {
+      const textures = await localforage.getItem<MmdTextureFile[]>(`${id}-textures`)
+      return textures ?? []
+    }
+    catch {
+      return []
+    }
   }
 
   async function renameDisplayModel(id: string, name: string) {
@@ -185,6 +225,8 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     loadDisplayModelsFromIndexedDB,
     getDisplayModel,
     addDisplayModel,
+    addDisplayModelWithTextures,
+    getDisplayModelTextures,
     renameDisplayModel,
     removeDisplayModel,
     resetDisplayModels,

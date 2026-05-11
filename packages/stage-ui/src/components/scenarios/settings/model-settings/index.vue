@@ -2,6 +2,7 @@
 import type { DisplayModel } from '../../../../stores/display-models'
 
 import { Live2DScene, useLive2d } from '@proj-airi/stage-ui-live2d'
+import { MMDScene } from '@proj-airi/stage-ui-mmd'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene } from '@proj-airi/stage-ui-three'
 import { Button, Callout } from '@proj-airi/ui'
@@ -11,6 +12,7 @@ import { computed, ref } from 'vue'
 
 import LHackerPanel from './live2d-lhack/LHackerPanel.vue'
 import Live2D from './live2d.vue'
+import MMD from './mmd.vue'
 import Spine from './spine.vue'
 import HackerPanel from './vrm-vhack/HackerPanel.vue'
 import VRM from './vrm.vue'
@@ -180,6 +182,12 @@ async function handleApplyToActiveCharacter() {
       :model-id="stageModelSelected"
       @extract-colors-from-model="$emit('extractColorsFromModel')"
     />
+    <MMD
+      v-if="stageModelRenderer === 'mmd'"
+      :palette="palette"
+      :model-id="stageModelSelected"
+      @extract-colors-from-model="$emit('extractColorsFromModel')"
+    />
   </div>
   <!-- Live2D component for 2D stage view -->
   <template v-if="stageModelRenderer === 'live2d'">
@@ -221,6 +229,15 @@ async function handleApplyToActiveCharacter() {
         :x-offset="computedXOffset"
         :y-offset="computedYOffset"
         :scale="computedScale"
+      />
+    </div>
+  </template>
+  <!-- MMD component for 3D stage view -->
+  <template v-if="stageModelRenderer === 'mmd'">
+    <div :class="[...(props.vrmSceneClass ? (typeof props.vrmSceneClass === 'string' ? [props.vrmSceneClass] : props.vrmSceneClass) : [])]">
+      <MMDScene
+        :model-src="stageModelSelectedUrl"
+        :texture-map="settingsStore.mmdTextureMap"
       />
     </div>
   </template>

@@ -16,6 +16,7 @@ import { toast } from 'vue-sonner'
 import Live2DReportModal from './Live2DReportModal.vue'
 
 import { DisplayModelFormat, useDisplayModelsStore } from '../../../../stores/display-models'
+import { extractMmdFromZip } from '../../../../utils/mmd-zip-extractor'
 
 const emits = defineEmits<{
   (e: 'close', value: void): void
@@ -30,7 +31,7 @@ const { displayModelsFromIndexedDBLoading, displayModels } = storeToRefs(display
 // Redesign State
 const viewMode = ref<'grid' | 'compact'>('compact')
 const searchQuery = ref('')
-const formatFilter = ref<'all' | 'live2d' | 'vrm'>('all')
+const formatFilter = ref<'all' | 'live2d' | 'vrm' | 'spine' | 'mmd'>('all')
 const sortBy = ref<'name' | 'date'>('date')
 
 const showRenameDialog = ref(false)
@@ -45,19 +46,21 @@ const validationReport = ref<Live2DValidationReport | null>(null)
 const currentTab = ref<'library' | 'explore'>('library')
 
 const marketplaces = [
-  { name: 'Reverse: 1999 (v1.7+)', vrm: false, live2d: true, languages: ['cn', 'en'], origin: 'Storm Preservation', url: 'https://dasilva333.github.io/r1999-web-gallery/' },
-  { name: 'Booth', vrm: true, live2d: true, languages: ['jp', 'us'], origin: 'Japan', url: 'https://booth.pm/en/browse/VTuber' },
-  { name: 'Booth VRMA', vrm: true, live2d: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://booth.pm/en/browse/3D%20Motion%20&%20Animation?sort=price_asc&tags%5B%5D=VRMA' },
-  { name: 'VGen', vrm: true, live2d: true, languages: ['us'], origin: 'USA', url: 'https://vgen.co' },
-  { name: 'itch.io', vrm: true, live2d: true, languages: ['us'], origin: 'USA', url: 'https://itch.io/game-assets' },
-  { name: 'Gumroad', vrm: true, live2d: true, languages: ['us'], origin: 'USA', url: 'https://gumroad.com' },
-  { name: 'Ko-fi', vrm: true, live2d: true, languages: ['us'], origin: 'USA', url: 'https://ko-fi.com/shop' },
-  { name: 'VRoid Hub', vrm: true, live2d: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://hub.vroid.com' },
-  { name: 'Sketchfab', vrm: true, live2d: false, languages: ['us'], origin: 'USA', url: 'https://sketchfab.com' },
-  { name: 'CGTrader', vrm: true, live2d: false, languages: ['us'], origin: 'USA', url: 'https://cgtrader.com' },
-  { name: 'Nizima', vrm: false, live2d: true, languages: ['jp', 'us'], origin: 'Japan', url: 'https://nizima.com' },
-  { name: 'Avatar Atelier', vrm: false, live2d: true, languages: ['us'], origin: 'USA', url: 'https://avataratelier.com' },
-  { name: 'VTuberAvatars', vrm: false, live2d: true, languages: ['us'], origin: 'USA', url: 'https://vtuberavatars.com' },
+  { name: 'Steam Workshop', vrm: false, live2d: true, spine: true, mmd: false, languages: ['us'], origin: 'Steam', url: 'https://steamcommunity.com/workshop/browse/?appid=616720' },
+  { name: 'VChaVCha (Hololive MMD)', vrm: false, live2d: false, spine: false, mmd: true, languages: ['us'], origin: 'VChaVCha', url: 'https://vchavcha.com/en/free-resources/hololive-mmd-download/' },
+  { name: 'Reverse: 1999 (v1.7+)', vrm: false, live2d: true, spine: false, mmd: false, languages: ['cn', 'en'], origin: 'Storm Preservation', url: 'https://dasilva333.github.io/r1999-web-gallery/' },
+  { name: 'Booth', vrm: true, live2d: true, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://booth.pm/en/browse/VTuber' },
+  { name: 'Booth VRMA', vrm: true, live2d: false, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://booth.pm/en/browse/3D%20Motion%20&%20Animation?sort=price_asc&tags%5B%5D=VRMA' },
+  { name: 'VGen', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://vgen.co' },
+  { name: 'itch.io', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://itch.io/game-assets' },
+  { name: 'Gumroad', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://gumroad.com' },
+  { name: 'Ko-fi', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://ko-fi.com/shop' },
+  { name: 'VRoid Hub', vrm: true, live2d: false, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://hub.vroid.com' },
+  { name: 'Sketchfab', vrm: true, live2d: false, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://sketchfab.com' },
+  { name: 'CGTrader', vrm: true, live2d: false, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://cgtrader.com' },
+  { name: 'Nizima', vrm: false, live2d: true, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://nizima.com' },
+  { name: 'Avatar Atelier', vrm: false, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://avataratelier.com' },
+  { name: 'VTuberAvatars', vrm: false, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://vtuberavatars.com' },
 ]
 
 // Filtering Logic
@@ -77,6 +80,10 @@ const filteredModels = computed(() => {
         return m.format === DisplayModelFormat.Live2dZip || m.format === DisplayModelFormat.Live2dDirectory
       if (formatFilter.value === 'vrm')
         return m.format === DisplayModelFormat.VRM
+      if (formatFilter.value === 'spine')
+        return m.format === DisplayModelFormat.SpineZip
+      if (formatFilter.value === 'mmd')
+        return m.format === DisplayModelFormat.PMXZip || m.format === DisplayModelFormat.PMXDirectory || m.format === DisplayModelFormat.PMD
       return true
     })
   }
@@ -174,6 +181,24 @@ async function handleAddSpineModel(file: FileList | null) {
   }
 }
 
+async function handleAddMmdModel(file: FileList | null) {
+  if (file === null || file.length === 0)
+    return
+
+  const zipFile = file[0]
+  if (!zipFile.name.toLowerCase().endsWith('.zip'))
+    return
+
+  try {
+    await displayModelStore.addDisplayModel(DisplayModelFormat.PMXZip, zipFile)
+    toast.success('MMD model zip added successfully!')
+  }
+  catch (error) {
+    console.error('[Model Selector] Failed to add MMD model:', error)
+    toast.error(error instanceof Error ? error.message : 'Failed to add MMD model.')
+  }
+}
+
 async function handleAddVrmaAnimation(file: FileList | null) {
   if (file === null || file.length === 0)
     return
@@ -205,11 +230,13 @@ const live2dDialog = useFileDialog({ accept: '.zip', multiple: false, reset: tru
 const vrmDialog = useFileDialog({ accept: '.vrm', multiple: false, reset: true })
 const vrmaDialog = useFileDialog({ accept: '.vrma', multiple: false, reset: true })
 const spineDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
+const mmdDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
 
 live2dDialog.onChange(handleAddLive2DModel)
 vrmDialog.onChange(handleAddVRMModel)
 vrmaDialog.onChange(handleAddVrmaAnimation)
 spineDialog.onChange(handleAddSpineModel)
+mmdDialog.onChange(handleAddMmdModel)
 
 function handleFixError(err: string) {
   // eslint-disable-next-line no-console
@@ -382,6 +409,18 @@ function handleFixError(err: string) {
               >
                 Spine (.zip)
               </DropdownMenuItem>
+              <DropdownMenuItem
+                :class="[
+                  'data-[disabled]:text-mauve8 relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 leading-none outline-none data-[disabled]:pointer-events-none',
+                  'text-base sm:text-sm',
+                  'data-[highlighted]:bg-primary-300/20 dark:data-[highlighted]:bg-primary-100/20',
+                  'data-[highlighted]:text-primary-400 dark:data-[highlighted]:text-primary-200',
+                ]"
+                transition="colors duration-200 ease-in-out"
+                @click="mmdDialog.open()"
+              >
+                MMD (.zip)
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenuRoot>
@@ -415,6 +454,12 @@ function handleFixError(err: string) {
           </option>
           <option value="vrm">
             VRM
+          </option>
+          <option value="spine">
+            Spine
+          </option>
+          <option value="mmd">
+            MMD
           </option>
         </select>
 
@@ -597,6 +642,8 @@ function handleFixError(err: string) {
             <div class="flex flex-wrap gap-2">
               <div v-if="site.vrm" class="border border-blue-500/20 rounded bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-500 font-bold">VRM</div>
               <div v-if="site.live2d" class="border border-green-500/20 rounded bg-green-500/10 px-2 py-0.5 text-[10px] text-green-500 font-bold">LIVE2D</div>
+              <div v-if="site.spine" class="border border-purple-500/20 rounded bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-500 font-bold">SPINE</div>
+              <div v-if="site.mmd" class="border border-pink-500/20 rounded bg-pink-500/10 px-2 py-0.5 text-[10px] text-pink-500 font-bold">MMD</div>
             </div>
 
             <div class="mt-auto flex items-center justify-between border-t border-neutral-200 pt-2 dark:border-neutral-700">

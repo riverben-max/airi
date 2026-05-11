@@ -4,10 +4,12 @@ import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { refManualReset, useEventListener } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
+import { extractMmdFromZip } from '../../utils/mmd-zip-extractor'
 import { DisplayModelFormat, useDisplayModelsStore } from '../display-models'
 
-export type StageModelRenderer = 'live2d' | 'vrm' | 'spine' | 'disabled' | undefined
+export type StageModelRenderer = 'live2d' | 'vrm' | 'spine' | 'mmd' | 'disabled' | undefined
 
 export const useSettingsStageModel = defineStore('settings-stage-model', () => {
   const displayModelsStore = useDisplayModelsStore()
@@ -29,6 +31,7 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
   const stageViewControlsEnabled = refManualReset<boolean>(false)
   const stageViewControlsMode = ref<'x' | 'y' | 'z' | 'scale'>('scale')
   const lastReloadReason = ref<string | undefined>(undefined)
+  const mmdTextureMap = ref<Map<string, string>>(new Map())
 
   function isSameFile(f1?: File, f2?: File) {
     if (f1 === f2)
@@ -89,19 +92,56 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
           case DisplayModelFormat.Live2dZip: stageModelRenderer.value = 'live2d'; break
           case DisplayModelFormat.VRM: stageModelRenderer.value = 'vrm'; break
           case DisplayModelFormat.SpineZip: stageModelRenderer.value = 'spine'; break
+          case DisplayModelFormat.PMXZip:
+          case DisplayModelFormat.PMXDirectory:
+          case DisplayModelFormat.PMD:
+            stageModelRenderer.value = 'mmd'; break
           default: stageModelRenderer.value = 'disabled'; break
         }
         return
       }
 
-      const nextUrl = URL.createObjectURL(model.file)
-      if (requestId !== stageModelUpdateSequence) {
-        URL.revokeObjectURL(nextUrl)
-        return
+      if (model.format === DisplayModelFormat.PMXZip) {
+        const toastId = toast.loading('Extracting MMD model...')
+        try {
+          const extracted = await extractMmdFromZip(model.file, msg => toast.loading(msg, { id: toastId }))
+          if (requestId !== stageModelUpdateSequence)
+            return
+          if (extracted) {
+            const map = new Map<string, string>()
+            for (const tex of extracted.textureFiles) {
+              map.set(tex.relativePath.toLowerCase(), URL.createObjectURL(tex.file))
+            }
+            mmdTextureMap.value = map
+            const nextUrl = `${URL.createObjectURL(extracted.modelFile)}#${extracted.modelFile.name}`
+            replaceStageModelUrl(nextUrl)
+            stageModelSelectedFile.value = extracted.modelFile
+            toast.success('MMD model ready!', { id: toastId })
+          }
+          else {
+            toast.error('Failed to extract MMD model!', { id: toastId })
+            const nextUrl = URL.createObjectURL(model.file)
+            replaceStageModelUrl(nextUrl)
+            stageModelSelectedFile.value = model.file
+          }
+        }
+        catch (e) {
+          toast.error('Failed to load MMD model!', { id: toastId })
+          const nextUrl = URL.createObjectURL(model.file)
+          replaceStageModelUrl(nextUrl)
+          stageModelSelectedFile.value = model.file
+        }
       }
+      else {
+        const nextUrl = URL.createObjectURL(model.file)
+        if (requestId !== stageModelUpdateSequence) {
+          URL.revokeObjectURL(nextUrl)
+          return
+        }
 
-      replaceStageModelUrl(nextUrl)
-      stageModelSelectedFile.value = model.file
+        replaceStageModelUrl(nextUrl)
+        stageModelSelectedFile.value = model.file
+      }
     }
     else {
       // For URL types, we only update if it actually changed
@@ -120,6 +160,11 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
         break
       case DisplayModelFormat.SpineZip:
         stageModelRenderer.value = 'spine'
+        break
+      case DisplayModelFormat.PMXZip:
+      case DisplayModelFormat.PMXDirectory:
+      case DisplayModelFormat.PMD:
+        stageModelRenderer.value = 'mmd'
         break
       default:
         stageModelRenderer.value = 'disabled'
@@ -151,6 +196,7 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
     stageModelRenderer.reset()
     stageViewControlsEnabled.reset()
     stageViewControlsMode.value = 'scale'
+    mmdTextureMap.value = new Map()
 
     await updateStageModel('reset state')
   }
@@ -164,6 +210,7 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
     stageViewControlsEnabled,
     stageViewControlsMode,
     lastReloadReason,
+    mmdTextureMap,
 
     initializeStageModel,
     updateStageModel,
