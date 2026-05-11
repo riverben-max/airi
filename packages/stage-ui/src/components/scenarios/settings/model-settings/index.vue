@@ -17,6 +17,7 @@ import VRM from './vrm.vue'
 
 import { useAiriCardStore } from '../../../../stores/modules'
 import { useSettings } from '../../../../stores/settings'
+import { usePositioningStore } from '../../../../stores/settings/positioning'
 import { useVHackStore } from '../../../../stores/vhack'
 import { ModelSelectorDialog } from '../../dialogs/model-selector'
 
@@ -52,6 +53,20 @@ const {
   live2dShadowEnabled,
   live2dMaxFps,
 } = storeToRefs(settingsStore)
+
+const positioningStore = usePositioningStore()
+
+const computedScale = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).scale
+})
+
+const computedXOffset = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).x
+})
+
+const computedYOffset = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).y
+})
 
 const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
@@ -203,6 +218,9 @@ async function handleApplyToActiveCharacter() {
       <SpineScene
         :model-src="stageModelSelectedUrl"
         :model-id="stageModelSelected"
+        :x-offset="computedXOffset"
+        :y-offset="computedYOffset"
+        :scale="computedScale"
       />
     </div>
   </template>

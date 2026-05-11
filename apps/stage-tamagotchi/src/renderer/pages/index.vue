@@ -26,6 +26,7 @@ import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consci
 import { useHearingSpeechInputPipeline, useHearingStore } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
+import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { Button } from '@proj-airi/ui'
 import { useBroadcastChannel } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
@@ -81,7 +82,7 @@ const isTransparentByThree = useThreeSceneIsTransparentAtPoint(
   { regionRadius: 25 },
 )
 
-const { stageModelRenderer } = storeToRefs(useSettings())
+const { stageModelRenderer, stageModelSelected } = storeToRefs(useSettings())
 
 const llmStore = useLLM()
 const providersStore = useProvidersStore()
@@ -117,6 +118,24 @@ const { stageViewControlsEnabled, lastReloadReason } = storeToRefs(useSettings()
 const { live2dLookAtX, live2dLookAtY } = storeToRefs(useWindowStore())
 const { fadeOnHoverEnabled } = storeToRefs(useControlsIslandStore())
 const viewControlsActiveMode = ref<'x' | 'y' | 'z' | 'scale'>('scale')
+
+const positioningStore = usePositioningStore()
+
+const computedScale = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).scale
+})
+
+const computedXOffset = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).x
+})
+
+const computedYOffset = computed(() => {
+  const y = positioningStore.getPosition(stageModelSelected.value).y
+  if (stageModelRenderer.value === 'live2d') {
+    return -y
+  }
+  return y
+})
 
 watch(componentStateStage, () => isLoading.value = componentStateStage.value !== 'mounted', { immediate: true })
 
@@ -601,9 +620,9 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
           h-full w-full
           flex-1
           :focus-at="{ x: live2dLookAtX, y: live2dLookAtY }"
-          :scale="scale"
-          :x-offset="positionInPercentageString.x"
-          :y-offset="positionInPercentageString.y"
+          :scale="computedScale"
+          :x-offset="computedXOffset"
+          :y-offset="computedYOffset"
           mb="<md:18"
         />
         <ControlsIsland

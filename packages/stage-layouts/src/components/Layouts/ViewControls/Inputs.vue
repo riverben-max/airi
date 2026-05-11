@@ -2,47 +2,55 @@
 import { useModelStore } from '@proj-airi/stage-ui-three'
 import { useLive2d } from '@proj-airi/stage-ui/stores/live2d'
 import { useSettings } from '@proj-airi/stage-ui/stores/settings'
+import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { RoundRange } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 
 const props = defineProps<{
-  // Reserved for future props if needed
+  mode?: 'x' | 'y' | 'z' | 'scale'
 }>()
 
 const {
   stageModelRenderer,
   stageViewControlsEnabled,
   stageViewControlsMode: mode,
+  stageModelSelected,
 } = storeToRefs(useSettings())
 const { modelOffset: vrmPosition, modelSize: vrmModelSize, cameraDistance: vrmCameraDistance } = storeToRefs(useModelStore())
 const { scale: live2dScale, position: live2dPosition } = storeToRefs(useLive2d())
+
+const positioningStore = usePositioningStore()
 
 const vrmControlsDisabled = computed(() => {
   return stageModelRenderer.value === 'vrm' && false // vrmSceneMutationLocked was removed upstream
 })
 
+const activeMode = computed(() => props.mode ?? mode.value)
+
 const viewControlsValueX = computed({
   get: () => {
     switch (stageModelRenderer.value) {
       case 'live2d':
-        return live2dPosition.value.x
       case 'vrm':
-        return vrmPosition.value.x * 100
+      case 'spine':
+        return positioningStore.getPosition(stageModelSelected.value).x
       default:
         return 0
     }
   },
   set: (value) => {
     switch (stageModelRenderer.value) {
-      case 'live2d':
-        live2dPosition.value.x = value
-        break
       case 'vrm':
         if (vrmControlsDisabled.value)
           break
-        vrmPosition.value.x = value / 100
+        // fallthrough
+      case 'live2d':
+      case 'spine': {
+        const current = positioningStore.getPosition(stageModelSelected.value)
+        positioningStore.setPosition(stageModelSelected.value, { ...current, x: value })
         break
+      }
       default:
         break
     }
@@ -50,34 +58,48 @@ const viewControlsValueX = computed({
 })
 
 const viewControlsValueXMin = computed(() => {
-  return stageModelRenderer.value === 'live2d' ? -1000 : (-vrmModelSize.value.x - 10) * 10
+  if (stageModelRenderer.value === 'live2d')
+    return -1000
+  if (stageModelRenderer.value === 'spine')
+    return -2000
+  return (-vrmModelSize.value.x - 10) * 10
 })
 
 const viewControlsValueXMax = computed(() => {
-  return stageModelRenderer.value === 'live2d' ? 1000 : (vrmModelSize.value.x + 10) * 10
+  if (stageModelRenderer.value === 'live2d')
+    return 1000
+  if (stageModelRenderer.value === 'spine')
+    return 2000
+  return (vrmModelSize.value.x + 10) * 10
 })
 
 const viewControlsValueY = computed({
   get: () => {
     switch (stageModelRenderer.value) {
       case 'live2d':
-        return -live2dPosition.value.y
+        // For Live2D, the store stores the raw slider value.
+        // We invert it when passing to the component, but here we show the raw value!
+        // Wait, if we want the slider to reflect the stored value, we just return it!
+        return positioningStore.getPosition(stageModelSelected.value).y
       case 'vrm':
-        return vrmPosition.value.y * 100
+      case 'spine':
+        return positioningStore.getPosition(stageModelSelected.value).y
       default:
         return 0
     }
   },
   set: (value) => {
     switch (stageModelRenderer.value) {
-      case 'live2d':
-        live2dPosition.value.y = -value
-        break
       case 'vrm':
         if (vrmControlsDisabled.value)
           break
-        vrmPosition.value.y = value / 100
+        // fallthrough
+      case 'live2d':
+      case 'spine': {
+        const current = positioningStore.getPosition(stageModelSelected.value)
+        positioningStore.setPosition(stageModelSelected.value, { ...current, y: value })
         break
+      }
       default:
         break
     }
@@ -85,11 +107,19 @@ const viewControlsValueY = computed({
 })
 
 const viewControlsValueYMin = computed(() => {
-  return stageModelRenderer.value === 'live2d' ? -1000 : (-vrmModelSize.value.y - 10) * 10
+  if (stageModelRenderer.value === 'live2d')
+    return -1000
+  if (stageModelRenderer.value === 'spine')
+    return -2000
+  return (-vrmModelSize.value.y - 10) * 10
 })
 
 const viewControlsValueYMax = computed(() => {
-  return stageModelRenderer.value === 'live2d' ? 1000 : (vrmModelSize.value.y + 10) * 10
+  if (stageModelRenderer.value === 'live2d')
+    return 1000
+  if (stageModelRenderer.value === 'spine')
+    return 2000
+  return (vrmModelSize.value.y + 10) * 10
 })
 
 const viewControlsValueZ = computed({
@@ -128,24 +158,35 @@ const viewControlsValueZMax = computed(() => {
 
 const viewControlsValueScale = computed({
   get: () => {
-    if (stageModelRenderer.value === 'live2d') {
-      return live2dScale.value
+    switch (stageModelRenderer.value) {
+      case 'live2d':
+      case 'vrm':
+      case 'spine':
+        return positioningStore.getPosition(stageModelSelected.value).scale
+      default:
+        return 1
     }
-
-    return vrmCameraDistance.value
   },
   set: (value) => {
-    if (stageModelRenderer.value === 'live2d') {
-      live2dScale.value = value
-    }
-    else if (!vrmControlsDisabled.value) {
-      vrmCameraDistance.value = value
+    switch (stageModelRenderer.value) {
+      case 'vrm':
+        if (vrmControlsDisabled.value)
+          break
+        // fallthrough
+      case 'live2d':
+      case 'spine': {
+        const current = positioningStore.getPosition(stageModelSelected.value)
+        positioningStore.setPosition(stageModelSelected.value, { ...current, scale: value })
+        break
+      }
+      default:
+        break
     }
   },
 })
 
 function resetOnMode() {
-  switch (mode.value) {
+  switch (activeMode.value) {
     case 'x':
       viewControlsValueX.value = 0
       break
@@ -170,25 +211,25 @@ defineExpose({
   <Transition name="fade-side-pops-in">
     <div v-if="stageViewControlsEnabled" :class="vrmControlsDisabled ? ['opacity-60', 'pointer-events-none'] : []">
       <Transition name="fade-side-pops-in" mode="out-in">
-        <div v-if="mode === 'x'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-if="activeMode === 'x'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueX" :min="viewControlsValueXMin" :max="viewControlsValueXMax" :step="0.01" :disabled="vrmControlsDisabled" data-direction="vertical" h="50%" write-vertical-left />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueX.toFixed(2) }}
           </div>
         </div>
-        <div v-else-if="mode === 'y'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-else-if="activeMode === 'y'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueY" :min="viewControlsValueYMin" :max="viewControlsValueYMax" :step="0.01" :disabled="vrmControlsDisabled" write-vertical-left h="50%" data-direction="vertical" />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueY.toFixed(2) }}
           </div>
         </div>
-        <div v-else-if="stageModelRenderer === 'vrm' && mode === 'z'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-else-if="stageModelRenderer === 'vrm' && activeMode === 'z'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueZ" :min="viewControlsValueZMin" :max="viewControlsValueZMax" :step="0.01" :disabled="vrmControlsDisabled" write-vertical-left h="50%" data-direction="vertical" />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueZ.toFixed(2) }}
           </div>
         </div>
-        <div v-else-if="mode === 'scale'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-else-if="activeMode === 'scale'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueScale" :min="0" :max="3" :step="0.0001" :disabled="vrmControlsDisabled" write-vertical-left h="50%" data-direction="vertical" />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueScale.toFixed(2) }}

@@ -17,6 +17,9 @@ withDefaults(defineProps<{
   maxFps?: number
   renderScale?: number
   interactionMode?: 'orbit' | 'tactile'
+  xOffset?: number
+  yOffset?: number
+  scale?: number
 }>(), {
   paused: false,
   premultipliedAlpha: false,
@@ -25,6 +28,9 @@ withDefaults(defineProps<{
   maxFps: 0,
   renderScale: 1,
   interactionMode: 'orbit',
+  xOffset: 0,
+  yOffset: 0,
+  scale: 1,
 })
 
 const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
@@ -74,6 +80,9 @@ defineExpose({
         :idle-animation-enabled="idleAnimationEnabled"
         :max-fps="maxFps"
         :interaction-mode="interactionMode"
+        :x-offset="xOffset"
+        :y-offset="yOffset"
+        :scale="scale"
       />
     </SpineCanvas>
   </Screen>

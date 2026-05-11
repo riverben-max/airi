@@ -28,6 +28,9 @@ const props = withDefaults(defineProps<{
   idleAnimationEnabled?: boolean
   maxFps?: number
   interactionMode?: 'orbit' | 'tactile'
+  xOffset?: number
+  yOffset?: number
+  scale?: number
 }>(), {
   paused: false,
   premultipliedAlpha: false,
@@ -35,6 +38,9 @@ const props = withDefaults(defineProps<{
   idleAnimationEnabled: true,
   maxFps: 0,
   interactionMode: 'orbit',
+  xOffset: 0,
+  yOffset: 0,
+  scale: 1,
 })
 
 const emits = defineEmits<{
@@ -47,8 +53,6 @@ const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', {
 
 const spineStore = useSpine()
 const {
-  position,
-  scale,
   currentAnimation,
   activeAnimations,
   currentSkin,
@@ -124,7 +128,14 @@ function onCanvasClick(event: MouseEvent) {
         // Use track 5 for hit motions (one-shot)
         const trackIndex = 5
         if (animationState) {
-          animationState.setAnimation(trackIndex, config.file, false)
+          const entry = animationState.setAnimation(trackIndex, config.file, false)
+          if (entry) {
+            entry.listener = {
+              complete: () => {
+                animationState.setEmptyAnimation(trackIndex, 0.2)
+              },
+            }
+          }
         }
 
         // Play audio (if leader)
@@ -473,10 +484,10 @@ function applyTransformFromStore() {
   // apply user offsets/scale on top. This mirrors the Live2D anchor.
   const w = canvas.value.width
   const h = canvas.value.height
-  skeleton.x = w / 2 + position.value.x
-  skeleton.y = h * 0.05 + position.value.y
-  skeleton.scaleX = scale.value
-  skeleton.scaleY = scale.value
+  skeleton.x = w / 2 + props.xOffset
+  skeleton.y = h * 0.05 + props.yOffset
+  skeleton.scaleX = props.scale
+  skeleton.scaleY = props.scale
 }
 
 function applyCurrentAnimation() {
@@ -487,7 +498,8 @@ function applyCurrentAnimation() {
 }
 
 function applyActiveAnimations(activeAnims: Record<string, boolean>) {
-  if (!animationState || !availableAnimations.value)
+  const state = animationState
+  if (!state || !availableAnimations.value)
     return
 
   availableAnimations.value.forEach((anim, index) => {
@@ -496,14 +508,14 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
 
     // Skip the animation that is currently set as the base idle animation
     if (anim.name === currentAnimation.value?.name) {
-      const currentTrack = animationState.getCurrent(trackIndex)
-      if (currentTrack && currentTrack.animation.name === anim.name) {
-        animationState.setEmptyAnimation(trackIndex, props.defaultMixDuration)
+      const currentTrack = state.getCurrent(trackIndex)
+      if (currentTrack && currentTrack.animation?.name === anim.name) {
+        state.setEmptyAnimation(trackIndex, props.defaultMixDuration)
       }
       return
     }
 
-    const currentTrack = animationState.getCurrent(trackIndex)
+    const currentTrack = state.getCurrent(trackIndex)
     const motionConfig = model0Motions[anim.name]
 
     if (isActive) {
@@ -518,7 +530,7 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
         const randomIndex = Math.floor(Math.random() * motionConfig.length)
         const config = motionConfig[randomIndex]
 
-        animationState.setAnimation(trackIndex, config.file, false)
+        state.setAnimation(trackIndex, config.file, false)
 
         if (config.sound && loadedBlobUrls && loadedBlobUrls[config.sound]) {
           // Leadership Election: Only the "Stage" window handles audio playback
@@ -541,8 +553,8 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
       }
       // Regular skeleton animation — loop as usual
       else {
-        const isPlaying = currentTrack && currentTrack.animation.name === anim.name
-        if (!isPlaying)
+        const isPlaying = currentTrack && currentTrack.animation?.name === anim.name
+        if (!isPlaying && animationState)
           animationState.setAnimation(trackIndex, anim.name, true)
       }
     }
@@ -551,10 +563,10 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
       triggeredMotions.delete(anim.name)
 
       const expectedName = (motionConfig && motionConfig[0]) ? motionConfig[0].file : anim.name
-      const isPlaying = currentTrack && currentTrack.animation.name === expectedName
-      if (isPlaying) {
+      const isPlaying = currentTrack && currentTrack.animation?.name === expectedName
+      if (isPlaying && animationState) {
         animationState.setEmptyAnimation(trackIndex, props.defaultMixDuration)
-        skeleton.setToSetupPose()
+        skeleton?.setToSetupPose()
       }
     }
   })
@@ -606,16 +618,16 @@ watch(canvas, async (next, prev) => {
     await loadModel()
 })
 
-watch([() => props.width, () => props.height, position, scale], () => {
+watch([() => props.width, () => props.height, () => props.xOffset, () => props.yOffset, () => props.scale], () => {
   applyTransformFromStore()
-}, { deep: true })
+})
 
 watch(currentAnimation, () => {
   applyCurrentAnimation()
 }, { deep: true })
 
 watch(activeAnimations, (newVal) => {
-  const current = newVal[props.modelId] || {}
+  const current = props.modelId ? newVal[props.modelId] || {} : {}
 
   for (const name in prevActiveAnimations) {
     if (prevActiveAnimations[name] && !current[name]) {

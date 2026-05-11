@@ -11,7 +11,7 @@ import { useLive2d } from '../../stores/live2d'
 import '../../utils/live2d-zip-loader'
 import '../../utils/live2d-opfs-registration'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   modelSrc?: string
   modelId?: string
   modelFile?: File
@@ -28,6 +28,8 @@ withDefaults(defineProps<{
   live2dForceAutoBlinkEnabled?: boolean
   live2dShadowEnabled?: boolean
   live2dMaxFps?: number
+  xOffset?: number | string
+  yOffset?: number | string
 }>(), {
   paused: false,
   focusAt: () => ({ x: 0, y: 0 }),
@@ -90,8 +92,8 @@ defineExpose({
         :height="height"
         :paused="paused"
         :focus-at="focusAt"
-        :x-offset="positionInPercentageString.x"
-        :y-offset="positionInPercentageString.y"
+        :x-offset="props.xOffset !== undefined ? props.xOffset : positionInPercentageString.x"
+        :y-offset="props.yOffset !== undefined ? props.yOffset : positionInPercentageString.y"
         :scale="scale"
         :disable-focus-at="disableFocusAt"
         :theme-colors-hue="themeColorsHue"

@@ -44,6 +44,9 @@ const props = withDefaults(defineProps<{
   idleCycleEnabled?: boolean
   paused?: boolean
   renderScaleOverride?: number
+  xOffset?: number
+  yOffset?: number
+  scale?: number
 }>(), {
   showAxes: false,
   idleAnimation: new URL('../assets/vrm/animations/idle_loop.vrma', import.meta.url).href,
@@ -97,6 +100,14 @@ const {
   skyBoxIntensity,
   renderScale,
 } = storeToRefs(modelStore)
+
+const computedModelOffset = computed(() => {
+  return {
+    x: props.xOffset !== undefined ? props.xOffset / 100 : modelOffset.value.x,
+    y: props.yOffset !== undefined ? props.yOffset / 100 : modelOffset.value.y,
+    z: modelOffset.value.z,
+  }
+})
 
 const modelRef = ref<InstanceType<typeof VRMModel>>()
 
@@ -361,7 +372,7 @@ defineExpose({
           :camera-position="cameraPosition"
           :camera-target="modelOrigin"
           :camera-f-o-v="cameraFOV"
-          :camera-distance="cameraDistance"
+          :camera-distance="props.scale !== undefined ? props.scale : cameraDistance"
           @orbit-controls-camera-changed="onOrbitControlsCameraChanged"
           @orbit-controls-ready="onOrbitControlsReady"
         />
@@ -411,7 +422,7 @@ defineExpose({
           :env-select="envSelect"
           :sky-box-intensity="skyBoxIntensity"
           :npr-irr-s-h="irrSHTex"
-          :model-offset="modelOffset"
+          :model-offset="computedModelOffset"
           :model-rotation-y="modelRotationY"
           :look-at-target="lookAtTarget"
           :tracking-mode="trackingMode"

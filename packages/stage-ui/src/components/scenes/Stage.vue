@@ -1098,6 +1098,9 @@ defineExpose({
         :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
         :paused="paused"
         :interaction-mode="vrmStore.interactionMode"
+        :x-offset="xOffset"
+        :y-offset="yOffset"
+        :scale="scale"
       />
     </div>
   </div>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useSpine } from '@proj-airi/stage-ui-spine'
+import { useSettings } from '@proj-airi/stage-ui/stores/settings'
+import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { Button, FieldRange, Select, SelectTab } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
@@ -30,10 +32,11 @@ const {
   spineRenderScale,
 } = storeToRefs(settingsSpine)
 
+const { stageModelSelected } = storeToRefs(useSettings())
+const positioningStore = usePositioningStore()
+
 const spineStore = useSpine()
 const {
-  scale,
-  position,
   currentAnimation,
   activeAnimations,
   availableAnimations,
@@ -43,6 +46,33 @@ const {
   currentVariant,
   animationSpeed,
 } = storeToRefs(spineStore)
+
+const scale = computed({
+  get: () => positioningStore.getPosition(props.modelId || stageModelSelected.value).scale,
+  set: (val) => {
+    const key = props.modelId || stageModelSelected.value
+    const current = positioningStore.getPosition(key)
+    positioningStore.setPosition(key, { ...current, scale: val })
+  },
+})
+
+const positionX = computed({
+  get: () => positioningStore.getPosition(props.modelId || stageModelSelected.value).x,
+  set: (val) => {
+    const key = props.modelId || stageModelSelected.value
+    const current = positioningStore.getPosition(key)
+    positioningStore.setPosition(key, { ...current, x: val })
+  },
+})
+
+const positionY = computed({
+  get: () => positioningStore.getPosition(props.modelId || stageModelSelected.value).y,
+  set: (val) => {
+    const key = props.modelId || stageModelSelected.value
+    const current = positioningStore.getPosition(key)
+    positioningStore.setPosition(key, { ...current, y: val })
+  },
+})
 
 // canExtractColors removed as it is unused in Phase 1
 const hasMultipleVariants = computed(() => availableVariants.value.length > 1)
@@ -226,21 +256,21 @@ function resetAllAnimations() {
         </div>
       </template>
     </FieldRange>
-    <FieldRange v-model="position.x" as="div" :min="-3000" :max="3000" :step="1" :label="t('settings.spine.scale-and-position.x')">
+    <FieldRange v-model="positionX" as="div" :min="-3000" :max="3000" :step="1" :label="t('settings.spine.scale-and-position.x')">
       <template #label>
         <div flex items-center>
           <div>{{ t('settings.spine.scale-and-position.x') }}</div>
-          <button px-2 text-xs outline-none title="Reset value to default" @click="() => position.x = 0">
+          <button px-2 text-xs outline-none title="Reset value to default" @click="() => positionX = 0">
             <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
           </button>
         </div>
       </template>
     </FieldRange>
-    <FieldRange v-model="position.y" as="div" :min="-3000" :max="3000" :step="1" :label="t('settings.spine.scale-and-position.y')">
+    <FieldRange v-model="positionY" as="div" :min="-3000" :max="3000" :step="1" :label="t('settings.spine.scale-and-position.y')">
       <template #label>
         <div flex items-center>
           <div>{{ t('settings.spine.scale-and-position.y') }}</div>
-          <button px-2 text-xs outline-none title="Reset value to default" @click="() => position.y = 0">
+          <button px-2 text-xs outline-none title="Reset value to default" @click="() => positionY = 0">
             <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
           </button>
         </div>
