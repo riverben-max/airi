@@ -10,6 +10,7 @@ import {
   ChatMemoryPopover,
   ChatSessionModal,
   JournalPreviewModal,
+  StageBackgroundDialogPicker,
 } from '@proj-airi/stage-ui/components'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
@@ -221,11 +222,19 @@ function handleClearAnyway() {
   cleanupMessages()
 }
 
+const stageBackgroundDialogOpen = ref(false)
+
 // --- Deep Links ---
 function navigateToImageJournal() {
   if (!activeCardId.value)
     return
   router.push(`/settings/airi-card?cardId=${activeCardId.value}&tab=gallery`)
+}
+
+function navigateToConceptStudio() {
+  if (!activeCardId.value)
+    return
+  router.push(`/settings/airi-card?cardId=${activeCardId.value}&tab=studio`)
 }
 
 function updateWindowTitle() {
@@ -688,10 +697,12 @@ watch(messageInput, () => {
 
       <ChatImagesPopover
         :imagine-mode="isImagineMode"
+        :hide-toolbar-style="true"
         @toggle-imagine="isImagineMode = !isImagineMode"
         @attach="fileInput?.click()"
         @screenshot="handleScreenshotClick"
-        @view-journal="navigateToImageJournal"
+        @view-journal="stageBackgroundDialogOpen = true"
+        @open-studio="navigateToConceptStudio"
       />
 
       <!-- Clear Messages (with safety hook) -->
@@ -846,6 +857,9 @@ watch(messageInput, () => {
 
     <!-- Journal Preview Modal -->
     <JournalPreviewModal @attach="handleInternalImageAttach" />
+
+    <!-- Stage Background Dialog Picker -->
+    <StageBackgroundDialogPicker v-model="stageBackgroundDialogOpen" :card-id="activeCardId" />
   </div>
 </template>
 

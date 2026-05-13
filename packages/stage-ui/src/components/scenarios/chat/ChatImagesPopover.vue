@@ -6,8 +6,10 @@ const props = withDefaults(defineProps<{
   title?: string
   imagineMode?: boolean
   variant?: 'default' | 'mobile'
+  hideToolbarStyle?: boolean
 }>(), {
   variant: 'default',
+  hideToolbarStyle: false,
 })
 
 const emit = defineEmits<{
@@ -16,6 +18,7 @@ const emit = defineEmits<{
   (e: 'view-journal'): void
   (e: 'toggle-imagine'): void
   (e: 'background-picker'): void
+  (e: 'open-studio'): void
 }>()
 </script>
 
@@ -93,6 +96,18 @@ const emit = defineEmits<{
           <div v-if="imagineMode" class="i-solar:check-circle-bold text-sm text-primary-500" />
         </button>
 
+        <!-- Visit Image Studio -->
+        <button
+          class="mb-2 w-full flex items-center gap-3 rounded-xl bg-neutral-50/50 p-2.5 text-left transition-all dark:bg-neutral-800/20 hover:bg-neutral-100 dark:hover:bg-neutral-800/30"
+          @click="emit('open-studio')"
+        >
+          <div class="i-solar:clapperboard-play-bold-duotone text-lg text-neutral-600 dark:text-neutral-400" />
+          <div class="flex flex-1 flex-col">
+            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">Visit Image Studio</span>
+            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Manage actors and scenes easily</span>
+          </div>
+        </button>
+
         <!-- Image Journal -->
         <button
           class="mb-2 w-full flex items-center gap-3 rounded-xl bg-neutral-50/50 p-2.5 text-left transition-all dark:bg-neutral-800/20 hover:bg-neutral-100 dark:hover:bg-neutral-800/30"
@@ -107,6 +122,7 @@ const emit = defineEmits<{
 
         <!-- Change Background -->
         <button
+          v-if="!hideToolbarStyle"
           class="w-full flex items-center gap-3 rounded-xl bg-neutral-50/50 p-2.5 text-left transition-all dark:bg-neutral-800/20 hover:bg-neutral-100 dark:hover:bg-neutral-800/30"
           @click="emit('background-picker')"
         >
