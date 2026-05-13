@@ -267,7 +267,10 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     if (!index.value)
       return
     const snapshot = JSON.parse(JSON.stringify(index.value)) as ChatSessionsIndex
-    await enqueuePersist(() => chatSessionsRepo.saveIndex(snapshot))
+    await enqueuePersist(async () => {
+      await chatSessionsRepo.saveIndex(snapshot)
+      broadcastStreamEvent({ type: 'index-refreshed', userId: snapshot.userId })
+    })
   }
 
   async function persistSession(sessionId: string) {
@@ -544,7 +547,16 @@ export const useChatSessionStore = defineStore('chat-session', () => {
 
   function ensureSession(sessionId: string) {
     ensureGeneration(sessionId)
+    if (loadingSessions.has(sessionId)) {
+      console.info(`[ChatSession] ensureSession skipped for ${sessionId} because it is currently loading`)
+      return
+    }
     if (!sessionMessages.value[sessionId] || sessionMessages.value[sessionId].length === 0) {
+      const meta = sessionMetas.value[sessionId]
+      if (meta && (meta.messageCount || 0) > 0) {
+        console.warn(`[ChatSession] ensureSession skipped for ${sessionId}: meta indicates ${meta.messageCount} messages exist but memory is empty.`)
+        return
+      }
       sessionMessages.value[sessionId] = [generateInitialMessage()]
       void persistSession(sessionId)
     }
@@ -897,7 +909,17 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       return
     if (event.type === 'session-refreshed') {
       console.info('[ChatSession] Cross-window session-refreshed, reloading session', { sessionId: event.sessionId })
-      void loadSession(event.sessionId)
+      void loadSession(event.sessionId, true)
+      return
+    }
+    if (event.type === 'index-refreshed') {
+      const currentUserId = getCurrentUserId()
+      if (event.userId === currentUserId) {
+        console.info('[ChatSession] Cross-window index-refreshed, reloading index')
+        loadIndexForUser(currentUserId).then(() => {
+          void ensureActiveSessionForCharacter()
+        })
+      }
       return
     }
     if (event.type !== 'session-updated')

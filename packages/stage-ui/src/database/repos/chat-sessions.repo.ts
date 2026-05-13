@@ -5,28 +5,58 @@ import { storage } from '../storage'
 export const chatSessionsRepo = {
   async getIndex(userId: string) {
     const key = `local:chat/index/${userId}`
-    return await storage.getItemRaw<ChatSessionsIndex>(key)
+    try {
+      return await storage.getItemRaw<ChatSessionsIndex>(key)
+    }
+    catch (err) {
+      console.error(`[ChatSessionsRepo] Failed to get index for ${userId}:`, err)
+      return null
+    }
   },
 
   async saveIndex(index: ChatSessionsIndex) {
     const key = `local:chat/index/${index.userId}`
-    const cleanIndex = JSON.parse(JSON.stringify(index))
-    await storage.setItemRaw(key, cleanIndex)
+    try {
+      const cleanIndex = JSON.parse(JSON.stringify(index))
+      await storage.setItemRaw(key, cleanIndex)
+    }
+    catch (err) {
+      console.error(`[ChatSessionsRepo] Failed to save index for ${index.userId}:`, err)
+      throw err
+    }
   },
 
   async getSession(sessionId: string) {
     const key = `local:chat/sessions/${sessionId}`
-    return await storage.getItemRaw<ChatSessionRecord>(key)
+    try {
+      return await storage.getItemRaw<ChatSessionRecord>(key)
+    }
+    catch (err) {
+      console.error(`[ChatSessionsRepo] Failed to get session ${sessionId}:`, err)
+      return null
+    }
   },
 
   async saveSession(sessionId: string, record: ChatSessionRecord) {
     const key = `local:chat/sessions/${sessionId}`
-    const cleanRecord = JSON.parse(JSON.stringify(record))
-    await storage.setItemRaw(key, cleanRecord)
+    try {
+      const cleanRecord = JSON.parse(JSON.stringify(record))
+      await storage.setItemRaw(key, cleanRecord)
+    }
+    catch (err) {
+      console.error(`[ChatSessionsRepo] Failed to save session ${sessionId}:`, err)
+      throw err
+    }
   },
 
   // Cleanup
   async deleteSession(sessionId: string) {
-    await storage.removeItem(`local:chat/sessions/${sessionId}`)
+    try {
+      await storage.removeItem(`local:chat/sessions/${sessionId}`)
+    }
+    catch (err) {
+      console.error(`[ChatSessionsRepo] Failed to delete session ${sessionId}:`, err)
+      throw err
+    }
   },
 }

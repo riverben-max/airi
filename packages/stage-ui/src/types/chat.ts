@@ -89,5 +89,7 @@ export type ChatStreamEvent
     | { type: 'assistant-message', message: ChatAssistantMessage, sessionId: string, messageText: string, context: ChatStreamEventContext }
     | { type: 'session-updated', sessionId: string, message: ChatHistoryItem }
     | { type: 'session-refreshed', sessionId: string }
+    | { type: 'index-refreshed', userId: string }
+    | { type: 'journal-refreshed', userId: string }
 
 export type StreamingAssistantMessage = ChatAssistantMessage & { context?: ContextMessage } & { createdAt?: number, id?: string }

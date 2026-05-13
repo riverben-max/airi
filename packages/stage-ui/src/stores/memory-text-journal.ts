@@ -1,14 +1,17 @@
+import type { ChatStreamEvent } from '../types/chat'
 import type { TextJournalEntry, TextJournalEntrySource } from '../types/text-journal'
 
+import { useBroadcastChannel } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 import { defineStore, storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { chatSessionsRepo } from '../database/repos/chat-sessions.repo'
 import { shortTermMemoryRepo } from '../database/repos/short-term-memory.repo'
 import { textJournalRepo } from '../database/repos/text-journal.repo'
 import { layeredMemory } from '../libs/search/layered-memory'
 import { useAuthStore } from './auth'
+import { CHAT_STREAM_CHANNEL_NAME } from './chat/constants'
 import { useAiriCardStore } from './modules/airi-card'
 
 function normalizeEntry(entry: TextJournalEntry): TextJournalEntry {
@@ -47,6 +50,8 @@ export const useTextJournalStore = defineStore('text-journal', () => {
   const { userId } = storeToRefs(useAuthStore())
   const { activeCard, activeCardId, cards } = storeToRefs(useAiriCardStore())
 
+  const { post: broadcastStreamEvent, data: incomingStreamEvent } = useBroadcastChannel<ChatStreamEvent, ChatStreamEvent>({ name: CHAT_STREAM_CHANNEL_NAME })
+
   const entries = ref<TextJournalEntry[]>([])
   const loading = ref(false)
   const initializedForUserId = ref<string | null>(null)
@@ -59,9 +64,9 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     return [...entries.value].sort((a, b) => b.createdAt - a.createdAt || b.updatedAt - a.updatedAt)
   })
 
-  async function load() {
+  async function load(force = false) {
     const currentUserId = getCurrentUserId()
-    if (initializedForUserId.value === currentUserId || loading.value)
+    if ((!force && initializedForUserId.value === currentUserId) || loading.value)
       return
 
     loading.value = true
@@ -145,6 +150,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     await textJournalRepo.saveAll(currentUserId, snapshot)
     entries.value = snapshot
     initializedForUserId.value = currentUserId
+    broadcastStreamEvent({ type: 'journal-refreshed', userId: currentUserId })
   }
 
   async function createEntry(input: {
@@ -265,6 +271,18 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       } as TextJournalEntry & { kind: string }
     })
   }
+
+  watch(incomingStreamEvent, (event) => {
+    if (!event)
+      return
+    if (event.type === 'journal-refreshed') {
+      const currentUserId = getCurrentUserId()
+      if (event.userId === currentUserId) {
+        console.info('[TextJournal] Cross-window journal-refreshed, reloading LTMM entries')
+        void load(true)
+      }
+    }
+  })
 
   return {
     entries: sortedEntries,
