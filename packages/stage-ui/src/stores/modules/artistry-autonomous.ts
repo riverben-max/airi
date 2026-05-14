@@ -51,6 +51,15 @@ export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () 
     }
   }
 
+  async function archiveSessionNotes(sessionId: string) {
+    directorNotes.value.forEach((note) => {
+      if (note.sessionId === sessionId) {
+        note.isArchived = true
+      }
+    })
+    await directorNotesRepo.saveNotes(sessionId, directorNotes.value)
+  }
+
   // Auto-load notes when session changes
   watch(() => chatSessionStore.activeSessionId, (newId) => {
     if (newId) {
@@ -929,6 +938,7 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
     directorNotes,
     runArtistTask,
     loadDirectorNotes,
+    archiveSessionNotes,
     activateConcept,
     preloadConceptVoice,
     applyCurrentStackManifestations,

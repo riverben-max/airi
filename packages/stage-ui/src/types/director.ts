@@ -10,6 +10,7 @@ export interface DirectorNote {
   state: 'pending' | 'done'
   selected_concepts?: string[]
   createdAt: number
+  isArchived?: boolean
 }
 
 export interface DirectorNotesIndex {

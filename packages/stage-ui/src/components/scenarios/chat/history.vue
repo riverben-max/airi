@@ -111,7 +111,7 @@ function shouldShowPlaceholder(message: ChatHistoryItem) {
 }
 const renderMessages = computed<(ChatHistoryItem | DirectorNote)[]>(() => {
   const monitorEnabled = (cardStore.activeCard?.extensions?.airi?.artistry as any)?.autonomousMonitorEnabled ?? true
-  const directorNotes = (monitorEnabled && chatSettings.showDirectorNotes) ? (artistryStore.directorNotes || []) : []
+  const directorNotes = (monitorEnabled && chatSettings.showDirectorNotes) ? (artistryStore.directorNotes || []).filter(n => !n.isArchived) : []
 
   let baseMessages: (ChatHistoryItem | DirectorNote)[] = props.messages
 
