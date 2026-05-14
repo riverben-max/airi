@@ -62,7 +62,18 @@ export async function extractMmdFromZip(zipFile: File | Blob, onProgress?: (mess
   console.log(`[MMD:Extractor] Starting extraction for: ${name}`)
 
   onProgress?.('Loading zip file...')
-  const zip = await JSZip.loadAsync(zipFile)
+  const zip = await JSZip.loadAsync(zipFile, {
+    decodeFileName: (bytes) => {
+      try {
+        // Try UTF-8 first
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+      }
+      catch {
+        // Fallback to Shift-JIS for Japanese MMD models
+        return new TextDecoder('shift-jis').decode(bytes)
+      }
+    },
+  })
   const allPaths = Object.keys(zip.files).filter(p => !zip.files[p].dir)
   console.log(`[MMD:Extractor] Found ${allPaths.length} files in zip.`)
 
@@ -102,12 +113,13 @@ export async function extractMmdFromZip(zipFile: File | Blob, onProgress?: (mess
     count++
     const fileData = await zip.files[filePath].async('blob')
 
+    const normalizedFilePath = filePath.replace(/\\/g, '/')
     let relativePath: string
-    if (filePath.startsWith(modelDir)) {
-      relativePath = filePath.substring(modelDir.length)
+    if (normalizedFilePath.startsWith(modelDir)) {
+      relativePath = normalizedFilePath.substring(modelDir.length)
     }
     else {
-      relativePath = filePath.split('/').pop() ?? filePath
+      relativePath = normalizedFilePath.split('/').pop() ?? normalizedFilePath
     }
 
     const fileName = relativePath.split('/').pop() ?? relativePath
