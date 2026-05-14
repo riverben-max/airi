@@ -60,8 +60,9 @@
   ],
   "scripts": {
     "dev": "pnpm run build",
-    "build": "tsdown",
-    "typecheck": "tsc --noEmit"
+    "build": "tsdown && node ../../scripts/bundle-i18n.js",
+    "typecheck": "tsc --noEmit",
+    "prepare": "pnpm run build"
   },
   "devDependencies": {
     "unplugin-yaml": "^4.0.0"

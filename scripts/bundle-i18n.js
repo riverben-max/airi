@@ -1,10 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { fileURLToPath } from 'node:url'
+
 import yaml from 'js-yaml'
 
-const localesDir = path.resolve('packages/i18n/src/locales')
-const outputDir = path.resolve('packages/i18n/src/dist-lite') // Temporary location
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const localesDir = path.resolve(__dirname, '../packages/i18n/src/locales')
+const outputDir = path.resolve(__dirname, '../packages/i18n/src/dist-lite') // Temporary location
 if (!fs.existsSync(outputDir))
   fs.mkdirSync(outputDir, { recursive: true })
 
