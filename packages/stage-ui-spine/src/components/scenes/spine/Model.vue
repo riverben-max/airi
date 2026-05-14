@@ -108,8 +108,8 @@ function onCanvasMouseMove(event: MouseEvent) {
     if (!bone)
       continue
 
-    const boneCanvasX = canvas.value.width / 2 + bone.worldX * skeleton.scaleX
-    const boneCanvasY = canvas.value.height / 2 - bone.worldY * skeleton.scaleY
+    const boneCanvasX = canvas.value.width / 2 + bone.worldX
+    const boneCanvasY = canvas.value.height / 2 - bone.worldY
 
     const radius = 50 // pixels
     const dist = Math.sqrt((realMouseX - boneCanvasX) ** 2 + (realMouseY - boneCanvasY) ** 2)
@@ -152,10 +152,10 @@ function onCanvasClick(event: MouseEvent) {
       continue
 
     // Convert bone world position to canvas pixels
-    // Origin is at the center of the canvas!
-    // Spine Y goes UP, Canvas Y goes DOWN
-    const boneCanvasX = canvas.value.width / 2 + bone.worldX * skeleton.scaleX
-    const boneCanvasY = canvas.value.height / 2 - bone.worldY * skeleton.scaleY
+    // bone.worldX/Y already include skeleton scale — no need to re-apply
+    // Origin is at the center of the canvas! Spine Y goes UP, Canvas Y goes DOWN
+    const boneCanvasX = canvas.value.width / 2 + bone.worldX
+    const boneCanvasY = canvas.value.height / 2 - bone.worldY
 
     const radius = 50 // pixels
     const dist = Math.sqrt((realClickX - boneCanvasX) ** 2 + (realClickY - boneCanvasY) ** 2)
@@ -166,14 +166,20 @@ function onCanvasClick(event: MouseEvent) {
       const motionName = `tap_${area.name}`
       const motionConfig = model0Motions[motionName]
 
+      console.log(`[Spine Audio] Looking up motionName="${motionName}", found=${!!motionConfig}, length=${motionConfig?.length ?? 0}`)
+      console.log(`[Spine Audio] All known motion keys:`, Object.keys(model0Motions))
+
       if (motionConfig && motionConfig.length > 0) {
         const randomIndex = Math.floor(Math.random() * motionConfig.length)
         const config = motionConfig[randomIndex]
+
+        console.log(`[Spine Audio] Selected config[${randomIndex}]:`, JSON.stringify(config))
 
         // Use track 5 for hit motions (one-shot)
         const trackIndex = 5
         if (animationState) {
           const entry = animationState.setAnimation(trackIndex, config.file, false)
+          console.log(`[Spine Audio] setAnimation("${config.file}") entry=${!!entry}`)
           if (entry) {
             entry.listener = {
               complete: () => {
@@ -187,13 +193,23 @@ function onCanvasClick(event: MouseEvent) {
         // Play audio (if leader)
         const hash = window.location.hash || '#/'
         const isStage = hash === '#/' || hash.startsWith('#/stage')
+        console.log(`[Spine Audio] hash="${hash}", isStage=${isStage}, config.sound="${config.sound}"`)
+        console.log(`[Spine Audio] loadedBlobUrls exists=${!!loadedBlobUrls}, hasSoundKey=${!!(loadedBlobUrls && loadedBlobUrls[config.sound])}`)
+        if (loadedBlobUrls) {
+          console.log(`[Spine Audio] Available blob URL keys:`, Object.keys(loadedBlobUrls))
+        }
+
         if (isStage && config.sound && loadedBlobUrls && loadedBlobUrls[config.sound]) {
           if (currentSpineAudio) {
             currentSpineAudio.pause()
             currentSpineAudio.currentTime = 0
           }
           currentSpineAudio = new Audio(loadedBlobUrls[config.sound])
+          console.log(`[Spine Audio] Playing sound: "${config.sound}" via blob URL`)
           currentSpineAudio.play().catch(e => console.error('[Spine] Failed to play audio:', e))
+        }
+        else {
+          console.warn(`[Spine Audio] Audio skipped. isStage=${isStage}, sound="${config.sound}", blobUrlFound=${!!(loadedBlobUrls && loadedBlobUrls[config.sound])}`)
         }
       }
       break // Only trigger one hit per click
@@ -445,8 +461,8 @@ async function loadModel() {
             for (const area of model0HitAreas) {
               const bone = skeleton.findBone(area.name)
               if (bone) {
-                const boneCanvasX = canvas.value.width / 2 + bone.worldX * skeleton.scaleX
-                const boneCanvasY = canvas.value.height / 2 - bone.worldY * skeleton.scaleY
+                const boneCanvasX = canvas.value.width / 2 + bone.worldX
+                const boneCanvasY = canvas.value.height / 2 - bone.worldY
                 console.log(`[Spine Debug] Hit Area [${area.name}]: bone.worldX=${bone.worldX.toFixed(2)}, bone.worldY=${bone.worldY.toFixed(2)} | Calculated Center=(${boneCanvasX.toFixed(2)}, ${boneCanvasY.toFixed(2)})`)
               }
             }
