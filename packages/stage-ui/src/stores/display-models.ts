@@ -1,4 +1,4 @@
-import type { MmdTextureFile } from '../utils/mmd-zip-extractor'
+import type { MmdTextureFile } from '@proj-airi/stage-ui-mmd/utils/mmd-zip-extractor'
 
 import localforage from 'localforage'
 

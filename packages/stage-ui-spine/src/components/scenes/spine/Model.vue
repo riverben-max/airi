@@ -438,7 +438,7 @@ async function loadModel() {
             (skeleton as any).updateWorldTransform()
         },
         render: (sc) => {
-          if (!skeleton)
+          if (!skeleton || !canvas.value)
             return
           const renderer = sc.renderer
 

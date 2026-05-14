@@ -66,11 +66,11 @@ export async function extractMmdFromZip(zipFile: File | Blob, onProgress?: (mess
     decodeFileName: (bytes) => {
       try {
         // Try UTF-8 first
-        return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes as Uint8Array)
       }
       catch {
         // Fallback to Shift-JIS for Japanese MMD models
-        return new TextDecoder('shift-jis').decode(bytes)
+        return new TextDecoder('shift-jis').decode(bytes as Uint8Array)
       }
     },
   })

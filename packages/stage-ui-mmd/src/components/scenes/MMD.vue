@@ -4,7 +4,7 @@ import { Screen } from '@proj-airi/ui'
 import { TresCanvas } from '@tresjs/core'
 import { storeToRefs } from 'pinia'
 import { ACESFilmicToneMapping, PerspectiveCamera } from 'three'
-import { computed, shallowRef } from 'vue'
+import { shallowRef } from 'vue'
 
 import MMDModel from './mmd/Model.vue'
 

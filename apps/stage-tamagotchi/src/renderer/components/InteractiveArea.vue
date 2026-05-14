@@ -225,11 +225,6 @@ function handleClearAnyway() {
 const stageBackgroundDialogOpen = ref(false)
 
 // --- Deep Links ---
-function navigateToImageJournal() {
-  if (!activeCardId.value)
-    return
-  router.push(`/settings/airi-card?cardId=${activeCardId.value}&tab=gallery`)
-}
 
 function navigateToConceptStudio() {
   if (!activeCardId.value)
