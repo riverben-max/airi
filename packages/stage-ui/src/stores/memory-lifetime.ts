@@ -523,7 +523,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     throw lastError
   }
 
-  async function provision(characterId: string, resume = false, intervalSeconds = 0, contextLimitTokens = 64) {
+  async function provision(characterId: string, resume = false, intervalSeconds = 0, contextLimitTokens = 64, targetTokens = 1000) {
     const card = cards.value.get(characterId)
     if (!card)
       throw new Error('Character not found')
@@ -787,7 +787,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
           '- prefer one canonical phrasing per recurring concept',
           '- bullets should usually be 4-14 words, but may be longer if needed for clarity',
           '- meaningful old moments and inside jokes may use a short clause to explain why they matter',
-          '- keep total output around 1000 tokens or less',
+          `- keep total output around ${targetTokens} tokens or less`,
           '',
           'Current pack to refine:',
           renderPackForReview(pass1Pack),
@@ -813,7 +813,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
             '- keep technical truth, drop fluff',
             '- preserve grounded specifics',
             '- prefer dense and memorable phrasing',
-            '- target a compressed reload pack around 1000 tokens or less',
+            `- target a compressed reload pack around ${targetTokens} tokens or less`,
           ],
         )))
 
@@ -912,10 +912,10 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     }
   }
 
-  async function restart(characterId: string, contextLimitTokens = 64) {
+  async function restart(characterId: string, contextLimitTokens = 64, targetTokens = 1000) {
     await provisioningSessionRepo.delete(characterId)
     activeSession.value = null
-    await provision(characterId, false, 0, contextLimitTokens)
+    await provision(characterId, false, 0, contextLimitTokens, targetTokens)
   }
 
   return {

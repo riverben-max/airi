@@ -5,6 +5,7 @@ import { useBroadcastChannel, watchDebounced } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
 import { client } from '../../composables/api'
 import { stripMarkers } from '../../composables/response-categoriser'
@@ -844,6 +845,10 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     if (payload.format !== 'chat-sessions-index:v1')
       return
 
+    const totalSessions = Object.entries(payload.sessions).length
+    const toastId = toast.loading(`Importing Chat History (0/${totalSessions})...`)
+    console.info(`[ChatSession] Starting import of ${totalSessions} sessions`)
+
     index.value = payload.index
     sessionMessages.value = {}
     sessionMetas.value = {}
@@ -853,12 +858,22 @@ export const useChatSessionStore = defineStore('chat-session', () => {
 
     await enqueuePersist(() => chatSessionsRepo.saveIndex(payload.index))
 
+    let processedCount = 0
     for (const [sessionId, record] of Object.entries(payload.sessions)) {
       sessionMetas.value[sessionId] = record.meta
       sessionMessages.value[sessionId] = record.messages
       ensureGeneration(sessionId)
       await enqueuePersist(() => chatSessionsRepo.saveSession(sessionId, record))
+
+      processedCount++
+      if (processedCount % 10 === 0 || processedCount === totalSessions) {
+        toast.loading(`Importing Chat History (${processedCount}/${totalSessions})...`, { id: toastId })
+        console.info(`[ChatSession] Imported ${processedCount}/${totalSessions} sessions...`)
+      }
     }
+
+    toast.success(`Successfully imported ${totalSessions} sessions!`, { id: toastId })
+    console.info(`[ChatSession] Import complete. Total: ${totalSessions}`)
 
     await ensureActiveSessionForCharacter()
   }

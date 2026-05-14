@@ -19,7 +19,6 @@ const { artifacts, isProvisioning } = storeToRefs(lifetimeStore)
 const showSourceModal = ref(false)
 const showHistoryModal = ref(false)
 const showLifetimeModal = ref(false)
-const tokenPreset = ref('1000')
 const autoHandoff = ref(true)
 
 const activeCharacterArtifact = computed(() => {
@@ -45,12 +44,6 @@ const artifactTokens7k = computed(() => {
   const content = activeCharacterArtifact.value?.baseContent
   return content ? estimateTokens(content) : 0
 })
-
-const presetOptions = [
-  { value: '500', label: 'Compact (500)', description: 'Dense, essential identity only.' },
-  { value: '1000', label: 'Standard (1000)', description: 'Rich relationship highlights and motifs.' },
-  { value: '3000', label: 'Rich (3000)', description: 'Deep narrative artifact with high nuance.' },
-]
 
 const threadStatus = computed(() => [
   { label: 'Soul Active', icon: 'i-solar:dna-bold-duotone' },
@@ -254,31 +247,7 @@ onMounted(() => loadData())
           Lifetime Controls
         </h2>
         <div class="grid gap-12 lg:grid-cols-2">
-          <div class="flex flex-col gap-6">
-            <div>
-              <span class="text-sm text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">Artifact Token Budget</span>
-              <p class="text-xs text-neutral-400 dark:text-neutral-500">
-                Determines the density of the canonical Soul Blueprint.
-              </p>
-            </div>
-
-            <div class="grid grid-cols-3 gap-3 border border-neutral-200 rounded-2xl bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
-              <button
-                v-for="opt in presetOptions"
-                :key="opt.value"
-                :class="[
-                  'flex flex-col items-center gap-1 rounded-xl py-4 transition-all',
-                  tokenPreset === opt.value ? 'bg-white shadow-md text-amber-500 dark:bg-neutral-700' : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200',
-                ]"
-                @click="tokenPreset = opt.value"
-              >
-                <span class="text-sm font-bold">{{ opt.label }}</span>
-                <span class="px-2 text-center text-[10px] leading-tight opacity-70">{{ opt.description }}</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="flex flex-col justify-end pt-4">
+          <div class="flex flex-col justify-end">
             <div class="flex items-center gap-3 border border-neutral-200 rounded-2xl bg-neutral-50/50 px-8 py-6 dark:border-neutral-700 dark:bg-neutral-800/40">
               <input id="handoff" v-model="autoHandoff" type="checkbox" class="h-6 w-6 border-neutral-300 rounded text-amber-500">
               <label for="handoff" class="flex flex-col cursor-pointer">

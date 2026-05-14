@@ -197,6 +197,10 @@ export const useCharacterOrchestratorStore = defineStore('character-orchestrator
     return undefined
   }
 
+  async function simulateAssistant(text: string) {
+    await characterStore.emitTextOutput(text)
+  }
+
   function initialize() {
     modsServerChannelStore.onEvent('spark:notify', async (event) => {
       try {
@@ -216,6 +220,10 @@ export const useCharacterOrchestratorStore = defineStore('character-orchestrator
       }
     })
 
+    if (typeof window !== 'undefined') {
+      (window as any).simulateAssistant = simulateAssistant
+    }
+
     startTicker()
   }
 
@@ -231,5 +239,6 @@ export const useCharacterOrchestratorStore = defineStore('character-orchestrator
 
     handleSparkNotify: handleIncomingSparkNotify,
     handleSparkEmit,
+    simulateAssistant,
   }
 })

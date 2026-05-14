@@ -22,6 +22,13 @@ const sourceCounts = ref({ raw: 0, stmm: 0, ltmm: 0 })
 const isLoadingCounts = ref(false)
 const requestInterval = ref(0)
 const contextLimitTokens = ref(64) // Default 64K
+const tokenPreset = ref('1000') // Default 1000 tokens
+
+const presetOptions = [
+  { value: '500', label: 'Compact (500)', description: 'Dense, essential identity only.' },
+  { value: '1000', label: 'Standard (1000)', description: 'Rich relationship highlights and motifs.' },
+  { value: '3000', label: 'Rich (3000)', description: 'Deep narrative artifact with high nuance.' },
+]
 
 const estimatedChunks = computed(() => {
   if (!sourceDocs.value.length)
@@ -77,15 +84,15 @@ async function loadCounts() {
 }
 
 async function startProvisioning() {
-  await store.provision(props.characterId, false, requestInterval.value, contextLimitTokens.value)
+  await store.provision(props.characterId, false, requestInterval.value, contextLimitTokens.value, Number.parseInt(tokenPreset.value))
 }
 
 async function resumeProvisioning() {
-  await store.provision(props.characterId, true, requestInterval.value, contextLimitTokens.value)
+  await store.provision(props.characterId, true, requestInterval.value, contextLimitTokens.value, Number.parseInt(tokenPreset.value))
 }
 
 async function restartProvisioning() {
-  await store.restart(props.characterId, contextLimitTokens.value)
+  await store.restart(props.characterId, contextLimitTokens.value, Number.parseInt(tokenPreset.value))
 }
 
 function close() {
@@ -124,23 +131,23 @@ const canResume = computed(() => !!activeSession.value)
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-50 max-h-[85vh] max-w-lg w-[90vw] border border-neutral-200 rounded-3xl bg-white p-6 shadow-2xl transition-all -translate-x-1/2 -translate-y-1/2 dark:border-neutral-800 dark:bg-neutral-900"
+        class="fixed left-1/2 top-1/2 z-50 max-h-[92vh] max-w-lg w-[90vw] flex flex-col overflow-hidden border border-neutral-200 rounded-3xl bg-white shadow-2xl transition-all -translate-x-1/2 -translate-y-1/2 dark:border-neutral-800 dark:bg-neutral-900"
       >
-        <div class="flex flex-col gap-6">
-          <header class="flex items-start justify-between">
-            <div>
-              <h2 class="text-xl text-neutral-800 font-bold dark:text-neutral-100">
-                Manage Lifetime History
-              </h2>
-              <p class="text-sm text-neutral-500">
-                Provision this character's relational soul-bond.
-              </p>
-            </div>
-            <button class="text-neutral-400 hover:text-neutral-600" @click="close">
-              <div class="i-solar:close-circle-bold-duotone text-2xl" />
-            </button>
-          </header>
+        <header class="flex items-start justify-between border-b border-neutral-100 p-6 pb-4 dark:border-neutral-800">
+          <div>
+            <h2 class="text-xl text-neutral-800 font-bold dark:text-neutral-100">
+              Manage Lifetime History
+            </h2>
+            <p class="text-sm text-neutral-500">
+              Provision this character's relational soul-bond.
+            </p>
+          </div>
+          <button class="text-neutral-400 hover:text-neutral-600" @click="close">
+            <div class="i-solar:close-circle-bold-duotone text-2xl" />
+          </button>
+        </header>
 
+        <div class="custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 pt-4">
           <!-- Pre-provisioning View -->
           <div v-if="(progress.phase === 'idle' || progress.phase === 'error') && !isProvisioning" class="flex flex-col gap-6">
             <!-- Resume Prompt -->
@@ -234,6 +241,34 @@ const canResume = computed(() => !!activeSession.value)
               </div>
             </div>
 
+            <!-- Artifact Token Budget Setting -->
+            <div class="border border-neutral-100 rounded-2xl bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/30">
+              <div class="mb-3">
+                <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-300">
+                  <div class="i-solar:dna-bold-duotone text-lg" />
+                  <span class="text-xs font-bold tracking-tight uppercase">Artifact Token Budget</span>
+                </div>
+                <p class="mt-1 text-[10px] text-neutral-400 dark:text-neutral-500">
+                  Determines the density of the canonical Soul Blueprint.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 border border-neutral-100 rounded-xl bg-neutral-100/50 p-1 dark:border-neutral-700 dark:bg-neutral-800/50">
+                <button
+                  v-for="opt in presetOptions"
+                  :key="opt.value"
+                  :class="[
+                    'flex flex-col items-center gap-0.5 rounded-lg py-2 transition-all',
+                    tokenPreset === opt.value ? 'bg-white shadow-sm text-amber-500 dark:bg-neutral-700' : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200',
+                  ]"
+                  @click="tokenPreset = opt.value"
+                >
+                  <span class="text-[10px] font-bold">{{ opt.label }}</span>
+                  <span class="px-1 text-center text-[8px] leading-tight opacity-70">{{ opt.description }}</span>
+                </button>
+              </div>
+            </div>
+
             <div v-if="!canResume" class="border border-amber-500/20 rounded-2xl bg-amber-500/5 p-4 dark:border-amber-400/20 dark:bg-amber-400/5">
               <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                 <div class="i-solar:shield-warning-bold-duotone text-lg" />
@@ -312,3 +347,19 @@ const canResume = computed(() => !!activeSession.value)
     </DialogPortal>
   </DialogRoot>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e5e5e5;
+  border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #333;
+}
+</style>
