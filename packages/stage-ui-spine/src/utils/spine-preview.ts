@@ -118,7 +118,10 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
             const skeleton = (canvasApp as unknown as { __previewSkeleton?: import('@esotericsoftware/spine-webgl').Skeleton }).__previewSkeleton
             if (skeleton) {
               // Disable physics for preview to avoid bloom/light expansion
-              (skeleton as any).updateWorldTransform()
+              if (spine.Physics && (spine.Physics as any).none !== undefined)
+                skeleton.updateWorldTransform((spine.Physics as any).none)
+              else
+                (skeleton as any).updateWorldTransform()
             }
           },
           render: (canvasApp: import('@esotericsoftware/spine-webgl').SpineCanvas) => {
