@@ -526,6 +526,25 @@ const resolvedSlices = computed(() => {
   processBuffer()
   return rs
 })
+
+function getSegmentedText(sliceText: string): string {
+  const raw = (props.message as any).rawContent
+  if (!raw || typeof raw !== 'string' || !raw.includes('<|ACTOR:')) {
+    return injectActorColors(sliceText)
+  }
+
+  // Check if we only have one text slice to make it perfectly safe
+  const textSlicesCount = resolvedSlices.value.filter(s => s.type === 'text').length
+  if (textSlicesCount === 1) {
+    // Strip other tags (ACT and DELAY) from rawContent, leaving only text and ACTOR tags.
+    const cleanedRaw = raw
+      .replace(/<\|ACT\s*(?::\s*)?[\s\S]*?(?:\|>|>)/gi, '')
+      .replace(/<\|DELAY\s*(?::\s*)?\d+\s*(?:\|>|>)/gi, '')
+    return injectActorColors(cleanedRaw)
+  }
+
+  return injectActorColors(sliceText)
+}
 </script>
 
 <template>
@@ -581,7 +600,7 @@ const resolvedSlices = computed(() => {
                 />
                 <template v-else-if="slice.type === 'tool-call-result'" />
                 <template v-else-if="slice.type === 'text'">
-                  <MarkdownRenderer :content="injectActorColors(slice.text)" />
+                  <MarkdownRenderer :content="getSegmentedText(slice.text)" />
                 </template>
               </template>
             </div>
