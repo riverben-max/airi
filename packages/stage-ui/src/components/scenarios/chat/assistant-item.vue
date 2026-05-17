@@ -537,9 +537,10 @@ function getSegmentedText(sliceText: string): string {
   const textSlicesCount = resolvedSlices.value.filter(s => s.type === 'text').length
   if (textSlicesCount === 1) {
     // Strip other tags (ACT and DELAY) from rawContent, leaving only text and ACTOR tags.
+    // Use word boundary (\b) to avoid stripping <|ACTOR:...|> tags because ACTOR starts with ACT!
     const cleanedRaw = raw
-      .replace(/<\|ACT\s*(?::\s*)?[\s\S]*?(?:\|>|>)/gi, '')
-      .replace(/<\|DELAY\s*(?::\s*)?\d+\s*(?:\|>|>)/gi, '')
+      .replace(/<\|ACT\b[\s\S]*?(?:\|>|>)/gi, '')
+      .replace(/<\|DELAY\b[\s\S]*?(?:\|>|>)/gi, '')
     return injectActorColors(cleanedRaw)
   }
 
