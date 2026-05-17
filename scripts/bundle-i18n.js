@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { fileURLToPath } from 'node:url'
 
-import yaml from 'js-yaml'
+import yaml from 'yaml'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -23,7 +23,7 @@ function loadDir(dir) {
     }
     else if (entry.name.endsWith('.yaml')) {
       const name = entry.name.replace('.yaml', '')
-      result[name] = yaml.load(fs.readFileSync(fullPath, 'utf8'))
+      result[name] = yaml.parse(fs.readFileSync(fullPath, 'utf8'))
     }
     else if (entry.name.endsWith('.ts') && entry.name !== 'index.ts') {
       // Basic support for TS files that export default objects
@@ -45,14 +45,14 @@ for (const locale of locales) {
   const localeDir = path.join(localesDir, locale)
 
   // Custom logic for AIRI's nested structure
-  const base = yaml.load(fs.readFileSync(path.join(localeDir, 'base.yaml'), 'utf8'))
-  const settings = yaml.load(fs.readFileSync(path.join(localeDir, 'settings.yaml'), 'utf8'))
-  const stage = yaml.load(fs.readFileSync(path.join(localeDir, 'stage.yaml'), 'utf8'))
+  const base = yaml.parse(fs.readFileSync(path.join(localeDir, 'base.yaml'), 'utf8'))
+  const settings = yaml.parse(fs.readFileSync(path.join(localeDir, 'settings.yaml'), 'utf8'))
+  const stage = yaml.parse(fs.readFileSync(path.join(localeDir, 'stage.yaml'), 'utf8'))
 
   const tamagotchiDir = path.join(localeDir, 'tamagotchi')
-  const tamagotchiStage = yaml.load(fs.readFileSync(path.join(tamagotchiDir, 'stage.yaml'), 'utf8'))
-  const tamagotchiSettings = yaml.load(fs.readFileSync(path.join(tamagotchiDir, 'settings.yaml'), 'utf8'))
-  const tamagotchiTray = yaml.load(fs.readFileSync(path.join(tamagotchiDir, 'electron', 'tray.yaml'), 'utf8'))
+  const tamagotchiStage = yaml.parse(fs.readFileSync(path.join(tamagotchiDir, 'stage.yaml'), 'utf8'))
+  const tamagotchiSettings = yaml.parse(fs.readFileSync(path.join(tamagotchiDir, 'settings.yaml'), 'utf8'))
+  const tamagotchiTray = yaml.parse(fs.readFileSync(path.join(tamagotchiDir, 'electron', 'tray.yaml'), 'utf8'))
 
   allMessages[locale] = {
     base,

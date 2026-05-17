@@ -65,6 +65,7 @@
     "prepare": "pnpm run build"
   },
   "devDependencies": {
-    "unplugin-yaml": "^4.0.0"
+    "unplugin-yaml": "^4.0.0",
+    "yaml": "catalog:"
   }
 }
