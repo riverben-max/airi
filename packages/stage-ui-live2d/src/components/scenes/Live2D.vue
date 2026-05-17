@@ -34,7 +34,6 @@ const props = withDefaults(defineProps<{
   paused: false,
   focusAt: () => ({ x: 0, y: 0 }),
   mouthOpenSize: 0,
-  scale: 1,
   themeColorsHue: 220.44,
   themeColorsHueDynamic: false,
   live2dIdleAnimationEnabled: true,
@@ -51,7 +50,7 @@ const componentStateModel = defineModel<'pending' | 'loading' | 'mounted'>('mode
 const live2dCanvasRef = ref<InstanceType<typeof Live2DCanvas>>()
 
 const live2d = useLive2d()
-const { positionInPercentageString } = storeToRefs(live2d)
+const { positionInPercentageString, scale: storeScale } = storeToRefs(live2d)
 
 watch([componentStateModel, componentStateCanvas], () => {
   componentState.value = (componentStateModel.value === 'mounted' && componentStateCanvas.value === 'mounted')
@@ -94,7 +93,7 @@ defineExpose({
         :focus-at="focusAt"
         :x-offset="props.xOffset !== undefined ? props.xOffset : positionInPercentageString.x"
         :y-offset="props.yOffset !== undefined ? props.yOffset : positionInPercentageString.y"
-        :scale="scale"
+        :scale="props.scale !== undefined ? props.scale : storeScale"
         :disable-focus-at="disableFocusAt"
         :theme-colors-hue="themeColorsHue"
         :theme-colors-hue-dynamic="themeColorsHueDynamic"

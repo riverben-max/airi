@@ -276,9 +276,8 @@ async function loadModel() {
       initialModelHeight.value = logicalHeight
     }
 
-    // Do NOT set anchor(0.5, 0.5)! Cubism 4 models natively center at (0,0).
-    // Applying a PIXI anchor shifts the already-centered model up, pushing the head off-canvas.
-    // model.value.anchor.set(0.5, 0.5)
+    // Set anchor to 0.5 to center the model correctly when positioned at width/2, height/2
+    model.value.anchor.set(0.5, 0.5)
     setScaleAndPosition()
 
     // --- Interaction
@@ -673,8 +672,7 @@ watch(modelSrcRef, async () => await loadModel(), { immediate: true })
 watch(dark, updateDropShadowFilter, { immediate: true })
 watch([model, themeColorsHue], updateDropShadowFilter)
 watch(live2dShadowEnabled, updateDropShadowFilter)
-watch(offset, setScaleAndPosition)
-watch(() => props.scale, setScaleAndPosition)
+watch([offset, () => props.scale, () => props.xOffset, () => props.yOffset], setScaleAndPosition)
 
 let dropShadowFrameCounter = 0
 // TODO: This is hacky!

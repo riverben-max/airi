@@ -4,7 +4,6 @@ import { OPFSCacheV2 } from '@proj-airi/stage-ui-live2d/utils/opfs-loader'
 import { Button, Checkbox, FieldRange, SelectTab } from '@proj-airi/ui'
 import { useDebounceFn } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuRoot, DropdownMenuTrigger } from 'reka-ui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -13,6 +12,7 @@ import Live2DCustomization from './live2d-customization.vue'
 import { useLHackStore } from '../../../../stores'
 import { useAiriCardStore } from '../../../../stores/modules/airi-card'
 import { useSettings } from '../../../../stores/settings'
+import { usePositioningStore } from '../../../../stores/settings/positioning'
 import { Section } from '../../../layouts'
 import { ColorPalette } from '../../../widgets'
 
@@ -39,11 +39,35 @@ const {
 
 const live2d = useLive2d()
 const {
-  scale,
-  position,
   modelParameters,
   currentMotion,
 } = storeToRefs(live2d)
+
+const positioningStore = usePositioningStore()
+
+const scale = computed({
+  get: () => positioningStore.getPosition(props.modelId || 'global').scale,
+  set: (val) => {
+    const pos = positioningStore.getPosition(props.modelId || 'global')
+    positioningStore.setPosition(props.modelId || 'global', { ...pos, scale: val })
+  },
+})
+
+const positionX = computed({
+  get: () => positioningStore.getPosition(props.modelId || 'global').x,
+  set: (val) => {
+    const pos = positioningStore.getPosition(props.modelId || 'global')
+    positioningStore.setPosition(props.modelId || 'global', { ...pos, x: val })
+  },
+})
+
+const positionY = computed({
+  get: () => positioningStore.getPosition(props.modelId || 'global').y,
+  set: (val) => {
+    const pos = positioningStore.getPosition(props.modelId || 'global')
+    positioningStore.setPosition(props.modelId || 'global', { ...pos, y: val })
+  },
+})
 
 const selectedRuntimeMotion = ref<string>('')
 const selectedRuntimeMotionName = ref<string>('')
@@ -85,7 +109,7 @@ watch([motionMappings, hiddenMotions], () => {
 
 watch(activeCard, (card) => {
   if (card?.extensions?.airi?.modules?.live2d) {
-    const live2dData = card.extensions.airi.modules.live2d
+    const live2dData = card.extensions.airi.modules.live2d as any
     motionMappings.value = live2dData.motionMappings || {}
     hiddenMotions.value = live2dData.hiddenMotions || []
   }
@@ -237,7 +261,7 @@ function handleMotionSelect(motion: any) {
     localStorage.removeItem(`live2d-${modelId}-selected-motion-index`)
 
     live2dIdleAnimationEnabled.value = false
-    currentMotion.value = undefined
+    currentMotion.value = { group: 'Idle', index: 0 }
     showMotionSelector.value = false
     return
   }
@@ -260,10 +284,6 @@ function handleMotionSelect(motion: any) {
   console.info('✅ Selected runtime motion:', motion.name)
   console.info('Full path:', motion.displayPath)
   console.info('Group:', motion.group, 'Index:', motion.index)
-}
-
-function toggleMotionSelector() {
-  showMotionSelector.value = !showMotionSelector.value
 }
 
 // Close dropdown when clicking outside
@@ -561,21 +581,21 @@ onUnmounted(() => {
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="position.x" as="div" :min="-100" :max="100" :step="1" :label="t('settings.live2d.scale-and-position.x')">
+      <FieldRange v-model="positionX" as="div" :min="-100" :max="100" :step="1" :label="t('settings.live2d.scale-and-position.x')">
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.x') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => position.x = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => positionX = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="position.y" as="div" :min="-100" :max="100" :step="1" :label="t('settings.live2d.scale-and-position.y')">
+      <FieldRange v-model="positionY" as="div" :min="-100" :max="100" :step="1" :label="t('settings.live2d.scale-and-position.y')">
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.y') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => position.y = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => positionY = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
