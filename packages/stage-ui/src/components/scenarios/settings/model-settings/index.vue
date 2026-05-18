@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DisplayModel } from '../../../../stores/display-models'
 
-import { Live2DScene, useLive2d } from '@proj-airi/stage-ui-live2d'
+import { Live2DScene } from '@proj-airi/stage-ui-live2d'
 import { MMDScene, useMmd } from '@proj-airi/stage-ui-mmd'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene } from '@proj-airi/stage-ui-three'
@@ -39,7 +39,6 @@ const modelSelectorOpen = ref(false)
 const positionCursor = useMouse()
 const settingsStore = useSettings()
 const vhackStore = useVHackStore()
-const { scale: live2dScale } = storeToRefs(useLive2d())
 const {
   live2dDisableFocus,
   stageModelSelectedUrl,
@@ -69,7 +68,11 @@ const computedXOffset = computed(() => {
 })
 
 const computedYOffset = computed(() => {
-  return positioningStore.getPosition(stageModelSelected.value).y
+  const y = positioningStore.getPosition(stageModelSelected.value).y
+  if (stageModelRenderer.value === 'live2d') {
+    return -y
+  }
+  return y
 })
 
 const airiCardStore = useAiriCardStore()
@@ -206,7 +209,9 @@ function handleScaleChange(newScale: number) {
         :model-id="stageModelSelected"
         :model-file="stageModelSelectedFile"
         :disable-focus-at="live2dDisableFocus"
-        :scale="live2dScale"
+        :scale="computedScale"
+        :x-offset="computedXOffset"
+        :y-offset="computedYOffset"
         :theme-colors-hue="themeColorsHue"
         :theme-colors-hue-dynamic="themeColorsHueDynamic"
         :live2d-idle-animation-enabled="live2dIdleAnimationEnabled"
@@ -249,7 +254,7 @@ function handleScaleChange(newScale: number) {
         :scale="computedScale"
         :position-x="computedXOffset"
         :position-y="computedYOffset"
-        :preview-expression="previewExpression"
+        :preview-expression="previewExpression || undefined"
         @scale-change="handleScaleChange"
       />
     </div>
