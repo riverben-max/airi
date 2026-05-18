@@ -10,7 +10,7 @@ import { formatHex } from 'culori'
 import { Mutex } from 'es-toolkit'
 import { storeToRefs } from 'pinia'
 import { DropShadowFilter } from 'pixi-filters'
-import { Live2DFactory, Live2DModel, MotionPriority } from 'pixi-live2d-display/cubism4'
+import { config, Live2DFactory, Live2DModel, MotionPriority } from 'pixi-live2d-display/cubism4'
 import { computed, onMounted, onUnmounted, ref, shallowRef, toRef, watch } from 'vue'
 
 import {
@@ -187,6 +187,10 @@ const disposeShouldUpdateView = live2dStore.onShouldUpdateView(() => {
 })
 
 async function loadModel() {
+  const hash = window.location.hash || '#/'
+  const isStage = hash === '#/' || hash.startsWith('#/stage')
+  config.sound = isStage
+
   await until(modelLoading).not.toBeTruthy()
 
   await modelLoadMutex.acquire()
@@ -408,8 +412,21 @@ async function loadModel() {
       return motionManagerUpdate.hookUpdate(model, now, hookedUpdate)
     }
 
-    motionManager.on('motionStart', (group, index) => {
+    motionManager.on('motionStart', (group, index, audio) => {
       localCurrentMotion.value = { group, index }
+
+      const hash = window.location.hash || '#/'
+      const isStage = hash === '#/' || hash.startsWith('#/stage')
+
+      if (!isStage && audio) {
+        try {
+          audio.muted = true
+          audio.pause()
+        }
+        catch (e) {
+          console.warn('[Live2D Audio] Failed to mute/pause non-leader audio:', e)
+        }
+      }
     })
 
     // Listen for motion finish to restart runtime motion for looping
