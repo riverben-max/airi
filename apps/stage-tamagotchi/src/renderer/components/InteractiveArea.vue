@@ -5,6 +5,7 @@ import type { ChatProvider } from '@xsai-ext/providers/utils'
 import { estimateTokens, formatTokenCount } from '@proj-airi/stage-shared'
 import {
   CharacterContextDialog,
+  ChatBrainPopover,
   ChatHistory,
   ChatImagesPopover,
   ChatMemoryPopover,
@@ -681,6 +682,9 @@ watch(messageInput, () => {
       >
         <div :class="[activeCard?.extensions?.airi?.groundingEnabled ? 'i-solar:cpu-bolt-bold-duotone' : 'i-solar:cpu-bold-duotone']" />
       </button>
+
+      <!-- Model & Provider Selection -->
+      <ChatBrainPopover />
 
       <!-- Memory & Context -->
       <ChatMemoryPopover

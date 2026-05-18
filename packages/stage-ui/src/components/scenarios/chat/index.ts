@@ -1,4 +1,5 @@
 export { default as ChatAssistantItem } from './assistant-item.vue'
+export { default as ChatBrainPopover } from './ChatBrainPopover.vue'
 export { default as ChatImagesPopover } from './ChatImagesPopover.vue'
 export { default as ChatMemoryPopover } from './ChatMemoryPopover.vue'
 export { default as ChatSessionModal } from './ChatSessionModal.vue'
