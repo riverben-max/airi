@@ -576,6 +576,7 @@ const dynamicStyles = computed(() => {
     />
     <ChatActionMenu
       :copy-text="copyText"
+      :can-edit="false"
       placement="right"
       @copy="handleCopy"
       @delete="handleDelete"
