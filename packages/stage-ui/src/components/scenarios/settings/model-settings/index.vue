@@ -219,6 +219,7 @@ function handleScaleChange(newScale: number) {
         :live2d-force-auto-blink-enabled="live2dForceAutoBlinkEnabled"
         :live2d-shadow-enabled="live2dShadowEnabled"
         :live2d-max-fps="live2dMaxFps"
+        @scale-change="handleScaleChange"
       />
     </div>
   </template>

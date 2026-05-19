@@ -45,6 +45,9 @@ const props = withDefaults(defineProps<{
   idleAnimations: () => [],
 })
 
+const emits = defineEmits<{
+  (e: 'scaleChange', value: number): void
+}>()
 const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
 const componentStateCanvas = defineModel<'pending' | 'loading' | 'mounted'>('canvasState', { default: 'pending' })
 const componentStateModel = defineModel<'pending' | 'loading' | 'mounted'>('modelState', { default: 'pending' })
@@ -60,6 +63,13 @@ watch([componentStateModel, componentStateCanvas], () => {
     : 'loading'
 })
 
+function handleWheel(event: WheelEvent) {
+  const delta = event.deltaY * -0.0005
+  const currentScale = props.scale !== undefined ? props.scale : storeScale.value
+  const newScale = Math.min(Math.max(currentScale + delta, 0.05), 10)
+  emits('scaleChange', newScale)
+}
+
 defineExpose({
   canvasElement: () => {
     return live2dCanvasRef.value?.canvasElement()
@@ -71,7 +81,7 @@ defineExpose({
 </script>
 
 <template>
-  <Screen v-slot="{ width, height }" relative>
+  <Screen v-slot="{ width, height }" relative @wheel="handleWheel">
     <Live2DCanvas
       ref="live2dCanvasRef"
       v-slot="{ app }"

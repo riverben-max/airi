@@ -136,6 +136,12 @@ const computedYOffset = computed(() => {
   return y
 })
 
+function handleScaleChange(newScale: number) {
+  const key = stageModelSelected.value
+  const current = positioningStore.getPosition(key)
+  positioningStore.setPosition(key, { ...current, scale: newScale })
+}
+
 watch(componentStateStage, () => isLoading.value = componentStateStage.value !== 'mounted', { immediate: true })
 
 const { pause, resume } = watch(isTransparent, (transparent) => {
@@ -625,6 +631,7 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
           :y-offset="computedYOffset"
           mb="<md:18"
           @hit-area-hover="(val) => isSpineHitAreaHovered = val?.hovered || false"
+          @scale-change="handleScaleChange"
         />
         <ControlsIsland
           ref="controlsIslandRef"

@@ -52,6 +52,7 @@ withDefaults(defineProps<{
 
 const emits = defineEmits<{
   (e: 'hitAreaHover', value: { name: string, x: number, y: number, hovered: boolean } | null): void
+  (e: 'scaleChange', value: number): void
 }>()
 
 const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
@@ -1180,6 +1181,7 @@ defineExpose({
         :live2d-shadow-enabled="live2dShadowEnabled"
         :live2d-max-fps="live2dMaxFps"
         :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        @scale-change="(val) => emits('scaleChange', val)"
       />
       <ThreeScene
         v-if="stageModelRenderer === 'vrm'"
