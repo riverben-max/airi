@@ -30,6 +30,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
   const isAdvancedPositioningOpen = useLocalStorageManualReset<boolean>('settings/control-strip/advanced-positioning-open', false)
   const stageEnabled = useLocalStorageManualReset<boolean>('settings/stage-enabled', true)
   const chatOpen = useLocalStorageManualReset<boolean>('settings/chat-open', false)
+  const captionOpen = useLocalStorageManualReset<boolean>('settings/caption-open', false)
   const buttons = useLocalStorageManualReset<ControlStripButton[]>('settings/control-strip/buttons', DEFAULT_BUTTONS)
 
   // Synchronize icons, labels, enabled state, and ordering with DEFAULT_BUTTONS to overwrite stale cached attributes
@@ -74,6 +75,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
     isAdvancedPositioningOpen.reset()
     stageEnabled.reset()
     chatOpen.reset()
+    captionOpen.reset()
     buttons.reset()
   }
 
@@ -83,6 +85,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
     isAdvancedPositioningOpen,
     stageEnabled,
     chatOpen,
+    captionOpen,
     buttons,
     toggleOrientation,
     cycleInteractionMode,

@@ -9,7 +9,6 @@ import { useAiriCardStore } from '../../../stores/modules/airi-card'
 import { useConsciousnessStore } from '../../../stores/modules/consciousness'
 import { useLiveSessionStore } from '../../../stores/modules/live-session'
 import { useProvidersStore } from '../../../stores/providers'
-import { StickerManager } from '../stickers'
 
 const props = defineProps<{
   /** Tool definitions to pass through to chat.ingest */
@@ -21,7 +20,6 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = ref(false)
-const showStickers = ref(false)
 const inputText = ref('')
 const inputRef = ref<HTMLInputElement>()
 const isSending = ref(false)

@@ -399,10 +399,14 @@ export function setupCaptionWindowManager(params: {
     window.on('show', () => {
       emitVisibilityChanged()
       syncGlobalConfig()
+      console.log('[@proj-airi/stage-tamagotchi] [Main] Caption window shown, broadcasting state')
+      params.mainWindow.webContents.send('caption-window-state', true)
     })
     window.on('hide', () => {
       emitVisibilityChanged()
       syncGlobalConfig()
+      console.log('[@proj-airi/stage-tamagotchi] [Main] Caption window hidden, broadcasting state')
+      params.mainWindow.webContents.send('caption-window-state', false)
     })
 
     await load(window, withHashRoute(baseUrl(resolve(getElectronMainDirname(), '..', 'renderer')), '/caption'))
@@ -429,6 +433,8 @@ export function setupCaptionWindowManager(params: {
       }
       eventaContext = undefined
       emitVisibilityChanged()
+      console.log('[@proj-airi/stage-tamagotchi] [Main] Caption window closed, broadcasting state')
+      params.mainWindow.webContents.send('caption-window-state', false)
     })
 
     // Captions are click-through by default so you can click whatever is behind them.
@@ -495,18 +501,33 @@ export function setupCaptionWindowManager(params: {
     return Boolean(currentWindow && !currentWindow.isDestroyed() && currentWindow.isVisible())
   }
 
-  async function toggleVisibility() {
-    if (isVisible()) {
-      currentWindow?.hide()
+  async function toggleVisibility(enabled?: boolean) {
+    if (enabled === undefined) {
+      if (isVisible()) {
+        currentWindow?.hide()
+      }
+      else {
+        const window = await reusable.getWindow()
+        if (window.isMinimized()) {
+          window.restore()
+        }
+        window.show()
+        window.focus()
+      }
       return
     }
 
-    const window = await reusable.getWindow()
-    if (window.isMinimized()) {
-      window.restore()
+    if (enabled) {
+      const window = await reusable.getWindow()
+      if (window.isMinimized()) {
+        window.restore()
+      }
+      window.show()
+      window.focus()
     }
-    window.show()
-    window.focus()
+    else {
+      currentWindow?.hide()
+    }
   }
 
   function onVisibilityChanged(listener: () => void): () => void {

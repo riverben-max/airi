@@ -37,7 +37,7 @@ export const pluginProtocolListProviders = defineInvokeEventa<Array<{ name: stri
 
 export const captionIsFollowingWindowChanged = defineEventa<boolean>('eventa:event:electron:windows:caption-overlay:is-following-window-changed')
 export const captionGetIsFollowingWindow = defineInvokeEventa<boolean>('eventa:invoke:electron:windows:caption-overlay:get-is-following-window')
-export const electronCaptionToggleVisibility = defineInvokeEventa<void>('eventa:invoke:electron:windows:caption:toggle-visibility')
+export const electronCaptionToggleVisibility = defineInvokeEventa<void, boolean>('eventa:invoke:electron:windows:caption:toggle-visibility')
 export const electronCaptionSyncDocking = defineInvokeEventa<void, 'top' | 'bottom' | undefined>('eventa:invoke:electron:windows:caption:sync-docking')
 export const electronSetIgnoreMouseEvents = defineInvokeEventa<void, boolean>('eventa:invoke:electron:window:set-ignore-mouse-events')
 export const electronStageToggleVisibility = defineInvokeEventa<void, boolean>('eventa:invoke:electron:windows:stage:toggle-visibility')
@@ -249,6 +249,9 @@ export const stageThreeRuntimeTraceRemoteDisableEvent = defineEventa<StageThreeR
 
 export const electronGetMainWindowConfig = defineInvokeEventa<any>('eventa:invoke:electron:windows:main:get-config')
 export const electronMainWindowConfigChanged = defineEventa<any>('eventa:event:electron:windows:main:config-changed')
+
+export const electronGetChatWindowState = defineInvokeEventa<boolean>('eventa:invoke:electron:windows:chat:get-state')
+export const electronGetCaptionWindowState = defineInvokeEventa<boolean>('eventa:invoke:electron:windows:caption:get-state')
 
 // Internal event from main -> widgets renderer when a widget should render
 export const widgetsRenderEvent = defineEventa<WidgetSnapshot>('eventa:event:electron:windows:widgets:render')

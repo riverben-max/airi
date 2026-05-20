@@ -3,14 +3,34 @@ import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { useLiveSessionStore } from '../../../stores/modules/live-session'
 import { useSettingsAudioDevice } from '../../../stores/settings/audio-device'
 import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
 
 const controlStripStore = useSettingsControlStrip()
-const { orientation, interactionMode, buttons, stageEnabled, chatOpen } = storeToRefs(controlStripStore)
+const { orientation, buttons, stageEnabled, chatOpen, captionOpen } = storeToRefs(controlStripStore)
 
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { enabled: micEnabled } = storeToRefs(settingsAudioDeviceStore)
+
+const liveSessionStore = useLiveSessionStore()
+const { powerState } = storeToRefs(liveSessionStore)
+
+const geminiDotClasses = computed(() => {
+  if (powerState.value === 'busy') {
+    return 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse'
+  }
+  if (powerState.value === 'active') {
+    return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+  }
+  if (powerState.value === 'connecting') {
+    return 'bg-sky-400 animate-pulse'
+  }
+  if (powerState.value === 'ambient') {
+    return 'bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+  }
+  return 'bg-neutral-400/50'
+})
 
 // Persistent dragging position, defaults to top-right layout bounds
 const position = useLocalStorageManualReset<{ x: number, y: number }>('settings/control-strip/position', { x: 20, y: 150 })
@@ -116,6 +136,19 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
   if (btnId === 'mic') {
     return `Microphone: ${micEnabled.value ? 'Active (Green)' : 'Muted (Red)'}`
   }
+  if (btnId === 'caption') {
+    return `Captions: ${captionOpen.value ? 'Active (Green)' : 'Disabled (Red)'}`
+  }
+  if (btnId === 'gemini-session') {
+    const stateLabels: Record<string, string> = {
+      off: 'Disconnected (Gray)',
+      connecting: 'Connecting (Sky Blue)',
+      active: 'Listening / Idle (Red)',
+      busy: 'Transmitting / Speaking (Purple)',
+      ambient: 'Witness Mode Active (Amber)',
+    }
+    return `Speech Session: ${stateLabels[powerState.value] || 'Disconnected (Gray)'}`
+  }
   return defaultLabel
 }
 </script>
@@ -205,6 +238,24 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
           :class="[
             'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
             micEnabled ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for Captions (CC Toggle) -->
+        <span
+          v-if="btn.id === 'caption'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            captionOpen ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for Gemini Session (Sparkle Toggle) -->
+        <span
+          v-if="btn.id === 'gemini-session'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-all duration-300',
+            geminiDotClasses,
           ]"
         />
       </button>

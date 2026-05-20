@@ -19,6 +19,8 @@ import icon from '../../resources/icon.png?asset'
 import {
   electronCaptionSyncDocking,
   electronCaptionToggleVisibility,
+  electronGetCaptionWindowState,
+  electronGetChatWindowState,
   electronSetIgnoreMouseEvents,
   electronStageToggleVisibility,
 } from '../shared/eventa'
@@ -228,7 +230,7 @@ app.whenReady().then(async () => {
   })
 
   injeca.invoke({
-    dependsOn: { mainWindow, tray, serverChannel, pluginHost, mcpStdioManager, onboardingWindow: onboardingWindowManager, appConfig, i18n, captionWindow, stageWindow },
+    dependsOn: { mainWindow, tray, serverChannel, pluginHost, mcpStdioManager, onboardingWindow: onboardingWindowManager, appConfig, i18n, captionWindow, stageWindow, chatWindow },
     callback: (deps) => {
       const context = createContext(ipcMain).context
       createServerChannelService({ serverChannel: deps.serverChannel })
@@ -238,9 +240,22 @@ app.whenReady().then(async () => {
       createVisionService({ context })
       const sensorsServicePromise = createSensorsService({ context })
       setupDiscordService()
-      defineInvokeHandler(context, electronCaptionToggleVisibility, async () => {
-        console.log('[@proj-airi/stage-tamagotchi] [Main] Caption visibility toggle triggered via Control Island')
-        await deps.captionWindow.toggleVisibility()
+      defineInvokeHandler(context, electronCaptionToggleVisibility, async (enabled?: boolean) => {
+        console.log('[@proj-airi/stage-tamagotchi] [Main] Caption visibility toggle triggered via Control Island. enabled:', enabled)
+        await deps.captionWindow.toggleVisibility(enabled)
+      })
+      defineInvokeHandler(context, electronGetChatWindowState, async () => {
+        const win = await deps.chatWindow()
+        const isOpen = Boolean(win && !win.isDestroyed() && win.isVisible())
+        console.log('[@proj-airi/stage-tamagotchi] [Main] Retrieved chat window state:', isOpen)
+        return isOpen
+      })
+      defineInvokeHandler(context, electronGetCaptionWindowState, async () => {
+        const winEnabled = deps.appConfig.get()?.windows?.find((w: any) => w.tag === 'caption')?.enabled
+        const winVisible = deps.captionWindow.isVisible()
+        const isOpen = Boolean(winEnabled || winVisible)
+        console.log('[@proj-airi/stage-tamagotchi] [Main] Retrieved caption window state:', isOpen, 'enabled:', winEnabled, 'visible:', winVisible)
+        return isOpen
       })
       defineInvokeHandler(context, electronCaptionSyncDocking, async (dock) => {
         console.log('[@proj-airi/stage-tamagotchi] [Main] Caption docking sync triggered via Control Island:', dock)

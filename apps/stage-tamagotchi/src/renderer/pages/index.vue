@@ -23,6 +23,7 @@ import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useLLM } from '@proj-airi/stage-ui/stores/llm'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useHearingSpeechInputPipeline, useHearingStore } from '@proj-airi/stage-ui/stores/modules/hearing'
+import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
 import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
@@ -37,6 +38,8 @@ import ResourceStatusIsland from '../components/stage-islands/resource-status-is
 
 import {
   electronCaptionToggleVisibility,
+  electronGetCaptionWindowState,
+  electronGetChatWindowState,
   electronGetMainWindowConfig,
   electronOpenChat,
   electronOpenSettings,
@@ -60,6 +63,8 @@ const componentStateStage = ref<'pending' | 'loading' | 'mounted'>('pending')
 const openChat = useElectronEventaInvoke(electronOpenChat)
 const openSettings = useElectronEventaInvoke(electronOpenSettings)
 const toggleCaptionVisibility = useElectronEventaInvoke(electronCaptionToggleVisibility)
+const getChatWindowState = useElectronEventaInvoke(electronGetChatWindowState)
+const getCaptionWindowState = useElectronEventaInvoke(electronGetCaptionWindowState)
 
 const isLoading = ref(true)
 
@@ -130,6 +135,7 @@ const positioningStore = usePositioningStore()
 const controlStripStore = useSettingsControlStrip()
 const { stageEnabled } = storeToRefs(controlStripStore)
 const toggleStageVisibility = useElectronEventaInvoke(electronStageToggleVisibility)
+const liveSessionStore = useLiveSessionStore()
 
 watch(stageEnabled, (val) => {
   toggleStageVisibility(val)
@@ -235,6 +241,24 @@ onMounted(async () => {
   const config = await getMainWindowConfig() as any
   if (config) {
     isLocked.value = !!config.locked
+  }
+
+  try {
+    const chatState = await getChatWindowState()
+    controlStripStore.chatOpen = Boolean(chatState)
+    console.info('[Main Page] Initialized controlStripStore.chatOpen on startup:', controlStripStore.chatOpen)
+  }
+  catch (err) {
+    console.error('[Main Page] Failed to fetch initial chat window state:', err)
+  }
+
+  try {
+    const captionState = await getCaptionWindowState()
+    controlStripStore.captionOpen = Boolean(captionState)
+    console.info('[Main Page] Initialized controlStripStore.captionOpen on startup:', controlStripStore.captionOpen)
+  }
+  catch (err) {
+    console.error('[Main Page] Failed to fetch initial caption window state:', err)
   }
 
   if (window.electron?.ipcRenderer) {
@@ -583,13 +607,18 @@ function handleControlStripAction(e: Event) {
     openSettings()
   }
   else if (action === 'caption') {
-    toggleCaptionVisibility()
+    controlStripStore.captionOpen = !controlStripStore.captionOpen
+    console.info(`[Main Page] [Control Strip Action] Invoking toggleCaptionVisibility(${controlStripStore.captionOpen})...`)
+    toggleCaptionVisibility(controlStripStore.captionOpen)
   }
   else if (action === 'mic') {
     settingsAudioDeviceStore.enabled = !settingsAudioDeviceStore.enabled
   }
   else if (action === 'stage') {
     controlStripStore.stageEnabled = !controlStripStore.stageEnabled
+  }
+  else if (action === 'gemini-session') {
+    liveSessionStore.toggle()
   }
 }
 
@@ -611,6 +640,11 @@ onMounted(async () => {
       console.info(`[Main Page] [IPC] Received 'chat-window-state' event. Window open state: ${isOpen}`)
       controlStripStore.chatOpen = isOpen
       console.info(`[Main Page] [Store Sync] controlStripStore.chatOpen updated to: ${controlStripStore.chatOpen}`)
+    })
+    window.electron.ipcRenderer.on('caption-window-state', (_, isOpen: boolean) => {
+      console.info(`[Main Page] [IPC] Received 'caption-window-state' event. Window open state: ${isOpen}`)
+      controlStripStore.captionOpen = isOpen
+      console.info(`[Main Page] [Store Sync] controlStripStore.captionOpen updated to: ${controlStripStore.captionOpen}`)
     })
   }
 
