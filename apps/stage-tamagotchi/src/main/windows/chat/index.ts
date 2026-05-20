@@ -32,22 +32,37 @@ export function setupChatWindowReusableFunc(params: {
       },
     })
 
-    window.on('ready-to-show', () => window.show())
+    window.on('ready-to-show', () => {
+      console.log('[Main Process] [Chat Window] Event: "ready-to-show" triggered. Displaying window...')
+      window.show()
+    })
     window.on('show', () => {
-      const mainWin = BrowserWindow.getAllWindows().find(w => (w as any).__is_main_window === true)
+      console.log('[Main Process] [Chat Window] Event: "show" triggered.')
+      const allWins = BrowserWindow.getAllWindows()
+      const mainWin = allWins.find(w => (w as any).__is_main_window === true)
+      console.log(`[Main Process] [Chat Window] Searching for main window. Total windows: ${allWins.length}, Main window found: ${!!mainWin}`)
       if (mainWin && !mainWin.isDestroyed()) {
+        console.log('[Main Process] [Chat Window] Sending "chat-window-state" -> true to main window webContents')
         mainWin.webContents.send('chat-window-state', true)
       }
     })
     window.on('hide', () => {
-      const mainWin = BrowserWindow.getAllWindows().find(w => (w as any).__is_main_window === true)
+      console.log('[Main Process] [Chat Window] Event: "hide" triggered.')
+      const allWins = BrowserWindow.getAllWindows()
+      const mainWin = allWins.find(w => (w as any).__is_main_window === true)
+      console.log(`[Main Process] [Chat Window] Searching for main window. Total windows: ${allWins.length}, Main window found: ${!!mainWin}`)
       if (mainWin && !mainWin.isDestroyed()) {
+        console.log('[Main Process] [Chat Window] Sending "chat-window-state" -> false to main window webContents')
         mainWin.webContents.send('chat-window-state', false)
       }
     })
     window.on('closed', () => {
-      const mainWin = BrowserWindow.getAllWindows().find(w => (w as any).__is_main_window === true)
+      console.log('[Main Process] [Chat Window] Event: "closed" triggered.')
+      const allWins = BrowserWindow.getAllWindows()
+      const mainWin = allWins.find(w => (w as any).__is_main_window === true)
+      console.log(`[Main Process] [Chat Window] Searching for main window. Total windows: ${allWins.length}, Main window found: ${!!mainWin}`)
       if (mainWin && !mainWin.isDestroyed()) {
+        console.log('[Main Process] [Chat Window] Sending "chat-window-state" -> false to main window webContents')
         mainWin.webContents.send('chat-window-state', false)
       }
     })

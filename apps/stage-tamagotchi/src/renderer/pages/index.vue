@@ -573,8 +573,9 @@ watch(stream, async (newStream) => {
 
 function handleControlStripAction(e: Event) {
   const action = (e as CustomEvent).detail.action
-  console.info(`[Control Strip Action] Triggered action: ${action}`)
+  console.info(`[Main Page] [Control Strip Action] Received action: "${action}"`)
   if (action === 'chat') {
+    console.info('[Main Page] [Control Strip Action] Invoking openChat()...')
     openChat()
   }
   else if (action === 'settings') {
@@ -610,8 +611,9 @@ onMounted(async () => {
       console.info(`[Renderer] Mic state flipped to: ${settingsAudioDeviceStore.enabled}`)
     })
     window.electron.ipcRenderer.on('chat-window-state', (_, isOpen: boolean) => {
-      console.info(`[Renderer] Received 'chat-window-state' event: ${isOpen}`)
+      console.info(`[Main Page] [IPC] Received 'chat-window-state' event. Window open state: ${isOpen}`)
       controlStripStore.chatOpen = isOpen
+      console.info(`[Main Page] [Store Sync] controlStripStore.chatOpen updated to: ${controlStripStore.chatOpen}`)
     })
   }
 

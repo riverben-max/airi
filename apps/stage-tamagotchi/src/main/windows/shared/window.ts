@@ -12,22 +12,32 @@ import { createI18nService } from '../../services/airi/i18n'
 import { createAppService, createScreenService, createWindowService } from '../../services/electron'
 
 export function toggleWindowShow(window?: BrowserWindow | null): void {
+  console.log(`[Main Process] [toggleWindowShow] Triggered. Window instance exists: ${!!window}`)
   if (!window) {
+    console.warn('[Main Process] [toggleWindowShow] Aborted: window instance is undefined or null')
     return
   }
   if (isRendererUnavailable(window)) {
+    console.warn('[Main Process] [toggleWindowShow] Aborted: window renderer is unavailable')
     return
   }
 
-  if (window.isMinimized()) {
+  const isMinimized = window.isMinimized()
+  const isVisible = window.isVisible()
+  console.log(`[Main Process] [toggleWindowShow] Current Window States -> isMinimized: ${isMinimized}, isVisible: ${isVisible}`)
+
+  if (isMinimized) {
+    console.log('[Main Process] [toggleWindowShow] Action: Restoring, showing, and focusing minimized window')
     window.restore()
     window.show()
     window.focus()
   }
-  else if (window.isVisible()) {
+  else if (isVisible) {
+    console.log('[Main Process] [toggleWindowShow] Action: Hiding currently visible window')
     window.hide()
   }
   else {
+    console.log('[Main Process] [toggleWindowShow] Action: Showing and focusing hidden window')
     window.show()
     window.focus()
   }
