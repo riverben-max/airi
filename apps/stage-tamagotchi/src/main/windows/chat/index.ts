@@ -33,6 +33,24 @@ export function setupChatWindowReusableFunc(params: {
     })
 
     window.on('ready-to-show', () => window.show())
+    window.on('show', () => {
+      const mainWin = BrowserWindow.getAllWindows().find(w => w.getTitle() === 'AIRI')
+      if (mainWin && !mainWin.isDestroyed()) {
+        mainWin.webContents.send('chat-window-state', true)
+      }
+    })
+    window.on('hide', () => {
+      const mainWin = BrowserWindow.getAllWindows().find(w => w.getTitle() === 'AIRI')
+      if (mainWin && !mainWin.isDestroyed()) {
+        mainWin.webContents.send('chat-window-state', false)
+      }
+    })
+    window.on('closed', () => {
+      const mainWin = BrowserWindow.getAllWindows().find(w => w.getTitle() === 'AIRI')
+      if (mainWin && !mainWin.isDestroyed()) {
+        mainWin.webContents.send('chat-window-state', false)
+      }
+    })
     window.webContents.setWindowOpenHandler((details) => {
       shell.openExternal(details.url)
       return { action: 'deny' }

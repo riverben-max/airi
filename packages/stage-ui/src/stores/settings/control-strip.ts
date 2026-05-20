@@ -29,6 +29,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
   const interactionMode = useLocalStorageManualReset<'tactile' | 'positioning' | 'orbit'>('settings/control-strip/interaction-mode', 'tactile')
   const isAdvancedPositioningOpen = useLocalStorageManualReset<boolean>('settings/control-strip/advanced-positioning-open', false)
   const stageEnabled = useLocalStorageManualReset<boolean>('settings/stage-enabled', true)
+  const chatOpen = useLocalStorageManualReset<boolean>('settings/chat-open', false)
   const buttons = useLocalStorageManualReset<ControlStripButton[]>('settings/control-strip/buttons', DEFAULT_BUTTONS)
 
   // Synchronize icons and labels with DEFAULT_BUTTONS to overwrite stale cached attributes (like the old paw print)
@@ -70,6 +71,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
     interactionMode.reset()
     isAdvancedPositioningOpen.reset()
     stageEnabled.reset()
+    chatOpen.reset()
     buttons.reset()
   }
 
@@ -78,6 +80,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
     interactionMode,
     isAdvancedPositioningOpen,
     stageEnabled,
+    chatOpen,
     buttons,
     toggleOrientation,
     cycleInteractionMode,

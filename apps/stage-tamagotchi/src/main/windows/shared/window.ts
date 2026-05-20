@@ -19,12 +19,18 @@ export function toggleWindowShow(window?: BrowserWindow | null): void {
     return
   }
 
-  if (window?.isMinimized()) {
-    window?.restore()
+  if (window.isMinimized()) {
+    window.restore()
+    window.show()
+    window.focus()
   }
-
-  window?.show()
-  window?.focus()
+  else if (window.isVisible() && window.isFocused()) {
+    window.hide()
+  }
+  else {
+    window.show()
+    window.focus()
+  }
 }
 
 export function transparentWindowConfig(): BrowserWindowConstructorOptions {

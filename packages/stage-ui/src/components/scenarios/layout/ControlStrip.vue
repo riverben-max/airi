@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
 
 const controlStripStore = useSettingsControlStrip()
-const { orientation, interactionMode, buttons, stageEnabled } = storeToRefs(controlStripStore)
+const { orientation, interactionMode, buttons, stageEnabled, chatOpen } = storeToRefs(controlStripStore)
 
 // Persistent dragging position, defaults to top-right layout bounds
 const position = useLocalStorageManualReset<{ x: number, y: number }>('settings/control-strip/position', { x: 20, y: 150 })
@@ -152,22 +152,31 @@ function cycleMode() {
         :key="btn.id"
         :class="[
           'relative flex items-center justify-center',
-          'w-9 h-9 rounded-full',
+          'w-9 h-9 rounded-full border border-white/15 dark:border-white/5',
+          'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200',
           'transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer',
-          // Active state visual indicators
-          btn.id === 'stage' && !stageEnabled
-            ? 'bg-red-500/25 text-red-500 hover:bg-red-500/40 border border-red-500/20'
-            : 'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200 border border-white/15 dark:border-white/5',
         ]"
         :title="btn.label"
         @click="handleAction(btn.id)"
       >
         <span :class="[btn.icon, 'text-lg']" />
 
-        <!-- Dot badges or small active states -->
+        <!-- Status dot badge for Stage (Actor Stage) -->
         <span
-          v-if="btn.id === 'stage' && stageEnabled"
-          class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-green-500"
+          v-if="btn.id === 'stage'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            stageEnabled ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for Chat (Chat Toggle) -->
+        <span
+          v-if="btn.id === 'chat'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            chatOpen ? 'bg-green-500' : 'bg-red-500',
+          ]"
         />
       </button>
     </div>

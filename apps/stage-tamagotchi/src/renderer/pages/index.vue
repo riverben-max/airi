@@ -609,6 +609,10 @@ onMounted(async () => {
       settingsAudioDeviceStore.enabled = !settingsAudioDeviceStore.enabled
       console.info(`[Renderer] Mic state flipped to: ${settingsAudioDeviceStore.enabled}`)
     })
+    window.electron.ipcRenderer.on('chat-window-state', (_, isOpen: boolean) => {
+      console.info(`[Renderer] Received 'chat-window-state' event: ${isOpen}`)
+      controlStripStore.chatOpen = isOpen
+    })
   }
 
   if (typeof window !== 'undefined') {
