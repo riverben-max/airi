@@ -591,10 +591,6 @@ function handleControlStripAction(e: Event) {
   else if (action === 'stage') {
     controlStripStore.stageEnabled = !controlStripStore.stageEnabled
   }
-  else if (action === 'layout') {
-    const settingsStore = useSettings()
-    settingsStore.stageViewControlsEnabled = !settingsStore.stageViewControlsEnabled
-  }
 }
 
 onMounted(async () => {

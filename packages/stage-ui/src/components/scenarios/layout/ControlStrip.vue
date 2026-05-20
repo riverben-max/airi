@@ -84,6 +84,12 @@ const activeButtons = computed(() => {
 
 function handleAction(actionId: string) {
   console.info(`[Control Strip] Button clicked: "${actionId}". Dispatching control-strip:action event...`)
+  if (actionId === 'layout') {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('control-strip:open-customizer'))
+    }
+    return
+  }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('control-strip:action', { detail: { action: actionId } }))
   }

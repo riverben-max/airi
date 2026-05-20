@@ -12,10 +12,10 @@ const DEFAULT_BUTTONS: ControlStripButton[] = [
   { id: 'chat', enabled: true, label: 'Chat Toggle', icon: 'i-solar:chat-line-linear' },
   { id: 'stage', enabled: true, label: 'Actor Stage', icon: 'i-solar:clapperboard-play-bold-duotone' },
   { id: 'mic', enabled: true, label: 'Microphone Toggle', icon: 'i-solar:muted-linear' },
+  { id: 'caption', enabled: true, label: 'Captions', icon: 'i-ph:closed-captioning-duotone' },
+  { id: 'gemini-session', enabled: true, label: 'Toggle Speech Session', icon: 'i-ph:sparkle' },
+  { id: 'layout', enabled: true, label: 'Customize Control Strip', icon: 'i-solar:widget-linear' },
   { id: 'settings', enabled: true, label: 'Settings', icon: 'i-solar:settings-linear' },
-  { id: 'caption', enabled: true, label: 'Captions', icon: 'i-solar:letter-opened-linear' },
-  { id: 'layout', enabled: true, label: 'Stage Layout & Snapping', icon: 'i-solar:widget-linear' },
-  { id: 'gemini-session', enabled: false, label: 'Toggle Speech Session', icon: 'i-solar:star-linear' },
   { id: 'gemini-witness', enabled: false, label: 'Witness Vision Mode', icon: 'i-solar:camera-linear' },
   { id: 'gemini-frequency', enabled: false, label: 'Proactive Interval', icon: 'i-solar:clock-circle-linear' },
   { id: 'gemini-tts', enabled: false, label: 'TTS Output Toggle', icon: 'i-solar:volume-loud-linear' },
@@ -32,18 +32,20 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
   const chatOpen = useLocalStorageManualReset<boolean>('settings/chat-open', false)
   const buttons = useLocalStorageManualReset<ControlStripButton[]>('settings/control-strip/buttons', DEFAULT_BUTTONS)
 
-  // Synchronize icons and labels with DEFAULT_BUTTONS to overwrite stale cached attributes (like the old paw print)
+  // Synchronize icons, labels, enabled state, and ordering with DEFAULT_BUTTONS to overwrite stale cached attributes
   if (Array.isArray(buttons.value)) {
     let changed = false
-    const updated = buttons.value.map((btn) => {
-      const def = DEFAULT_BUTTONS.find(d => d.id === btn.id)
-      if (def) {
-        if (def.icon !== btn.icon || def.label !== btn.label) {
+    const updated = DEFAULT_BUTTONS.map((def) => {
+      const btn = buttons.value.find(b => b.id === def.id)
+      if (btn) {
+        if (btn.icon !== def.icon || btn.label !== def.label || btn.enabled !== def.enabled) {
           changed = true
-          return { ...btn, icon: def.icon, label: def.label }
+          return { ...btn, icon: def.icon, label: def.label, enabled: def.enabled }
         }
+        return btn
       }
-      return btn
+      changed = true
+      return def
     })
     if (changed) {
       buttons.value = updated
