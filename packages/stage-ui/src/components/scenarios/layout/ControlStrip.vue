@@ -1,0 +1,202 @@
+<script setup lang="ts">
+import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
+import { storeToRefs } from 'pinia'
+import { computed, ref } from 'vue'
+
+import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
+
+const controlStripStore = useSettingsControlStrip()
+const { orientation, interactionMode, buttons, stageEnabled } = storeToRefs(controlStripStore)
+
+// Persistent dragging position, defaults to top-right layout bounds
+const position = useLocalStorageManualReset<{ x: number, y: number }>('settings/control-strip/position', { x: 20, y: 150 })
+
+// Dragging states
+const isDragging = ref(false)
+let startX = 0
+let startY = 0
+let startPosX = 0
+let startPosY = 0
+let dragDistance = 0
+
+function onDragStart(e: MouseEvent | TouchEvent) {
+  isDragging.value = true
+  dragDistance = 0
+
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+
+  startX = clientX
+  startY = clientY
+  startPosX = position.value.x
+  startPosY = position.value.y
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('mousemove', onDragging)
+    window.addEventListener('mouseup', onDragEnd)
+    window.addEventListener('touchmove', onDragging, { passive: false })
+    window.addEventListener('touchend', onDragEnd)
+  }
+}
+
+function onDragging(e: MouseEvent | TouchEvent) {
+  if (!isDragging.value)
+    return
+
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+
+  const diffX = clientX - startX
+  const diffY = clientY - startY
+  dragDistance = Math.sqrt(diffX * diffX + diffY * diffY)
+
+  // Since anchored to absolute 'right', moving cursor to the left increases x coordinate offset
+  const deltaX = startX - clientX
+  const deltaY = clientY - startY
+
+  position.value.x = Math.max(10, Math.min(window.innerWidth - 80, startPosX + deltaX))
+  position.value.y = Math.max(10, Math.min(window.innerHeight - 300, startPosY + deltaY))
+}
+
+function onDragEnd() {
+  isDragging.value = false
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('mousemove', onDragging)
+    window.removeEventListener('mouseup', onDragEnd)
+    window.removeEventListener('touchmove', onDragging)
+    window.removeEventListener('touchend', onDragEnd)
+  }
+
+  // Tap/click trigger if pointer didn't move significantly
+  if (dragDistance < 5) {
+    toggleOrientation()
+  }
+}
+
+// Filter for active buttons
+const activeButtons = computed(() => {
+  return buttons.value.filter(btn => btn.enabled)
+})
+
+function handleAction(actionId: string) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('control-strip:action', { detail: { action: actionId } }))
+  }
+}
+
+function handleRightClick(e: MouseEvent) {
+  e.preventDefault()
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('control-strip:open-customizer'))
+  }
+}
+
+function toggleOrientation() {
+  controlStripStore.toggleOrientation()
+}
+
+function cycleMode() {
+  controlStripStore.cycleInteractionMode()
+}
+</script>
+
+<template>
+  <div
+    :class="[
+      'absolute pointer-events-auto select-none',
+      'bg-neutral-100/30 dark:bg-neutral-900/40',
+      'backdrop-blur-xl border border-white/20 dark:border-neutral-800/60',
+      'shadow-2xl shadow-black/10 rounded-full',
+      'transition-all duration-300 ease-out',
+      isDragging ? 'scale-102 border-primary-500/30 shadow-primary-500/5' : '',
+      orientation === 'vertical' ? 'flex flex-col items-center py-3 px-2 gap-2.5 w-14' : 'flex flex-row items-center px-3 py-2 gap-2.5 h-14',
+    ]"
+    :style="{
+      top: `${position.y}px`,
+      right: `${position.x}px`,
+    }"
+    @contextmenu="handleRightClick"
+  >
+    <!-- TOP/LEFT ENDCAP: Perpendicular Drag & Layout Handle -->
+    <button
+      :class="[
+        'flex items-center justify-center',
+        'w-9 h-9 rounded-full',
+        'bg-white/10 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15',
+        'border border-white/10 dark:border-white/5',
+        'text-neutral-700 dark:text-neutral-300',
+        'transition-all duration-200 active:scale-90',
+        isDragging ? 'cursor-grabbing' : 'cursor-grab',
+      ]"
+      title="Drag to Reposition | Click to Toggle Layout"
+      @mousedown="onDragStart"
+      @touchstart="onDragStart"
+      @click.stop
+    >
+      <span
+        :class="[
+          'text-lg transition-transform duration-300',
+          orientation === 'vertical' ? 'i-solar:double-alt-arrow-right-linear' : 'i-solar:double-alt-arrow-down-linear',
+        ]"
+      />
+    </button>
+
+    <!-- CORE INTERACTIVE BUTTONS -->
+    <div
+      :class="[
+        orientation === 'vertical' ? 'flex flex-col items-center gap-2.5' : 'flex flex-row items-center gap-2.5',
+      ]"
+    >
+      <button
+        v-for="btn in activeButtons"
+        :key="btn.id"
+        :class="[
+          'relative flex items-center justify-center',
+          'w-9 h-9 rounded-full',
+          'transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer',
+          // Active state visual indicators
+          btn.id === 'stage' && !stageEnabled
+            ? 'bg-red-500/25 text-red-500 hover:bg-red-500/40 border border-red-500/20'
+            : 'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200 border border-white/15 dark:border-white/5',
+        ]"
+        :title="btn.label"
+        @click="handleAction(btn.id)"
+      >
+        <span :class="[btn.icon, 'text-lg']" />
+
+        <!-- Dot badges or small active states -->
+        <span
+          v-if="btn.id === 'stage' && stageEnabled"
+          class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-green-500"
+        />
+      </button>
+    </div>
+
+    <!-- 3-WAY INTERACTION MODE SWITCHER -->
+    <button
+      :class="[
+        'flex items-center justify-center',
+        'w-9 h-9 rounded-full',
+        'border transition-all duration-200 active:scale-95 cursor-pointer',
+        interactionMode === 'tactile'
+          ? 'bg-primary-500/20 border-primary-500/40 text-primary-600 dark:text-primary-400'
+          : interactionMode === 'positioning'
+            ? 'bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-400 animate-pulse'
+            : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-600 dark:text-indigo-400',
+      ]"
+      :title="`Interaction Mode: ${interactionMode.toUpperCase()} (Click to Cycle)`"
+      @click="cycleMode"
+    >
+      <span
+        :class="[
+          'text-lg',
+          interactionMode === 'tactile'
+            ? 'i-solar:magic-stick-linear'
+            : interactionMode === 'positioning'
+              ? 'i-solar:tuning-outline'
+              : 'i-solar:eye-linear',
+        ]"
+      />
+    </button>
+  </div>
+</template>

@@ -47,6 +47,7 @@ import { setupMainWindow } from './windows/main'
 import { setupNoticeWindowManager } from './windows/notice'
 import { setupOnboardingWindowManager } from './windows/onboarding'
 import { setupSettingsWindowReusableFunc } from './windows/settings'
+import { setupActorStageWindow } from './windows/stage'
 import { setupWidgetsWindowManager } from './windows/widgets'
 
 function installStreamErrorGuards() {
@@ -198,8 +199,13 @@ app.whenReady().then(async () => {
     build: async ({ dependsOn }) => setupSettingsWindowReusableFunc(dependsOn),
   })
 
+  const stageWindow = injeca.provide('windows:stage', {
+    dependsOn: { appConfig, serverChannel, i18n },
+    build: async ({ dependsOn }) => setupActorStageWindow(dependsOn),
+  })
+
   const mainWindow = injeca.provide('windows:main', {
-    dependsOn: { settingsWindow, chatWindow, widgetsManager, noticeWindow, beatSync, autoUpdater, serverChannel, mcpStdioManager, i18n, onboardingWindowManager, appConfig },
+    dependsOn: { settingsWindow, stageWindow, chatWindow, widgetsManager, noticeWindow, beatSync, autoUpdater, serverChannel, mcpStdioManager, i18n, onboardingWindowManager, appConfig },
     build: async ({ dependsOn }) => setupMainWindow(dependsOn),
   })
 

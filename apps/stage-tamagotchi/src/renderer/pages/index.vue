@@ -24,19 +24,22 @@ import { useLLM } from '@proj-airi/stage-ui/stores/llm'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useHearingSpeechInputPipeline, useHearingStore } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
-import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
+import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
 import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { Button } from '@proj-airi/ui'
 import { useBroadcastChannel } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, onUnmounted, provide, ref, toRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ControlsIsland from '../components/stage-islands/controls-island/index.vue'
 import ResourceStatusIsland from '../components/stage-islands/resource-status-island/index.vue'
 
 import {
+  electronCaptionToggleVisibility,
   electronGetMainWindowConfig,
+  electronOpenChat,
+  electronOpenSettings,
   widgetsAdd,
 } from '../../shared/eventa'
 import { useControlsIslandStore } from '../stores/controls-island'
@@ -47,11 +50,15 @@ const controlsIslandRef = ref<InstanceType<typeof ControlsIsland>>()
 const whisperDockRef = ref<InstanceType<typeof WhisperDock>>()
 const widgetStageRef = ref<InstanceType<typeof WidgetStage>>()
 const tools = ref<any[]>([])
-const stageCanvas = toRef(() => widgetStageRef.value?.canvasElement())
+const stageCanvas = () => widgetStageRef.value?.canvasElement() || undefined
 const controlsIslandRoot = computed(() => controlsIslandRef.value?.rootElement)
 const geminiIslandRoot = computed(() => controlsIslandRef.value?.geminiRootElement)
 const geminiPanelRoot = computed(() => controlsIslandRef.value?.geminiPanelElement)
 const componentStateStage = ref<'pending' | 'loading' | 'mounted'>('pending')
+
+const openChat = useElectronEventaInvoke(electronOpenChat)
+const openSettings = useElectronEventaInvoke(electronOpenSettings)
+const toggleCaptionVisibility = useElectronEventaInvoke(electronCaptionToggleVisibility)
 
 const isLoading = ref(true)
 
@@ -556,6 +563,31 @@ watch(stream, async (newStream) => {
   }
 })
 
+function handleControlStripAction(e: Event) {
+  const action = (e as CustomEvent).detail.action
+  console.info(`[Control Strip Action] Triggered action: ${action}`)
+  if (action === 'chat') {
+    openChat()
+  }
+  else if (action === 'settings') {
+    openSettings()
+  }
+  else if (action === 'caption') {
+    toggleCaptionVisibility()
+  }
+  else if (action === 'mic') {
+    settingsAudioDeviceStore.enabled = !settingsAudioDeviceStore.enabled
+  }
+  else if (action === 'stage') {
+    const controlStripStore = useSettingsControlStrip()
+    controlStripStore.stageEnabled = !controlStripStore.stageEnabled
+  }
+  else if (action === 'layout') {
+    const settingsStore = useSettings()
+    settingsStore.stageViewControlsEnabled = !settingsStore.stageViewControlsEnabled
+  }
+}
+
 onMounted(async () => {
   tools.value = await builtinTools()
   // Initialize VAD model immediately to avoid startup lag
@@ -571,6 +603,10 @@ onMounted(async () => {
       console.info(`[Renderer] Mic state flipped to: ${settingsAudioDeviceStore.enabled}`)
     })
   }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('control-strip:action', handleControlStripAction as EventListener)
+  }
 })
 
 watch(hearingDetectionMode, async (val) => {
@@ -585,6 +621,10 @@ onUnmounted(async () => {
   await stopAudioInteraction()
   disposeVAD()
   await disposeRecorder()
+
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('control-strip:action', handleControlStripAction as EventListener)
+  }
 })
 
 watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
