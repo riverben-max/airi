@@ -3,10 +3,14 @@ import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { useSettingsAudioDevice } from '../../../stores/settings/audio-device'
 import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
 
 const controlStripStore = useSettingsControlStrip()
 const { orientation, interactionMode, buttons, stageEnabled, chatOpen } = storeToRefs(controlStripStore)
+
+const settingsAudioDeviceStore = useSettingsAudioDevice()
+const { enabled: micEnabled } = storeToRefs(settingsAudioDeviceStore)
 
 // Persistent dragging position, defaults to top-right layout bounds
 const position = useLocalStorageManualReset<{ x: number, y: number }>('settings/control-strip/position', { x: 20, y: 150 })
@@ -177,6 +181,15 @@ function cycleMode() {
           :class="[
             'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
             chatOpen ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for Microphone (Microphone Toggle) -->
+        <span
+          v-if="btn.id === 'mic'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            micEnabled ? 'bg-green-500' : 'bg-red-500',
           ]"
         />
       </button>
