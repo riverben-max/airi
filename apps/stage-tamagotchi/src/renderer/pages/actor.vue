@@ -62,15 +62,18 @@ function startDraggingWindow() {
   startDraggingWindowInvoke()
 }
 
-// Fade drag handle on hover states
-const showDragHandle = ref(false)
+const whisperDockRef = ref<InstanceType<typeof WhisperDock>>()
+const whisperDockIsOpen = computed(() => whisperDockRef.value?.isOpen ?? false)
+
+// Fade overlay controls on hover states
+const showControls = ref(false)
 </script>
 
 <template>
   <div
     class="relative h-full w-full flex flex-col overflow-hidden rounded-xl bg-transparent"
-    @mouseenter="showDragHandle = true"
-    @mouseleave="showDragHandle = false"
+    @mouseenter="showControls = true"
+    @mouseleave="showControls = false"
   >
     <div class="relative h-full w-full overflow-hidden rounded-2xl">
       <!-- Scene Background Layer -->
@@ -112,8 +115,8 @@ const showDragHandle = ref(false)
         leave-to-class="opacity-0"
       >
         <div
-          v-if="showDragHandle"
-          class="pointer-events-auto absolute bottom-4 right-4 z-50"
+          v-if="showControls"
+          class="pointer-events-auto absolute right-4 top-4 z-50"
         >
           <button
             class="w-fit flex cursor-pointer items-center self-end justify-center border-2 border-neutral-200/60 rounded-xl border-solid bg-neutral-50/80 p-2 backdrop-blur-md transition-all transition-duration-300 transition-ease-out active:scale-95 dark:border-neutral-800/10 dark:bg-neutral-800/70 hover:transition-none"
@@ -125,13 +128,22 @@ const showDragHandle = ref(false)
         </div>
       </Transition>
 
-      <!-- WhisperDock horizontal input overlay centered at bottom -->
-      <div class="pointer-events-auto absolute bottom-4 left-1/2 z-40 w-auto -translate-x-1/2">
+      <!-- WhisperDock horizontal input overlay -->
+      <Transition
+        enter-active-class="transition-opacity duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-300 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
         <WhisperDock
+          v-if="showControls || whisperDockIsOpen"
+          ref="whisperDockRef"
           :tools="tools"
           @spawn-standalone="handleSpawnStandalone"
         />
-      </div>
+      </Transition>
     </div>
   </div>
 </template>
