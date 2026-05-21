@@ -166,7 +166,7 @@ watch(
       <div
         ref="whisperDockWrapperRef"
         :class="[
-          'transition-opacity duration-300 ease-in-out',
+          'absolute bottom-0 left-0 w-full h-16 z-50 transition-opacity duration-300 ease-in-out',
           (showControls || whisperDockIsOpen) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ]"
       >
