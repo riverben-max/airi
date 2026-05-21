@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
+import { useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { useLiveSessionStore } from '../../../stores/modules/live-session'
+import { useSettings } from '../../../stores/settings'
 import { useSettingsAudioDevice } from '../../../stores/settings/audio-device'
 import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
 import { useSettingsControlsIsland } from '../../../stores/settings/controls-island'
 
+const settingsStore = useSettings()
+const colorMode = useColorMode()
 const controlStripStore = useSettingsControlStrip()
 const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode } = storeToRefs(controlStripStore)
 
@@ -130,6 +134,19 @@ function toggleOrientation() {
   controlStripStore.toggleOrientation()
 }
 
+function getButtonIcon(btnId: string, defaultIcon: string): string {
+  if (btnId === 'theme-mode') {
+    return colorMode.value === 'light' ? 'i-solar:moon-linear' : 'i-solar:sun-linear'
+  }
+  if (btnId === 'caption-docking') {
+    return settingsStore.captionDocking === 'top' ? 'i-solar:align-top-line-duotone' : 'i-solar:align-bottom-line-duotone'
+  }
+  if (btnId === 'caption-layout-mode') {
+    return settingsStore.captionLayoutMode === 'multi' ? 'i-solar:layers-linear' : 'i-solar:window-frame-linear'
+  }
+  return defaultIcon
+}
+
 function getButtonTitle(btnId: string, defaultLabel: string): string {
   if (btnId === 'chat') {
     return `Chat Toggle: ${chatOpen.value ? 'Open (Green)' : 'Closed (Red)'}`
@@ -152,6 +169,15 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
       ambient: 'Witness Mode Active (Amber)',
     }
     return `Speech Session: ${stateLabels[powerState.value] || 'Disconnected (Gray)'}`
+  }
+  if (btnId === 'caption-docking') {
+    return `Caption Docking: ${settingsStore.captionDocking === 'bottom' ? 'Bottom (Amber)' : 'Top (Sky Blue)'}`
+  }
+  if (btnId === 'caption-layout-mode') {
+    return `Caption Layout: ${settingsStore.captionLayoutMode === 'multi' ? 'Multi-line History (Indigo)' : 'Standard Bubble (Teal)'}`
+  }
+  if (btnId === 'caption-follow-stage') {
+    return `Caption Follow Stage: ${settingsStore.captionFollowStage ? 'Active (Green)' : 'Detached (Red)'}`
   }
   return defaultLabel
 }
@@ -218,7 +244,7 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
         :title="getButtonTitle(btn.id, btn.label)"
         @click="handleAction(btn.id)"
       >
-        <span :class="[btn.icon, 'text-lg']" />
+        <span :class="[getButtonIcon(btn.id, btn.icon), 'text-lg']" />
 
         <!-- Status dot badge for Stage (Actor Stage) -->
         <span
@@ -316,6 +342,42 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
           :class="[
             'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
             stageMode === 'orbitMode' ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for caption-follow-stage -->
+        <span
+          v-if="btn.id === 'caption-follow-stage'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            settingsStore.captionFollowStage ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for theme-mode -->
+        <span
+          v-if="btn.id === 'theme-mode'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            colorMode === 'dark' ? 'bg-green-500' : 'bg-red-500',
+          ]"
+        />
+
+        <!-- Status dot badge for caption-docking -->
+        <span
+          v-if="btn.id === 'caption-docking'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            settingsStore.captionDocking === 'bottom' ? 'bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]' : 'bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.5)]',
+          ]"
+        />
+
+        <!-- Status dot badge for caption-layout-mode -->
+        <span
+          v-if="btn.id === 'caption-layout-mode'"
+          :class="[
+            'absolute right-1 top-1 h-1.5 w-1.5 rounded-full transition-colors duration-200',
+            settingsStore.captionLayoutMode === 'multi' ? 'bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,0.5)]' : 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.5)]',
           ]"
         />
       </button>

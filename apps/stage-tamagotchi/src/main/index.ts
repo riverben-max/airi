@@ -17,6 +17,7 @@ import { isLinux } from 'std-env'
 import icon from '../../resources/icon.png?asset'
 
 import {
+  electronCaptionSetFollowWindow,
   electronCaptionSyncDocking,
   electronCaptionToggleVisibility,
   electronGetCaptionWindowState,
@@ -215,7 +216,7 @@ app.whenReady().then(async () => {
   })
 
   const captionWindow = injeca.provide('windows:caption', {
-    dependsOn: { mainWindow, serverChannel, i18n, appConfig },
+    dependsOn: { mainWindow, stageWindow, serverChannel, i18n, appConfig },
     build: async ({ dependsOn }) => setupCaptionWindowManager(dependsOn),
   })
 
@@ -266,7 +267,26 @@ app.whenReady().then(async () => {
       })
       defineInvokeHandler(context, electronCaptionSyncDocking, async (dock) => {
         console.log('[@proj-airi/stage-tamagotchi] [Main] Caption docking sync triggered via Control Island:', dock)
+        const appConfig = deps.appConfig.get()
+        if (appConfig) {
+          const windows = appConfig.windows ?? []
+          const index = windows.findIndex((w: any) => w.tag === 'caption')
+          if (index !== -1) {
+            windows[index] = { ...windows[index], dock }
+          }
+          else {
+            windows.push({ tag: 'caption', enabled: deps.captionWindow.isVisible(), dock })
+          }
+          deps.appConfig.update({
+            ...appConfig,
+            windows,
+          })
+        }
         await deps.captionWindow.triggerMove(dock)
+      })
+      defineInvokeHandler(context, electronCaptionSetFollowWindow, async (shouldFollow) => {
+        console.log('[@proj-airi/stage-tamagotchi] [Main] Caption set follow window triggered:', shouldFollow)
+        await deps.captionWindow.setFollowWindow(shouldFollow)
       })
       defineInvokeHandler(context, electronSetIgnoreMouseEvents, async (ignore) => {
         // @ts-ignore - window might be undefined if context is global, but here it's window-specific

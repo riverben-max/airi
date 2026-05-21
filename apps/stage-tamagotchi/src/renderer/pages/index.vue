@@ -27,7 +27,7 @@ import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-ses
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
 import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
-import { useBroadcastChannel } from '@vueuse/core'
+import { useBroadcastChannel, useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
@@ -36,6 +36,8 @@ import ControlsIsland from '../components/stage-islands/controls-island/index.vu
 import ResourceStatusIsland from '../components/stage-islands/resource-status-island/index.vue'
 
 import {
+  electronAppQuit,
+  electronCaptionSyncDocking,
   electronCaptionToggleVisibility,
   electronCustomizerToggleVisibility,
   electronGetMainWindowConfig,
@@ -66,6 +68,9 @@ const openSettings = useElectronEventaInvoke(electronOpenSettings)
 const toggleCaptionVisibility = useElectronEventaInvoke(electronCaptionToggleVisibility)
 const toggleCustomizerVisibility = useElectronEventaInvoke(electronCustomizerToggleVisibility)
 const setAlwaysOnTop = useElectronEventaInvoke(electronStageSetAlwaysOnTop)
+const quitApp = useElectronEventaInvoke(electronAppQuit)
+const syncCaptionDocking = useElectronEventaInvoke(electronCaptionSyncDocking)
+const colorMode = useColorMode()
 const modelStore = useModelStore()
 
 const isLoading = ref(true)
@@ -135,6 +140,7 @@ const { fadeOnHoverEnabled } = storeToRefs(useControlsIslandStore())
 
 const setMainWindowAlwaysOnTop = useElectronEventaInvoke(electronWindowSetAlwaysOnTop)
 
+const settingsStore = useSettings()
 const positioningStore = usePositioningStore()
 const controlStripStore = useSettingsControlStrip()
 const { stageEnabled } = storeToRefs(controlStripStore)
@@ -148,6 +154,15 @@ watch(stageEnabled, (val) => {
 watch(alwaysOnTop, (val) => {
   setAlwaysOnTop(val)
 }, { immediate: true })
+
+const { data: broadcastAction } = useBroadcastChannel<string, string>({ name: 'airi-control-strip-actions' })
+watch(broadcastAction, (action) => {
+  if (action) {
+    console.info(`[Main Page] Received broadcasted control strip action: "${action}"`)
+    const event = new CustomEvent('control-strip:action', { detail: { action } })
+    handleControlStripAction(event)
+  }
+})
 
 const computedScale = computed(() => {
   return positioningStore.getPosition(stageModelSelected.value).scale
@@ -647,6 +662,23 @@ function handleControlStripAction(e: Event) {
   }
   else if (action === 'always-on-top') {
     alwaysOnTop.value = !alwaysOnTop.value
+  }
+  else if (action === 'theme-mode') {
+    colorMode.value = colorMode.value === 'dark' ? 'light' : 'dark'
+  }
+  else if (action === 'caption-follow-stage') {
+    settingsStore.captionFollowStage = !settingsStore.captionFollowStage
+  }
+  else if (action === 'caption-docking') {
+    const next = settingsStore.captionDocking === 'top' ? 'bottom' : 'top'
+    settingsStore.captionDocking = next
+    syncCaptionDocking(next)
+  }
+  else if (action === 'caption-layout-mode') {
+    settingsStore.captionLayoutMode = settingsStore.captionLayoutMode === 'single' ? 'multi' : 'single'
+  }
+  else if (action === 'exit-app') {
+    quitApp()
   }
   else if (action === 'viewport-tactile') {
     modelStore.interactionMode = 'tactile'

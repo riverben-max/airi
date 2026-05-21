@@ -4,6 +4,7 @@ import { CUSTOMIZER_CATALOG } from '@proj-airi/stage-ui/constants/control-custom
 import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
 import { useSettingsControlsIsland } from '@proj-airi/stage-ui/stores/settings/controls-island'
+import { useBroadcastChannel, useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -20,6 +21,21 @@ const { powerState } = storeToRefs(liveSessionStore)
 const { alwaysOnTop, fadeOnHoverEnabled } = storeToRefs(controlsIslandStore)
 
 const toggleCustomizerVisibility = useElectronEventaInvoke(electronCustomizerToggleVisibility)
+const { post: postControlStripAction } = useBroadcastChannel<string, string>({ name: 'airi-control-strip-actions' })
+const colorMode = useColorMode()
+
+function getButtonIcon(btnId: string, defaultIcon: string): string {
+  if (btnId === 'theme-mode') {
+    return colorMode.value === 'light' ? 'i-solar:moon-linear' : 'i-solar:sun-linear'
+  }
+  if (btnId === 'caption-docking') {
+    return settingsStore.captionDocking === 'top' ? 'i-solar:align-top-line-duotone' : 'i-solar:align-bottom-line-duotone'
+  }
+  if (btnId === 'caption-layout-mode') {
+    return settingsStore.captionLayoutMode === 'multi' ? 'i-solar:layers-linear' : 'i-solar:window-frame-linear'
+  }
+  return defaultIcon
+}
 
 const modelSelected = computed(() => settingsStore.stageModelSelected || 'default')
 
@@ -51,18 +67,15 @@ function toggleBoundState(binding: 'chatOpen' | 'stageEnabled' | 'micEnabled' | 
   if (!binding)
     return
   if (binding === 'chatOpen')
-    controlStripStore.chatOpen = !controlStripStore.chatOpen
-  if (binding === 'stageEnabled')
-    controlStripStore.stageEnabled = !controlStripStore.stageEnabled
-  if (binding === 'captionOpen')
-    controlStripStore.captionOpen = !controlStripStore.captionOpen
-  if (binding === 'micEnabled')
-    settingsAudioDeviceStore.enabled = !settingsAudioDeviceStore.enabled
-  if (binding === 'geminiSession') {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('control-strip:action', { detail: { action: 'gemini-session' } }))
-    }
-  }
+    postControlStripAction('chat')
+  else if (binding === 'stageEnabled')
+    postControlStripAction('stage')
+  else if (binding === 'captionOpen')
+    postControlStripAction('caption')
+  else if (binding === 'micEnabled')
+    postControlStripAction('mic')
+  else if (binding === 'geminiSession')
+    postControlStripAction('gemini-session')
 }
 
 // Un-bound toggle state resolvers (always-on-top, viewport-auto-hide, etc.)
@@ -72,23 +85,32 @@ function isUnboundToggleActive(itemId: string): boolean {
     return alwaysOnTop.value
   if (itemId === 'viewport-auto-hide')
     return fadeOnHoverEnabled.value
+  if (itemId === 'theme-mode')
+    return colorMode.value === 'dark'
+  if (itemId === 'caption-follow-stage')
+    return settingsStore.captionFollowStage
+  if (itemId === 'caption-docking')
+    return settingsStore.captionDocking === 'bottom'
+  if (itemId === 'caption-layout-mode')
+    return settingsStore.captionLayoutMode === 'multi'
   return false
 }
 
 function toggleUnboundState(itemId: string) {
-  // Dispatch the action event — index.vue handles it and updates the store
+  // Dispatch the action event locally
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('control-strip:action', { detail: { action: itemId } }))
   }
+  postControlStripAction(itemId)
 }
 
 function hasToggleButton(item: (typeof CUSTOMIZER_CATALOG)[0]['items'][0]): boolean {
-  if (item.type !== 'toggle')
+  if (item.type !== 'toggle' && item.id !== 'caption-layout-mode')
     return false
   // Show toggle button for bound items and for known unbound toggles
   if (item.binding)
     return true
-  return ['always-on-top', 'viewport-auto-hide'].includes(item.id)
+  return ['always-on-top', 'viewport-auto-hide', 'theme-mode', 'caption-follow-stage', 'caption-docking', 'caption-layout-mode'].includes(item.id)
 }
 
 const geminiDotClasses = computed(() => {
@@ -114,6 +136,8 @@ function isItemOnStrip(itemId: string): boolean {
 }
 
 function toggleItemOnStrip(itemId: string) {
+  if (itemId === 'layout')
+    return
   const idx = buttons.value.findIndex(b => b.id === itemId)
   if (idx !== -1) {
     buttons.value = buttons.value.map((btn, i) =>
@@ -139,6 +163,7 @@ function handleAction(actionId: string) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('control-strip:action', { detail: { action: actionId } }))
   }
+  postControlStripAction(actionId)
 }
 
 async function closeWindow() {
@@ -212,7 +237,7 @@ async function closeWindow() {
             >
               <div class="space-y-0.5">
                 <div class="flex items-center gap-2">
-                  <div :class="[item.icon, 'text-neutral-300 text-sm shrink-0']" />
+                  <div :class="[getButtonIcon(item.id, item.icon), 'text-neutral-300 text-sm shrink-0']" />
                   <span class="text-xs text-neutral-200 font-semibold">{{ item.label }}</span>
 
                   <!-- State Indicator Dot for bound items -->
@@ -249,7 +274,7 @@ async function closeWindow() {
               <!-- Action Controls -->
               <div class="flex shrink-0 items-center gap-2">
                 <!-- Control Strip Inclusion Switch -->
-                <div class="flex items-center gap-1.5 border border-white/5 rounded-lg bg-black/30 px-2 py-1">
+                <div v-if="item.id !== 'layout'" class="flex items-center gap-1.5 border border-white/5 rounded-lg bg-black/30 px-2 py-1">
                   <span class="text-[9px] text-neutral-500 font-bold tracking-wider uppercase">Strip</span>
                   <button
                     :class="[
@@ -283,12 +308,27 @@ async function closeWindow() {
                 <button
                   v-else-if="hasToggleButton(item)"
                   :class="[
-                    isUnboundToggleActive(item.id) ? 'bg-sky-500/20 border-sky-500/40 text-sky-400' : 'bg-neutral-800/40 border-neutral-700/20 text-neutral-400',
+                    item.id === 'caption-docking'
+                      ? (settingsStore.captionDocking === 'bottom' ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-sky-500/20 border-sky-500/40 text-sky-400')
+                      : item.id === 'caption-layout-mode'
+                        ? (settingsStore.captionLayoutMode === 'multi' ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' : 'bg-teal-500/20 border-teal-500/40 text-teal-400')
+                        : (isUnboundToggleActive(item.id) ? 'bg-sky-500/20 border-sky-500/40 text-sky-400' : 'bg-neutral-800/40 border-neutral-700/20 text-neutral-400'),
                     'px-2 py-0.5 rounded-md border text-[9px] font-semibold active:scale-95 transition-all',
                   ]"
                   @click="toggleUnboundState(item.id)"
                 >
-                  {{ isUnboundToggleActive(item.id) ? 'ACTIVE' : 'MUTED' }}
+                  <template v-if="item.id === 'theme-mode'">
+                    {{ isUnboundToggleActive(item.id) ? 'DARK' : 'LIGHT' }}
+                  </template>
+                  <template v-else-if="item.id === 'caption-docking'">
+                    {{ isUnboundToggleActive(item.id) ? 'BOTTOM' : 'TOP' }}
+                  </template>
+                  <template v-else-if="item.id === 'caption-layout-mode'">
+                    {{ isUnboundToggleActive(item.id) ? 'MULTI' : 'SINGLE' }}
+                  </template>
+                  <template v-else>
+                    {{ isUnboundToggleActive(item.id) ? 'ACTIVE' : 'MUTED' }}
+                  </template>
                 </button>
 
                 <!-- Trigger generic action / menu overlay -->

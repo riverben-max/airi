@@ -39,6 +39,7 @@ export const captionIsFollowingWindowChanged = defineEventa<boolean>('eventa:eve
 export const captionGetIsFollowingWindow = defineInvokeEventa<boolean>('eventa:invoke:electron:windows:caption-overlay:get-is-following-window')
 export const electronCaptionToggleVisibility = defineInvokeEventa<void, boolean>('eventa:invoke:electron:windows:caption:toggle-visibility')
 export const electronCaptionSyncDocking = defineInvokeEventa<void, 'top' | 'bottom' | undefined>('eventa:invoke:electron:windows:caption:sync-docking')
+export const electronCaptionSetFollowWindow = defineInvokeEventa<void, boolean>('eventa:invoke:electron:windows:caption:set-follow-window')
 export const electronSetIgnoreMouseEvents = defineInvokeEventa<void, boolean>('eventa:invoke:electron:window:set-ignore-mouse-events')
 export const electronStageToggleVisibility = defineInvokeEventa<void, boolean>('eventa:invoke:electron:windows:stage:toggle-visibility')
 export const electronStageSetAlwaysOnTop = defineInvokeEventa<void, boolean>('eventa:invoke:electron:windows:stage:set-always-on-top')
