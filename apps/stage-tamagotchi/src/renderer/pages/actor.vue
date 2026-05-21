@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ViewControlInputs from '@proj-airi/stage-layouts/components/Layouts/ViewControls/Inputs.vue'
+
 import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseInElement, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
 import { WhisperDock } from '@proj-airi/stage-ui/components'
 import { RendererStage } from '@proj-airi/stage-ui/components/scenes'
@@ -7,6 +9,7 @@ import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings/control-strip'
 import { useSettingsControlsIsland } from '@proj-airi/stage-ui/stores/settings/controls-island'
 import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
+import { Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
@@ -16,7 +19,7 @@ const backgroundStore = useBackgroundStore()
 const { activeBackgroundUrl } = storeToRefs(backgroundStore)
 
 const settingsStore = useSettings()
-const { stageModelSelected } = storeToRefs(settingsStore)
+const { stageModelSelected, stageModelRenderer, stageViewControlsEnabled, stageViewControlsMode } = storeToRefs(settingsStore)
 
 const controlStripStore = useSettingsControlStrip()
 const { stageEnabled } = storeToRefs(controlStripStore)
@@ -84,10 +87,20 @@ const isInsideWindow = computed(() => !isOutsideWindow.value)
 // Proximity/hover detection for control regions
 const dragHandleRef = ref<HTMLDivElement | null>(null)
 const whisperDockWrapperRef = ref<HTMLDivElement | null>(null)
+const positioningSelectorsRef = ref<HTMLDivElement | null>(null)
+const positioningSliderRef = ref<HTMLDivElement | null>(null)
 
 const { isOutside: isOutsideDragHandle } = useElectronMouseInElement(dragHandleRef)
 const { isOutside: isOutsideWhisperDock } = useElectronMouseInElement(whisperDockWrapperRef)
-const isOverControls = computed(() => !isOutsideDragHandle.value || !isOutsideWhisperDock.value || whisperDockIsOpen.value)
+const { isOutside: isOutsidePositioningSelectors } = useElectronMouseInElement(positioningSelectorsRef)
+const { isOutside: isOutsidePositioningSlider } = useElectronMouseInElement(positioningSliderRef)
+
+const isOverControls = computed(() => {
+  return !isOutsideDragHandle.value
+    || !isOutsideWhisperDock.value
+    || whisperDockIsOpen.value
+    || (stageViewControlsEnabled.value && controlStripStore.stageMode === 'positionMode' && (!isOutsidePositioningSelectors.value || !isOutsidePositioningSlider.value))
+})
 
 watch(
   [isInsideWindow, fadeOnHoverEnabled, stageEnabled, isOverControls],
@@ -144,6 +157,57 @@ watch(
           @offset-change="handleOffsetChange"
         />
       </div>
+
+      <!-- Spatial Controls Overlay -->
+      <Transition name="fade">
+        <div v-if="stageViewControlsEnabled && controlStripStore.stageMode === 'positionMode'" class="pointer-events-none absolute left-0 top-0 z-100 h-full w-full">
+          <!-- Axis Selectors (Top Left) -->
+          <div ref="positioningSelectorsRef" class="pointer-events-auto absolute left-4 top-4 flex gap-1 rounded-2xl bg-neutral-100/60 p-1 backdrop-blur-md dark:bg-neutral-900/60">
+            <Button
+              variant="secondary-muted"
+              size="sm"
+              :toggled="stageViewControlsMode === 'x'"
+              class="min-w-10 font-bold font-mono"
+              @click="stageViewControlsMode = 'x'"
+            >
+              X
+            </Button>
+            <Button
+              variant="secondary-muted"
+              size="sm"
+              :toggled="stageViewControlsMode === 'y'"
+              class="min-w-10 font-bold font-mono"
+              @click="stageViewControlsMode = 'y'"
+            >
+              Y
+            </Button>
+            <Button
+              v-if="stageModelRenderer === 'vrm'"
+              variant="secondary-muted"
+              size="sm"
+              :toggled="stageViewControlsMode === 'z'"
+              class="min-w-10 font-bold font-mono"
+              @click="stageViewControlsMode = 'z'"
+            >
+              Z
+            </Button>
+            <Button
+              variant="secondary-muted"
+              size="sm"
+              :toggled="stageViewControlsMode === 'scale'"
+              class="min-w-10 font-bold font-mono"
+              @click="stageViewControlsMode = 'scale'"
+            >
+              S
+            </Button>
+          </div>
+
+          <!-- Vertical Slider (Left Edge) -->
+          <div ref="positioningSliderRef" class="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2">
+            <ViewControlInputs :mode="stageViewControlsMode" />
+          </div>
+        </div>
+      </Transition>
 
       <!-- Floating Window Drag Control (Fades on hover) -->
       <div
