@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
+import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseInElement, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
 import { WhisperDock } from '@proj-airi/stage-ui/components'
 import { RendererStage } from '@proj-airi/stage-ui/components/scenes'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores'
@@ -81,9 +81,17 @@ const stageIsHidden = ref(false)
 const { isOutside: isOutsideWindow } = useElectronMouseInWindow()
 const isInsideWindow = computed(() => !isOutsideWindow.value)
 
+// Proximity/hover detection for control regions
+const dragHandleRef = ref<HTMLDivElement | null>(null)
+const whisperDockWrapperRef = ref<HTMLDivElement | null>(null)
+
+const { isOutside: isOutsideDragHandle } = useElectronMouseInElement(dragHandleRef)
+const { isOutside: isOutsideWhisperDock } = useElectronMouseInElement(whisperDockWrapperRef)
+const isOverControls = computed(() => !isOutsideDragHandle.value || !isOutsideWhisperDock.value || whisperDockIsOpen.value)
+
 watch(
-  [isInsideWindow, fadeOnHoverEnabled, stageEnabled],
-  ([inside, fadeEnabled, stageOn]) => {
+  [isInsideWindow, fadeOnHoverEnabled, stageEnabled, isOverControls],
+  ([inside, fadeEnabled, stageOn, overControls]) => {
     if (!stageOn) {
       stageIsHidden.value = false
       setIgnoreMouseEvents([false, { forward: true }])
@@ -91,7 +99,7 @@ watch(
       return
     }
 
-    const shouldHide = fadeEnabled && inside
+    const shouldHide = fadeEnabled && inside && !overControls
     stageIsHidden.value = shouldHide
     setIgnoreMouseEvents([shouldHide, { forward: true }])
     showControls.value = inside && !shouldHide
@@ -138,44 +146,36 @@ watch(
       </div>
 
       <!-- Floating Window Drag Control (Fades on hover) -->
-      <Transition
-        enter-active-class="transition-opacity duration-300 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition-opacity duration-300 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
+      <div
+        ref="dragHandleRef"
+        :class="[
+          'pointer-events-auto absolute right-4 top-4 z-50 transition-opacity duration-300 ease-in-out',
+          showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        ]"
       >
-        <div
-          v-if="showControls"
-          class="pointer-events-auto absolute right-4 top-4 z-50"
+        <button
+          class="w-fit flex cursor-pointer items-center self-end justify-center border-2 border-neutral-200/60 rounded-xl border-solid bg-neutral-50/80 p-2 backdrop-blur-md transition-all transition-duration-300 transition-ease-out active:scale-95 dark:border-neutral-800/10 dark:bg-neutral-800/70 hover:transition-none"
+          title="Drag to Reposition Stage"
+          @mousedown="startDraggingWindow"
         >
-          <button
-            class="w-fit flex cursor-pointer items-center self-end justify-center border-2 border-neutral-200/60 rounded-xl border-solid bg-neutral-50/80 p-2 backdrop-blur-md transition-all transition-duration-300 transition-ease-out active:scale-95 dark:border-neutral-800/10 dark:bg-neutral-800/70 hover:transition-none"
-            title="Drag to Reposition Stage"
-            @mousedown="startDraggingWindow"
-          >
-            <div class="i-ph:arrows-out-cardinal size-5 text-neutral-800 dark:text-neutral-300" />
-          </button>
-        </div>
-      </Transition>
+          <div class="i-ph:arrows-out-cardinal size-5 text-neutral-800 dark:text-neutral-300" />
+        </button>
+      </div>
 
       <!-- WhisperDock horizontal input overlay -->
-      <Transition
-        enter-active-class="transition-opacity duration-300 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition-opacity duration-300 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
+      <div
+        ref="whisperDockWrapperRef"
+        :class="[
+          'transition-opacity duration-300 ease-in-out',
+          (showControls || whisperDockIsOpen) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        ]"
       >
         <WhisperDock
-          v-if="showControls || whisperDockIsOpen"
           ref="whisperDockRef"
           :tools="tools"
           @spawn-standalone="handleSpawnStandalone"
         />
-      </Transition>
+      </div>
     </div>
   </div>
 </template>

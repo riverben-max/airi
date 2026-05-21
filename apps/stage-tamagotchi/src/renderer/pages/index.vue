@@ -187,7 +187,12 @@ function handleOffsetChange(offset: { x: number, y: number }) {
 watch(componentStateStage, () => isLoading.value = componentStateStage.value !== 'mounted', { immediate: true })
 
 const { pause, resume } = watch(isTransparent, (transparent) => {
-  shouldFadeOnCursorWithin.value = !transparent
+  if (fadeOnHoverEnabled.value) {
+    shouldFadeOnCursorWithin.value = !transparent
+  }
+  else {
+    shouldFadeOnCursorWithin.value = false
+  }
 }, { immediate: true })
 
 const isLocked = ref(false)
@@ -319,17 +324,29 @@ function applyTransparencyState() {
   else {
     const insideWindow = !isOutsideWindow.value
 
-    shouldFadeOnCursorWithin.value = insideWindow
-    isIgnoringMouseEvents.value = insideWindow
-    setIgnoreMouseEvents([insideWindow, { forward: true }])
-    if (insideWindow)
-      resume()
-    else
-      pause()
+    if (fadeOnHoverEnabled.value) {
+      shouldFadeOnCursorWithin.value = insideWindow
+      isIgnoringMouseEvents.value = insideWindow
+      setIgnoreMouseEvents([insideWindow, { forward: true }])
+      if (insideWindow)
+        resume()
+      else
+        pause()
+    }
+    else {
+      shouldFadeOnCursorWithin.value = false
+      const ignore = insideWindow && isTransparent.value
+      isIgnoringMouseEvents.value = ignore
+      setIgnoreMouseEvents([ignore, { forward: true }])
+      if (insideWindow)
+        resume()
+      else
+        pause()
+    }
   }
 }
 
-watch([isOutsideForInstant, isAroundWindowBorderForInstant, isOutsideWindow, isTransparent, hearingDialogOpen, whisperDockOpen, isSpineHitAreaHovered, stageViewControlsEnabled], applyTransparencyState)
+watch([isOutsideForInstant, isAroundWindowBorderForInstant, isOutsideWindow, isTransparent, hearingDialogOpen, whisperDockOpen, isSpineHitAreaHovered, stageViewControlsEnabled, fadeOnHoverEnabled], applyTransparencyState)
 
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { stream, enabled, selectedAudioInputLabel } = storeToRefs(settingsAudioDeviceStore)
