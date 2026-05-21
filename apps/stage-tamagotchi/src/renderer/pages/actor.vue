@@ -69,8 +69,7 @@ function startDraggingWindow() {
   startDraggingWindowInvoke()
 }
 
-const whisperDockRef = ref<InstanceType<typeof WhisperDock>>()
-const whisperDockIsOpen = computed(() => whisperDockRef.value?.isOpen ?? false)
+const whisperDockIsOpen = ref(false)
 
 // Fade overlay controls on hover states
 const showControls = ref(false)
@@ -235,7 +234,7 @@ watch(
         ]"
       >
         <WhisperDock
-          ref="whisperDockRef"
+          v-model:open="whisperDockIsOpen"
           :tools="tools"
           @spawn-standalone="handleSpawnStandalone"
         />

@@ -1,34 +1,30 @@
 <script setup lang="ts">
-import type { ChatProvider } from '@xsai-ext/providers/utils'
-
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { useChatOrchestratorStore } from '../../../stores/chat'
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 import { useConsciousnessStore } from '../../../stores/modules/consciousness'
-import { useLiveSessionStore } from '../../../stores/modules/live-session'
-import { useProvidersStore } from '../../../stores/providers'
 
 const props = defineProps<{
   /** Tool definitions to pass through to chat.ingest */
   tools?: any[]
+  open?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'spawn-standalone', id: string): void
+  (e: 'update:open', val: boolean): void
 }>()
 
-const isOpen = ref(false)
+const isOpen = ref(props.open ?? false)
 const inputText = ref('')
 const inputRef = ref<HTMLInputElement>()
 const isSending = ref(false)
 
 const cardStore = useAiriCardStore()
 const consciousnessStore = useConsciousnessStore()
-const providersStore = useProvidersStore()
 const chatStore = useChatOrchestratorStore()
-const liveSessionStore = useLiveSessionStore()
 
 const { activeCard } = storeToRefs(cardStore)
 const { activeProvider, activeModel } = storeToRefs(consciousnessStore)
@@ -37,8 +33,15 @@ const characterName = computed(() => activeCard.value?.name ?? 'AIRI')
 
 defineExpose({ isOpen })
 
+watch(() => props.open, (val) => {
+  if (val !== undefined && val !== isOpen.value) {
+    isOpen.value = val
+  }
+})
+
 // Auto-focus input when dock opens
 watch(isOpen, async (open) => {
+  emit('update:open', open)
   if (open) {
     await nextTick()
     inputRef.value?.focus()
@@ -65,35 +68,12 @@ async function send() {
     return
 
   console.log('[WhisperDock] Triggered send() with text:', text)
-  console.log('[WhisperDock] liveSessionStore state -> isActive:', liveSessionStore.isActive, 'isConnecting:', liveSessionStore.isConnecting)
 
   isSending.value = true
 
   try {
-    const DEBUG_FORCE_NO_FALLBACK = false
-
-    // Priority 1: Gemini Live Session (if active or connecting)
-    if (liveSessionStore.isActive || liveSessionStore.isConnecting || DEBUG_FORCE_NO_FALLBACK) {
-      console.log('[WhisperDock] Routing to Gemini Live execution block.')
-      if (liveSessionStore.isActive) {
-        console.log('[WhisperDock] Executing liveSessionStore.sendText()...')
-        liveSessionStore.sendText(text)
-        inputText.value = ''
-        isSending.value = false
-        dismiss()
-      }
-      else {
-        // Still connecting or disconnected, but we are enforcing Live-only for debugging.
-        console.warn(`[WhisperDock] Blocked! Live session is connecting (${liveSessionStore.isConnecting}) or inactive (${liveSessionStore.isActive}), and custom LLM fallback is disabled for debugging.`)
-        isSending.value = false
-      }
-      return
-    }
-
-    // Priority 2: Standard LLM Pipeline
-    const provider = await providersStore.getProviderInstance(activeProvider.value)
-    if (!provider || !activeModel.value) {
-      console.warn('[WhisperDock] No provider or model configured')
+    if (!activeModel.value) {
+      console.warn('[WhisperDock] No model configured')
       isSending.value = false
       return
     }
@@ -103,7 +83,7 @@ async function send() {
 
     await chatStore.ingest(text, {
       model: activeModel.value,
-      chatProvider: provider as ChatProvider,
+      chatProvider: activeProvider.value,
       tools: props.tools,
     })
 

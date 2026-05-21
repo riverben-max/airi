@@ -7,9 +7,10 @@ import type { StreamEvent, StreamOptions } from './llm'
 
 import { healMozibake } from '@proj-airi/stage-shared'
 import { createQueue } from '@proj-airi/stream-kit'
+import { useBroadcastChannel } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 import { defineStore, storeToRefs } from 'pinia'
-import { reactive, ref, toRaw } from 'vue'
+import { reactive, ref, toRaw, watch } from 'vue'
 
 import { useAnalytics } from '../composables'
 import { createLlmJsonInterceptor } from '../composables/llm-json-interceptor'
@@ -100,6 +101,39 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   const chatContext = useChatContextStore()
   const { activeSessionId } = storeToRefs(chatSession)
   const { streamingMessage } = storeToRefs(chatStream)
+
+  const isMainWindow = typeof window !== 'undefined' && (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#')
+
+  const { data: broadcastedInput, post: postInput } = useBroadcastChannel<
+    {
+      sendingMessage: string
+      options?: any
+      targetSessionId?: string
+    },
+    {
+      sendingMessage: string
+      options?: any
+      targetSessionId?: string
+    }
+  >({ name: 'airi-chat-input-bridge' })
+
+  const toolsResolver = ref<any>(null)
+
+  function setToolsResolver(resolver: any) {
+    toolsResolver.value = resolver
+  }
+
+  if (isMainWindow) {
+    watch(broadcastedInput, (payload) => {
+      if (payload) {
+        chatLog('Received broadcasted chat input from secondary window:', payload)
+        ingest(payload.sendingMessage, {
+          ...payload.options,
+          tools: toolsResolver.value,
+        }, payload.targetSessionId)
+      }
+    })
+  }
 
   const sending = ref(false)
   const pendingQueuedSends = ref<QueuedSend[]>([])
@@ -205,12 +239,14 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     try {
       sending.value = true
       let effectiveModel = options.model || activeModel.value
+      let effectiveProviderId = typeof options.chatProvider === 'string'
+        ? options.chatProvider
+        : activeProvider.value
       let effectiveProvider: any = typeof options.chatProvider === 'string'
         ? await providersStore.getProviderInstance(options.chatProvider)
         : (options.chatProvider || await providersStore.getProviderInstance(activeProvider.value))
-      let effectiveProviderId = activeProvider.value
       let effectiveConfig = options.providerConfig
-      let effectiveTools = options.tools
+      let effectiveTools = options.tools || toolsResolver.value
 
       const isVlmTurn = !!(options.attachments && options.attachments.some(a => a.type === 'image') && visionStore.activeProvider && visionStore.activeModel)
       let promptShimText = ''
@@ -600,7 +636,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
           if (isStaleGeneration())
             return
 
-          const finalCategorization = categorizeResponse(fullText, activeProvider.value)
+          const finalCategorization = categorizeResponse(fullText, effectiveProviderId)
 
           ;(buildingMessage as any).categorization = {
             speech: finalCategorization.speech,
@@ -1101,6 +1137,28 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   ) {
     const sessionId = targetSessionId || activeSessionId.value
     chatLog('Ingesting message:', { sendingMessage, sessionId, sending: sending.value })
+
+    if (!isMainWindow) {
+      chatLog('Ingesting from secondary window. Broadcasting to main window.')
+      postInput({
+        sendingMessage,
+        options: {
+          ...options,
+          chatProvider: typeof options.chatProvider === 'string' ? options.chatProvider : undefined,
+          tools: undefined,
+        },
+        targetSessionId: sessionId,
+      })
+      return Promise.resolve()
+    }
+
+    const liveSessionStore = useLiveSessionStore()
+    if (liveSessionStore.isActive) {
+      chatLog('Gemini Live is active in main window. Routing text through Live Session.')
+      liveSessionStore.sendText(sendingMessage)
+      return Promise.resolve()
+    }
+
     const generation = chatSession.getSessionGeneration(sessionId)
 
     return new Promise<void>((resolve, reject) => {
@@ -1149,6 +1207,10 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   return {
     sending,
     streamingMessage,
+
+    isMainWindow,
+    toolsResolver,
+    setToolsResolver,
 
     ingest,
     ingestOnFork,

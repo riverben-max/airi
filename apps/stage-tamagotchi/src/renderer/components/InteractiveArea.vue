@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ChatHistoryItem } from '@proj-airi/stage-ui/types/chat'
-import type { ChatProvider } from '@xsai-ext/providers/utils'
 
 import { estimateTokens, formatTokenCount } from '@proj-airi/stage-shared'
 import {
@@ -35,8 +34,6 @@ import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-
-import { builtinTools } from '../stores/tools/builtin'
 
 const router = useRouter()
 const messageInput = ref('')
@@ -270,10 +267,9 @@ async function handleSend() {
     const providerConfig = providersStore.getProviderConfig(activeProvider.value)
     await ingest(textToSend, {
       model: activeModel.value,
-      chatProvider: await providersStore.getProviderInstance<ChatProvider>(activeProvider.value),
+      chatProvider: activeProvider.value,
       providerConfig,
       attachments: attachmentsToSend,
-      tools: builtinTools,
     })
 
     attachmentsToSend.forEach(att => URL.revokeObjectURL(att.url))

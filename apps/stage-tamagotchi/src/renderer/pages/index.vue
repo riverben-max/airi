@@ -55,7 +55,6 @@ import { builtinTools } from '../stores/tools/builtin'
 import { useWindowStore } from '../stores/window'
 
 const controlsIslandRef = ref<InstanceType<typeof ControlsIsland>>()
-const whisperDockRef = ref<InstanceType<typeof WhisperDock>>()
 const widgetStageRef = ref<InstanceType<typeof WidgetStage>>()
 const tools = ref<any[]>([])
 const stageCanvas = () => widgetStageRef.value?.canvasElement() || undefined
@@ -304,6 +303,7 @@ const getMainWindowConfig = useElectronEventaInvoke(electronGetMainWindowConfig)
 
 onMounted(async () => {
   setMainWindowAlwaysOnTop(true)
+  chatStore.setToolsResolver(builtinTools)
 
   const config = await getMainWindowConfig() as any
 
@@ -326,7 +326,7 @@ onMounted(async () => {
 })
 
 const hearingDialogOpen = computed(() => controlsIslandRef.value?.hearingDialogOpen ?? false)
-const whisperDockOpen = computed(() => whisperDockRef.value?.isOpen ?? false)
+const whisperDockOpen = ref(false)
 
 const addWidget = useElectronEventaInvoke(widgetsAdd)
 
@@ -952,7 +952,7 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
           @take-photo="handleTakePhoto"
         />
         <WhisperDock
-          ref="whisperDockRef"
+          v-model:open="whisperDockOpen"
           :tools="tools"
           @spawn-standalone="handleSpawnStandalone"
         />
