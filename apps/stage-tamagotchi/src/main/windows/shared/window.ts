@@ -26,6 +26,20 @@ export function toggleWindowShow(window?: BrowserWindow | null): void {
   const isVisible = window.isVisible()
   console.log(`[Main Process] [toggleWindowShow] Current Window States -> isMinimized: ${isMinimized}, isVisible: ${isVisible}`)
 
+  const createdAt = (window as any).__created_at || 0
+  const isJustCreated = Date.now() - createdAt < 1000
+
+  if (isJustCreated) {
+    console.log('[Main Process] [toggleWindowShow] Action: Window was just created. Ensuring it is shown and focused.')
+    ;(window as any).__created_at = 0
+    if (isMinimized) {
+      window.restore()
+    }
+    window.show()
+    window.focus()
+    return
+  }
+
   if (isMinimized) {
     console.log('[Main Process] [toggleWindowShow] Action: Restoring, showing, and focusing minimized window')
     window.restore()
@@ -33,8 +47,14 @@ export function toggleWindowShow(window?: BrowserWindow | null): void {
     window.focus()
   }
   else if (isVisible) {
-    console.log('[Main Process] [toggleWindowShow] Action: Hiding currently visible window')
-    window.hide()
+    if (!window.isFocused()) {
+      console.log('[Main Process] [toggleWindowShow] Action: Window is visible but not focused. Focusing it.')
+      window.focus()
+    }
+    else {
+      console.log('[Main Process] [toggleWindowShow] Action: Hiding currently visible window')
+      window.hide()
+    }
   }
   else {
     console.log('[Main Process] [toggleWindowShow] Action: Showing and focusing hidden window')

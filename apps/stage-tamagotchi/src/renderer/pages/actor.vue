@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ViewControlInputs from '@proj-airi/stage-layouts/components/Layouts/ViewControls/Inputs.vue'
 
-import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseInElement, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
+import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseAroundWindowBorder, useElectronMouseInElement, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
 import { WhisperDock } from '@proj-airi/stage-ui/components'
 import { RendererStage } from '@proj-airi/stage-ui/components/scenes'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores'
@@ -10,6 +10,7 @@ import { useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings/con
 import { useSettingsControlsIsland } from '@proj-airi/stage-ui/stores/settings/controls-island'
 import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { Button } from '@proj-airi/ui'
+import { refDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
@@ -118,6 +119,9 @@ watch(
   },
   { immediate: true },
 )
+
+const { isNearAnyBorder: isAroundWindowBorder } = useElectronMouseAroundWindowBorder({ threshold: 30 })
+const isAroundWindowBorderFor250Ms = refDebounced(isAroundWindowBorder, 250)
 </script>
 
 <template>
@@ -239,6 +243,25 @@ watch(
           @spawn-standalone="handleSpawnStandalone"
         />
       </div>
+
+      <!-- Proximity Border Highlight -->
+      <Transition
+        enter-active-class="transition-opacity duration-250 ease-in-out"
+        enter-from-class="opacity-50"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-250 ease-in-out"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-50"
+      >
+        <div v-if="isAroundWindowBorderFor250Ms" class="pointer-events-none absolute left-0 top-0 z-999 h-full w-full">
+          <div
+            :class="[
+              'b-primary/50',
+              'h-full w-full animate-flash animate-duration-3s animate-count-infinite b-4 rounded-2xl',
+            ]"
+          />
+        </div>
+      </Transition>
     </div>
   </div>
 </template>

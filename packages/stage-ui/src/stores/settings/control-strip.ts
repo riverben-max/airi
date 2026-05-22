@@ -14,7 +14,7 @@ export interface ControlStripButton {
 
 // NOTICE: Bump this version string whenever DEFAULT_BUTTONS IDs or structure change significantly.
 // Stale localStorage data (from old code shapes) will be discarded and replaced with fresh defaults.
-const BUTTONS_CATALOG_VERSION = 'v3'
+const BUTTONS_CATALOG_VERSION = 'v4'
 
 const DEFAULT_BUTTONS: ControlStripButton[] = [
   { id: 'chat', enabled: true, label: 'Chat Toggle', icon: 'i-solar:chat-line-linear' },
@@ -24,6 +24,7 @@ const DEFAULT_BUTTONS: ControlStripButton[] = [
   { id: 'gemini-session', enabled: true, label: 'Toggle Speech Session', icon: 'i-ph:sparkle' },
   { id: 'settings', enabled: true, label: 'Settings', icon: 'i-solar:settings-linear' },
   { id: 'layout', enabled: true, label: 'Customize Control Strip', icon: 'i-solar:widget-linear' },
+  { id: 'viewport-auto-hide', enabled: true, label: 'Auto Hide / Always Show', icon: 'i-ph:eye-slash' },
   { id: 'gemini-witness', enabled: false, label: 'Witness Vision Mode', icon: 'i-solar:camera-linear' },
   { id: 'gemini-frequency', enabled: false, label: 'Proactive Interval', icon: 'i-solar:clock-circle-linear' },
   { id: 'gemini-tts', enabled: false, label: 'TTS Output Toggle', icon: 'i-solar:volume-loud-linear' },
@@ -61,6 +62,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
   const chatOpen = useLocalStorageManualReset<boolean>('settings/chat-open', false)
   const captionOpen = useLocalStorageManualReset<boolean>('settings/caption-open', false)
   const backgroundTint = useLocalStorageManualReset<string>('settings/control-strip/background-tint', '#171717')
+  const collapsed = useLocalStorageManualReset<boolean>('settings/control-strip/collapsed', false)
 
   // NOTICE: buttons uses useLocalStorage directly (not the ManualReset wrapper) because
   // useLocalStorageManualReset has a shallow watcher that doesn't reliably propagate
@@ -152,6 +154,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
     captionOpen.reset()
     resetButtons()
     backgroundTint.reset()
+    collapsed.reset()
   }
 
   return {
@@ -164,6 +167,7 @@ export const useSettingsControlStrip = defineStore('settings-control-strip', () 
     captionOpen,
     buttons,
     backgroundTint,
+    collapsed,
     toggleOrientation,
     cycleStageMode,
     cycleInteractionMode: cycleStageMode,

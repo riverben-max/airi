@@ -95,7 +95,7 @@ export const CUSTOMIZER_CATALOG: CustomizerGroup[] = [
         description: 'Toggles whether control strip / stage UI elements auto-fade.',
         icon: 'i-ph:eye-slash',
         type: 'toggle',
-        defaultOnStrip: false,
+        defaultOnStrip: true,
       },
     ],
   },

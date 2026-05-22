@@ -6,7 +6,6 @@ import { onClickOutside, useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, toRef, watch } from 'vue'
 // Ported stores & states for Popovers
-import { toast } from 'vue-sonner'
 
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 import { useLiveSessionStore } from '../../../stores/modules/live-session'
@@ -18,7 +17,7 @@ import { useSettingsControlsIsland } from '../../../stores/settings/controls-isl
 const settingsStore = useSettings()
 const colorMode = useColorMode()
 const controlStripStore = useSettingsControlStrip()
-const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode } = storeToRefs(controlStripStore)
+const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed } = storeToRefs(controlStripStore)
 
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { enabled: micEnabled } = storeToRefs(settingsAudioDeviceStore)
@@ -67,6 +66,9 @@ const popoverPlacement = computed(() => {
 })
 
 const stripLength = computed(() => {
+  if (collapsed.value) {
+    return 60
+  }
   const N = activeButtons.value.length
   return N === 0 ? 60 : 60 + 46 * N
 })
@@ -186,21 +188,18 @@ const availableAllExpressions = computed(() => {
 function playMotion(motion: any) {
   if (settingsStore.stageModelRenderer === 'vrm') {
     vrmIdleAnimation.value = motion.key
-    toast.info(`Set VRM Idle: ${motion.label}`, { id: 'control-strip-motion' })
   }
   else if (settingsStore.stageModelRenderer === 'live2d') {
     live2dStore.currentMotion = {
       group: motion.raw.motionName,
       index: motion.raw.motionIndex,
     }
-    toast.info(`Triggered Live2D Motion: ${motion.label}`, { id: 'control-strip-motion' })
   }
 }
 
 function triggerEmotion(emotion: string) {
   if (typeof (window as any).testEmotion === 'function') {
     ;(window as any).testEmotion(emotion)
-    toast.info(`Triggered ${emotion} expression`, { id: 'transcription-feedback' })
   }
 }
 
@@ -214,11 +213,9 @@ function triggerExpression(name: string) {
     const current = modelStore.activeExpressions[name] || 0
     const next = current > 0 ? 0 : 1
     modelStore.activeExpressions = { ...modelStore.activeExpressions, [name]: next }
-    toast.info(`Toggled VRM Expression: ${name} to ${next}`, { id: 'control-strip-expression' })
   }
   else if (settingsStore.stageModelRenderer === 'live2d') {
     live2dStore.triggerEmotion(name)
-    toast.info(`Triggered Live2D Expression: ${name}`, { id: 'control-strip-expression' })
   }
 }
 
@@ -328,6 +325,22 @@ function onDragging(e: MouseEvent | TouchEvent) {
   }
 }
 
+let clickTimer: NodeJS.Timeout | null = null
+
+function handlePerpendicularClick() {
+  if (clickTimer) {
+    clearTimeout(clickTimer)
+    clickTimer = null
+    collapsed.value = !collapsed.value
+  }
+  else {
+    clickTimer = setTimeout(() => {
+      clickTimer = null
+      toggleOrientation()
+    }, 250)
+  }
+}
+
 function onDragEnd() {
   const wasDown = isMouseDown
   const wasDragging = isDragging.value
@@ -336,7 +349,7 @@ function onDragEnd() {
   isDragging.value = false
 
   if (wasDown && !wasDragging) {
-    toggleOrientation()
+    handlePerpendicularClick()
   }
 }
 
@@ -466,7 +479,7 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
         'transition-all duration-200 active:scale-90',
         isDragging ? 'cursor-grabbing' : 'cursor-grab',
       ]"
-      title="Drag to Reposition | Click to Toggle Layout"
+      title="Drag to Reposition | Double Click to Collapse/Expand | Click to Toggle Layout"
       @mousedown="onDragStart"
       @touchstart="onDragStart"
       @click.stop
@@ -474,13 +487,14 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
       <span
         :class="[
           'text-lg transition-transform duration-300',
-          orientation === 'vertical' ? 'i-solar:double-alt-arrow-right-linear' : 'i-solar:double-alt-arrow-down-linear',
+          collapsed ? 'i-solar:widget-linear scale-105' : (orientation === 'vertical' ? 'i-solar:double-alt-arrow-right-linear' : 'i-solar:double-alt-arrow-down-linear'),
         ]"
       />
     </button>
 
     <!-- CORE INTERACTIVE BUTTONS -->
     <div
+      v-if="!collapsed"
       :class="[
         orientation === 'vertical' ? 'flex flex-col items-center gap-2.5' : 'flex flex-row items-center gap-2.5',
       ]"

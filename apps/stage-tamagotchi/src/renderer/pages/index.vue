@@ -22,7 +22,7 @@ import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consci
 import { useHearingSpeechInputPipeline, useHearingStore } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
-import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
+import { useSettings, useSettingsAudioDevice, useSettingsControlsIsland, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
 import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { useBroadcastChannel, useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
@@ -95,7 +95,9 @@ const { live2dLookAtX, live2dLookAtY } = storeToRefs(useWindowStore())
 const settingsStore = useSettings()
 const positioningStore = usePositioningStore()
 const controlStripStore = useSettingsControlStrip()
-const { stageEnabled, captionOpen } = storeToRefs(controlStripStore)
+const { stageEnabled, captionOpen, collapsed } = storeToRefs(controlStripStore)
+const controlsIslandStore = useSettingsControlsIsland()
+const { fadeOnHoverEnabled } = storeToRefs(controlsIslandStore)
 const toggleStageVisibility = useElectronEventaInvoke(electronStageToggleVisibility)
 const liveSessionStore = useLiveSessionStore()
 
@@ -195,6 +197,9 @@ const activeButtons = computed(() => {
 })
 
 const stripLength = computed(() => {
+  if (collapsed.value) {
+    return 60
+  }
   const N = activeButtons.value.length
   return N === 0 ? 60 : 60 + 46 * N
 })
@@ -681,7 +686,7 @@ function handleControlStripAction(e: Event) {
     }
   }
   else if (action === 'viewport-auto-hide') {
-    // Keep it compatible if needed
+    fadeOnHoverEnabled.value = !fadeOnHoverEnabled.value
   }
   else if (action === 'viewport-reset-coordinates') {
     const key = stageModelSelected.value
