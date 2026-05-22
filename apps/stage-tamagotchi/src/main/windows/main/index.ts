@@ -18,8 +18,8 @@ import { fileURLToPath } from 'node:url'
 
 import { is } from '@electron-toolkit/utils'
 import { defu } from 'defu'
-import { BrowserWindow, ipcMain, shell } from 'electron'
-import { throttle } from 'es-toolkit'
+import { BrowserWindow, ipcMain, screen, shell } from 'electron'
+import { debounce, throttle } from 'es-toolkit'
 
 import icon from '../../../../resources/icon.png?asset'
 
@@ -168,6 +168,95 @@ export async function setupMainWindow(params: {
   }
 
   const throttledHandleNewBounds = throttle(handleNewBounds, 200)
+
+  const debouncedSnap = debounce(() => {
+    if (window.isDestroyed())
+      return
+
+    const bounds = window.getBounds()
+    const display = screen.getDisplayMatching(bounds)
+    const workArea = display.workArea
+    const displayBounds = display.bounds
+
+    const isVertical = bounds.height > bounds.width
+    const isHorizontal = bounds.width > bounds.height
+
+    const SNAP_THRESHOLD = 25
+    let newX = bounds.x
+    let newY = bounds.y
+    let snapped = false
+
+    const snapTargetsX = [
+      workArea.x,
+      workArea.x + workArea.width,
+      displayBounds.x,
+      displayBounds.x + displayBounds.width,
+    ]
+    const snapTargetsY = [
+      workArea.y,
+      displayBounds.y,
+    ]
+
+    if (isVertical) {
+      // Check left edge snap
+      let minDiffLeft = Infinity
+      let targetLeft = bounds.x
+      for (const tx of snapTargetsX) {
+        const diff = Math.abs(bounds.x - tx)
+        if (diff < minDiffLeft) {
+          minDiffLeft = diff
+          targetLeft = tx
+        }
+      }
+
+      // Check right edge snap
+      let minDiffRight = Infinity
+      let targetRight = bounds.x
+      for (const tx of snapTargetsX) {
+        const diff = Math.abs((bounds.x + bounds.width) - tx)
+        if (diff < minDiffRight) {
+          minDiffRight = diff
+          targetRight = tx - bounds.width
+        }
+      }
+
+      if (minDiffLeft <= SNAP_THRESHOLD && minDiffLeft <= minDiffRight) {
+        newX = targetLeft
+        snapped = true
+      }
+      else if (minDiffRight <= SNAP_THRESHOLD) {
+        newX = targetRight
+        snapped = true
+      }
+    }
+    else if (isHorizontal) {
+      // Check top edge snap only
+      let minDiffTop = Infinity
+      let targetTop = bounds.y
+      for (const ty of snapTargetsY) {
+        const diff = Math.abs(bounds.y - ty)
+        if (diff < minDiffTop) {
+          minDiffTop = diff
+          targetTop = ty
+        }
+      }
+
+      if (minDiffTop <= SNAP_THRESHOLD) {
+        newY = targetTop
+        snapped = true
+      }
+    }
+
+    if (snapped && (Math.round(newX) !== bounds.x || Math.round(newY) !== bounds.y)) {
+      window.setBounds({
+        x: Math.round(newX),
+        y: Math.round(newY),
+        width: bounds.width,
+        height: bounds.height,
+      })
+    }
+  }, 150)
+
   window.on('resize', () => {
     if (!window.isDestroyed()) {
       throttledHandleNewBounds(window.getBounds())
@@ -176,6 +265,7 @@ export async function setupMainWindow(params: {
   window.on('move', () => {
     if (!window.isDestroyed()) {
       throttledHandleNewBounds(window.getBounds())
+      debouncedSnap()
     }
   })
 

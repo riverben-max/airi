@@ -81,7 +81,7 @@ const { activeProvider: activeChatProvider, activeModel: activeChatModel } = sto
 
 watch([activeChatProvider, activeChatModel], async () => {
   if (activeChatProvider.value && activeChatModel.value) {
-    console.log('[Main Page] Discovering tools compatibility for:', activeChatModel.value)
+    console.info('[Main Page] Discovering tools compatibility for:', activeChatModel.value)
     const provider = await providersStore.getProviderInstance<ChatProvider>(activeChatProvider.value)
     if (provider) {
       await llmStore.discoverToolsCompatibility(activeChatModel.value, provider, [])
@@ -284,7 +284,7 @@ const hearingDialogOpen = ref(false)
 const whisperDockOpen = ref(false)
 
 function applyTransparencyState() {
-  if (hearingDialogOpen.value || whisperDockOpen.value || stageViewControlsEnabled.value) {
+  if (hearingDialogOpen.value || whisperDockOpen.value || stageViewControlsEnabled.value || activePopover.value) {
     isIgnoringMouseEvents.value = false
     setIgnoreMouseEvents([false, { forward: true }])
     return
@@ -304,7 +304,7 @@ function applyTransparencyState() {
   }
 }
 
-watch([isOutsideForInstant, isOutsideWindow, hearingDialogOpen, whisperDockOpen, stageViewControlsEnabled], applyTransparencyState)
+watch([isOutsideForInstant, isOutsideWindow, hearingDialogOpen, whisperDockOpen, stageViewControlsEnabled, activePopover], applyTransparencyState)
 
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { stream, enabled } = storeToRefs(settingsAudioDeviceStore)

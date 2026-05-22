@@ -654,11 +654,11 @@ onMounted(() => {
 
                   <!-- Trigger generic action / menu overlay -->
                   <button
-                    v-else-if="item.type === 'action' || item.type === 'menu' || item.type === 'cycler'"
+                    v-else-if="item.type === 'action' || item.type === 'cycler'"
                     class="border border-white/10 rounded-md bg-white/5 px-2.5 py-0.5 text-[9px] text-neutral-200 font-semibold transition-all active:scale-95 hover:bg-white/10"
                     @click="handleAction(item.id)"
                   >
-                    {{ item.type === 'menu' ? 'Open' : (item.type === 'cycler' ? 'Cycle' : 'Run') }}
+                    {{ item.type === 'cycler' ? 'Cycle' : 'Run' }}
                   </button>
                 </div>
               </div>

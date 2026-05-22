@@ -19,6 +19,14 @@ const colorMode = useColorMode()
 const controlStripStore = useSettingsControlStrip()
 const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed } = storeToRefs(controlStripStore)
 
+// Filter for active buttons
+const activeButtons = computed(() => {
+  return buttons.value.filter(btn => btn.enabled)
+})
+
+// Persistent dragging position, defaults to top-right layout bounds
+const position = useLocalStorageManualReset<{ x: number, y: number }>('settings/control-strip/position', { x: 20, y: 150 })
+
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { enabled: micEnabled } = storeToRefs(settingsAudioDeviceStore)
 
@@ -39,6 +47,7 @@ const live2dStore = useLive2d()
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
 
 const activePopover = ref<string | null>(null)
+const hoveredButtonId = ref<string | null>(null)
 const popoverRef = ref<HTMLElement | null>(null)
 const wardrobeFilter = ref<'all' | 'base' | 'overlay'>('all')
 
@@ -255,9 +264,6 @@ const geminiDotClasses = computed(() => {
   return 'bg-neutral-400/50'
 })
 
-// Persistent dragging position, defaults to top-right layout bounds
-const position = useLocalStorageManualReset<{ x: number, y: number }>('settings/control-strip/position', { x: 20, y: 150 })
-
 // Dragging states
 const isDragging = ref(false)
 let isMouseDown = false
@@ -362,11 +368,6 @@ function cleanupDragListeners() {
   }
 }
 
-// Filter for active buttons
-const activeButtons = computed(() => {
-  return buttons.value.filter(btn => btn.enabled)
-})
-
 function handleAction(actionId: string) {
   console.info(`[Control Strip] Button clicked: "${actionId}".`)
 
@@ -452,6 +453,38 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
   }
   return defaultLabel
 }
+
+function getShortLabel(btnId: string): string {
+  const map: Record<string, string> = {
+    'chat': 'Chat',
+    'mic': 'Mic',
+    'stage': 'Stage',
+    'caption': 'CC',
+    'gemini-session': 'Live',
+    'settings': 'Set',
+    'layout': 'Edit',
+    'viewport-auto-hide': 'Hide',
+    'always-on-top': 'Pin',
+    'viewport-tactile': 'Touch',
+    'viewport-drag': 'Drag',
+    'viewport-positioning': 'Pos',
+    'viewport-orbit': 'Orbit',
+    'viewport-cycle-modes': 'Modes',
+    'viewport-reset-coordinates': 'Reset',
+    'actor-idle-animations': 'Anim',
+    'actor-characters': 'Char',
+    'actor-wardrobe': 'Wear',
+    'actor-expressions': 'Expr',
+    'actor-motions': 'Move',
+    'actor-all-emotions': 'Mood',
+    'theme-mode': 'Color',
+    'caption-docking': 'Dock',
+    'caption-layout-mode': 'Rows',
+    'caption-follow-stage': 'Sync',
+    'exit-app': 'Quit',
+  }
+  return map[btnId] || btnId.substring(0, 4)
+}
 </script>
 
 <template>
@@ -503,15 +536,34 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
         v-for="btn in activeButtons"
         :key="btn.id"
         :class="[
-          'relative flex items-center justify-center',
+          'relative flex items-center justify-center overflow-hidden',
           'w-9 h-9 rounded-full border border-white/15 dark:border-white/5',
           'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200',
           'transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer',
         ]"
         :title="getButtonTitle(btn.id, btn.label)"
+        @mouseenter="hoveredButtonId = btn.id"
+        @mouseleave="hoveredButtonId = null"
         @click="handleAction(btn.id)"
       >
-        <span :class="[getButtonIcon(btn.id, btn.icon), 'text-lg']" />
+        <!-- Icon fades out on hover -->
+        <span
+          :class="[
+            getButtonIcon(btn.id, btn.icon),
+            'text-lg absolute transition-all duration-200 ease-in-out',
+            hoveredButtonId === btn.id ? 'opacity-0 scale-75' : 'opacity-100 scale-100',
+          ]"
+        />
+
+        <!-- Short label fades in on hover -->
+        <span
+          :class="[
+            'text-[9px] font-extrabold uppercase tracking-wider text-center px-0.5 leading-none absolute transition-all duration-200 ease-in-out',
+            hoveredButtonId === btn.id ? 'opacity-100 scale-100' : 'opacity-0 scale-75',
+          ]"
+        >
+          {{ getShortLabel(btn.id) }}
+        </span>
 
         <!-- Status dot badge for Stage (Actor Stage) -->
         <span
@@ -688,7 +740,7 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
                   ? 'bg-sky-500/20 border-sky-400/50 text-sky-600 dark:text-sky-300'
                   : 'bg-neutral-50/50 dark:bg-neutral-800/40 border-neutral-200/50 dark:border-neutral-800/20 hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50',
               ]"
-              @click="cardStore.activateCard(id)"
+              @click="cardStore.activateCard(id); activePopover = null"
             >
               <div class="w-4 flex flex-shrink-0 items-center justify-center">
                 <span v-if="id === activeCardId" class="i-solar:check-circle-bold text-sm text-sky-500" />
