@@ -376,7 +376,7 @@ function hexToRGBA(hex: string): [number, number, number, number] {
 
 /**
  * Writes VTube multiply/screen colors onto Cubism drawable buffers.
- * Must run after coreModel.update(); that step recalculates drawables and clears earlier writes.
+ * Must run after coreModel.update() ÔÇö that step recalculates drawables and clears earlier writes.
  */
 export function applyArtMeshColorsToDrawables(
   internalModel: PixiLive2DInternalModel,
@@ -461,7 +461,7 @@ export function hookArtMeshColorsAfterModelUpdate(
   }
 }
 
-/** @deprecated Use hookArtMeshColorsAfterModelUpdate; motion tick runs before coreModel.update() */
+/** @deprecated Use hookArtMeshColorsAfterModelUpdate ÔÇö motion tick runs before coreModel.update() */
 export function useMotionUpdatePluginArtMeshColors(artMeshColors: Ref<Record<string, string>>): MotionManagerPlugin {
   return (ctx) => {
     applyArtMeshColorsToDrawables(ctx.internalModel, artMeshColors.value)

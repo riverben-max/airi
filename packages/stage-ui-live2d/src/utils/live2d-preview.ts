@@ -9,36 +9,6 @@ import { Live2DFactory, Live2DModel } from 'pixi-live2d-display/cubism4'
  * Render a Live2D zip/file to an offscreen canvas and return a padded preview data URL.
  */
 export async function loadLive2DModelPreview(input: File | string, parameters?: Record<string, number>) {
-  if (typeof input !== 'string') {
-    try {
-      const JSZip = (await import('jszip')).default
-      const zip = await JSZip.loadAsync(input)
-
-      // Try to find an icon.png or icon.jpg inside the zip (could be in a subfolder)
-      const iconFileName = Object.keys(zip.files).find((name) => {
-        const lower = name.toLowerCase()
-        return lower.endsWith('icon.png') || lower.endsWith('icon.jpg')
-      })
-      if (iconFileName) {
-        const fileData = await zip.files[iconFileName].async('blob')
-
-        // Convert blob to Data URL
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(fileData)
-        })
-
-        console.log(`[Live2D Preview] Found ${iconFileName} in zip, using it as preview.`)
-        return dataUrl
-      }
-    }
-    catch (e) {
-      console.error('[Live2D Preview] Failed to inspect zip for icon:', e)
-    }
-  }
-
   Live2DModel.registerTicker(Ticker)
   extensions.add(TickerPlugin)
 

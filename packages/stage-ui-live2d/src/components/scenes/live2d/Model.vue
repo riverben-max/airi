@@ -591,7 +591,7 @@ async function loadModel() {
     motionManagerUpdate.register(useMotionUpdatePluginAutoEyeBlink(), 'post')
 
     // NOTICE: ArtMesh colors must be applied after coreModel.update(), not in the motion hook.
-    // See Cubism4InternalModel.update(): motionManager.update -> ... -> model.update() -> draw.
+    // See Cubism4InternalModel.update(): motionManager.update ÔåÆ ÔÇª ÔåÆ model.update() ÔåÆ draw.
     hookArtMeshColorsAfterModelUpdate(internalModel, artMeshColors)
 
     // Pre-allocate the standardKeys set outside the ticker loop to prevent massive GC pressure (60fps)
@@ -783,7 +783,7 @@ async function loadModel() {
                 p.groupName = group.Name || group.name
             })
           }
-          console.info('[Live2D] Populated parameterMetadata from CDI:', parameterMetadata.value.length)
+          console.info('Ô£à Populated parameterMetadata from CDI:', parameterMetadata.value.length)
         }
       }
 
@@ -810,7 +810,7 @@ async function loadModel() {
           }
         }
         catch (e) {
-          console.warn('[Live2D] Could not extract parameter IDs from core model:', e)
+          console.warn('ÔÜá´©Å Could not extract parameter IDs from core model:', e)
         }
       }
 
@@ -823,7 +823,7 @@ async function loadModel() {
         }))
         // Also store the full expression data so the UI can apply them
         expressionData.value = expFiles
-        console.info('[Live2D] Populated expressions from zip-extracted files:', expFiles.length)
+        console.info('Ô£à Populated expressions from zip-extracted files:', expFiles.length)
       }
       else {
         const expressions = fileRefs?.Expressions || fileRefs?.expressions
@@ -852,10 +852,10 @@ async function loadModel() {
             const results = await Promise.all(fetchPromises)
             if (!isUnmounted && model.value) {
               expressionData.value = results.filter((r): r is any => r !== null)
-              console.info('[Live2D] Fetched expression data from URLs:', expressionData.value.length)
+              console.info('Ô£à Fetched expression data from URLs:', expressionData.value.length)
             }
           }
-          console.info('[Live2D] Populated expressions from FileRefs:', availableExpressions.value.length)
+          console.info('Ô£à Populated expressions from FileRefs:', availableExpressions.value.length)
         }
         else {
           const expressionManager = (internalModel as any).expressionManager
@@ -865,7 +865,7 @@ async function loadModel() {
               name,
               fileName: defs[name]?.File || defs[name]?.file || name,
             }))
-            console.info('[Live2D] Populated expressions from expressionManager:', availableExpressions.value.length)
+            console.info('Ô£à Populated expressions from expressionManager:', availableExpressions.value.length)
           }
         }
       }
@@ -904,7 +904,7 @@ async function loadModel() {
       }
     }
     catch (e) {
-      console.error('[Live2D-Alpha] Metadata parsing failure:', e)
+      console.error('ÔØî [Live2D-Alpha] Metadata parsing failure:', e)
     }
 
     emits('modelLoaded')
