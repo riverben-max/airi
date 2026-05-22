@@ -3,6 +3,8 @@ import type { Application } from '@pixi/app'
 
 import type { PixiLive2DInternalModel } from '../../../composables/live2d'
 
+import JSZip from 'jszip'
+
 import { listenBeatSyncBeatSignal } from '@proj-airi/stage-shared/beat-sync'
 import { useTheme } from '@proj-airi/ui'
 import { breakpointsTailwind, until, useBreakpoints, useDebounceFn } from '@vueuse/core'
@@ -16,6 +18,7 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, toRef, watch } from 
 import {
   createBeatSyncController,
 
+  hookArtMeshColorsAfterModelUpdate,
   useLive2DMotionManagerUpdate,
   useMotionUpdatePluginAutoEyeBlink,
   useMotionUpdatePluginBeatSync,
@@ -25,6 +28,8 @@ import {
 import { Emotion, EmotionNeutralMotionName } from '../../../constants/emotions'
 import { useLive2d } from '../../../stores/live2d'
 import { setOnZipLoaded } from '../../../utils/live2d-zip-loader'
+import { OPFSCacheV2 } from '../../../utils/opfs-loader'
+import { extractArtMeshColorsFromVTube, listVTubeColorRelatedKeys } from '../../../utils/vtube-artmesh-colors'
 
 const props = withDefaults(defineProps<{
   modelSrc?: string
@@ -112,6 +117,7 @@ const initialModelWidth = ref<number>(0)
 const initialModelHeight = ref<number>(0)
 const mouthOpenSize = computed(() => Math.max(0, Math.min(100, props.mouthOpenSize)))
 const lastUpdateTime = ref(0)
+const artMeshColors = ref<Record<string, string>>({})
 
 const { isDark: dark } = useTheme()
 const breakpoints = useBreakpoints(breakpointsTailwind)
@@ -188,6 +194,188 @@ const disposeShouldUpdateView = live2dStore.onShouldUpdateView(() => {
   loadModel()
 })
 
+function parseVTubeJson(text: string): { savedActiveExpressions: string[], artMeshColors: Record<string, string> } {
+  const vtubeData = JSON.parse(text) as Record<string, unknown>
+  const artMeshColors = extractArtMeshColorsFromVTube(vtubeData)
+  if (Object.keys(artMeshColors).length === 0) {
+    console.warn(
+      '[Live2D] .vtube.json parsed but no ArtMesh multiply/screen colors found. Related keys:',
+      listVTubeColorRelatedKeys(vtubeData),
+    )
+  }
+  return {
+    savedActiveExpressions: Array.isArray(vtubeData.SavedActiveExpressions)
+      ? vtubeData.SavedActiveExpressions as string[]
+      : [],
+    artMeshColors,
+  }
+}
+
+async function resolveMetadata() {
+  let cdiData: any = null
+  const expFiles: any[] = []
+  let savedActiveExpressions: string[] = []
+  let artMeshColors: Record<string, string> = {}
+
+  // Case 1: Direct File upload (ZIP file)
+  if (props.modelFile && props.modelFile.name.toLowerCase().endsWith('.zip')) {
+    try {
+      const buffer = await props.modelFile.arrayBuffer()
+      const zip = await JSZip.loadAsync(buffer)
+      const filePaths = Object.keys(zip.files)
+
+      const cdiPath = filePaths.find((f: string) => f.toLowerCase().endsWith('.cdi3.json'))
+      if (cdiPath) {
+        const text = await zip.file(cdiPath)!.async('text')
+        cdiData = JSON.parse(text)
+      }
+
+      const expPaths = filePaths.filter((f: string) => f.toLowerCase().endsWith('.exp3.json'))
+      for (const expPath of expPaths) {
+        const text = await zip.file(expPath)!.async('text')
+        const baseName = expPath.split('/').pop()?.replace('.exp3.json', '') || expPath
+        expFiles.push({
+          name: baseName,
+          fileName: expPath,
+          data: JSON.parse(text),
+        })
+      }
+
+      const vtubePath = filePaths.find((f: string) => f.toLowerCase().endsWith('.vtube.json'))
+      if (vtubePath) {
+        try {
+          const text = await zip.file(vtubePath)!.async('text')
+          const parsed = parseVTubeJson(text)
+          savedActiveExpressions = parsed.savedActiveExpressions
+          artMeshColors = parsed.artMeshColors
+        }
+        catch {}
+      }
+
+      console.info(
+        '[Live2D Metadata] Extracted CDI, EXP & VTube config directly from uploaded ZIP file',
+        Object.keys(artMeshColors).length > 0 ? `(${Object.keys(artMeshColors).length} ArtMesh colors)` : '(no ArtMesh colors in .vtube.json)',
+      )
+      return { cdiData, expFiles, savedActiveExpressions, artMeshColors }
+    }
+    catch (e) {
+      console.warn('[Live2D Metadata] Failed to parse uploaded ZIP file:', e)
+    }
+  }
+
+  // Case 2: OPFS Cache (already unzipped individual files)
+  if (props.modelId && props.modelSrc) {
+    try {
+      const cachedFiles = await OPFSCacheV2.get(props.modelId, props.modelSrc)
+      if (cachedFiles) {
+        // Sometimes OPFS stores the ZIP file itself, or individual files
+        const zipFile = cachedFiles.find((f: File) => f.name.toLowerCase().endsWith('.zip'))
+        if (zipFile) {
+          const buffer = await zipFile.arrayBuffer()
+          const zip = await JSZip.loadAsync(buffer)
+          const filePaths = Object.keys(zip.files)
+
+          const cdiPath = filePaths.find((f: string) => f.toLowerCase().endsWith('.cdi3.json'))
+          if (cdiPath) {
+            const text = await zip.file(cdiPath)!.async('text')
+            cdiData = JSON.parse(text)
+          }
+
+          const expPaths = filePaths.filter((f: string) => f.toLowerCase().endsWith('.exp3.json'))
+          for (const expPath of expPaths) {
+            const text = await zip.file(expPath)!.async('text')
+            const baseName = expPath.split('/').pop()?.replace('.exp3.json', '') || expPath
+            expFiles.push({
+              name: baseName,
+              fileName: expPath,
+              data: JSON.parse(text),
+            })
+          }
+
+          const vtubePath = filePaths.find((f: string) => f.toLowerCase().endsWith('.vtube.json'))
+          if (vtubePath) {
+            try {
+              const text = await zip.file(vtubePath)!.async('text')
+              const parsed = parseVTubeJson(text)
+              savedActiveExpressions = parsed.savedActiveExpressions
+              artMeshColors = parsed.artMeshColors
+            }
+            catch {}
+          }
+
+          console.info('[Live2D Metadata] Extracted CDI, EXP & VTube config from cached ZIP file in OPFS')
+        }
+        else {
+          // It's a flat directory of files
+          const cdiFile = cachedFiles.find((f: File) => f.name.toLowerCase().endsWith('.cdi3.json'))
+          if (cdiFile) {
+            const text = await cdiFile.text()
+            cdiData = JSON.parse(text)
+          }
+
+          const cachedExpFiles = cachedFiles.filter((f: File) => f.name.toLowerCase().endsWith('.exp3.json'))
+          for (const expFile of cachedExpFiles) {
+            const text = await expFile.text()
+            const baseName = expFile.name.split('/').pop()?.replace('.exp3.json', '') || expFile.name
+            expFiles.push({
+              name: baseName,
+              fileName: expFile.webkitRelativePath || expFile.name,
+              data: JSON.parse(text),
+            })
+          }
+
+          const vtubeFile = cachedFiles.find((f: File) => f.name.toLowerCase().endsWith('.vtube.json'))
+          if (vtubeFile) {
+            try {
+              const text = await vtubeFile.text()
+              const parsed = parseVTubeJson(text)
+              savedActiveExpressions = parsed.savedActiveExpressions
+              artMeshColors = parsed.artMeshColors
+            }
+            catch {}
+          }
+
+          console.info('[Live2D Metadata] Extracted CDI, EXP & VTube config directly from cached files in OPFS')
+        }
+        return { cdiData, expFiles, savedActiveExpressions, artMeshColors }
+      }
+    }
+    catch (e) {
+      console.warn('[Live2D Metadata] Failed to parse from OPFS cache:', e)
+    }
+  }
+
+  // Case 3: HTTP fetch for URL-based models (non-ZIP)
+  if (props.modelSrc && !props.modelSrc.startsWith('blob:') && Object.keys(artMeshColors).length === 0) {
+    const baseUrl = props.modelSrc.substring(0, props.modelSrc.lastIndexOf('/') + 1)
+    const modelFileName = props.modelSrc.split('/').pop() ?? ''
+    const modelBaseName = modelFileName.replace(/\.model3\.json$/i, '')
+    const vtubeCandidates = [
+      `${modelBaseName}.vtube.json`,
+      '.vtube.json',
+      `${modelFileName.replace('.model3.json', '')}.vtube.json`,
+    ].filter((name, index, arr) => arr.indexOf(name) === index)
+
+    for (const vtubeFileName of vtubeCandidates) {
+      try {
+        const resp = await fetch(baseUrl + encodeURIComponent(vtubeFileName))
+        if (!resp.ok)
+          continue
+        const parsed = parseVTubeJson(await resp.text())
+        savedActiveExpressions = parsed.savedActiveExpressions
+        artMeshColors = parsed.artMeshColors
+        if (Object.keys(artMeshColors).length > 0) {
+          console.info('[Live2D Metadata] Extracted ArtMesh colors from HTTP .vtube.json:', vtubeFileName, Object.keys(artMeshColors).length)
+          break
+        }
+      }
+      catch {}
+    }
+  }
+
+  return { cdiData, expFiles, savedActiveExpressions, artMeshColors }
+}
+
 async function loadModel() {
   const hash = window.location.hash || '#/'
   const isStage = hash === '#/' || hash.startsWith('#/stage')
@@ -198,6 +386,9 @@ async function loadModel() {
   await modelLoadMutex.acquire()
 
   modelLoading.value = true
+  availableExpressions.value = []
+  expressionData.value = []
+  activeExpressions.value = {}
   componentState.value = 'loading'
 
   if (!pixiApp.value || !pixiApp.value.stage) {
@@ -399,6 +590,10 @@ async function loadModel() {
     motionManagerUpdate.register(useMotionUpdatePluginIdleFocus(), 'post')
     motionManagerUpdate.register(useMotionUpdatePluginAutoEyeBlink(), 'post')
 
+    // NOTICE: ArtMesh colors must be applied after coreModel.update(), not in the motion hook.
+    // See Cubism4InternalModel.update(): motionManager.update ÔåÆ ÔÇª ÔåÆ model.update() ÔåÆ draw.
+    hookArtMeshColorsAfterModelUpdate(internalModel, artMeshColors)
+
     // Pre-allocate the standardKeys set outside the ticker loop to prevent massive GC pressure (60fps)
     const standardKeys = new Set([
       'angleX',
@@ -536,7 +731,12 @@ async function loadModel() {
       const fileRefs = rawJson?.FileReferences || rawJson?.fileReferences
 
       // 1. CDI Parsing - Priority: zip-extracted > http fetch > core model fallback
-      let cdiData = settings?._cdiData // Pre-extracted from zip loader
+      const resolvedMeta = await resolveMetadata()
+      let cdiData = resolvedMeta.cdiData || settings?._cdiData
+      artMeshColors.value = resolvedMeta.artMeshColors || {}
+      if (Object.keys(artMeshColors.value).length > 0) {
+        console.info('[Live2D] Loaded ArtMesh colors from .vtube.json:', Object.keys(artMeshColors.value).length)
+      }
 
       if (!cdiData) {
         // Try HTTP fetch for non-zip models
@@ -583,7 +783,7 @@ async function loadModel() {
                 p.groupName = group.Name || group.name
             })
           }
-          console.info('✅ Populated parameterMetadata from CDI:', parameterMetadata.value.length)
+          console.info('Ô£à Populated parameterMetadata from CDI:', parameterMetadata.value.length)
         }
       }
 
@@ -610,12 +810,12 @@ async function loadModel() {
           }
         }
         catch (e) {
-          console.warn('⚠️ Could not extract parameter IDs from core model:', e)
+          console.warn('ÔÜá´©Å Could not extract parameter IDs from core model:', e)
         }
       }
 
       // 2. Expressions Parsing - Priority: zip-extracted > FileRefs > expressionManager
-      const expFiles = settings?._expFiles
+      const expFiles = (resolvedMeta.expFiles && resolvedMeta.expFiles.length > 0) ? resolvedMeta.expFiles : settings?._expFiles
       if (expFiles && expFiles.length > 0) {
         availableExpressions.value = expFiles.map((exp: any) => ({
           name: exp.name,
@@ -623,7 +823,7 @@ async function loadModel() {
         }))
         // Also store the full expression data so the UI can apply them
         expressionData.value = expFiles
-        console.info('✅ Populated expressions from zip-extracted files:', expFiles.length)
+        console.info('Ô£à Populated expressions from zip-extracted files:', expFiles.length)
       }
       else {
         const expressions = fileRefs?.Expressions || fileRefs?.expressions
@@ -649,14 +849,13 @@ async function loadModel() {
               }
               return null
             })
-            Promise.all(fetchPromises).then((results) => {
-              if (isUnmounted || !model.value)
-                return
+            const results = await Promise.all(fetchPromises)
+            if (!isUnmounted && model.value) {
               expressionData.value = results.filter((r): r is any => r !== null)
-              console.info('✅ Fetched expression data from URLs:', expressionData.value.length)
-            })
+              console.info('Ô£à Fetched expression data from URLs:', expressionData.value.length)
+            }
           }
-          console.info('✅ Populated expressions from FileRefs:', availableExpressions.value.length)
+          console.info('Ô£à Populated expressions from FileRefs:', availableExpressions.value.length)
         }
         else {
           const expressionManager = (internalModel as any).expressionManager
@@ -666,7 +865,22 @@ async function loadModel() {
               name,
               fileName: defs[name]?.File || defs[name]?.file || name,
             }))
-            console.info('✅ Populated expressions from expressionManager:', availableExpressions.value.length)
+            console.info('Ô£à Populated expressions from expressionManager:', availableExpressions.value.length)
+          }
+        }
+      }
+
+      // 2b. Initialize activeExpressions from .vtube.json saved active expressions if available
+      if (resolvedMeta.savedActiveExpressions && resolvedMeta.savedActiveExpressions.length > 0) {
+        console.info('[Live2D] Activating saved active expressions from .vtube.json:', resolvedMeta.savedActiveExpressions)
+        for (const savedExp of resolvedMeta.savedActiveExpressions) {
+          const expEntry = expressionData.value.find((e: any) => {
+            const eName = e.fileName.split('/').pop()?.toLowerCase()
+            const sName = savedExp.split('/').pop()?.toLowerCase()
+            return eName === sName
+          })
+          if (expEntry) {
+            activeExpressions.value[expEntry.fileName] = 1
           }
         }
       }
@@ -690,7 +904,7 @@ async function loadModel() {
       }
     }
     catch (e) {
-      console.error('❌ [Live2D-Alpha] Metadata parsing failure:', e)
+      console.error('ÔØî [Live2D-Alpha] Metadata parsing failure:', e)
     }
 
     emits('modelLoaded')
@@ -768,7 +982,7 @@ function updateDropShadowFilter() {
 const handleResize = useDebounceFn(setScaleAndPosition, 100)
 
 watch([() => props.width, () => props.height], handleResize)
-watch(modelSrcRef, async () => await loadModel(), { immediate: true })
+watch([modelSrcRef, () => props.modelId, () => props.modelFile], async () => await loadModel(), { immediate: true })
 watch(dark, updateDropShadowFilter, { immediate: true })
 watch([model, themeColorsHue], updateDropShadowFilter)
 watch(live2dShadowEnabled, updateDropShadowFilter)
