@@ -6,7 +6,7 @@ import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@p
 import { useSettingsControlsIsland } from '@proj-airi/stage-ui/stores/settings/controls-island'
 import { useBroadcastChannel, useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { electronCustomizerToggleVisibility } from '../../shared/eventa'
 
@@ -270,12 +270,26 @@ function handleAction(actionId: string) {
 async function closeWindow() {
   await toggleCustomizerVisibility(false)
 }
+
+onMounted(() => {
+  if (window.electron?.ipcRenderer) {
+    const handleSetGroup = (_event: any, group: string) => {
+      if (CUSTOMIZER_CATALOG.some(g => g.id === group)) {
+        activeGroupId.value = group
+      }
+    }
+    window.electron.ipcRenderer.on('set-customizer-group', handleSetGroup)
+    onUnmounted(() => {
+      window.electron.ipcRenderer.removeListener('set-customizer-group', handleSetGroup)
+    })
+  }
+})
 </script>
 
 <template>
   <div class="h-screen w-screen flex flex-col select-none overflow-hidden bg-transparent p-3 font-sans">
     <!-- Premium Container with intense glassmorphism -->
-    <div class="relative h-full w-full flex flex-col overflow-hidden border border-white/10 rounded-2xl bg-neutral-950/80 shadow-2xl backdrop-blur-2xl dark:border-neutral-800/80">
+    <div class="relative h-full w-full flex flex-col overflow-hidden border border-white/10 rounded-2xl bg-neutral-950/90 shadow-2xl backdrop-blur-2xl dark:border-neutral-800/80">
       <!-- Radial background glowing anomalies -->
       <div class="pointer-events-none absolute h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl -left-16 -top-16" />
       <div class="pointer-events-none absolute h-44 w-44 rounded-full bg-sky-500/10 blur-3xl -bottom-16 -right-16" />

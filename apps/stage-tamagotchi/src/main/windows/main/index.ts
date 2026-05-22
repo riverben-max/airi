@@ -47,10 +47,10 @@ export async function setupMainWindow(params: {
 
   const window = new BrowserWindow({
     title: 'AIRI',
-    width: mainWindowConfig?.snapshot?.width ?? mainWindowConfig?.width ?? 450.0,
-    height: mainWindowConfig?.snapshot?.height ?? mainWindowConfig?.height ?? 600.0,
-    x: mainWindowConfig?.snapshot?.x ?? mainWindowConfig?.x,
-    y: mainWindowConfig?.snapshot?.y ?? mainWindowConfig?.y,
+    width: mainWindowConfig?.width ?? mainWindowConfig?.snapshot?.width ?? 450.0,
+    height: mainWindowConfig?.height ?? mainWindowConfig?.snapshot?.height ?? 600.0,
+    x: mainWindowConfig?.x ?? mainWindowConfig?.snapshot?.x,
+    y: mainWindowConfig?.y ?? mainWindowConfig?.snapshot?.y,
     show: false,
     icon,
     webPreferences: {
@@ -86,8 +86,17 @@ export async function setupMainWindow(params: {
 
   function restoreBounds() {
     const mainWindow = getConfig().windows?.find((w: any) => w.title === 'AIRI' && w.tag === 'main')
-    if (mainWindow?.snapshot) {
-      window.setBounds(mainWindow.snapshot)
+    const x = mainWindow?.x ?? mainWindow?.snapshot?.x
+    const y = mainWindow?.y ?? mainWindow?.snapshot?.y
+    const width = mainWindow?.width ?? mainWindow?.snapshot?.width ?? 450.0
+    const height = mainWindow?.height ?? mainWindow?.snapshot?.height ?? 600.0
+    if (x !== undefined && y !== undefined) {
+      window.setBounds({
+        x: Math.round(x),
+        y: Math.round(y),
+        width: Math.round(width),
+        height: Math.round(height),
+      })
     }
   }
 
@@ -119,6 +128,9 @@ export async function setupMainWindow(params: {
   })
 
   function handleNewBounds(newBounds: Rectangle) {
+    if (window.isDestroyed())
+      return
+
     const config = getConfig()
     if (!config.windows || !Array.isArray(config.windows)) {
       config.windows = []
@@ -156,8 +168,16 @@ export async function setupMainWindow(params: {
   }
 
   const throttledHandleNewBounds = throttle(handleNewBounds, 200)
-  window.on('resize', () => throttledHandleNewBounds(window.getBounds()))
-  window.on('move', () => throttledHandleNewBounds(window.getBounds()))
+  window.on('resize', () => {
+    if (!window.isDestroyed()) {
+      throttledHandleNewBounds(window.getBounds())
+    }
+  })
+  window.on('move', () => {
+    if (!window.isDestroyed()) {
+      throttledHandleNewBounds(window.getBounds())
+    }
+  })
 
   return window
 }
