@@ -46,6 +46,7 @@ Concise mapping of conceptual features to technical file paths for rapid context
 - **VRM Animations**: `packages/stage-ui-three/src/assets/vrm/animations/index.ts` (Assets) | `packages/stage-ui-three/src/stores/model-store.ts` (State)
 - **Artistry/ComfyUI**: `apps/stage-tamagotchi/src/main/services/airi/widgets/providers/comfyui.ts` (Native HTTP API)
 - **Scene/Background**: `packages/stage-ui/src/components/scenes/Stage.vue` (Layer) | `packages/stage-pages/src/pages/settings/scene/index.vue` (UI)
+- **Stage Style Picker / Background Gallery**: `packages/stage-ui/src/components/scenarios/dialogs/stage-background-picker/StageBackgroundPicker.vue` (Grid list, active backdrop mapping, download, delete, and fullscreen lightbox preview overlay) | `packages/stage-ui/src/components/scenarios/dialogs/stage-background-picker/StageBackgroundDialogPicker.vue` (Reka Dialog/Drawer portal container)
 - **Model Position/Lights**: `packages/stage-ui/src/components/scenarios/settings/model-settings/vrm.vue`
 - **Proactivity/Heartbeats**: `packages/stage-ui/src/stores/proactivity.ts` (Idle logic / Amusement loop)
 - **Control Island State**: `packages/stage-ui/src/stores/settings/controls-island.ts` (Shared) | `apps/stage-tamagotchi/src/renderer/stores/controls-island.ts` (Renderer)
