@@ -122,6 +122,39 @@ const mouthOpenSize = computed(() => Math.max(0, Math.min(100, props.mouthOpenSi
 const lastUpdateTime = ref(0)
 const artMeshColors = ref<Record<string, string>>({})
 
+function selectedRuntimeMotionKey(suffix: 'group' | 'index') {
+  return `live2d-${props.modelId || 'global'}-selected-motion-${suffix}`
+}
+
+function getSelectedRuntimeMotion() {
+  const group = localStorage.getItem(selectedRuntimeMotionKey('group'))
+    ?? localStorage.getItem('selected-runtime-motion-group')
+  const index = localStorage.getItem(selectedRuntimeMotionKey('index'))
+    ?? localStorage.getItem('selected-runtime-motion-index')
+
+  if (group === null || index === null)
+    return null
+
+  const parsedIndex = Number.parseInt(index)
+  if (Number.isNaN(parsedIndex))
+    return null
+
+  return { group, index: parsedIndex }
+}
+
+function parseCycleMotions(idleAnimations: string[] | undefined) {
+  return idleAnimations
+    ?.filter(k => k.startsWith('live2d:'))
+    .map((k) => {
+      const [_, group, indexStr] = k.split(':')
+      return {
+        group,
+        index: Number.parseInt(indexStr),
+      }
+    })
+    .filter(m => m.group && !Number.isNaN(m.index)) || []
+}
+
 const { isDark: dark } = useTheme()
 const breakpoints = useBreakpoints(breakpointsTailwind)
 const isMobile = computed(() => breakpoints.between('sm', 'md').value || breakpoints.smaller('sm').value)
@@ -508,15 +541,7 @@ async function loadModel() {
       .filter(Boolean)
 
     // Configure the loop settings for motions in the cycle subset or selected motion
-    const cycleMotions = props.idleAnimations
-      ?.filter(k => k.startsWith('live2d:'))
-      .map((k) => {
-        const [_, group, indexStr] = k.split(':')
-        return {
-          group,
-          index: Number.parseInt(indexStr),
-        }
-      }) || []
+    const cycleMotions = parseCycleMotions(props.idleAnimations)
 
     const configureMotionLoop = (groupName: string, indexStr: string) => {
       const groupIndex = (motionManager.groups as Record<string, any>)[groupName]
@@ -535,10 +560,9 @@ async function loadModel() {
       cycleMotions.forEach(m => configureMotionLoop(m.group, String(m.index)))
     }
     else {
-      const selectedMotionGroup = localStorage.getItem('selected-runtime-motion-group')
-      const selectedMotionIndex = localStorage.getItem('selected-runtime-motion-index')
-      if (selectedMotionGroup !== null && selectedMotionIndex) {
-        configureMotionLoop(selectedMotionGroup, selectedMotionIndex)
+      const selectedMotion = getSelectedRuntimeMotion()
+      if (selectedMotion) {
+        configureMotionLoop(selectedMotion.group, String(selectedMotion.index))
       }
     }
 
@@ -553,14 +577,13 @@ async function loadModel() {
         }, 300)
       }
       else {
-        const selectedMotionGroup = localStorage.getItem('selected-runtime-motion-group')
-        const selectedMotionIndex = localStorage.getItem('selected-runtime-motion-index')
-        if (selectedMotionGroup !== null && selectedMotionIndex) {
+        const selectedMotion = getSelectedRuntimeMotion()
+        if (selectedMotion) {
           setTimeout(() => {
-            console.info('Playing selected runtime motion:', selectedMotionGroup, selectedMotionIndex)
+            console.info('Playing selected runtime motion:', selectedMotion.group, selectedMotion.index)
             currentMotion.value = {
-              group: selectedMotionGroup,
-              index: Number.parseInt(selectedMotionIndex),
+              group: selectedMotion.group,
+              index: selectedMotion.index,
             }
           }, 300)
         }
@@ -629,6 +652,10 @@ async function loadModel() {
 
     // Custom parameters plugin: applies toggle/slider/expression values from the store
     motionManagerUpdate.register((ctx) => {
+      // Diagnostic: keep raw Param* replay disabled while testing motion playback
+      // conflicts between discovered parameters and active motion curves.
+      return
+
       const params = ctx.modelParameters.value
       // Only apply keys that start with "Param" and aren't the standard ones managed by other plugins
       for (const key in params) {
@@ -672,15 +699,7 @@ async function loadModel() {
       }
 
       // Parse current card cycle subset
-      const cycleMotions = props.idleAnimations
-        ?.filter(k => k.startsWith('live2d:'))
-        .map((k) => {
-          const [_, group, indexStr] = k.split(':')
-          return {
-            group,
-            index: Number.parseInt(indexStr),
-          }
-        }) || []
+      const cycleMotions = parseCycleMotions(props.idleAnimations)
 
       if (cycleMotions.length > 0) {
         let nextMotion = cycleMotions[0]
@@ -705,17 +724,16 @@ async function loadModel() {
         return
       }
 
-      const selectedMotionGroup = localStorage.getItem('selected-runtime-motion-group')
-      const selectedMotionIndex = localStorage.getItem('selected-runtime-motion-index')
+      const selectedMotion = getSelectedRuntimeMotion()
 
-      if (selectedMotionGroup !== null && selectedMotionIndex) {
+      if (selectedMotion) {
         // Restart the selected runtime motion immediately for seamless looping
-        console.info('Motion finished, restarting runtime motion:', selectedMotionGroup, selectedMotionIndex)
+        console.info('Motion finished, restarting runtime motion:', selectedMotion.group, selectedMotion.index)
         // Use requestAnimationFrame to restart on the next frame for smooth transition
         requestAnimationFrame(() => {
           currentMotion.value = {
-            group: selectedMotionGroup,
-            index: Number.parseInt(selectedMotionIndex),
+            group: selectedMotion.group,
+            index: selectedMotion.index,
           }
         })
       }
@@ -1061,6 +1079,27 @@ watch(mouthOpenSize, (value) => {
 })
 watch(currentMotion, value => setMotion(value.group, value.index))
 watch(paused, value => value ? pixiApp.value?.stop() : pixiApp.value?.start())
+watch(() => props.idleAnimations, (idleAnimations) => {
+  if (!model.value || !live2dIdleAnimationEnabled.value)
+    return
+
+  const cycleMotions = parseCycleMotions(idleAnimations)
+  if (cycleMotions.length === 0)
+    return
+
+  const alreadyInCycle = cycleMotions.some(m =>
+    currentMotion.value?.group === m.group && currentMotion.value?.index === m.index,
+  )
+  if (alreadyInCycle)
+    return
+
+  const nextMotion = cycleMotions[0]
+  console.info('[Live2D Cycle] Idle cycle changed, switching to first configured motion:', nextMotion.group, nextMotion.index)
+  currentMotion.value = {
+    group: nextMotion.group,
+    index: nextMotion.index,
+  }
+}, { deep: true })
 
 // Watch for model changes to apply current parameters once
 watch(model, (currModel) => {
