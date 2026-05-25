@@ -135,7 +135,8 @@ const filteredMotions = computed(() => {
 })
 
 function getDisplayName(motion: any) {
-  return motionMappings.value[motion.fullPath] || motion.name
+  const name = motionMappings.value[motion.fullPath] || motion.name
+  return name.replace(/\.motion3\.json$/, '').replace(/\.json$/, '')
 }
 
 function isHidden(fullPath: string) {
@@ -406,11 +407,11 @@ onUnmounted(() => {
     </div>
 
     <!-- Animations Tab -->
-    <div v-else-if="activeCustomizationTab === 'animations'">
-      <div :class="['w-full']">
-        <div data-motion-selector :class="['relative', 'flex', 'flex-col', 'gap-2']">
+    <div v-else-if="activeCustomizationTab === 'animations'" :class="['w-full', 'min-w-0']">
+      <div :class="['w-full', 'min-w-0']">
+        <div data-motion-selector :class="['relative', 'flex', 'flex-col', 'gap-2', 'w-full', 'min-w-0']">
           <!-- Controls Bar -->
-          <div class="mb-2 flex items-center justify-between gap-2">
+          <div :class="['mb-2', 'flex', 'items-center', 'justify-between', 'gap-2', 'w-full', 'min-w-0']">
             <div class="flex gap-1">
               <Button
                 size="sm"
@@ -433,14 +434,14 @@ onUnmounted(() => {
                 {{ filterRenamedOnly ? 'Renamed Only' : 'All' }}
               </Button>
             </div>
-            <div class="text-xs text-neutral-500">
+            <div :class="['text-xs', 'text-neutral-500']">
               {{ filteredMotions.length }} motions
             </div>
           </div>
 
           <!-- Fixed Height Scrollable List -->
-          <div class="max-h-[300px] overflow-y-auto border border-neutral-200 rounded-lg bg-white dark:border-neutral-700 dark:bg-neutral-900">
-            <div v-if="filteredMotions.length === 0" class="p-4 text-center text-sm text-neutral-500 dark:text-neutral-400">
+          <div :class="['max-h-[300px]', 'w-full', 'min-w-0', 'overflow-y-auto', 'border border-neutral-200 rounded-lg bg-white dark:border-neutral-700 dark:bg-neutral-900']">
+            <div v-if="filteredMotions.length === 0" :class="['p-4', 'text-center', 'text-sm', 'text-neutral-500', 'dark:text-neutral-400']">
               No motions match filters
             </div>
             <div
@@ -448,53 +449,54 @@ onUnmounted(() => {
               :key="`${motion.group}-${motion.index}-${motion.fullPath}`"
               :class="[
                 'flex items-center justify-between px-4 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-b-0 transition-colors',
+                'w-full min-w-0',
                 currentMotion?.group === motion.group && currentMotion?.index === motion.index ? 'bg-primary-50/50 dark:bg-primary-900/20' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
               ]"
             >
               <!-- Left Side: Name and Path -->
-              <div class="min-w-0 flex-1 cursor-pointer" @click="handleMotionSelect(motion)">
-                <div class="flex items-center gap-2">
+              <div :class="['min-w-0', 'flex-1', 'cursor-pointer']" @click="handleMotionSelect(motion)">
+                <div :class="['flex', 'items-center', 'gap-2', 'min-w-0', 'w-full']">
                   <!-- Active Indicator -->
-                  <div v-if="currentMotion?.group === motion.group && currentMotion?.index === motion.index" class="h-2 w-2 rounded-full bg-primary-500" />
+                  <div v-if="currentMotion?.group === motion.group && currentMotion?.index === motion.index" :class="['h-2', 'w-2', 'rounded-full', 'bg-primary-500', 'shrink-0']" />
 
                   <!-- Name (Editable) -->
-                  <div v-if="editingMotionKey === motion.fullPath" class="flex flex-1 items-center gap-1.5" @click.stop>
-                    <span class="inline-flex items-center rounded-md bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700 font-semibold ring-1 ring-primary-700/10 ring-inset dark:bg-primary-900/30 dark:text-primary-400 dark:ring-primary-400/20">
+                  <div v-if="editingMotionKey === motion.fullPath" :class="['flex', 'flex-1', 'items-center', 'gap-1.5', 'min-w-0']" @click.stop>
+                    <span :class="['inline-flex', 'shrink-0', 'items-center', 'rounded-md', 'bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700 font-semibold ring-1 ring-primary-700/10 ring-inset dark:bg-primary-900/30 dark:text-primary-400 dark:ring-primary-400/20']">
                       {{ motion.group }}
                     </span>
                     <input
                       v-model="editingMotionValue"
                       type="text"
-                      :placeholder="motion.name"
-                      class="max-w-[230px] w-full border-b border-primary-500 bg-transparent text-sm dark:text-neutral-100 focus:outline-none"
+                      :placeholder="motion.name.replace(/\.motion3\.json$/, '').replace(/\.json$/, '')"
+                      :class="['min-w-0', 'flex-1', 'border-b border-primary-500 bg-transparent text-sm dark:text-neutral-100 focus:outline-none']"
                       @keydown.enter="saveMotionName(motion.fullPath)"
                       @keydown.esc="cancelEditing"
                     >
-                    <button class="text-xs text-green-500 hover:text-green-600" @click="saveMotionName(motion.fullPath)">
+                    <button :class="['text-xs', 'text-green-500', 'hover:text-green-600', 'shrink-0']" @click="saveMotionName(motion.fullPath)">
                       <div class="i-solar:check-circle-bold-duotone text-lg" />
                     </button>
-                    <button class="text-xs text-red-500 hover:text-red-600" @click="cancelEditing">
+                    <button :class="['text-xs', 'text-red-500', 'hover:text-red-600', 'shrink-0']" @click="cancelEditing">
                       <div class="i-solar:close-circle-bold-duotone text-lg" />
                     </button>
                   </div>
-                  <div v-else class="max-w-[230px] flex items-center gap-1.5 truncate text-sm text-neutral-900 font-medium dark:text-neutral-100">
-                    <span class="inline-flex items-center rounded-md bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700 font-semibold ring-1 ring-primary-700/10 ring-inset dark:bg-primary-900/30 dark:text-primary-400 dark:ring-primary-400/20">
+                  <div v-else :class="['flex', 'items-center', 'gap-1.5', 'min-w-0', 'w-full', 'max-w-[230px]', 'text-sm text-neutral-900 font-medium dark:text-neutral-100']">
+                    <span :class="['inline-flex', 'shrink-0', 'items-center', 'rounded-md bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700 font-semibold ring-1 ring-primary-700/10 ring-inset dark:bg-primary-900/30 dark:text-primary-400 dark:ring-primary-400/20']">
                       {{ motion.group }}
                     </span>
-                    <span class="truncate">{{ getDisplayName(motion) }}</span>
+                    <span :class="['truncate', 'min-w-0', 'flex-1']">{{ getDisplayName(motion) }}</span>
                   </div>
                 </div>
-                <div class="ml-4 max-w-[230px] truncate text-xs text-neutral-500 dark:text-neutral-400">
+                <div :class="['ml-4', 'truncate', 'text-xs', 'text-neutral-500', 'dark:text-neutral-400']">
                   {{ motion.displayPath }}
                 </div>
               </div>
 
               <!-- Right Side: Actions -->
-              <div class="flex items-center gap-1" @click.stop>
+              <div :class="['flex', 'items-center', 'gap-1', 'shrink-0']" @click.stop>
                 <!-- Loop / Cycle Toggle -->
                 <button
-                  class="rounded p-1 transition-colors"
                   :class="[
+                    'rounded p-1 transition-colors',
                     isMotionInCycle(motion)
                       ? 'text-primary-500 hover:text-primary-600 bg-primary-500/10'
                       : 'text-neutral-400 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800',
@@ -507,7 +509,7 @@ onUnmounted(() => {
 
                 <!-- Edit Button -->
                 <button
-                  class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                  :class="['rounded', 'p-1', 'text-neutral-500', 'hover:bg-neutral-100', 'dark:text-neutral-400', 'hover:text-neutral-700', 'dark:hover:bg-neutral-700', 'dark:hover:text-neutral-200']"
                   title="Rename"
                   @click="startEditing(motion)"
                 >
@@ -516,7 +518,7 @@ onUnmounted(() => {
 
                 <!-- Visibility Toggle -->
                 <button
-                  class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                  :class="['rounded', 'p-1', 'text-neutral-500', 'hover:bg-neutral-100', 'dark:text-neutral-400', 'hover:text-neutral-700', 'dark:hover:bg-neutral-700', 'dark:hover:text-neutral-200']"
                   :title="isHidden(motion.fullPath) ? 'Show' : 'Hide'"
                   @click="toggleVisibility(motion.fullPath)"
                 >
