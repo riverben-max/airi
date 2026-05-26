@@ -7,7 +7,7 @@ import JSZip from 'jszip'
 
 import { listenBeatSyncBeatSignal } from '@proj-airi/stage-shared/beat-sync'
 import { useTheme } from '@proj-airi/ui'
-import { breakpointsTailwind, until, useBreakpoints, useDebounceFn } from '@vueuse/core'
+import { breakpointsTailwind, until, useBreakpoints, useBroadcastChannel, useDebounceFn } from '@vueuse/core'
 import { formatHex } from 'culori'
 import { Mutex } from 'es-toolkit'
 import { storeToRefs } from 'pinia'
@@ -135,6 +135,7 @@ const pixiApp = toRef(() => props.app)
 const paused = toRef(() => props.paused)
 const focusAt = toRef(() => props.focusAt)
 const live2dStore = useLive2d()
+const { post: postCaption } = useBroadcastChannel<any, any>({ name: 'airi-caption-overlay' })
 const { model } = storeToRefs(live2dStore)
 
 const initialModelWidth = ref<number>(0)
@@ -878,24 +879,40 @@ async function loadModel() {
             })
           }
           else {
-            const title = 'AIRI'
-            const body = resolvedTextDef.text
-            const hasElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer
-            if (hasElectron) {
-              try {
-                (window as any).electron.ipcRenderer.send('show-os-notification', {
-                  title,
-                  body,
-                  silent: true,
-                })
-              }
-              catch (e) {
-                console.warn('[Live2D Notification] Failed to send show-os-notification IPC:', e)
-                showHtml5Notification(title, body)
-              }
+            const captionsEnabled = typeof localStorage !== 'undefined' && localStorage.getItem('settings/captions/enabled') !== 'false'
+            if (captionsEnabled) {
+              postCaption({
+                type: 'caption-assistant',
+                segments: [
+                  {
+                    text: resolvedTextDef.text,
+                    color: '#ca9ee6',
+                    actorId: props.modelId || 'live2d',
+                    isActive: true,
+                  },
+                ],
+              })
             }
             else {
-              showHtml5Notification(title, body)
+              const title = 'AIRI'
+              const body = resolvedTextDef.text
+              const hasElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer
+              if (hasElectron) {
+                try {
+                  (window as any).electron.ipcRenderer.send('show-os-notification', {
+                    title,
+                    body,
+                    silent: true,
+                  })
+                }
+                catch (e) {
+                  console.warn('[Live2D Notification] Failed to send show-os-notification IPC:', e)
+                  showHtml5Notification(title, body)
+                }
+              }
+              else {
+                showHtml5Notification(title, body)
+              }
             }
           }
         }
