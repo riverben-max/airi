@@ -10,7 +10,7 @@ import defaultSkyBoxSrc from '../components/Environment/assets/sky_linekotsi_23_
 // TODO: make a separate type.ts
 export interface Vec3 { x: number, y: number, z: number }
 export type TrackingMode = 'camera' | 'mouse' | 'none'
-export type InteractionMode = 'orbit' | 'tactile'
+export type InteractionMode = 'orbit' | 'tactile' | 'drag' | 'positioning'
 export type HexColor = string & { __hex?: true }
 
 export interface FieldBase<T> {

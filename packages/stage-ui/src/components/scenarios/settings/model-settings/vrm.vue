@@ -9,11 +9,13 @@ import ModelSceneSettings from './components/ModelSceneSettings.vue'
 import VRMExpressions from './vrm-expressions.vue'
 
 import { useAiriCardStore } from '../../../../stores/modules'
+import { usePositioningStore } from '../../../../stores/settings/positioning'
 import { useVHackStore } from '../../../../stores/vhack'
 import { Section } from '../../../layouts'
 
 defineProps<{
   palette: string[]
+  modelId?: string
 }>()
 
 defineEmits<{
@@ -24,6 +26,7 @@ const { t } = useI18n()
 
 const modelStore = useModelStore()
 const vhackStore = useVHackStore()
+const positioningStore = usePositioningStore()
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
 const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
@@ -316,6 +319,8 @@ function handleAnimationSelect(animationName: string | number | undefined) {
 
     <ModelSceneSettings
       :store="modelStore"
+      :positioning-store="positioningStore"
+      :model-id="modelId"
       :model-size="modelSize"
       :palette="palette"
       :scene-mutation-locked="sceneMutationLocked"

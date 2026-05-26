@@ -671,12 +671,12 @@ function handleControlStripAction(e: Event) {
     controlStripStore.stageMode = 'tactileMode'
   }
   else if (action === 'viewport-drag') {
-    modelStore.interactionMode = 'tactile'
+    modelStore.interactionMode = 'drag'
     stageViewControlsEnabled.value = true
     controlStripStore.stageMode = 'dragMode'
   }
   else if (action === 'viewport-positioning') {
-    modelStore.interactionMode = 'tactile'
+    modelStore.interactionMode = 'positioning'
     stageViewControlsEnabled.value = true
     controlStripStore.stageMode = 'positionMode'
   }
@@ -693,11 +693,11 @@ function handleControlStripAction(e: Event) {
       stageViewControlsEnabled.value = false
     }
     else if (mode === 'dragMode') {
-      modelStore.interactionMode = 'tactile'
+      modelStore.interactionMode = 'drag'
       stageViewControlsEnabled.value = true
     }
     else if (mode === 'positionMode') {
-      modelStore.interactionMode = 'tactile'
+      modelStore.interactionMode = 'positioning'
       stageViewControlsEnabled.value = true
     }
     else if (mode === 'orbitMode') {

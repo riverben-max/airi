@@ -134,7 +134,7 @@ defineExpose({
       @offset-change="(val) => emits('offsetChange', val)"
     />
     <ThreeScene
-      v-if="stageModelRenderer === 'vrm'"
+      v-if="stageModelRenderer === 'vrm' && stageModelSelectedUrl"
       ref="vrmViewerRef"
       v-model:state="componentState"
       :model-src="stageModelSelectedUrl"
@@ -147,10 +147,16 @@ defineExpose({
       :paused="paused"
       :show-axes="stageViewControlsEnabled"
       :current-audio-source="currentAudioSource"
+      :scale="scale !== undefined ? Number(scale) : undefined"
+      :x-offset="xOffset !== undefined ? Number(xOffset) : undefined"
+      :y-offset="yOffset !== undefined ? Number(yOffset) : undefined"
+      :draggable="stageViewControlsEnabled"
       @error="console.error"
       @binary-loaded="vhackStore.setSourceArrayBuffer"
       @finished="emits('animationFinished')"
       @play-status="(status) => emits('animationPlayStatus', status)"
+      @scale-change="(val) => emits('scaleChange', val)"
+      @offset-change="(val) => emits('offsetChange', val)"
     />
     <SpineScene
       v-if="stageModelRenderer === 'spine'"
@@ -160,7 +166,7 @@ defineExpose({
       :model-id="stageModelSelected"
       :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
       :paused="paused"
-      :interaction-mode="vrmStore.interactionMode"
+      :interaction-mode="vrmStore.interactionMode === 'tactile' ? 'tactile' : 'orbit'"
       :x-offset="xOffset !== undefined ? Number(xOffset) : undefined"
       :y-offset="yOffset !== undefined ? Number(yOffset) : undefined"
       :scale="scale !== undefined ? Number(scale) : undefined"

@@ -48,11 +48,13 @@ const props = withDefaults(defineProps<{
   xOffset?: number
   yOffset?: number
   scale?: number
+  draggable?: boolean
 }>(), {
   showAxes: false,
   idleAnimation: new URL('../assets/vrm/animations/idle_loop.vrma', import.meta.url).href,
   idleAnimations: () => [],
   paused: false,
+  draggable: false,
 })
 
 const emit = defineEmits<{
@@ -61,6 +63,8 @@ const emit = defineEmits<{
   (e: 'error', value: unknown): void
   (e: 'finished'): void
   (e: 'playStatus', value: { duration: number, url: string }): void
+  (e: 'scaleChange', value: number): void
+  (e: 'offsetChange', value: { x: number, y: number }): void
 }>()
 
 const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
@@ -347,10 +351,75 @@ defineExpose({
     })
   },
 })
+
+function handleWheel(event: WheelEvent) {
+  if (modelStore.interactionMode !== 'drag' && modelStore.interactionMode !== 'positioning')
+    return
+
+  const delta = event.deltaY * -0.0005
+  const newScale = Math.min(Math.max((props.scale || 1) + delta, 0.1), 3)
+  emit('scaleChange', newScale)
+}
+
+const isDragging = ref(false)
+let dragStartX = 0
+let dragStartY = 0
+let initialOffsetX = 0
+let initialOffsetY = 0
+
+function handlePointerDown(event: PointerEvent) {
+  if (modelStore.interactionMode !== 'drag' && modelStore.interactionMode !== 'positioning')
+    return
+
+  const target = event.currentTarget as HTMLElement
+  if (target && typeof target.setPointerCapture === 'function') {
+    target.setPointerCapture(event.pointerId)
+  }
+
+  isDragging.value = true
+  dragStartX = event.clientX
+  dragStartY = event.clientY
+
+  initialOffsetX = props.xOffset || 0
+  initialOffsetY = props.yOffset || 0
+}
+
+function handlePointerMove(event: PointerEvent) {
+  if (!isDragging.value)
+    return
+
+  const deltaX = event.clientX - dragStartX
+  const deltaY = event.clientY - dragStartY
+
+  const newX = initialOffsetX - deltaX
+  const newY = initialOffsetY - deltaY
+
+  emit('offsetChange', { x: newX, y: newY })
+}
+
+function handlePointerUp(event: PointerEvent) {
+  if (!isDragging.value)
+    return
+
+  const target = event.currentTarget as HTMLElement
+  if (target && typeof target.releasePointerCapture === 'function') {
+    target.releasePointerCapture(event.pointerId)
+  }
+
+  isDragging.value = false
+}
 </script>
 
 <template>
-  <Screen>
+  <Screen
+    relative
+    :class="(modelStore.interactionMode === 'drag' || modelStore.interactionMode === 'positioning') ? (isDragging ? 'cursor-grabbing select-none' : 'cursor-grab') : ''"
+    @wheel="handleWheel"
+    @pointerdown="handlePointerDown"
+    @pointermove="handlePointerMove"
+    @pointerup="handlePointerUp"
+    @pointercancel="handlePointerUp"
+  >
     <div ref="sceneContainerRef" class="h-full w-full">
       <TresCanvas
         v-show="true"
