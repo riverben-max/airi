@@ -64,6 +64,7 @@ const {
   availableVariants,
   currentVariant,
   animationSpeed,
+  premultipliedAlpha: storePremultipliedAlpha,
 } = storeToRefs(spineStore)
 
 let isUnmounted = false
@@ -282,6 +283,11 @@ async function loadModel() {
         ?? loaded.variants[0]
       if (selectedVariant && currentVariant.value !== selectedVariant.name)
         currentVariant.value = selectedVariant.name
+
+      // Auto-detect PMA from the atlas header — the Spine editor writes
+      // `pma:true` when the atlas is packed with pre-multiplied alpha.
+      // Absence means straight-alpha. This drives the WebGL blending mode.
+      storePremultipliedAlpha.value = selectedVariant?.premultipliedAlpha ?? loaded.premultipliedAlpha
 
       assetPaths = selectedVariant.layout
       blobUrls = loaded.blobUrls

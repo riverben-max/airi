@@ -18,6 +18,12 @@ export interface SpineModelVariant {
   /** Display name derived from the folder/file name. */
   name: string
   layout: SpineModelLayout
+  /**
+   * Whether the atlas texture pages were packed with pre-multiplied alpha.
+   * Detected from the `pma:true` header line in the `.atlas` file.
+   * Drives the WebGL blending mode — must match how the atlas was exported.
+   */
+  premultipliedAlpha: boolean
 }
 
 export interface SpineLoadedAssets {
@@ -25,6 +31,12 @@ export interface SpineLoadedAssets {
 
   /** All skeleton+atlas pairs found in the ZIP. */
   variants: SpineModelVariant[]
+
+  /**
+   * Whether the primary variant's atlas was packed with pre-multiplied alpha.
+   * Convenience shorthand for `variants[0].premultipliedAlpha`.
+   */
+  premultipliedAlpha: boolean
 
   /**
    * Blob URLs for texture pages, keyed by ZIP path.
@@ -153,7 +165,8 @@ export function detectAllSpineLayouts(entries: Record<string, string>, atlasText
     usedAtlases.add(candidate)
     const texturePaths = resolveAtlasTextures(candidate, entries, atlasText)
     const name = dir ? dir.replace(/\/$/, '').split('/').pop()! : baseName
-    variants.push({ name, layout: { skeletonPath, skeletonFormat, atlasPath: candidate, texturePaths } })
+    const premultipliedAlpha = detectAtlasPma(atlasText[candidate] ?? '')
+    variants.push({ name, layout: { skeletonPath, skeletonFormat, atlasPath: candidate, texturePaths }, premultipliedAlpha })
   }
 
   // Fallback: unmatched atlases paired with any skeleton in the same directory.
@@ -171,10 +184,39 @@ export function detectAllSpineLayouts(entries: Record<string, string>, atlasText
     const texturePaths = resolveAtlasTextures(candidate, entries, atlasText)
     const baseName = stripExt(stripExt(basename(candidate)))
     const name = dir ? dir.replace(/\/$/, '').split('/').pop()! : baseName
-    variants.push({ name, layout: { skeletonPath: skel, skeletonFormat, atlasPath: candidate, texturePaths } })
+    const premultipliedAlpha = detectAtlasPma(atlasText[candidate] ?? '')
+    variants.push({ name, layout: { skeletonPath: skel, skeletonFormat, atlasPath: candidate, texturePaths }, premultipliedAlpha })
   }
 
   return variants
+}
+
+/**
+ * Detects whether a Spine atlas was packed with pre-multiplied alpha by
+ * scanning the page header for `pma:true`.
+ *
+ * The Spine editor writes `pma:true` on its own line in the per-page header
+ * block (after the filename, size, and filter lines) when the atlas is
+ * exported with PMA enabled. Absence of the key means straight-alpha.
+ *
+ * NOTICE: Only the header block before the first region name is scanned to
+ * avoid false positives from region property lines deeper in the file.
+ */
+export function detectAtlasPma(atlasText: string): boolean {
+  const lines = atlasText.split(/\r?\n/)
+  for (const line of lines) {
+    const trimmed = line.trim()
+    // A blank line or an indented line signals end of the page header block.
+    if (trimmed === '' || line[0] === ' ' || line[0] === '\t')
+      continue
+    // A line without ':' that isn't the texture filename is a region name —
+    // we've left the header, stop scanning.
+    if (!trimmed.includes(':') && !trimmed.match(/\.(png|webp|jpg|jpeg)$/i))
+      break
+    if (trimmed.toLowerCase() === 'pma:true')
+      return true
+  }
+  return false
 }
 
 function resolveAtlasTextures(atlasPath: string, entries: Record<string, string>, atlasText: Record<string, string>): string[] {
@@ -339,6 +381,7 @@ export async function loadSpineZip(file: File | Blob | ArrayBuffer): Promise<Spi
   return {
     layout,
     variants,
+    premultipliedAlpha: variants[0].premultipliedAlpha,
     blobUrls,
     rawData,
     dispose: () => {
