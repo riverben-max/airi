@@ -109,7 +109,10 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
             // Position skeleton at 0,0 first to calculate local bounds
             skeleton.x = 0
             skeleton.y = 0
-            ;(skeleton as any).updateWorldTransform()
+            if (spine.Physics && (spine.Physics as any).none !== undefined)
+              (skeleton as any).updateWorldTransform((spine.Physics as any).none)
+            else
+              (skeleton as any).updateWorldTransform()
 
             // Calculate actual bone-based boundaries to bypass artificial design canvas size limits
             let minX = Infinity
