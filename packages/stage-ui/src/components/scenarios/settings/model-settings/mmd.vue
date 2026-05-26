@@ -7,6 +7,8 @@ import { computed, ref } from 'vue'
 import ModelSceneSettings from './components/ModelSceneSettings.vue'
 
 import { useAiriCardStore } from '../../../../stores/modules'
+import { useSettings } from '../../../../stores/settings'
+import { usePositioningStore } from '../../../../stores/settings/positioning'
 import { Section } from '../../../layouts'
 
 const props = withDefaults(defineProps<{
@@ -18,6 +20,9 @@ const props = withDefaults(defineProps<{
 })
 
 const mmdStore = useMmd()
+const positioningStore = usePositioningStore()
+const settingsStore = useSettings()
+const { stageModelSelected } = storeToRefs(settingsStore)
 const { availableMorphs, morphMappings, hiddenMorphs, availableMotions, currentMotion, previewExpression } = storeToRefs(mmdStore)
 
 const airiCardStore = useAiriCardStore()
@@ -342,6 +347,8 @@ function handleMotionSelect(motion: string) {
   <!-- Block 2: Scene -->
   <ModelSceneSettings
     :store="mmdStore"
+    :positioning-store="positioningStore"
+    :model-id="props.modelId || stageModelSelected"
     :model-size="mmdStore.modelSize || { x: 1, y: 2, z: 1 }"
     :palette="palette"
     :show-eye-tracking="false"

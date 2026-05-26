@@ -187,7 +187,10 @@ defineExpose({
       :position-x="xOffset !== undefined ? Number(xOffset) : undefined"
       :position-y="yOffset !== undefined ? Number(yOffset) : undefined"
       :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :draggable="stageViewControlsEnabled"
       @error="console.error"
+      @scale-change="(val) => emits('scaleChange', val)"
+      @offset-change="(val) => emits('offsetChange', val)"
     />
   </div>
 </template>

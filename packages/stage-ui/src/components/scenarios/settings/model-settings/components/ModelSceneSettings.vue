@@ -9,6 +9,8 @@ import { ColorPalette } from '../../../../widgets'
 
 const props = withDefaults(defineProps<{
   store: any
+  positioningStore?: any
+  modelId?: string
   modelSize: { x: number, y: number, z: number }
   palette: string[]
   sceneMutationLocked?: boolean
@@ -39,6 +41,63 @@ const envOptions = computed(() => [
 ])
 
 const settingsLockClass = computed(() => props.sceneMutationLocked ? 'pointer-events-none opacity-50' : '')
+
+// Unified positioning helpers
+const modelKey = computed(() => props.modelId || 'default')
+
+const computedX = computed({
+  get: () => {
+    if (props.positioningStore) {
+      return props.positioningStore.getPosition(modelKey.value).x
+    }
+    return props.store.modelOffset?.x || 0
+  },
+  set: (val) => {
+    if (props.positioningStore) {
+      const current = props.positioningStore.getPosition(modelKey.value)
+      props.positioningStore.setPosition(modelKey.value, { ...current, x: val })
+    }
+    else if (props.store.modelOffset) {
+      props.store.modelOffset.x = val
+    }
+  },
+})
+
+const computedY = computed({
+  get: () => {
+    if (props.positioningStore) {
+      return props.positioningStore.getPosition(modelKey.value).y
+    }
+    return props.store.modelOffset?.y || 0
+  },
+  set: (val) => {
+    if (props.positioningStore) {
+      const current = props.positioningStore.getPosition(modelKey.value)
+      props.positioningStore.setPosition(modelKey.value, { ...current, y: val })
+    }
+    else if (props.store.modelOffset) {
+      props.store.modelOffset.y = val
+    }
+  },
+})
+
+const computedScale = computed({
+  get: () => {
+    if (props.positioningStore) {
+      return props.positioningStore.getPosition(modelKey.value).scale
+    }
+    return props.store.cameraDistance || 1
+  },
+  set: (val) => {
+    if (props.positioningStore) {
+      const current = props.positioningStore.getPosition(modelKey.value)
+      props.positioningStore.setPosition(modelKey.value, { ...current, scale: val })
+    }
+    else {
+      props.store.cameraDistance = val
+    }
+  },
+})
 </script>
 
 <template>
@@ -65,16 +124,17 @@ const settingsLockClass = computed(() => props.sceneMutationLocked ? 'pointer-ev
       <div v-if="activeTab === 'placement'" flex="~ col gap-4" p-2>
         <div grid="~ cols-5 gap-y-2 gap-x-1" items-center>
           <PropertyNumber
-            v-model="props.store.modelOffset.x"
-            :config="{ min: -props.modelSize.x * 2, max: props.modelSize.x * 2, step: props.modelSize.x / 1000, label: 'X', formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
+            v-model="computedX"
+            :config="{ min: props.positioningStore ? -500 : -props.modelSize.x * 2, max: props.positioningStore ? 500 : props.modelSize.x * 2, step: props.positioningStore ? 1 : props.modelSize.x / 1000, label: 'X', formatValue: val => val?.toFixed(props.positioningStore ? 0 : 4), disabled: sceneMutationLocked }"
             :label="t('settings.vrm.scale-and-position.x')"
           />
           <PropertyNumber
-            v-model="props.store.modelOffset.y"
-            :config="{ min: -props.modelSize.y * 2, max: props.modelSize.y * 2, step: props.modelSize.y / 1000, label: 'Y', formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
+            v-model="computedY"
+            :config="{ min: props.positioningStore ? -500 : -props.modelSize.y * 2, max: props.positioningStore ? 500 : props.modelSize.y * 2, step: props.positioningStore ? 1 : props.modelSize.y / 1000, label: 'Y', formatValue: val => val?.toFixed(props.positioningStore ? 0 : 4), disabled: sceneMutationLocked }"
             :label="t('settings.vrm.scale-and-position.y')"
           />
           <PropertyNumber
+            v-if="!props.positioningStore"
             v-model="props.store.modelOffset.z"
             :config="{ min: -props.modelSize.z * 2, max: props.modelSize.z * 2, step: props.modelSize.z / 1000, label: 'Z', formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
             :label="t('settings.vrm.scale-and-position.z')"
@@ -85,9 +145,9 @@ const settingsLockClass = computed(() => props.sceneMutationLocked ? 'pointer-ev
             :label="t('settings.vrm.scale-and-position.rotation-y')"
           />
           <PropertyNumber
-            v-model="props.store.cameraDistance"
-            :config="{ min: props.modelSize.z || 0.1, max: (props.modelSize.z || 1) * 20, step: (props.modelSize.z || 1) / 100, label: t('settings.vrm.scale-and-position.camera-distance'), formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
-            :label="t('settings.vrm.scale-and-position.camera-distance')"
+            v-model="computedScale"
+            :config="{ min: props.positioningStore ? 0.1 : props.modelSize.z || 0.1, max: props.positioningStore ? 5 : (props.modelSize.z || 1) * 20, step: 0.01, label: props.positioningStore ? 'Scale' : t('settings.vrm.scale-and-position.camera-distance'), formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
+            :label="props.positioningStore ? 'Scale' : t('settings.vrm.scale-and-position.camera-distance')"
           />
           <PropertyNumber
             v-model="props.store.cameraFOV"

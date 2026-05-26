@@ -32,6 +32,7 @@ const viewControlsValueX = computed({
       case 'live2d':
       case 'vrm':
       case 'spine':
+      case 'mmd':
         return positioningStore.getPosition(stageModelSelected.value).x
       default:
         return 0
@@ -41,7 +42,8 @@ const viewControlsValueX = computed({
     switch (stageModelRenderer.value) {
       case 'vrm':
       case 'live2d':
-      case 'spine': {
+      case 'spine':
+      case 'mmd': {
         if (stageModelRenderer.value === 'vrm' && vrmControlsDisabled.value)
           break
 
@@ -60,6 +62,8 @@ const viewControlsValueXMin = computed(() => {
     return -1000
   if (stageModelRenderer.value === 'spine')
     return -2000
+  if (stageModelRenderer.value === 'mmd')
+    return -1000
   return (-vrmModelSize.value.x - 10) * 10
 })
 
@@ -68,6 +72,8 @@ const viewControlsValueXMax = computed(() => {
     return 1000
   if (stageModelRenderer.value === 'spine')
     return 2000
+  if (stageModelRenderer.value === 'mmd')
+    return 1000
   return (vrmModelSize.value.x + 10) * 10
 })
 
@@ -81,6 +87,7 @@ const viewControlsValueY = computed({
         return positioningStore.getPosition(stageModelSelected.value).y
       case 'vrm':
       case 'spine':
+      case 'mmd':
         return positioningStore.getPosition(stageModelSelected.value).y
       default:
         return 0
@@ -90,7 +97,8 @@ const viewControlsValueY = computed({
     switch (stageModelRenderer.value) {
       case 'vrm':
       case 'live2d':
-      case 'spine': {
+      case 'spine':
+      case 'mmd': {
         if (stageModelRenderer.value === 'vrm' && vrmControlsDisabled.value)
           break
 
@@ -109,6 +117,8 @@ const viewControlsValueYMin = computed(() => {
     return -1000
   if (stageModelRenderer.value === 'spine')
     return -2000
+  if (stageModelRenderer.value === 'mmd')
+    return -1000
   return (-vrmModelSize.value.y - 10) * 10
 })
 
@@ -117,6 +127,8 @@ const viewControlsValueYMax = computed(() => {
     return 1000
   if (stageModelRenderer.value === 'spine')
     return 2000
+  if (stageModelRenderer.value === 'mmd')
+    return 1000
   return (vrmModelSize.value.y + 10) * 10
 })
 
@@ -160,6 +172,7 @@ const viewControlsValueScale = computed({
       case 'live2d':
       case 'vrm':
       case 'spine':
+      case 'mmd':
         return positioningStore.getPosition(stageModelSelected.value).scale
       default:
         return 1
@@ -169,7 +182,8 @@ const viewControlsValueScale = computed({
     switch (stageModelRenderer.value) {
       case 'vrm':
       case 'live2d':
-      case 'spine': {
+      case 'spine':
+      case 'mmd': {
         if (stageModelRenderer.value === 'vrm' && vrmControlsDisabled.value)
           break
 

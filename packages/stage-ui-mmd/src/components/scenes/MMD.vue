@@ -20,16 +20,19 @@ const props = withDefaults(defineProps<{
   positionY?: number
   previewExpression?: string
   idleAnimations?: string[]
+  draggable?: boolean
 }>(), {
   paused: false,
   scale: 1,
   positionX: 0,
   positionY: 0,
+  draggable: false,
 })
 
 const emit = defineEmits<{
   (e: 'error', value: unknown): void
   (e: 'scaleChange', value: number): void
+  (e: 'offsetChange', value: { x: number, y: number }): void
 }>()
 
 const componentState = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
@@ -53,8 +56,6 @@ const {
 
   envSelect,
 
-  scale: storeScale,
-  modelOffset,
   modelRotationY,
   cameraFOV,
   cameraDistance,
@@ -68,14 +69,14 @@ const {
 
 const computedModelOffset = computed(() => {
   return {
-    x: props.positionX !== undefined ? props.positionX / 100 : modelOffset.value.x,
-    y: props.positionY !== undefined ? props.positionY / 100 : modelOffset.value.y,
-    z: modelOffset.value.z,
+    x: props.positionX !== undefined ? props.positionX / 100 : 0,
+    y: props.positionY !== undefined ? props.positionY / 100 : 0,
+    z: 0,
   }
 })
 
 const computedScale = computed(() => {
-  return props.scale !== undefined ? props.scale : storeScale.value
+  return props.scale !== undefined ? props.scale : 1
 })
 
 watch(cameraFOV, (fov) => {
@@ -178,11 +179,68 @@ function handleWheel(event: WheelEvent) {
   const newScale = Math.min(Math.max((props.scale || 1) + delta, 0.1), 3)
   emit('scaleChange', newScale)
 }
+
+const isDragging = ref(false)
+let dragStartX = 0
+let dragStartY = 0
+let initialOffsetX = 0
+let initialOffsetY = 0
+
+function handlePointerDown(event: PointerEvent) {
+  if (!props.draggable)
+    return
+
+  const target = event.currentTarget as HTMLElement
+  if (target && typeof target.setPointerCapture === 'function') {
+    target.setPointerCapture(event.pointerId)
+  }
+
+  isDragging.value = true
+  dragStartX = event.clientX
+  dragStartY = event.clientY
+
+  initialOffsetX = props.positionX || 0
+  initialOffsetY = props.positionY || 0
+}
+
+function handlePointerMove(event: PointerEvent) {
+  if (!isDragging.value)
+    return
+
+  const deltaX = event.clientX - dragStartX
+  const deltaY = event.clientY - dragStartY
+
+  const newX = initialOffsetX + deltaX
+  const newY = initialOffsetY + deltaY
+
+  emit('offsetChange', { x: newX, y: newY })
+}
+
+function handlePointerUp(event: PointerEvent) {
+  if (!isDragging.value)
+    return
+
+  const target = event.currentTarget as HTMLElement
+  if (target && typeof target.releasePointerCapture === 'function') {
+    target.releasePointerCapture(event.pointerId)
+  }
+
+  isDragging.value = false
+}
 </script>
 
 <template>
-  <Screen v-slot="{ width, height }" relative>
-    <div class="h-full w-full" @wheel="handleWheel">
+  <Screen
+    v-slot="{ width, height }"
+    relative
+    :class="props.draggable ? (isDragging ? 'cursor-grabbing select-none' : 'cursor-grab') : ''"
+    @wheel="handleWheel"
+    @pointerdown="handlePointerDown"
+    @pointermove="handlePointerMove"
+    @pointerup="handlePointerUp"
+    @pointercancel="handlePointerUp"
+  >
+    <div class="h-full w-full">
       <TresCanvas
         :camera="(camera as any)"
         :alpha="true"
