@@ -106,7 +106,7 @@ export async function setupMainWindow(params: {
 
   function restoreBounds() {
     const mainWindow = getConfig().windows?.find((w: any) => w.title === 'AIRI' && w.tag === 'main')
-    console.log('[MainWindow] restoreBounds read config:', JSON.stringify(mainWindow, null, 2))
+    // console.log('[MainWindow] restoreBounds read config:', JSON.stringify(mainWindow, null, 2))
     const x = mainWindow?.x ?? mainWindow?.snapshot?.x
     const y = mainWindow?.y ?? mainWindow?.snapshot?.y
     const orientation = mainWindow?.orientation || 'vertical'
@@ -119,7 +119,7 @@ export async function setupMainWindow(params: {
         width: Math.round(width),
         height: Math.round(height),
       })
-      console.log('[MainWindow] restoreBounds applying visible bounds:', JSON.stringify(valid, null, 2))
+      // console.log('[MainWindow] restoreBounds applying visible bounds:', JSON.stringify(valid, null, 2))
       window.setBounds(valid)
     }
   }
@@ -197,11 +197,11 @@ export async function setupMainWindow(params: {
       }
     }
 
-    console.log('[MainWindow] handleNewBounds: bounds change detected.', {
-      newBounds,
-      state,
-      calculated: { x: savedX, y: savedY, w: savedW, h: savedH },
-    })
+    // console.log('[MainWindow] handleNewBounds: bounds change detected.', {
+    //   newBounds,
+    //   state,
+    //   calculated: { x: savedX, y: savedY, w: savedW, h: savedH },
+    // })
 
     if (existingConfigIndex === -1) {
       const newWin = {
@@ -234,7 +234,7 @@ export async function setupMainWindow(params: {
       ;(window as any).__airi_config = updatedWin
     }
 
-    console.log('[MainWindow] handleNewBounds saving updated config:', JSON.stringify((window as any).__airi_config, null, 2))
+    // console.log('[MainWindow] handleNewBounds saving updated config:', JSON.stringify((window as any).__airi_config, null, 2))
     updateConfig(config)
     window.webContents.send('eventa:event:electron:windows:main:config-changed', (window as any).__airi_config)
   }

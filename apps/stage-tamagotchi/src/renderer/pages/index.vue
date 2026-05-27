@@ -734,7 +734,7 @@ onMounted(async () => {
 
   // Initialize orientation from main process config
   const mainConfig = await getMainWindowConfig()
-  console.log('[Renderer Page] Loaded mainConfig on mount:', mainConfig)
+  // console.log('[Renderer Page] Loaded mainConfig on mount:', mainConfig)
   if (mainConfig?.orientation) {
     controlStripStore.orientation = mainConfig.orientation
   }

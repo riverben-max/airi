@@ -100,7 +100,7 @@ export function createConfig<TSchema extends PersistedSchema>(
       const sequence = ++saveSequence
       const tmpPath = `${path}.${process.pid}.${sequence}.tmp`
       const data = persistenceMap.get(key)
-      console.log(`[Persistence] Writing config to disk: ${path}`, JSON.stringify(data, null, 2))
+      // console.log(`[Persistence] Writing config to disk: ${path}`, JSON.stringify(data, null, 2))
       await writeFile(tmpPath, JSON.stringify(data))
       await rename(tmpPath, path)
     }
@@ -147,7 +147,7 @@ export function createConfig<TSchema extends PersistedSchema>(
       const raw = readFileSync(path, { encoding: 'utf-8' })
       const parsed = parseWithSchema(raw, schema)
       if (parsed.value !== undefined) {
-        console.log(`[Persistence] Loaded config from disk: ${path}`, JSON.stringify(parsed.value, null, 2))
+        // console.log(`[Persistence] Loaded config from disk: ${path}`, JSON.stringify(parsed.value, null, 2))
         const diagnostics = recordDiagnostics({
           status: 'ok',
           path,

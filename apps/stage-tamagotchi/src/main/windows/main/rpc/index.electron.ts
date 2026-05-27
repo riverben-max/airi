@@ -86,7 +86,7 @@ export async function setupMainWindowElectronInvokes(params: {
 
   defineInvokeHandler(context, electronControlStripSyncState, (payload) => {
     if (payload) {
-      console.log('[Main RPC] electronControlStripSyncState received payload:', JSON.stringify(payload, null, 2))
+      // console.log('[Main RPC] electronControlStripSyncState received payload:', JSON.stringify(payload, null, 2))
       ;(params.window as any).__control_strip_state = payload
 
       const config = params.appConfig.get()
@@ -114,7 +114,7 @@ export async function setupMainWindowElectronInvokes(params: {
           params.appConfig.update(config)
           ;(params.window as any).__airi_config = newWin
         }
-        console.log('[Main RPC] Updated window config after sync:', JSON.stringify((params.window as any).__airi_config, null, 2))
+        // console.log('[Main RPC] Updated window config after sync:', JSON.stringify((params.window as any).__airi_config, null, 2))
       }
     }
   })
