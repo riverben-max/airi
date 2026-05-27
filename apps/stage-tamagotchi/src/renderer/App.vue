@@ -310,8 +310,21 @@ watch(
     if (route.path.startsWith('/settings') || route.path === '/chat')
       return
 
+    let nextTitle = 'AIRI'
     const activeCharacterLabel = activeCard.value?.name?.trim() || 'AIRI'
-    const nextTitle = `AIRI - Looking at ${activeCharacterLabel}`
+
+    if (route.path === '/actor') {
+      nextTitle = `AIRI - Looking at ${activeCharacterLabel}`
+    }
+    else if (route.path === '/caption') {
+      nextTitle = 'AIRI - Captions'
+    }
+    else if (route.path === '/') {
+      nextTitle = 'AIRI - Control Strip'
+    }
+    else {
+      nextTitle = `AIRI - Looking at ${activeCharacterLabel}`
+    }
 
     if (document.title !== nextTitle) {
       console.log('[AppTitle] Updating main title', {
