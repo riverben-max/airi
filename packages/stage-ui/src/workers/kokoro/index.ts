@@ -214,7 +214,7 @@ export class KokoroWorkerManager {
       const loadedData = event.data as LoadedMessage
       this.voices = loadedData.voices
       this.onSuccessfulOperation()
-      return this.voices
+      return this.voices!
     }).catch((error) => {
       this.handleWorkerError(error)
       return Promise.reject(error)

@@ -21,7 +21,8 @@
     "./electron-renderer": "./src/electron-renderer.d.ts",
     "./composables": "./src/composables/index.ts",
     "./shortcuts": "./src/shortcuts.ts",
-    "./utils/*": "./src/utils/*.ts"
+    "./utils/*": "./src/utils/*.ts",
+    "./webgpu": "./src/webgpu/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
@@ -33,6 +34,7 @@
     "@xsai/generate-text": "catalog:",
     "@xsai/shared-chat": "catalog:",
     "@xsai/utils-chat": "catalog:",
+    "gpuu": "^1.0.7",
     "pinia": "catalog:",
     "valibot": "catalog:",
     "vue": "catalog:",

@@ -1,68 +1,74 @@
+/**
+ * Unified Whisper Web Worker
+ *
+ * Implements the unified inference protocol from protocol.ts.
+ * Supports WebGPU-first execution with automated WASM fallback and progress updates.
+ */
+
+import type {
+  ErrorResponse,
+  InferenceResultResponse,
+  LoadModelRequest,
+  ModelReadyResponse,
+  ProgressResponse,
+  RunInferenceRequest,
+  WorkerInboundMessage,
+} from '../../inference/protocol'
+
 import { env, pipeline } from '@huggingface/transformers'
 
-// Initialize environment for browser usage (WebGPU/WASM)
+import { classifyError, isRecoverable } from '../../inference/protocol'
+
+// Initialize HuggingFace environment
 env.allowLocalModels = false
 env.useBrowserCache = true
 
-// Cache for pipelines
-const pipelines: Record<string, any> = {}
-// Track active loading tasks to prevent redundant downloads
-const loadingPromises: Record<string, Promise<any> | undefined> = {}
+// Pipeline cache and status
+let transcriber: any = null
+let currentModelId: string | null = null
+let currentDevice: string | null = null
 
-async function getPipeline(model: string, progress_callback?: (progress: number) => void) {
-  if (pipelines[model])
-    return pipelines[model]
+// Cancellation tracking
+const cancelledRequestIds = new Set<string>()
 
-  if (loadingPromises[model]) {
-    console.info(`[Whisper Worker] Already loading ${model}, waiting for existing task...`)
-    return loadingPromises[model]
+function markCancelled(targetRequestId: string): void {
+  cancelledRequestIds.add(targetRequestId)
+  const msg: ErrorResponse = {
+    type: 'error',
+    requestId: targetRequestId,
+    payload: {
+      code: 'CANCELLED',
+      message: 'Operation cancelled by caller',
+      recoverable: false,
+    },
   }
-
-  console.info(`[Whisper Worker] Loading model: ${model}`)
-  loadingPromises[model] = (async () => {
-    try {
-      // Try WebGPU first if available
-      const p = await pipeline('automatic-speech-recognition', model, {
-        device: 'webgpu',
-        dtype: 'fp16', // Better for WebGPU
-        progress_callback: (info: any) => {
-          if (info.status === 'progress' && progress_callback) {
-            progress_callback(info.progress)
-          }
-        },
-      })
-      console.info(`[Whisper Worker] Model ${model} loaded with WebGPU`)
-      pipelines[model] = p
-      return p
-    }
-    catch (err) {
-      console.warn(`[Whisper Worker] WebGPU failed, falling back to WASM:`, err)
-      const p = await pipeline('automatic-speech-recognition', model, {
-        device: 'wasm',
-        dtype: 'fp32', // Safe default for WASM
-        progress_callback: (info: any) => {
-          if (info.status === 'progress' && progress_callback) {
-            progress_callback(info.progress)
-          }
-        },
-      })
-      console.info(`[Whisper Worker] Model ${model} loaded with WASM`)
-      pipelines[model] = p
-      return p
-    }
-    finally {
-      delete loadingPromises[model]
-    }
-  })()
-
-  return loadingPromises[model]
+  globalThis.postMessage(msg)
 }
 
-let transcriber: any = null
+function isCancelled(requestId: string): boolean {
+  return cancelledRequestIds.has(requestId)
+}
 
-/**
- * Basic linear interpolation resampler.
- */
+function clearCancelled(requestId: string): void {
+  cancelledRequestIds.delete(requestId)
+}
+
+function sendError(requestId: string, error: unknown, phase?: 'load' | 'inference'): void {
+  const message = error instanceof Error ? error.message : String(error)
+  const code = classifyError(error, phase)
+  const msg: ErrorResponse = {
+    type: 'error',
+    requestId,
+    payload: {
+      code,
+      message,
+      recoverable: isRecoverable(code),
+    },
+  }
+  globalThis.postMessage(msg)
+}
+
+// Resampling helper
 function resample(audio: Float32Array, fromRate: number, toRate: number): Float32Array {
   if (fromRate === toRate)
     return audio
@@ -83,19 +89,15 @@ function resample(audio: Float32Array, fromRate: number, toRate: number): Float3
   return result
 }
 
-/**
- * Strips WAV header and extracts PCM data + sample rate.
- */
+// WAV header parser
 function parseWav(buffer: ArrayBuffer) {
   const view = new DataView(buffer)
-
-  // Double check RIFF header
   if (view.byteLength < 44)
     return null
-  if (view.getUint32(0) !== 0x52494646)
-    return null // "RIFF"
-  if (view.getUint32(8) !== 0x57415645)
-    return null // "WAVE"
+  if (view.getUint32(0) !== 0x52494646) // "RIFF"
+    return null
+  if (view.getUint32(8) !== 0x57415645) // "WAVE"
+    return null
 
   let offset = 12
   let sampleRate = 0
@@ -103,7 +105,6 @@ function parseWav(buffer: ArrayBuffer) {
   let dataOffset = 0
   let dataSize = 0
 
-  // Look for "fmt " and "data" chunks
   while (offset + 8 <= buffer.byteLength) {
     const chunkId = view.getUint32(offset)
     const chunkSize = view.getUint32(offset + 4, true)
@@ -125,26 +126,20 @@ function parseWav(buffer: ArrayBuffer) {
   return { sampleRate, bitsPerSample, dataOffset, dataSize }
 }
 
-/**
- * Ensures the input audio is a Float32Array and properly normalized for Whisper (16kHz).
- */
 function ensureFloat32Array(audio: any): Float32Array {
   const TARGET_RATE = 16000
 
-  // Handle Blob/File (should be converted to ArrayBuffer before worker call, but just in case)
   if (audio instanceof Blob) {
     throw new TypeError('Blobs cannot be processed directly in worker sync — convert to ArrayBuffer first.')
   }
 
   let float32: Float32Array
-  let sourceRate = TARGET_RATE // Default assume it's already 16kHz
+  let sourceRate = TARGET_RATE
 
   if (audio instanceof ArrayBuffer) {
     const wav = parseWav(audio)
     if (wav) {
-      console.info(`[Whisper Worker] WAV detected: ${wav.sampleRate}Hz, ${wav.bitsPerSample}-bit, ${wav.dataSize} bytes data`)
       sourceRate = wav.sampleRate
-
       if (wav.bitsPerSample === 16) {
         const i16 = new Int16Array(audio, wav.dataOffset, Math.floor(wav.dataSize / 2))
         float32 = new Float32Array(i16.length)
@@ -160,16 +155,12 @@ function ensureFloat32Array(audio: any): Float32Array {
       }
     }
     else {
-      // Not a WAV, assume raw Float32 at native rate fallback (heuristic)
-      console.warn('[Whisper Worker] Not a WAV file. Assuming raw Float32 PCM at 48kHz...')
       sourceRate = 48000
       float32 = new Float32Array(audio)
     }
   }
   else if (audio instanceof Float32Array) {
     float32 = audio
-    // If it's pure Float32, we don't know the rate unless passed in.
-    // Heuristic: if originating from this repo's recorder, it's 48kHz.
     sourceRate = 48000
   }
   else if (audio instanceof Int16Array) {
@@ -183,126 +174,162 @@ function ensureFloat32Array(audio: any): Float32Array {
     throw new TypeError(`Unsupported data type: ${audio?.constructor?.name || typeof audio}`)
   }
 
-  // Resample to 16kHz
   if (sourceRate !== TARGET_RATE) {
-    console.info(`[Whisper Worker] Resampling from ${sourceRate}Hz to ${TARGET_RATE}Hz...`)
     return resample(float32, sourceRate, TARGET_RATE)
   }
 
   return float32
 }
 
-self.onmessage = async (event: MessageEvent) => {
-  const { type, id, model, modelId, audio, audioData, options, payload } = event.data
+async function loadModel(request: LoadModelRequest): Promise<void> {
+  const { requestId, modelId, device } = request
 
-  // Support both direct props and payload for flexibility during transition
-  const effectiveModelId = modelId || model || payload?.modelId || payload?.model
-  const effectiveId = id || payload?.id
-  const effectiveType = type?.toUpperCase()
-
-  console.info(`[Whisper Worker] Received message: ${effectiveType}`, { id: effectiveId, modelId: effectiveModelId })
-
-  switch (effectiveType) {
-    case 'CHECK-CACHE': {
-      try {
-        console.group(`[Whisper Worker] Checking cache for ${effectiveModelId}`)
-        const cache = await caches.open('transformers-cache')
-        const keys = await cache.keys()
-        const isCached = keys.some(k => k.url.includes(effectiveModelId))
-        console.info(`[Whisper Worker] Cache status: ${isCached ? 'FOUND' : 'NOT FOUND'}`)
-        self.postMessage({ type: 'CACHE-STATUS', id: effectiveId, modelId: effectiveModelId, isCached })
-        console.groupEnd()
-      }
-      catch (err) {
-        console.error('[Whisper Worker] Cache check failed:', err)
-        if (err instanceof Error) {
-          console.error(err.stack)
-        }
-        self.postMessage({ type: 'CACHE-STATUS', id: effectiveId, modelId: effectiveModelId, isCached: false })
-      }
-      break
-    }
-
-    case 'LOAD': {
-      try {
-        console.group(`[Whisper Worker] Loading model: ${effectiveModelId}`)
-        self.postMessage({ type: 'PROGRESS', id: effectiveId, progress: 0 })
-
-        transcriber = await getPipeline(effectiveModelId, (progress) => {
-          console.info(`[Whisper Worker] Loading progress: ${(progress * 100).toFixed(2)}%`)
-          self.postMessage({ type: 'PROGRESS', id: effectiveId, progress })
-        })
-
-        console.info(`[Whisper Worker] Model ${effectiveModelId} loaded successfully.`)
-        self.postMessage({ type: 'LOADED', id: effectiveId })
-        console.groupEnd()
-      }
-      catch (error) {
-        console.error('[Whisper Worker] Model load failed:', error)
-        if (error instanceof Error) {
-          console.error(error.stack)
-        }
-        self.postMessage({ type: 'ERROR', id: effectiveId, error: (error as Error).message, stack: (error as Error).stack })
-        console.groupEnd()
-      }
-      break
-    }
-
-    case 'TRANSCRIBE': {
-      const effectiveAudio = audio || audioData || payload?.audioData || payload?.audio
-      const effectiveOptions = options || payload?.options || {}
-
-      console.group(`[Whisper Worker] Transcription request ${effectiveId}`)
-
-      if (!transcriber) {
-        const errorMsg = 'Transcriber not initialized. Please ensure LOAD message is sent and completed before TRANSCRIBE.'
-        console.error(`[Whisper Worker] ${errorMsg}`)
-        self.postMessage({ type: 'ERROR', id: effectiveId, error: errorMsg })
-        console.groupEnd()
+  try {
+    if (transcriber && currentModelId === modelId && currentDevice === device) {
+      if (isCancelled(requestId)) {
+        clearCancelled(requestId)
         return
       }
+      const ready: ModelReadyResponse = {
+        type: 'model-ready',
+        requestId,
+        modelId,
+        device: device as 'webgpu' | 'wasm' | 'cpu',
+      }
+      globalThis.postMessage(ready)
+      return
+    }
 
+    const attempts = [
+      { device, dtype: 'fp16' },
+      { device: 'wasm', dtype: 'fp32' },
+    ]
+
+    let lastError: unknown
+    for (const attempt of attempts) {
       try {
-        if (!effectiveAudio) {
-          throw new Error('No audio data provided for transcription')
-        }
-
-        const byteLength = effectiveAudio.byteLength ?? effectiveAudio.size ?? 0
-        console.info(`[Whisper Worker] Processing ${byteLength} bytes of audio data...`)
-
-        // Prepare audio data: convert any input format to normalized Float32Array
-        const audioBuffer = ensureFloat32Array(effectiveAudio)
-
-        console.info(`[Whisper Worker] Starting inference with ${audioBuffer.length} samples...`)
-
-        const result = await transcriber(audioBuffer, {
-          ...effectiveOptions,
-          chunk_length_s: 30,
-          stride_length_s: 5,
+        console.info(`[Whisper Worker] Attempting load: device=${attempt.device}, dtype=${attempt.dtype}`)
+        transcriber = await pipeline('automatic-speech-recognition', modelId, {
+          device: attempt.device as any,
+          dtype: attempt.dtype as any,
+          progress_callback: (progress: any) => {
+            const msg: ProgressResponse = {
+              type: 'progress',
+              requestId,
+              payload: {
+                phase: 'download',
+                percent: progress?.progress ?? -1,
+                message: progress?.status,
+                file: progress?.file,
+                loaded: progress?.loaded,
+                total: progress?.total,
+              },
+            }
+            globalThis.postMessage(msg)
+          },
         })
 
-        console.info(`[Whisper Worker] Transcription completed: "${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}"`)
-        self.postMessage({ type: 'RESULT', id: effectiveId, text: result.text, chunks: result.chunks })
-        console.groupEnd()
-      }
-      catch (err) {
-        console.error('[Whisper Worker] Transcription failed:', err)
-        if (err instanceof Error) {
-          console.error(err.stack)
+        currentModelId = modelId
+        currentDevice = attempt.device
+
+        if (isCancelled(requestId)) {
+          clearCancelled(requestId)
+          return
         }
-        self.postMessage({
-          type: 'ERROR',
-          id: effectiveId,
-          error: `Transcription failed: ${err instanceof Error ? err.message : String(err)}`,
-          stack: err instanceof Error ? err.stack : undefined,
-        })
-        console.groupEnd()
+
+        const ready: ModelReadyResponse = {
+          type: 'model-ready',
+          requestId,
+          modelId,
+          device: attempt.device as 'webgpu' | 'wasm' | 'cpu',
+        }
+        globalThis.postMessage(ready)
+        return
       }
-      break
+      catch (error) {
+        lastError = error
+        console.warn(`[Whisper Worker] Load attempt failed for device=${attempt.device}, dtype=${attempt.dtype}`, error)
+      }
     }
 
-    default: {
-      console.warn(`[Whisper Worker] Unknown message type: ${effectiveType}`)
-    }
+    if (isCancelled(requestId))
+      clearCancelled(requestId)
+    else
+      sendError(requestId, lastError ?? new Error('All model load attempts failed'), 'load')
+  }
+  catch (error) {
+    if (isCancelled(requestId))
+      clearCancelled(requestId)
+    else
+      sendError(requestId, error, 'load')
   }
 }
+
+async function runInference(request: RunInferenceRequest<any>): Promise<void> {
+  const { requestId, input } = request
+
+  try {
+    if (!transcriber)
+      throw new Error('Model not loaded. Send load-model first.')
+
+    const audioData = input.audio || input.audioFloat32
+    if (!audioData)
+      throw new Error('No audio input provided.')
+
+    const audioBuffer = ensureFloat32Array(audioData)
+    const options = {
+      chunk_length_s: 30,
+      stride_length_s: 5,
+      language: input.language || 'en',
+    }
+
+    const start = Date.now()
+    const result = await transcriber(audioBuffer, options)
+    const durationMs = Date.now() - start
+
+    if (isCancelled(requestId)) {
+      clearCancelled(requestId)
+      return
+    }
+
+    const response: InferenceResultResponse<{ text: string[] }> = {
+      type: 'inference-result',
+      requestId,
+      output: {
+        text: [result.text],
+      },
+      durationMs,
+    }
+    globalThis.postMessage(response)
+  }
+  catch (error) {
+    if (isCancelled(requestId))
+      clearCancelled(requestId)
+    else
+      sendError(requestId, error, 'inference')
+  }
+}
+
+globalThis.addEventListener('message', async (event: MessageEvent<WorkerInboundMessage<any>>) => {
+  const message = event.data
+
+  switch (message.type) {
+    case 'load-model':
+      await loadModel(message)
+      break
+    case 'run-inference':
+      await runInference(message)
+      break
+    case 'unload-model':
+      transcriber = null
+      currentModelId = null
+      currentDevice = null
+      globalThis.postMessage({ type: 'model-unloaded', requestId: message.requestId })
+      break
+    case 'cancel':
+      markCancelled(message.targetRequestId)
+      break
+    default:
+      console.warn('[Whisper Worker] Unknown message type:', (message as any).type)
+  }
+})

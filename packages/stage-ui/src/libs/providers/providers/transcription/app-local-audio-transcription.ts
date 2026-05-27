@@ -3,23 +3,43 @@ import type { ProviderDefinition } from '../../types'
 import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { z } from 'zod'
 
-import { getWhisperWorker, WHISPER_MODELS, whisperModelsToModelInfo } from '../../../workers/whisper'
+import whisperWorkerUrl from '../../../../workers/whisper/whisper.worker?worker&url'
+
+import { createWhisperAdapter } from '../../../../libs/inference/adapters/whisper'
 
 const localTranscriptionConfigSchema = z.object({})
-
 type LocalTranscriptionConfig = z.input<typeof localTranscriptionConfigSchema>
 
+// Whisper Models list supported locally
+export const WHISPER_MODELS = [
+  { id: 'onnx-community/whisper-tiny.en', name: 'Whisper Tiny (English)', size: '40MB' },
+  { id: 'onnx-community/whisper-base.en', name: 'Whisper Base (English)', size: '80MB' },
+  { id: 'onnx-community/whisper-small.en', name: 'Whisper Small (English)', size: '250MB' },
+  { id: 'onnx-community/whisper-large-v3-turbo', name: 'Whisper Large v3 Turbo (High Perf)', size: '800MB' },
+] as const
+
+export function whisperModelsToModelInfo(models: typeof WHISPER_MODELS) {
+  return models.map(m => ({
+    id: m.id,
+    name: m.name,
+    provider: 'app-local-audio-transcription',
+    description: `Local Whisper model (${m.size})`,
+    contextLength: 0,
+    deprecated: false,
+  }))
+}
+
+// Single adapter instance reused for local transcription
+const whisperAdapter = createWhisperAdapter(whisperWorkerUrl)
 const loadedModels = new Set<string>()
 const loadingPromises = new Map<string, Promise<void>>()
 
 const definition: ProviderDefinition<LocalTranscriptionConfig> = {
   id: 'app-local-audio-transcription',
   name: 'App (Local)',
-  // Legacy fields for ProviderMetadata
   nameKey: 'settings.pages.providers.provider.app-local-audio-transcription.title',
   descriptionKey: 'settings.pages.providers.provider.app-local-audio-transcription.description',
   category: 'transcription',
-  // New fields for ProviderDefinition
   nameLocalize: ({ t }: { t: any }) => t('settings.pages.providers.provider.app-local-audio-transcription.title'),
   descriptionLocalize: ({ t }: { t: any }) => t('settings.pages.providers.provider.app-local-audio-transcription.description'),
   // @ts-ignore - settingsComponent is dynamic and cross-package
@@ -31,33 +51,23 @@ const definition: ProviderDefinition<LocalTranscriptionConfig> = {
   beginnerRecommended: true,
   tasks: ['speech-to-text', 'automatic-speech-recognition', 'asr', 'stt'],
   isAvailableBy: isStageTamagotchi,
-  // Legacy
   defaultOptions: () => ({}),
-  // New
   createProviderConfig: () => localTranscriptionConfigSchema as any,
   createProvider: async (_config: LocalTranscriptionConfig) => {
-    const worker = await getWhisperWorker()
-
     const transcribe = async (audioInput: any, model: string) => {
       console.group(`[App Local Transcription] Transcribing with model ${model}`)
 
-      // Transcription libraries like @xsai might pass an object with { file: Blob }
       const audio = (audioInput && typeof audioInput === 'object' && 'file' in audioInput)
         ? (audioInput as any).file
         : audioInput
 
-      console.info('[App Local Transcription] Normalized audio input:', {
-        type: audio?.constructor?.name || typeof audio,
-        size: audio instanceof Blob ? audio.size : 'N/A',
-      })
-
-      // Safety: ensure model is loaded if not already
+      // Ensure model is loaded before transcribing
       if (!loadedModels.has(model)) {
         console.warn(`[App Local Transcription] Model ${model} not loaded. Triggering auto-load...`)
         try {
           const capabilities = definition.capabilities as any
           if (capabilities?.loadModel) {
-            await capabilities.loadModel(model, { transcription: () => ({}) } as any, { onProgress: (info: any) => console.info(`[App Local Transcription] Auto-load progress:`, info) })
+            await capabilities.loadModel(model)
           }
           else {
             throw new Error('loadModel capability is missing')
@@ -70,71 +80,50 @@ const definition: ProviderDefinition<LocalTranscriptionConfig> = {
         }
       }
 
-      return new Promise((resolve, reject) => {
-        const id = Math.random().toString(36).substring(7)
-
-        const handleMessage = (e: MessageEvent) => {
-          if (e.data.id === id) {
-            if (e.data.type === 'RESULT') {
-              console.info(`[App Local Transcription] Success for ${id}`)
-              worker.removeEventListener('message', handleMessage)
-              resolve({ text: e.data.text })
-            }
-            else if (e.data.type === 'ERROR') {
-              const error = new Error(e.data.error || 'Unknown worker error')
-              ;(error as any).stack = e.data.stack
-              console.error(`[App Local Transcription] Error for ${id}:`, error)
-              worker.removeEventListener('message', handleMessage)
-              reject(error)
-            }
-          }
-        }
-
-        worker.addEventListener('message', handleMessage)
-
-        console.info(`[App Local Transcription] Sending TRANSCRIBE message ${id}`)
+      try {
+        let audioFloat32: Float32Array
+        let audioString: string | undefined
 
         if (audio instanceof Blob) {
-          audio.arrayBuffer().then((buffer) => {
-            worker.postMessage({
-              type: 'TRANSCRIBE',
-              id,
-              audio: buffer,
-              model,
-            }, [buffer])
-          }).catch((err) => {
-            console.error('[App Local Transcription] Failed to read audio blob:', err)
-            worker.removeEventListener('message', handleMessage)
-            reject(err)
-          })
+          const buffer = await audio.arrayBuffer()
+          audioFloat32 = new Float32Array(buffer)
         }
         else if (audio instanceof ArrayBuffer) {
-          const buffer = audio.slice(0)
-          worker.postMessage({
-            type: 'TRANSCRIBE',
-            id,
-            audio: buffer,
-            model,
-            format: 'pcm16',
-          }, [buffer])
+          audioFloat32 = new Float32Array(audio)
+        }
+        else if (audio instanceof Float32Array) {
+          audioFloat32 = audio
+        }
+        else if (typeof audio === 'string') {
+          audioString = audio
+          audioFloat32 = new Float32Array(0)
         }
         else {
-          console.error('[App Local Transcription] Unsupported audio format received:', audio)
-          worker.removeEventListener('message', handleMessage)
-          reject(new Error(`Unsupported audio format: ${audio?.constructor?.name || typeof audio}`))
+          throw new TypeError(`Unsupported audio format: ${audio?.constructor?.name || typeof audio}`)
         }
-      }).finally(() => {
+
+        const text = await whisperAdapter.transcribe({
+          audio: audioString,
+          audioFloat32: audioFloat32.length > 0 ? audioFloat32 : undefined,
+          language: 'en',
+        })
+
+        return { text }
+      }
+      catch (err) {
+        console.error(`[App Local Transcription] Transcription failed:`, err)
+        throw err
+      }
+      finally {
         console.groupEnd()
-      })
+      }
     }
 
     return {
       transcription: (model: string) => ({
         provider: 'app-local-audio-transcription',
         model,
-        // NOTICE: baseURL is required by @xsai/shared requestURL to avoid .toString() on undefined
         baseURL: 'http://app-local-transcription.invalid',
-        // NOTICE: fetch shim to intercept REST-style calls and route to local worker
         fetch: async (input: any, init?: any) => {
           const url = (typeof input === 'string')
             ? input
@@ -155,18 +144,14 @@ const definition: ProviderDefinition<LocalTranscriptionConfig> = {
           }
           return globalThis.fetch(input, init)
         },
-        // Also keep legacy transcribe for direct calls
         transcribe: (audioInput: any) => transcribe(audioInput, model),
       }),
-    } as any // Cast to any because the nested structure used by xsai is complex and we're bridging interfaces
+    } as any
   },
   capabilities: {
-    // Legacy
     listModels: async () => whisperModelsToModelInfo(WHISPER_MODELS as any),
-
-    // Common for both standards
     loadModel: async (_config: any, _provider: any, hooks?: { onProgress?: (progress: any) => void }) => {
-      const modelId = WHISPER_MODELS[0].id // Fallback to first model if not specific
+      const modelId = WHISPER_MODELS[0].id
       const effectiveModelId = typeof _config === 'string' ? _config : modelId
 
       if (loadedModels.has(effectiveModelId)) {
@@ -182,45 +167,26 @@ const definition: ProviderDefinition<LocalTranscriptionConfig> = {
       console.info(`[App Local Transcription] Starting load for ${effectiveModelId}`)
 
       const loadPromise = (async () => {
-        const worker = await getWhisperWorker()
-        const id = Math.random().toString(36).substring(7)
-
-        return new Promise<void>((resolve, reject) => {
-          const handleMessage = (e: MessageEvent) => {
-            if (e.data.id === id) {
-              if (e.data.type === 'LOADED') {
-                worker.removeEventListener('message', handleMessage)
-                loadedModels.add(effectiveModelId)
-                loadingPromises.delete(effectiveModelId)
-                console.info(`[App Local Transcription] Model ${effectiveModelId} loaded successfully.`)
-                resolve()
-              }
-              else if (e.data.type === 'PROGRESS') {
-                if (hooks?.onProgress) {
-                  hooks.onProgress({ progress: e.data.progress })
-                }
-              }
-              else if (e.data.type === 'ERROR') {
-                worker.removeEventListener('message', handleMessage)
-                loadingPromises.delete(effectiveModelId)
-                const error = new Error(e.data.error)
-                ;(error as any).stack = e.data.stack
-                console.error(`[App Local Transcription] Load failed:`, error)
-                reject(error)
-              }
+        try {
+          await whisperAdapter.load(effectiveModelId, (progress) => {
+            if (hooks?.onProgress) {
+              hooks.onProgress({ progress: progress.percent / 100 })
             }
-          }
-
-          worker.addEventListener('message', handleMessage)
-          worker.postMessage({ type: 'LOAD', id, modelId: effectiveModelId })
-        })
+          })
+          loadedModels.add(effectiveModelId)
+          loadingPromises.delete(effectiveModelId)
+          console.info(`[App Local Transcription] Model ${effectiveModelId} loaded successfully.`)
+        }
+        catch (error) {
+          loadingPromises.delete(effectiveModelId)
+          console.error(`[App Local Transcription] Load failed:`, error)
+          throw error
+        }
       })()
 
       loadingPromises.set(effectiveModelId, loadPromise)
       return loadPromise
     },
-
-    // New (ProviderDefinition uses transcription under capabilities)
     transcription: {
       protocol: 'http',
       generateOutput: true,
@@ -229,13 +195,11 @@ const definition: ProviderDefinition<LocalTranscriptionConfig> = {
     },
   } as any,
   validators: {
-    // Legacy
     validateProviderConfig: () => ({
       errors: [],
       reason: '',
       valid: true,
     }),
-    // New
     validateConfig: [],
     validateProvider: [],
   } as any,

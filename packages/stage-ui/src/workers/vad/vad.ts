@@ -20,7 +20,6 @@ export class VAD implements BaseVAD {
   private inferenceChain: Promise<any> = Promise.resolve()
   private eventListeners: Partial<Record<keyof VADEvents, VADEventCallback<any>[]>> = {}
   private isReady: boolean = false
-  private processingChain: Promise<void> = Promise.resolve()
 
   constructor(userConfig: Partial<BaseVADConfig> = {}) {
     // Default configuration
@@ -95,13 +94,6 @@ export class VAD implements BaseVAD {
    * Process audio buffer for speech detection
    */
   public async processAudio(inputBuffer: Float32Array): Promise<void> {
-    this.processingChain = this.processingChain.then(async () => {
-      await this._processAudio(inputBuffer)
-    })
-    return this.processingChain
-  }
-
-  private async _processAudio(inputBuffer: Float32Array): Promise<void> {
     if (!this.isReady) {
       throw new Error('VAD model is not initialized. Call initialize() first.')
     }
