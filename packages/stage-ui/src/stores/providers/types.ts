@@ -135,3 +135,33 @@ export interface ProviderRuntimeState {
   validatedCredentialHash?: string
   models: ModelInfo[]
 }
+
+export interface VoiceProfile {
+  id: string
+  name: string
+  baseProvider: string
+  baseModel: string
+  baseVoice: string
+  effects: {
+    pitch: number // multiplier e.g. 0.5 to 2.0
+    rate: number // multiplier e.g. 0.5 to 3.0
+    volume: number
+    equalizer?: {
+      bass: number
+      mid: number
+      treble: number
+    }
+    asmr: number // 0 to 100
+    radio: number // 0 to 100
+    robot: number // 0 to 100
+    reverb: number // 0 to 100
+    spatial: number // -100 to 100
+  }
+  ust: {
+    enabled: boolean
+    mode: 'mute' | 'flatten' | 'custom'
+    customStripChars: string
+    stripEmojis: boolean
+    tildeReplacement: string
+  }
+}

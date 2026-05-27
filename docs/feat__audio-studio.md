@@ -110,10 +110,10 @@ The `audio-studio.vue` page serves as a creative console for voice design. It fe
 ## 4. Key Files for Adjustment
 
 ### [Renderer Process (Stage UI)]
-- **[NEW]** `packages/stage-ui/src/components/scenarios/settings/model-settings/audio-studio.vue` (The Voice Builder Console)
-- **[MODIFY]** `packages/stage-ui/src/stores/settings/speech.ts` (State, storage, and audio processor pipelines)
-- **[MODIFY]** `packages/stage-pages/src/pages/settings/providers/speech.vue` (Integrate Audio Studio sub-tab)
-- **[MODIFY]** `packages/stage-shared/src/types/speech.ts` (Add Voice Profile type schemas)
+- **[NEW]** `packages/stage-ui/src/components/scenarios/settings/model-settings/audio-studio.vue` (The Voice Builder Console UI)
+- **[MODIFY]** `packages/stage-ui/src/stores/modules/speech.ts` (Virtual Voice states, storage, and provider registration logic)
+- **[MODIFY]** `packages/stage-ui/src/stores/providers/types.ts` (Add Voice Profile type schemas)
+- **[MODIFY]** `packages/stage-pages/src/pages/settings/modules/speech.vue` (Integrate Audio Studio settings tab)
 
 ### [Base Audio Pipeline]
-- **[MODIFY]** `packages/stage-ui/src/composables/speech/player.ts` (Apply real-time Web Audio API Pitch/Rate/EQ transformation hooks)
+- **[MODIFY]** `packages/stage-ui/src/components/scenes/ControlStripHost.vue` (Apply real-time Web Audio API Pitch/Rate/EQ and effects transformation chains inside playback manager)

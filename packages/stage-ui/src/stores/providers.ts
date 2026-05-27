@@ -26,6 +26,7 @@ import type {
   ProviderValidationResult,
   SpeechCapabilitiesInfo,
   VoiceInfo,
+  VoiceProfile,
 } from './providers/types'
 
 import { isStageTamagotchi, isUrl } from '@proj-airi/stage-shared'
@@ -87,6 +88,7 @@ export type {
   ProviderValidationResult,
   SpeechCapabilitiesInfo,
   VoiceInfo,
+  VoiceProfile,
 }
 
 const ALIYUN_NLS_REGIONS = [
@@ -128,6 +130,53 @@ export const useProvidersStore = defineStore('providers', () => {
       capabilities: {
         listModels: async () => [],
         listVoices: async () => [],
+      },
+      validators: {
+        validateProviderConfig: () => ({
+          errors: [],
+          reason: '',
+          valid: true,
+        }),
+      },
+    },
+    'virtual-audio-studio': {
+      id: 'virtual-audio-studio',
+      category: 'speech',
+      tasks: ['text-to-speech', 'tts'],
+      nameKey: 'settings.pages.providers.provider.virtual-audio-studio.title',
+      name: 'Audio Studio (Virtual)',
+      descriptionKey: 'settings.pages.providers.provider.virtual-audio-studio.description',
+      description: 'Custom Virtual Voice Provider wrapping real Speech Engines with premium audio effects.',
+      icon: 'i-solar:music-library-bold-duotone',
+      defaultOptions: () => ({}),
+      createProvider: async () => ({
+        speech: () => ({
+          baseURL: 'http://virtual-audio-studio.invalid/v1/',
+          model: 'virtual',
+        }),
+      }),
+      capabilities: {
+        listModels: async () => [
+          { id: 'virtual', name: 'Virtual Engine', provider: 'virtual-audio-studio', tasks: ['text-to-speech'], deployment: 'local' },
+        ],
+        listVoices: async () => {
+          try {
+            const { useSpeechStore } = await import('./modules/speech')
+            const speechStore = useSpeechStore()
+            return (speechStore.savedVoiceProfiles || []).map(profile => ({
+              id: profile.id,
+              name: profile.name,
+              provider: 'virtual-audio-studio',
+              languages: [{ code: 'en', title: 'English' }],
+              compatibleModels: ['virtual'],
+              description: `Virtual voice mapping to ${profile.baseProvider}`,
+            }))
+          }
+          catch (e) {
+            console.error('Failed to load virtual voices:', e)
+            return []
+          }
+        },
       },
       validators: {
         validateProviderConfig: () => ({
@@ -2800,6 +2849,13 @@ export const useProvidersStore = defineStore('providers', () => {
 
   // Configuration validation functions
   async function validateProvider(providerId: string, options: { force?: boolean } = {}): Promise<boolean> {
+    if (providerId === 'virtual-audio-studio' || providerId === 'speech-noop') {
+      if (providerRuntimeState.value[providerId]) {
+        providerRuntimeState.value[providerId].isConfigured = true
+      }
+      return true
+    }
+
     const metadata = providerMetadata[providerId]
     if (!metadata)
       return false
@@ -3267,6 +3323,9 @@ export const useProvidersStore = defineStore('providers', () => {
   }
 
   function isProviderConfigured(providerId: string) {
+    if (providerId === 'virtual-audio-studio' || providerId === 'speech-noop')
+      return true
+
     const config = providerCredentials.value[providerId]
     if (!config)
       return false

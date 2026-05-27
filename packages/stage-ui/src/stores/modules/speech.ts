@@ -1,6 +1,6 @@
 import type { SpeechProviderWithExtraOptions } from '@xsai-ext/providers/utils'
 
-import type { VoiceInfo } from '../providers'
+import type { VoiceInfo, VoiceProfile } from '../providers'
 
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { refManualReset } from '@vueuse/core'
@@ -48,6 +48,9 @@ export const useSpeechStore = defineStore('speech', () => {
   const stripEmojis = useLocalStorageManualReset<boolean>('settings/speech/strip-emojis', true)
   const stripSymbols = useLocalStorageManualReset<boolean>('settings/speech/strip-symbols', true)
   const tildeReplacement = useLocalStorageManualReset<string>('settings/speech/tilde-replacement', 'nyan')
+
+  // Virtual Voice Profiles State
+  const savedVoiceProfiles = useLocalStorageManualReset<VoiceProfile[]>('settings/speech/voice-profiles', [])
 
   // Computed properties
   const availableSpeechProvidersMetadata = computed(() => allAudioSpeechProvidersMetadata.value)
@@ -237,41 +240,60 @@ export const useSpeechStore = defineStore('speech', () => {
    * Transforms text before sending to TTS provider
    */
   function transformTextForSpeech(text: string, providerId: string): string {
-    if (!transformerEnabled.value || providerId === 'chatterbox') {
+    if (providerId === 'chatterbox') {
+      return text
+    }
+
+    const isVirtual = providerId === 'virtual-audio-studio'
+    const profile = isVirtual ? savedVoiceProfiles.value.find(p => p.id === activeSpeechVoiceId.value) : null
+
+    const enabled = profile ? profile.ust.enabled : transformerEnabled.value
+    if (!enabled) {
       return text
     }
 
     let transformed = text
 
-    // 1. Strip Narrative (actions in asterisks, brackets, or parentheses)
-    // We use non-greedy matching to catch discrete blocks: *pats*, [thinking], (whispers), <acting>
-    if (stripNarrative.value) {
-      transformed = transformed.replace(/\*.*?\*|\[.*?\]|\(.*?\)|<.*?>/g, '')
+    const stripNarrVal = profile ? (profile.ust.mode === 'mute' || profile.ust.mode === 'flatten') : stripNarrative.value
+    const stripCustomVal = profile ? (profile.ust.mode === 'custom') : false
+    const stripEmojisVal = profile ? profile.ust.stripEmojis : stripEmojis.value
+    const stripSymbolsVal = profile ? false : stripSymbols.value
+    const tildeVal = profile ? profile.ust.tildeReplacement : tildeReplacement.value
 
-      // Clean up orphaned narrative markers that didn't have a pair but might trigger "star" or "bracket" sounds
-      transformed = transformed.replace(/[*[\]()<>\\]/g, '')
+    // 1. Strip Narrative
+    if (stripNarrVal) {
+      if (profile && profile.ust.mode === 'flatten') {
+        transformed = transformed.replace(/[*[\]()<>\\]/g, '')
+      }
+      else {
+        transformed = transformed.replace(/\*.*?\*|\[.*?\]|\(.*?\)|<.*?>/g, '')
+        transformed = transformed.replace(/[*[\]()<>\\]/g, '')
+      }
+    }
+
+    // 1.1 Custom Stripping Characters
+    if (stripCustomVal && profile?.ust.customStripChars) {
+      const escapedChars = profile.ust.customStripChars.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      if (escapedChars) {
+        const regex = new RegExp(`[${escapedChars}]`, 'g')
+        transformed = transformed.replace(regex, '')
+      }
     }
 
     // 2. Strip Emojis
-    if (stripEmojis.value) {
-      // Broad emoji regex covering most of the unicode emoji blocks
+    if (stripEmojisVal) {
       transformed = transformed.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-      // Also catch any ZWJ sequences or skin tone modifiers if they survived the block regex
       transformed = transformed.replace(/\u200D/g, '')
     }
 
     // 3. Strip Symbols & Kaomoji (Extreme Cleaning)
-    if (stripSymbols.value) {
-      // Strips anything that isn't a Letter, Number (any language), or standard sentence punctuation
-      // We keep standard punctuation . , ! ? ; : " ' - and spaces
+    if (stripSymbolsVal) {
       transformed = transformed.replace(/[^\p{L}\p{N}\s.,!?;:"'-]/gu, '')
     }
 
     // 4. Tilde substitution
-    if (tildeReplacement.value !== undefined) {
-      // We use a temporary marker for tildes if we did symbol stripping so they don't get eaten
-      // Actually, if we do tilde replacement LAST, it works better.
-      const replacement = tildeReplacement.value.trim()
+    if (tildeVal !== undefined) {
+      const replacement = tildeVal.trim()
       if (replacement) {
         transformed = transformed.replace(/~/g, ` ${replacement} `)
       }
@@ -280,7 +302,6 @@ export const useSpeechStore = defineStore('speech', () => {
       }
     }
 
-    // Final cleanup: remove multiple spaces, leading/trailing whitespace
     return transformed.replace(/\s+/g, ' ').trim()
   }
 
@@ -391,6 +412,7 @@ export const useSpeechStore = defineStore('speech', () => {
     activeSpeechVoice.reset()
     pitch.reset()
     rate.reset()
+    savedVoiceProfiles.reset()
     ssmlEnabled.reset()
     selectedLanguage.reset()
     modelSearchQuery.reset()
@@ -403,6 +425,30 @@ export const useSpeechStore = defineStore('speech', () => {
     availableVoices.reset()
     speechProviderError.reset()
     isLoadingSpeechProviderVoices.reset()
+  }
+
+  function saveVoiceProfile(profile: VoiceProfile) {
+    const index = savedVoiceProfiles.value.findIndex(p => p.id === profile.id)
+    if (index !== -1) {
+      savedVoiceProfiles.value[index] = profile
+    }
+    else {
+      savedVoiceProfiles.value.push(profile)
+    }
+    if (activeSpeechProvider.value === 'virtual-audio-studio') {
+      void loadVoicesForProvider('virtual-audio-studio')
+    }
+  }
+
+  function deleteVoiceProfile(id: string) {
+    savedVoiceProfiles.value = savedVoiceProfiles.value.filter(p => p.id !== id)
+    if (activeSpeechVoiceId.value === id) {
+      activeSpeechVoiceId.value = ''
+      activeSpeechVoice.value = undefined
+    }
+    if (activeSpeechProvider.value === 'virtual-audio-studio') {
+      void loadVoicesForProvider('virtual-audio-studio')
+    }
   }
 
   return {
@@ -427,6 +473,7 @@ export const useSpeechStore = defineStore('speech', () => {
     stripEmojis,
     stripSymbols,
     tildeReplacement,
+    savedVoiceProfiles,
 
     // Computed
     availableSpeechProvidersMetadata,
@@ -444,6 +491,8 @@ export const useSpeechStore = defineStore('speech', () => {
     getVoicesForProvider,
     generateSSML,
     transformTextForSpeech,
+    saveVoiceProfile,
+    deleteVoiceProfile,
     resetState,
   }
 })

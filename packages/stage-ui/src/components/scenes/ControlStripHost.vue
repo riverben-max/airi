@@ -24,6 +24,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import ControlStrip from '../scenarios/layout/ControlStrip.vue'
 
+import { applyVoiceProfileEffects } from '../../composables/audio/audio-effects'
 import { parseActor, useSpecialTokenQueue } from '../../composables/queues'
 import { categorizeResponse } from '../../composables/response-categoriser'
 import { llmInferenceEndToken } from '../../constants'
@@ -394,10 +395,28 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
   currentAudioSource.value = source
   source.buffer = item.audio
 
-  // Ensure connections are robust
-  source.connect(audioContext.destination)
+  let lastNode: AudioNode = source
+  let effectsCleanup: (() => void) | undefined
+
+  if (activeSpeechProvider.value === 'virtual-audio-studio' && activeSpeechVoice.value) {
+    const profile = speechStore.savedVoiceProfiles.find(p => p.id === activeSpeechVoice.value?.id)
+    if (profile) {
+      const effectsResult = applyVoiceProfileEffects(audioContext, source, profile.effects)
+      lastNode = effectsResult.lastNode
+      effectsCleanup = effectsResult.cleanup
+    }
+  }
+  else if (activeSpeechProvider.value === 'kokoro-local') {
+    // Apply pitch & rate adjustments via playbackRate for Kokoro Local
+    const pitchFactor = 1 + (speechStore.pitch / 100) * 0.5
+    const speedFactor = speechStore.rate || 1.0
+    source.playbackRate.value = speedFactor * pitchFactor
+  }
+
+  // Ensure final audio is connected to output destination and analyser
+  lastNode.connect(audioContext.destination)
   if (audioAnalyser.value)
-    source.connect(audioAnalyser.value)
+    lastNode.connect(audioAnalyser.value)
 
   // Explicitly ensure lip-sync setup is called if not already started
   if (!lipSyncStarted.value) {
@@ -422,6 +441,9 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
         source.disconnect()
       }
       catch {}
+      if (effectsCleanup) {
+        effectsCleanup()
+      }
       if (currentAudioSource.value === source)
         currentAudioSource.value = undefined
       resolveOnce()
@@ -484,7 +506,39 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
     if (!activeSpeechProvider.value)
       return null
 
-    const provider = await providersStore.getProviderInstance(activeSpeechProvider.value) as SpeechProviderWithExtraOptions<string, UnElevenLabsOptions>
+    let targetProviderId = activeSpeechProvider.value
+    let targetModel = activeSpeechModel.value
+    let targetVoice = activeSpeechVoice.value
+    let targetProviderConfig = providersStore.getProviderConfig(targetProviderId)
+
+    if (activeSpeechProvider.value === 'virtual-audio-studio' && activeSpeechVoice.value) {
+      const profile = speechStore.savedVoiceProfiles.find(p => p.id === activeSpeechVoice.value?.id)
+      if (profile) {
+        targetProviderId = profile.baseProvider
+        targetModel = profile.baseModel
+        targetProviderConfig = providersStore.getProviderConfig(profile.baseProvider)
+
+        const baseVoices = speechStore.getVoicesForProvider(profile.baseProvider)
+        const resolvedVoice = baseVoices.find(v => v.id === profile.baseVoice)
+        if (resolvedVoice) {
+          targetVoice = resolvedVoice
+        }
+        else {
+          targetVoice = {
+            id: profile.baseVoice,
+            name: profile.baseVoice,
+            provider: profile.baseProvider,
+            languages: [{ code: 'en', title: 'English' }],
+          }
+        }
+      }
+      else {
+        console.error('Active virtual voice profile not found')
+        return null
+      }
+    }
+
+    const provider = await providersStore.getProviderInstance(targetProviderId) as SpeechProviderWithExtraOptions<string, UnElevenLabsOptions>
     if (!provider) {
       console.error('Failed to initialize speech provider')
       return null
@@ -493,26 +547,21 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
     if (!request.text && !request.special)
       return null
 
-    const providerConfig = providersStore.getProviderConfig(activeSpeechProvider.value)
+    let model = targetModel
+    let voice = targetVoice
 
-    // For OpenAI Compatible providers, always use provider config for model and voice
-    // since these are manually configured in provider settings
-    let model = activeSpeechModel.value
-    let voice = activeSpeechVoice.value
-
-    if (activeSpeechProvider.value === 'openai-compatible-audio-speech') {
-      // Prioritize global selections, then provider settings, then defaults
-      model = model || providerConfig?.model as string || 'tts-1'
+    if (targetProviderId === 'openai-compatible-audio-speech') {
+      model = model || targetProviderConfig?.model as string || 'tts-1'
 
       if (!voice) {
-        if (providerConfig?.voice) {
+        if (targetProviderConfig?.voice) {
           voice = {
-            id: providerConfig.voice as string,
-            name: providerConfig.voice as string,
-            description: providerConfig.voice as string,
+            id: targetProviderConfig.voice as string,
+            name: targetProviderConfig.voice as string,
+            description: targetProviderConfig.voice as string,
             previewURL: '',
             languages: [{ code: 'en', title: 'English' }],
-            provider: activeSpeechProvider.value,
+            provider: targetProviderId,
             gender: 'neutral',
           }
         }
@@ -523,7 +572,7 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
             description: 'alloy',
             previewURL: '',
             languages: [{ code: 'en', title: 'English' }],
-            provider: activeSpeechProvider.value,
+            provider: targetProviderId,
             gender: 'neutral',
           }
         }
@@ -541,12 +590,12 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
       return null
 
     const input = ssmlEnabled.value
-      ? speechStore.generateSSML(transformedText, voice, { ...providerConfig, pitch: pitch.value })
+      ? speechStore.generateSSML(transformedText, voice, { ...targetProviderConfig, pitch: pitch.value })
       : transformedText
 
     try {
       const res = await generateSpeech({
-        ...provider.speech(model, providerConfig),
+        ...provider.speech(model, targetProviderConfig),
         input,
         voice: voice.id,
       })
