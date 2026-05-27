@@ -76,12 +76,14 @@ const dragIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 
 function onDragStart(index: number, event: DragEvent) {
-  dragIndex.value = index
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.dropEffect = 'move'
     event.dataTransfer.setData('text/plain', index.toString())
   }
+  setTimeout(() => {
+    dragIndex.value = index
+  }, 0)
 }
 
 function onDragOver(index: number, event: DragEvent) {
