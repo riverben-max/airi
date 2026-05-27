@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { clearModelCache, formatBytes, getModelCacheSize, isModelCached } from '@proj-airi/stage-ui/libs/inference'
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref } from 'vue'
+
+import { clearModelCache, formatBytes, getModelCacheSize, isModelCached } from '../../../libs/inference'
 
 const cacheSize = ref(0)
 const loading = ref(true)

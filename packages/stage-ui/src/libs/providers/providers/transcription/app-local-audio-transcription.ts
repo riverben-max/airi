@@ -3,9 +3,9 @@ import type { ProviderDefinition } from '../../types'
 import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { z } from 'zod'
 
-import whisperWorkerUrl from '../../../../workers/whisper/whisper.worker?worker&url'
+import whisperWorkerUrl from '../../../workers/whisper/whisper.worker?worker&url'
 
-import { createWhisperAdapter } from '../../../../libs/inference/adapters/whisper'
+import { createWhisperAdapter } from '../../../inference/adapters/whisper'
 
 const localTranscriptionConfigSchema = z.object({})
 type LocalTranscriptionConfig = z.input<typeof localTranscriptionConfigSchema>
