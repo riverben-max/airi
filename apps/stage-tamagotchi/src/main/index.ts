@@ -202,6 +202,42 @@ app.whenReady().then(async () => {
     },
   )
 
+  session.defaultSession.on('will-download', async (event, item, webContents) => {
+    const filename = item.getFilename()
+    const ext = filename.split('.').pop()?.toLowerCase()
+
+    if (ext === 'png' || ext === 'json') {
+      const fs = await import('node:fs/2/promises').then(m => m).catch(() => import('node:fs/promises'))
+      const path = await import('node:path')
+
+      const tempDir = app.getPath('temp')
+      const tempFilePath = path.join(tempDir, `airi-card-${Date.now()}-${filename}`)
+      item.setSavePath(tempFilePath)
+
+      item.once('done', async (e, state) => {
+        if (state === 'completed') {
+          try {
+            const buffer = await fs.readFile(tempFilePath)
+            const base64Data = buffer.toString('base64')
+
+            const targetWebContents = webContents.hostWebContents || webContents
+            targetWebContents.send('chara-card-downloaded', {
+              base64Data,
+              filename,
+              ext,
+            })
+          }
+          catch (err) {
+            console.error('[Download Interception] Failed to read temporary file:', err)
+          }
+          finally {
+            await fs.unlink(tempFilePath).catch(() => {})
+          }
+        }
+      })
+    }
+  })
+
   injeca.setLogger(createLoggLogger(useLogg('injeca').useGlobalConfig()))
 
   const appConfig = injeca.provide('configs:app', () => createGlobalAppConfig())

@@ -12,11 +12,11 @@ import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { useArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry'
 import { useSettingsStageModel } from '@proj-airi/stage-ui/stores/settings/stage-model'
 import { AiriCardSchema } from '@proj-airi/stage-ui/types'
-import { InputFile } from '@proj-airi/ui'
+import { Button, InputFile } from '@proj-airi/ui'
 import { Select } from '@proj-airi/ui/components/form'
 import { storeToRefs } from 'pinia'
 import { safeParse } from 'valibot'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -25,6 +25,7 @@ import cardExportFrameUrl from './card-export-frame.png?url'
 import CardCreate from './components/CardCreate.vue'
 import CardCreationDialog from './components/CardCreationDialog.vue'
 import CardDetailDialog from './components/CardDetailDialog.vue'
+import CardImportWizard from './components/CardImportWizard.vue'
 import CardListItem from './components/CardListItem.vue'
 import DeleteCardDialog from './components/DeleteCardDialog.vue'
 
@@ -49,6 +50,67 @@ const editingCardId = ref<string>('')
 // Dialog state
 const isCardDialogOpen = ref(false)
 const isCardCreationDialogOpen = ref(false)
+
+// Card browser drawer & wizard states
+const activeBrowserSource = ref<any>(null)
+const isImportWizardOpen = ref(false)
+const importedCardData = ref<any>(null)
+
+// Check if running in Electron
+const isElectron = computed(() => typeof window !== 'undefined' && !!(window as any).electron)
+
+let removeIpcListener = () => {}
+
+async function handleCharaCardDownloaded(payload: { base64Data: string, filename: string, ext: string }) {
+  try {
+    const rawData = atob(payload.base64Data)
+    const arrayBuffer = new ArrayBuffer(rawData.length)
+    const view = new Uint8Array(arrayBuffer)
+    for (let i = 0; i < rawData.length; i++) {
+      view[i] = rawData.charCodeAt(i)
+    }
+
+    let importedCard: ImportedCardPayload
+
+    if (payload.ext === 'png') {
+      importedCard = parsePngCharaPayload(arrayBuffer)
+    }
+    else {
+      const decoder = new TextDecoder('utf-8')
+      const text = decoder.decode(arrayBuffer)
+      importedCard = parseImportedCard(text)
+    }
+
+    const normalized = addCardPreviewNormalize(importedCard)
+    importedCardData.value = normalized
+
+    // Close webview drawer
+    activeBrowserSource.value = null
+
+    // Open import wizard modal
+    isImportWizardOpen.value = true
+  }
+  catch (err) {
+    console.error('[Settings:Cards] Failed to process intercepted card:', err)
+    toast.error('Failed to parse intercepted card file')
+  }
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
+    const handler = (_event: any, payload: { base64Data: string, filename: string, ext: string }) => {
+      handleCharaCardDownloaded(payload)
+    }
+    (window as any).electron.ipcRenderer.on('chara-card-downloaded', handler)
+    removeIpcListener = () => {
+      (window as any).electron?.ipcRenderer.removeListener('chara-card-downloaded', handler)
+    }
+  }
+})
+
+onUnmounted(() => {
+  removeIpcListener()
+})
 
 // Initial tab for the detail dialog
 const initialTab = ref<string | undefined>(undefined)
@@ -933,6 +995,49 @@ function getDisplayModelId(id: string) {
     :card-id="editingCardId"
   />
 
+  <!-- Card import wizard dialog -->
+  <CardImportWizard
+    v-model="isImportWizardOpen"
+    :card-data="importedCardData"
+    @imported="handleSelectCard"
+  />
+
+  <!-- Card browser slide-over webview drawer (Only renders if running in Electron) -->
+  <div
+    v-if="isElectron"
+    :class="[
+      'fixed inset-y-0 right-0 z-50 w-[70vw] border-l border-neutral-200 bg-white/95 shadow-2xl transition-transform duration-500 ease-in-out backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/95',
+      activeBrowserSource ? 'translate-x-0' : 'translate-x-full',
+    ]"
+  >
+    <div class="h-full flex flex-col">
+      <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-800">
+        <div class="flex items-center gap-3">
+          <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-200">
+            Browse {{ activeBrowserSource?.name }}
+          </h3>
+          <span class="rounded bg-primary-500/10 px-2 py-0.5 text-xs text-primary-500 font-medium">
+            Electron Webview
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          icon="i-solar:close-square-bold-duotone"
+          label="Close"
+          @click="activeBrowserSource = null"
+        />
+      </div>
+      <div class="flex-1 bg-white dark:bg-neutral-950">
+        <webview
+          v-if="activeBrowserSource"
+          :src="activeBrowserSource.url"
+          class="h-full w-full"
+          allowpopups
+        />
+      </div>
+    </div>
+  </div>
+
   <!-- Background decoration -->
   <div
     v-motion
@@ -969,17 +1074,19 @@ function getDisplayModelId(id: string) {
     </div>
 
     <div :class="['grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4']">
-      <a
+      <component
+        :is="isElectron ? 'button' : 'a'"
         v-for="source in cardSourceLinks"
         :key="source.name"
-        :href="source.url"
-        target="_blank"
-        rel="noopener noreferrer"
+        :href="isElectron ? undefined : source.url"
+        :target="isElectron ? undefined : '_blank'"
+        :rel="isElectron ? undefined : 'noopener noreferrer'"
         :class="[
-          'group rounded-xl border border-transparent bg-white/70 p-4 transition-all dark:bg-neutral-900/60',
+          'group rounded-xl border border-transparent bg-white/70 p-4 text-left transition-all dark:bg-neutral-900/60',
           'hover:border-primary-500/40 hover:shadow-md',
-          'flex flex-col gap-2',
+          'flex flex-col gap-2 w-full',
         ]"
+        @click="isElectron ? (activeBrowserSource = source) : null"
       >
         <div :class="['flex items-center justify-between gap-2']">
           <div :class="['font-bold group-hover:text-primary-500 transition-colors']">
@@ -990,7 +1097,7 @@ function getDisplayModelId(id: string) {
         <div :class="['text-sm opacity-75']">
           {{ source.description }}
         </div>
-      </a>
+      </component>
     </div>
 
     <div :class="['text-xs opacity-60']">

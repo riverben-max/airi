@@ -47,6 +47,7 @@ export function setupSettingsWindowReusableFunc(params: {
       webPreferences: {
         preload: join(getElectronMainDirname(), '../preload/index.cjs'),
         sandbox: true,
+        webviewTag: true,
       },
     })
 
