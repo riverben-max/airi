@@ -890,6 +890,10 @@ pages:
         title: AIHubMix
         description: Unified API Bridge - Versatile router aggregating major models into
           one endpoint
+      virtual-audio-studio:
+        title: Аудиостудия (Audio Studio)
+        description: Библиотека голосов - создавайте виртуальные профили голоса с
+          пользовательскими эффектами и фильтрами диалога
     title: Провайдеры
   connection:
     description: Настройка подключения к WebSocket-серверу

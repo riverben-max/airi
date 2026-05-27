@@ -870,6 +870,10 @@ pages:
         title: AIHubMix
         description: Unified API Bridge - Versatile router aggregating major models into
           one endpoint
+      virtual-audio-studio:
+        title: Phòng thu Âm thanh (Audio Studio)
+        description: Thư viện giọng nói - Xây dựng hồ sơ giọng nói ảo với các hiệu ứng tùy
+          chỉnh và bộ lọc hội thoại
     title: Nhà cung cấp
   connection:
     description: Cấu hình kết nối máy chủ WebSocket
