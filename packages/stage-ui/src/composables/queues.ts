@@ -81,13 +81,13 @@ export function useSpecialTokenQueue(emotionsQueue: UseQueueReturn<EmotionPayloa
 
     // Attempt 3: Regex fallback for raw key-value pairs
     if (emotions.length === 0) {
-      const emotionMatch = /"?(?:emotion|motion)"?\s*:\s*(?:\{?[\s\S]*?"name"\s*:\s*)?"?([^"}\s,]+)"??/gi
+      const emotionMatch = /"?(?:emotion|motion)"?\s*[:=]\s*(?:\{?[\s\S]*?"name"\s*[:=]\s*)?"?([^"}\s,]+)"??/gi
       let m
       while ((m = emotionMatch.exec(payloadText)) !== null) {
         const name = m[1]
         const normalized = normalizeEmotionName(name)
         if (normalized && !emotions.some(e => e.name === normalized)) {
-          const intensityMatch = /"?intensity"?\s*:\s*([\d.]+)/i.exec(payloadText)
+          const intensityMatch = /"?intensity"?\s*[:=]\s*([\d.]+)/i.exec(payloadText)
           const intensity = intensityMatch ? normalizeIntensity(Number.parseFloat(intensityMatch[1])) : 1
           emotions.push({ name: normalized, intensity })
         }

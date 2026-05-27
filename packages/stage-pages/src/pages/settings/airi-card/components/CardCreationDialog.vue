@@ -33,6 +33,7 @@ import {
 import { computed, onMounted, ref, toRaw, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import FieldAiGeneratorModal from './FieldAiGeneratorModal.vue'
 import CardCreationTabActing from './tabs/CardCreationTabActing.vue'
 import CardCreationTabArtistry from './tabs/CardCreationTabArtistry.vue'
 import CardCreationTabBehavior from './tabs/CardCreationTabBehavior.vue'
@@ -938,6 +939,101 @@ function getDefaultPlaceholder(defaultValue: string | undefined): string {
     ? `${t('settings.pages.card.creation.use_default')} (${defaultValue})`
     : t('settings.pages.card.creation.use_default_not_configured')
 }
+
+// Sparkle AI Generator Modal State and Methods
+const showGeneratorModal = ref(false)
+const generatorFieldId = ref('')
+const generatorFieldLabel = ref('')
+const generatorFieldValue = ref('')
+
+const generatorCardContext = computed(() => ({
+  name: cardName.value,
+  nickname: cardNickname.value,
+  description: cardDescription.value,
+  personality: cardPersonality.value,
+  scenario: cardScenario.value,
+  systemPrompt: cardSystemPrompt.value,
+}))
+
+const generatorActingContext = computed(() => {
+  const flatSpeechTags = actingGroupedExpressionTags.value
+    ? actingGroupedExpressionTags.value.flatMap(group => group.tags.map(t => t.tag))
+    : []
+
+  return {
+    isLive2d: isLive2d.value,
+    modelExpressions: actingModelExpressionOptions.value || [],
+    speechTags: flatSpeechTags,
+    speechProvider: selectedSpeechProvider.value || speechProvider.value || 'none',
+  }
+})
+
+function openSparkleGenerator(fieldId: string) {
+  generatorFieldId.value = fieldId
+  if (fieldId === 'description') {
+    generatorFieldLabel.value = t('settings.pages.card.creation.description')
+    generatorFieldValue.value = cardDescription.value
+  }
+  else if (fieldId === 'systemPrompt') {
+    generatorFieldLabel.value = t('settings.pages.card.systemprompt')
+    generatorFieldValue.value = cardSystemPrompt.value
+  }
+  else if (fieldId === 'postHistoryInstructions') {
+    generatorFieldLabel.value = t('settings.pages.card.posthistoryinstructions')
+    generatorFieldValue.value = cardPostHistoryInstructions.value
+  }
+  else if (fieldId === 'personality') {
+    generatorFieldLabel.value = t('settings.pages.card.personality')
+    generatorFieldValue.value = cardPersonality.value
+  }
+  else if (fieldId === 'scenario') {
+    generatorFieldLabel.value = t('settings.pages.card.scenario')
+    generatorFieldValue.value = cardScenario.value
+  }
+  else if (fieldId === 'greetings') {
+    generatorFieldLabel.value = t('settings.pages.card.creation.greetings')
+    generatorFieldValue.value = cardGreetings.value.join('\n')
+  }
+  else if (fieldId === 'actingModelExpression') {
+    generatorFieldLabel.value = 'ACT / Model Expressions'
+    generatorFieldValue.value = selectedActingModelExpressionPrompt.value
+  }
+  else if (fieldId === 'actingSpeechExpression') {
+    generatorFieldLabel.value = 'Speech Tags / Audio Expressions'
+    generatorFieldValue.value = selectedActingSpeechExpressionPrompt.value
+  }
+  showGeneratorModal.value = true
+}
+
+function handleGeneratorSave(newValue: string) {
+  if (generatorFieldId.value === 'description') {
+    cardDescription.value = newValue
+  }
+  else if (generatorFieldId.value === 'systemPrompt') {
+    cardSystemPrompt.value = newValue
+  }
+  else if (generatorFieldId.value === 'postHistoryInstructions') {
+    cardPostHistoryInstructions.value = newValue
+  }
+  else if (generatorFieldId.value === 'personality') {
+    cardPersonality.value = newValue
+  }
+  else if (generatorFieldId.value === 'scenario') {
+    cardScenario.value = newValue
+  }
+  else if (generatorFieldId.value === 'greetings') {
+    cardGreetings.value = newValue
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean)
+  }
+  else if (generatorFieldId.value === 'actingModelExpression') {
+    selectedActingModelExpressionPrompt.value = newValue
+  }
+  else if (generatorFieldId.value === 'actingSpeechExpression') {
+    selectedActingSpeechExpressionPrompt.value = newValue
+  }
+}
 </script>
 
 <template>
@@ -991,12 +1087,14 @@ function getDefaultPlaceholder(defaultValue: string | undefined): string {
             v-model:card-system-prompt="cardSystemPrompt"
             v-model:card-post-history-instructions="cardPostHistoryInstructions"
             v-model:card-version="cardVersion"
+            @sparkle-click="openSparkleGenerator"
           />
           <CardCreationTabBehavior
             v-else-if="activeTab === 'behavior'"
             v-model:card-personality="cardPersonality"
             v-model:card-scenario="cardScenario"
             v-model:card-greetings="cardGreetings"
+            @sparkle-click="openSparkleGenerator"
           />
           <CardCreationTabGeneration
             v-else-if="activeTab === 'generation'"
@@ -1030,6 +1128,7 @@ function getDefaultPlaceholder(defaultValue: string | undefined): string {
             :insert-model-expression="insertModelExpression"
             :insert-speech-tag="insertSpeechTag"
             :insert-speech-mannerism="insertSpeechMannerism"
+            @sparkle-click="openSparkleGenerator"
           />
           <CardCreationTabModules
             v-else-if="activeTab === 'modules'"
@@ -1111,4 +1210,15 @@ function getDefaultPlaceholder(defaultValue: string | undefined): string {
       </DialogContent>
     </DialogPortal>
   </DialogRoot>
+
+  <!-- Sparkle AI Generator Modal -->
+  <FieldAiGeneratorModal
+    v-model="showGeneratorModal"
+    :field-id="generatorFieldId"
+    :field-label="generatorFieldLabel"
+    :initial-value="generatorFieldValue"
+    :card-context="generatorCardContext"
+    :acting-context="generatorActingContext"
+    @save="handleGeneratorSave"
+  />
 </template>

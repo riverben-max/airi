@@ -221,7 +221,7 @@ pages:
       fields_info:
         subtitle: You can put here some details about the character you are creating,
           explain his history and context, and how your interactions should be
-          answered.
+          answered, if you need help writing use the ✨ icon to have your AI generate suggestions.
         identity_prompting: These fields all help define the character, but they are not
           separate runtime layers today. System Prompt is used in AIRI's active
           prompt assembly. Post-History Instructions is currently kept mainly

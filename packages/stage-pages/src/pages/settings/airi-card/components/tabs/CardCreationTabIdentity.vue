@@ -2,6 +2,9 @@
 import { FieldInput } from '@proj-airi/ui'
 import { useI18n } from 'vue-i18n'
 
+const emit = defineEmits<{
+  (e: 'sparkle-click', fieldId: string): void
+}>()
 const cardName = defineModel<string>('cardName', { required: true })
 const cardNickname = defineModel<string>('cardNickname', { required: true })
 const cardDescription = defineModel<string>('cardDescription', { required: true })
@@ -22,7 +25,36 @@ const { t } = useI18n()
     <div class="input-list ml-auto mr-auto w-90% flex flex-row flex-wrap justify-start gap-8">
       <FieldInput v-model="cardName" :label="t('settings.pages.card.creation.name')" :description="t('settings.pages.card.creation.fields_info.name')" :required="true" />
       <FieldInput v-model="cardNickname" :label="t('settings.pages.card.creation.nickname')" :description="t('settings.pages.card.creation.fields_info.nickname')" />
-      <FieldInput v-model="cardDescription" :label="t('settings.pages.card.creation.description')" :single-line="false" :required="true" :description="t('settings.pages.card.creation.fields_info.description')" />
+      <div class="max-w-full">
+        <label class="flex flex-col gap-4">
+          <div>
+            <div class="flex items-center gap-1 text-sm font-medium">
+              {{ t('settings.pages.card.creation.description') }}
+              <span class="text-red-500">*</span>
+            </div>
+            <div class="text-xs text-neutral-500 dark:text-neutral-400">
+              {{ t('settings.pages.card.creation.fields_info.description') }}
+            </div>
+          </div>
+          <div class="relative w-full">
+            <textarea
+              v-model="cardDescription"
+              rows="6"
+              :placeholder="t('settings.pages.card.creation.description')"
+              class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
+            />
+            <button
+              type="button"
+              style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
+              class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
+              title="Optimize with AI"
+              @click.prevent="emit('sparkle-click', 'description')"
+            >
+              <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
+            </button>
+          </div>
+        </label>
+      </div>
       <FieldInput v-model="cardNotes" :label="t('settings.pages.card.creator_notes')" :single-line="false" :description="t('settings.pages.card.creation.fields_info.notes')" />
     </div>
 
@@ -32,20 +64,67 @@ const { t } = useI18n()
       </p>
 
       <div class="prompt-fields flex flex-col gap-8">
-        <FieldInput
-          v-model="cardSystemPrompt"
-          :label="t('settings.pages.card.systemprompt')"
-          :single-line="false"
-          :required="true"
-          :description="t('settings.pages.card.creation.fields_info.systemprompt')"
-        />
-        <FieldInput
-          v-model="cardPostHistoryInstructions"
-          :label="t('settings.pages.card.posthistoryinstructions')"
-          :single-line="false"
-          :required="true"
-          :description="t('settings.pages.card.creation.fields_info.posthistoryinstructions')"
-        />
+        <div class="max-w-full">
+          <label class="flex flex-col gap-4">
+            <div>
+              <div class="flex items-center gap-1 text-sm font-medium">
+                {{ t('settings.pages.card.systemprompt') }}
+                <span class="text-red-500">*</span>
+              </div>
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">
+                {{ t('settings.pages.card.creation.fields_info.systemprompt') }}
+              </div>
+            </div>
+            <div class="relative w-full">
+              <textarea
+                v-model="cardSystemPrompt"
+                rows="6"
+                :placeholder="t('settings.pages.card.systemprompt')"
+                class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
+              />
+              <button
+                type="button"
+                style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
+                class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
+                title="Optimize with AI"
+                @click.prevent="emit('sparkle-click', 'systemPrompt')"
+              >
+                <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
+              </button>
+            </div>
+          </label>
+        </div>
+
+        <div class="max-w-full">
+          <label class="flex flex-col gap-4">
+            <div>
+              <div class="flex items-center gap-1 text-sm font-medium">
+                {{ t('settings.pages.card.posthistoryinstructions') }}
+                <span class="text-red-500">*</span>
+              </div>
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">
+                {{ t('settings.pages.card.creation.fields_info.posthistoryinstructions') }}
+              </div>
+            </div>
+            <div class="relative w-full">
+              <textarea
+                v-model="cardPostHistoryInstructions"
+                rows="6"
+                :placeholder="t('settings.pages.card.posthistoryinstructions')"
+                class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
+              />
+              <button
+                type="button"
+                style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
+                class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
+                title="Optimize with AI"
+                @click.prevent="emit('sparkle-click', 'postHistoryInstructions')"
+              >
+                <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
+              </button>
+            </div>
+          </label>
+        </div>
         <div class="version-row">
           <FieldInput
             v-model="cardVersion"

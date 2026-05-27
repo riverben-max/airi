@@ -16,6 +16,11 @@ defineProps<{
   insertSpeechMannerism: (id: string) => void
   actingIdleAnimationOptions: { label: string, value: string }[]
 }>()
+
+const emit = defineEmits<{
+  (e: 'sparkle-click', fieldId: string): void
+}>()
+
 const selectedActingModelExpressionPrompt = defineModel<string>('selectedActingModelExpressionPrompt', { required: true })
 const selectedActingSpeechExpressionPrompt = defineModel<string>('selectedActingSpeechExpressionPrompt', { required: true })
 const selectedActingSpeechMannerismPrompt = defineModel<string>('selectedActingSpeechMannerismPrompt', { required: true })
@@ -66,12 +71,35 @@ function toggleIdleAnimation(name: string) {
       </div>
 
       <div class="border border-neutral-200 rounded-xl p-4 dark:border-neutral-700">
-        <FieldInput
-          v-model="selectedActingModelExpressionPrompt"
-          label="ACT / Model Expressions"
-          description="Teach AIRI how to emit ACT tokens for avatar expressions and motion cues."
-          :single-line="false"
-        />
+        <div class="max-w-full">
+          <label class="flex flex-col gap-4">
+            <div>
+              <div class="flex items-center gap-1 text-sm font-medium">
+                ACT / Model Expressions
+              </div>
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">
+                Teach AIRI how to emit ACT tokens for avatar expressions and motion cues.
+              </div>
+            </div>
+            <div class="relative w-full">
+              <textarea
+                v-model="selectedActingModelExpressionPrompt"
+                rows="6"
+                placeholder="ACT / Model Expressions"
+                class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
+              />
+              <button
+                type="button"
+                style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
+                class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
+                title="Optimize with AI"
+                @click.prevent="emit('sparkle-click', 'actingModelExpression')"
+              >
+                <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
+              </button>
+            </div>
+          </label>
+        </div>
         <div class="mt-3 flex flex-col gap-2">
           <div class="text-xs text-neutral-500">
             Available model expressions
@@ -100,12 +128,35 @@ function toggleIdleAnimation(name: string) {
       </div>
 
       <div class="border border-neutral-200 rounded-xl p-4 dark:border-neutral-700">
-        <FieldInput
-          v-model="selectedActingSpeechExpressionPrompt"
-          label="Speech Tags / Audio Expressions"
-          description="Teach AIRI how to use provider-side vocal tags when the selected speech provider supports them."
-          :single-line="false"
-        />
+        <div class="max-w-full">
+          <label class="flex flex-col gap-4">
+            <div>
+              <div class="flex items-center gap-1 text-sm font-medium">
+                Speech Tags / Audio Expressions
+              </div>
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">
+                Teach AIRI how to use provider-side vocal tags when the selected speech provider supports them.
+              </div>
+            </div>
+            <div class="relative w-full">
+              <textarea
+                v-model="selectedActingSpeechExpressionPrompt"
+                rows="6"
+                placeholder="Speech Tags / Audio Expressions"
+                class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
+              />
+              <button
+                type="button"
+                style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
+                class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
+                title="Optimize with AI"
+                @click.prevent="emit('sparkle-click', 'actingSpeechExpression')"
+              >
+                <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
+              </button>
+            </div>
+          </label>
+        </div>
         <div class="mt-3 flex flex-col gap-3">
           <div class="text-xs text-neutral-500">
             Speech tag helpers for provider
