@@ -24,6 +24,7 @@ import { useTextJournalStore } from '@proj-airi/stage-ui/stores/memory-text-jour
 import { buildSystemPrompt, useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { useAutonomousArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry-autonomous'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
+import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useVisionStore } from '@proj-airi/stage-ui/stores/modules/vision'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
@@ -49,6 +50,7 @@ const echoesStore = useEchoesStore()
 
 const { activeCard } = storeToRefs(airiCardStore)
 const shortTermMemory = useShortTermMemoryStore()
+const liveSessionStore = useLiveSessionStore()
 
 const { cleanupMessages } = useChatMaintenanceStore()
 const { ingest, onAfterMessageComposed } = chatOrchestrator
@@ -445,6 +447,16 @@ const sessionTokenCount = computed(() => {
 
 const formattedTokenCount = computed(() => formatTokenCount(sessionTokenCount.value))
 
+function formatAbbreviatedCount(num: number): string {
+  if (num >= 1_000_000_000)
+    return `${(num / 1_000_000_000).toFixed(1)}B`
+  if (num >= 1_000_000)
+    return `${(num / 1_000_000).toFixed(1)}M`
+  if (num >= 1000)
+    return `${(num / 1000).toFixed(1)}K`
+  return String(num)
+}
+
 const globalContextWidth = computed(() => {
   if (activeCard.value?.extensions?.airi?.generation?.known?.contextWidth)
     return undefined
@@ -663,6 +675,15 @@ watch(messageInput, (newVal) => {
     </div>
 
     <div class="flex items-center justify-end gap-2 py-1">
+      <!-- Lifetime Token Counter -->
+      <div
+        class="flex cursor-help items-center gap-1.5 px-2 py-1 text-[10px] text-neutral-400 font-bold tracking-tight uppercase dark:text-neutral-500"
+        :title="`Lifetime Tokens (Global): ${Number(liveSessionStore.totalTokens || 0).toLocaleString()}`"
+      >
+        <div class="i-solar:chart-linear text-xs" />
+        <span>{{ formatAbbreviatedCount(liveSessionStore.totalTokens || 0) }}</span>
+      </div>
+
       <div
         v-if="effectiveContextWidth"
         class="flex cursor-help items-center gap-1.5 px-2 py-1"
