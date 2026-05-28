@@ -31,7 +31,7 @@ export type WhisperState
     | 'terminated'
 
 export interface WhisperTranscribeInput {
-  audio?: string
+  audio?: string | ArrayBuffer
   audioFloat32?: Float32Array
   language: string
 }
@@ -371,6 +371,14 @@ export function createWhisperAdapter(workerUrl: string | URL): WhisperAdapter {
         options?.signal,
       )
 
+      const transferables: any[] = []
+      if (input.audio instanceof ArrayBuffer) {
+        transferables.push(input.audio)
+      }
+      else if (input.audioFloat32 instanceof Float32Array) {
+        transferables.push(input.audioFloat32.buffer)
+      }
+
       worker.postMessage({
         type: 'run-inference',
         requestId,
@@ -379,7 +387,7 @@ export function createWhisperAdapter(workerUrl: string | URL): WhisperAdapter {
           audioFloat32: input.audioFloat32,
           language: input.language,
         },
-      })
+      }, transferables)
 
       try {
         const result = await resultPromise

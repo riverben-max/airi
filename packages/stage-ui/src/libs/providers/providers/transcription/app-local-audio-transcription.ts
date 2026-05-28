@@ -81,30 +81,27 @@ const definition: ProviderDefinition<LocalTranscriptionConfig> = {
       }
 
       try {
-        let audioFloat32: Float32Array
-        let audioString: string | undefined
+        let audioData: string | ArrayBuffer | Float32Array | undefined
 
         if (audio instanceof Blob) {
-          const buffer = await audio.arrayBuffer()
-          audioFloat32 = new Float32Array(buffer)
+          audioData = await audio.arrayBuffer()
         }
         else if (audio instanceof ArrayBuffer) {
-          audioFloat32 = new Float32Array(audio)
+          audioData = audio
         }
         else if (audio instanceof Float32Array) {
-          audioFloat32 = audio
+          audioData = audio
         }
         else if (typeof audio === 'string') {
-          audioString = audio
-          audioFloat32 = new Float32Array(0)
+          audioData = audio
         }
         else {
           throw new TypeError(`Unsupported audio format: ${audio?.constructor?.name || typeof audio}`)
         }
 
         const text = await whisperAdapter.transcribe({
-          audio: audioString,
-          audioFloat32: audioFloat32.length > 0 ? audioFloat32 : undefined,
+          audio: (audioData instanceof ArrayBuffer || typeof audioData === 'string') ? audioData : undefined,
+          audioFloat32: audioData instanceof Float32Array ? audioData : undefined,
           language: 'en',
         })
 
