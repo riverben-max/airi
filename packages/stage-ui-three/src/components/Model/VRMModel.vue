@@ -668,6 +668,9 @@ async function loadModel() {
         idleEyeSaccades.update(activeVrm, lookAtTarget, delta)
         vrmEmote.value?.update(delta)
         vrmLipSync.update(activeVrm, delta)
+
+        // 3. Apply expression updates to meshes
+        activeVrm.expressionManager?.update()
       }).off
 
       // ASYNC GUARD: Check again after animation loading
