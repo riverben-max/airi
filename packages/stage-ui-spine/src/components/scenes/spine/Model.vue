@@ -32,6 +32,7 @@ const props = withDefaults(defineProps<{
   yOffset?: number
   scale?: number
   idleAnimations?: string[]
+  mouthOpenSize?: number
 }>(), {
   paused: false,
   premultipliedAlpha: false,
@@ -43,6 +44,7 @@ const props = withDefaults(defineProps<{
   yOffset: 0,
   scale: 1,
   idleAnimations: () => [],
+  mouthOpenSize: 0,
 })
 
 const emits = defineEmits<{
@@ -505,6 +507,12 @@ async function loadModel() {
           }
           animationState.update(delta * animationSpeed.value)
           animationState.apply(skeleton)
+          if (props.mouthOpenSize !== undefined) {
+            const mouthBone = skeleton.findBone('mouth') || skeleton.findBone('jaw') || skeleton.findBone('mouth_open')
+            if (mouthBone) {
+              mouthBone.y = mouthBone.data.y - (props.mouthOpenSize * 15)
+            }
+          }
           // Physics was added in Spine 4.2; older runtimes take no argument.
           if (spine.Physics && (spine.Physics as any).update)
             skeleton.updateWorldTransform((spine.Physics as any).update)

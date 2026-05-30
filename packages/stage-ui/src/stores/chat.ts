@@ -172,12 +172,14 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   })
 
   async function performSend(
-    sendingMessage: string,
+    rawSendingMessage: string,
     options: SendOptions,
     generation: number,
     sessionId: string,
   ) {
-    chatLog('performSend starting with message:', sendingMessage)
+    const isSentinel = rawSendingMessage === 'INVOKE_CHARACTER_FIRST'
+    const sendingMessage = isSentinel ? '' : rawSendingMessage
+    chatLog('performSend starting with message:', rawSendingMessage)
 
     let bridgedSteps = 0
     let needsBridgedFollowUp = false

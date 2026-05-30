@@ -248,12 +248,13 @@ async function handleSend() {
     return
   }
 
-  if (!messageInput.value.trim() && !attachments.value.length) {
+  const isEmptyInput = !messageInput.value.trim() && !attachments.value.length
+
+  if (isEmptyInput && hasVisibleMessages.value) {
     return
   }
 
   const textToSend = messageInput.value
-
   const attachmentsToSend = attachments.value.map(att => ({ ...att }))
 
   // optimistic clear without deleting draft from localStorage immediately
@@ -270,22 +271,35 @@ async function handleSend() {
 
   try {
     const providerConfig = providersStore.getProviderConfig(activeProvider.value)
-    await ingest(textToSend, {
-      model: activeModel.value,
-      chatProvider: activeProvider.value,
-      providerConfig,
-      attachments: attachmentsToSend,
-    })
+
+    if (isEmptyInput && !hasVisibleMessages.value) {
+      await ingest('INVOKE_CHARACTER_FIRST', {
+        model: activeModel.value,
+        chatProvider: activeProvider.value,
+        providerConfig,
+        triggerOnly: true,
+      })
+    }
+    else {
+      await ingest(textToSend, {
+        model: activeModel.value,
+        chatProvider: activeProvider.value,
+        providerConfig,
+        attachments: attachmentsToSend,
+      })
+    }
 
     attachmentsToSend.forEach(att => URL.revokeObjectURL(att.url))
   }
   catch {
     // restore on failure
-    messageInput.value = textToSend
-    attachments.value = attachmentsToSend.map(att => ({
-      ...att,
-      url: URL.createObjectURL(new Blob([Uint8Array.from(atob(att.data), c => c.charCodeAt(0))], { type: att.mimeType })),
-    }))
+    if (!isEmptyInput) {
+      messageInput.value = textToSend
+      attachments.value = attachmentsToSend.map(att => ({
+        ...att,
+        url: URL.createObjectURL(new Blob([Uint8Array.from(atob(att.data), c => c.charCodeAt(0))], { type: att.mimeType })),
+      }))
+    }
     toast.error('Message failed to send. Draft restored.')
   }
 }
@@ -424,6 +438,17 @@ onAfterMessageComposed(async () => {
 })
 
 const historyMessages = computed(() => messages.value as unknown as ChatHistoryItem[])
+
+const hasVisibleMessages = computed(() => {
+  return messages.value.some(m => m.role === 'user' || m.role === 'assistant')
+})
+
+const sendButtonLabel = computed(() => {
+  if (!hasVisibleMessages.value && !messageInput.value.trim()) {
+    return 'Greet'
+  }
+  return 'Send'
+})
 
 // --- Token Counter ---
 const sessionTokenCount = computed(() => {
@@ -786,7 +811,7 @@ watch(messageInput, (newVal) => {
           @click="handleSend"
         >
           <div class="i-solar:plain-2-bold-duotone mr-1.5 text-lg" />
-          <span class="text-xs font-bold leading-none tracking-tighter uppercase">Send</span>
+          <span class="text-xs font-bold leading-none tracking-tighter uppercase">{{ sendButtonLabel }}</span>
         </button>
 
         <PopoverRoot>

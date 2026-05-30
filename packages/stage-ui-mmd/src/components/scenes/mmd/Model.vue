@@ -26,7 +26,6 @@ import {
 import { loadVMDAnimation } from '../../../composables/mmd/animation'
 import { loadMmd } from '../../../composables/mmd/core'
 import { useMMDEmote } from '../../../composables/mmd/expression'
-import { useMMDLipSync } from '../../../composables/mmd/lip-sync'
 import { useMmd } from '../../../stores/mmd'
 
 export interface Vec3 { x: number, y: number, z: number }
@@ -42,8 +41,6 @@ export interface SceneBootstrap {
 }
 
 const props = withDefaults(defineProps<{
-  audioContext?: AudioContext
-  currentAudioSource?: AudioBufferSourceNode
   lastCommittedModelSrc?: string
   modelSrc?: string
   textureMap?: Map<string, string | ImageBitmap>
@@ -59,9 +56,11 @@ const props = withDefaults(defineProps<{
   scale?: number
   previewExpression?: string
   idleAnimations?: string[]
+  mouthOpenSize?: number
 }>(), {
   paused: false,
   scale: 1,
+  mouthOpenSize: 0,
 })
 
 const emit = defineEmits<{
@@ -74,7 +73,6 @@ const emit = defineEmits<{
 }>()
 
 const {
-  currentAudioSource,
   lastCommittedModelSrc,
   modelSrc,
   paused,
@@ -90,11 +88,7 @@ let loadSequence = 0
 
 const mmdAnimationMixer = shallowRef<AnimationMixer>()
 const mmdEmote = shallowRef<ReturnType<typeof useMMDEmote>>()
-// audioContext is passed as a prop so this composable stays within the stage-ui-three
-// package boundary and does not need to import from stage-ui.
-const mmdLipSync = props.audioContext
-  ? useMMDLipSync(props.audioContext, currentAudioSource)
-  : null
+// mmdEmote state setup
 
 const mmdStore = useMmd()
 
@@ -296,7 +290,15 @@ function bindRenderLoop() {
     mmdEmote.value?.update(delta)
 
     // Update lip sync
-    mmdLipSync?.update(activeMmd, delta)
+    if (props.mouthOpenSize !== undefined) {
+      const dict = activeMmd.mesh.morphTargetDictionary
+      if (dict) {
+        const morphIndex = dict['あ'] !== undefined ? dict['あ'] : dict.a
+        if (morphIndex !== undefined && activeMmd.mesh.morphTargetInfluences) {
+          activeMmd.mesh.morphTargetInfluences[morphIndex] = props.mouthOpenSize
+        }
+      }
+    }
   })
 
   disposeRenderLoop = off

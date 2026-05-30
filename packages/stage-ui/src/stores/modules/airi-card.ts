@@ -1078,8 +1078,13 @@ export function buildSystemPrompt(card: AiriCard | undefined) {
 
   const components = [
     card.systemPrompt,
+    card.nickname ? `Nickname: ${card.nickname}` : '',
     card.description,
     card.personality,
+    card.scenario,
+    card.greetings && card.greetings.length > 0
+      ? `Greetings / Dialog Starters:\n${card.greetings.map(g => `- ${g}`).join('\n')}`
+      : '',
   ].filter(Boolean)
 
   const acting = card.extensions?.airi?.acting

@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<{
   scale?: number
   draggable?: boolean
   idleAnimations?: string[]
+  mouthOpenSize?: number
 }>(), {
   paused: false,
   premultipliedAlpha: false,
@@ -35,6 +36,7 @@ const props = withDefaults(defineProps<{
   scale: 1,
   draggable: false,
   idleAnimations: () => [],
+  mouthOpenSize: 0,
 })
 
 const emits = defineEmits<{
@@ -172,6 +174,7 @@ defineExpose({
         :y-offset="yOffset"
         :scale="scale"
         :idle-animations="idleAnimations"
+        :mouth-open-size="mouthOpenSize"
         @hit-area-hover="handleHitAreaHover"
       />
     </SpineCanvas>

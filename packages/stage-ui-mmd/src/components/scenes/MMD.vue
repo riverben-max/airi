@@ -13,7 +13,7 @@ import MMDModel from './mmd/Model.vue'
 const props = withDefaults(defineProps<{
   modelSrc?: string
   paused?: boolean
-  currentAudioSource?: AudioBufferSourceNode
+  mouthOpenSize?: number
   textureMap?: Map<string, string | ImageBitmap>
   scale?: number
   positionX?: number
@@ -27,6 +27,7 @@ const props = withDefaults(defineProps<{
   positionX: 0,
   positionY: 0,
   draggable: false,
+  mouthOpenSize: 0,
 })
 
 const emit = defineEmits<{
@@ -277,7 +278,7 @@ function handlePointerUp(event: PointerEvent) {
         <MMDModel
           :model-src="modelSrc"
           :paused="paused"
-          :current-audio-source="currentAudioSource"
+          :mouth-open-size="mouthOpenSize"
           :texture-map="textureMap"
           :model-offset="computedModelOffset"
           :model-rotation-y="modelRotationY"

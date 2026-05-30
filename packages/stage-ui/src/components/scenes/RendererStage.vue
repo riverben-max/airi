@@ -181,17 +181,19 @@ defineExpose({
       :render-scale="spineRenderScale"
       :draggable="stageViewControlsEnabled"
       :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :mouth-open-size="mouthOpenSize"
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
       @hit-area-hover="(val) => emits('hitAreaHover', val)"
     />
     <MMDScene
       v-if="stageModelRenderer === 'mmd' && stageModelSelectedUrl"
+      v-slot
       v-model:state="componentState"
       :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
       :model-src="stageModelSelectedUrl"
       :paused="paused"
-      :current-audio-source="currentAudioSource"
+      :mouth-open-size="mouthOpenSize"
       :texture-map="mmdTextureMap"
       :scale="scale !== undefined ? Number(scale) : undefined"
       :position-x="xOffset !== undefined ? Number(xOffset) : undefined"
