@@ -276,7 +276,15 @@ const speechVoiceOptions = computed(() => {
 const displayModelOptions = computed(() => {
   return displayModelsStore.displayModels.map((model) => {
     const isLive2D = model.format === DisplayModelFormat.Live2dZip || model.format === DisplayModelFormat.Live2dDirectory
-    const prefix = isLive2D ? '[Live2D]' : '[VRM]'
+    const isSpine = model.format === DisplayModelFormat.SpineZip
+    const isMmd = model.format === DisplayModelFormat.PMXZip || model.format === DisplayModelFormat.PMXDirectory || model.format === DisplayModelFormat.PMD
+    let prefix = '[VRM]'
+    if (isLive2D)
+      prefix = '[Live2D]'
+    else if (isSpine)
+      prefix = '[Spine]'
+    else if (isMmd)
+      prefix = '[MMD]'
     return {
       value: model.id,
       label: `${prefix} ${model.name}`,
