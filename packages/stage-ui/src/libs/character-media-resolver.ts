@@ -133,13 +133,22 @@ export function getContrastingComplementaryColor(
   }
 }
 
+function hashString(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash |= 0 // Convert to 32bit integer
+  }
+  return hash.toString(36)
+}
+
 export async function extractComplementaryColors(imageUrl: string): Promise<{ light: string, dark: string } | null> {
   if (colorCache.has(imageUrl)) {
     return colorCache.get(imageUrl) || null
   }
 
   // Check localStorage first
-  const cacheKey = `airi_cc_${imageUrl}`
+  const cacheKey = `airi_cc_${hashString(imageUrl)}`
   const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(cacheKey) : null
   if (saved) {
     try {

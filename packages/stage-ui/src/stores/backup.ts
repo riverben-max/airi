@@ -57,10 +57,86 @@ export const useBackupStore = defineStore('backup', () => {
     }
   }
 
+  async function listBackups() {
+    try {
+      const result = await (window as any).electron.ipcRenderer.invoke('list-backups', {
+        customPath: backupPath.value,
+      })
+      return result.directories || []
+    }
+    catch (error) {
+      console.error('[Backup] Failed to list backups:', error)
+      return []
+    }
+  }
+
+  async function restoreBackup(backupDir: string, options: { characters: boolean, sessions: boolean, memory: boolean, localStorage: boolean }) {
+    console.log(`[Backup] Restoring backup from ${backupDir} with options:`, options)
+    try {
+      const res = await (window as any).electron.ipcRenderer.invoke('read-backup-files', { backupDir })
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to read backup files')
+      }
+
+      const files = res.files as Record<string, string>
+
+      // 1. Restore Characters
+      if (options.characters) {
+        const charFile = Object.keys(files).find(f => f.startsWith('airi-characters-') && f.endsWith('.json'))
+        if (charFile) {
+          const payload = JSON.parse(files[charFile])
+          await dataMaintenance.importAllCharacters(payload)
+        }
+      }
+
+      // 2. Restore Sessions
+      if (options.sessions) {
+        const sessionFile = Object.keys(files).find(f => f.startsWith('airi-chat-sessions-') && f.endsWith('.json'))
+        if (sessionFile) {
+          const payload = JSON.parse(files[sessionFile])
+          await dataMaintenance.importChatSessions(payload)
+        }
+      }
+
+      // 3. Restore Memory
+      if (options.memory) {
+        const memoryFile = Object.keys(files).find(f => f.startsWith('airi-memory-') && f.endsWith('.json'))
+        if (memoryFile) {
+          const payload = JSON.parse(files[memoryFile])
+          await dataMaintenance.importMemory(payload)
+        }
+      }
+
+      // 4. Restore LocalStorage
+      if (options.localStorage) {
+        const storageFile = Object.keys(files).find(f => f.startsWith('airi-localstorage-') && f.endsWith('.json'))
+        if (storageFile) {
+          const storageData = JSON.parse(files[storageFile]) as Record<string, string>
+          for (const [key, value] of Object.entries(storageData)) {
+            // CRITICAL: Skip any keys starting with 'airi_cc_' to prevent writing bloated base64 Data URIs back to LocalStorage
+            if (key.startsWith('airi_cc_')) {
+              console.log(`[Backup Restore] Skipping bloated image color cache key: ${key.substring(0, 100)}...`)
+              continue
+            }
+            localStorage.setItem(key, value)
+          }
+        }
+      }
+
+      return { success: true }
+    }
+    catch (error) {
+      console.error('[Backup] Restore failed:', error)
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  }
+
   return {
     isBackupEnabled,
     backupPath,
     lastBackupTime,
     triggerBackup,
+    listBackups,
+    restoreBackup,
   }
 })

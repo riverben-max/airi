@@ -817,6 +817,63 @@ app.whenReady().then(async () => {
         }
       })
 
+      ipcMain.handle('list-backups', async (_event, data: { customPath?: string }) => {
+        const fs = await import('node:fs/promises')
+        const path = await import('node:path')
+
+        const defaultPath = path.join(app.getPath('documents'), 'AIRI-Backups')
+        const backupsPath = data.customPath || defaultPath
+
+        try {
+          const entries = await fs.readdir(backupsPath, { withFileTypes: true })
+          const directories = []
+          for (const entry of entries) {
+            if (entry.isDirectory() && entry.name.startsWith('backup-')) {
+              const fullPath = path.join(backupsPath, entry.name)
+              const dateStr = entry.name.replace('backup-', '')
+              let dateParsed = dateStr
+              const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2}\.\d+Z)$/)
+              if (match) {
+                dateParsed = `${match[1]}T${match[2]}:${match[3]}:${match[4]}`
+              }
+              directories.push({
+                name: entry.name,
+                path: fullPath,
+                date: dateParsed,
+              })
+            }
+          }
+          directories.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          return { success: true, directories }
+        }
+        catch (error) {
+          console.error('[Backup] Failed to list backups:', error)
+          return { success: false, directories: [], error: String(error) }
+        }
+      })
+
+      ipcMain.handle('read-backup-files', async (_event, data: { backupDir: string }) => {
+        const fs = await import('node:fs/promises')
+        const path = await import('node:path')
+
+        try {
+          const files = await fs.readdir(data.backupDir)
+          const contents: Record<string, string> = {}
+          for (const filename of files) {
+            if (filename.endsWith('.json')) {
+              const filePath = path.join(data.backupDir, filename)
+              const content = await fs.readFile(filePath, 'utf-8')
+              contents[filename] = content
+            }
+          }
+          return { success: true, files: contents }
+        }
+        catch (error) {
+          console.error('[Backup] Failed to read backup files:', error)
+          return { success: false, files: {}, error: String(error) }
+        }
+      })
+
       ipcMain.on('provider-validation-result', (_, data: { providerId: string, valid: boolean, reason: string, config: any }) => {
         if (data.valid)
           return
