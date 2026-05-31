@@ -124,6 +124,9 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     toolsResolver.value = resolver
   }
 
+  const activeSpokenText = ref('')
+  const activeSpokenColor = ref('')
+
   if (isMainWindow) {
     watch(broadcastedInput, (payload) => {
       if (payload) {
@@ -132,6 +135,31 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
           ...payload.options,
           tools: toolsResolver.value,
         }, payload.targetSessionId)
+      }
+    })
+
+    // Single Inter-Window IPC Listeners for real-time spoken sentence highlighting
+    const { data: captionData } = useBroadcastChannel<any, any>({ name: 'airi-caption-overlay' })
+    const { data: sessionUpdate } = useBroadcastChannel<any, any>({ name: 'airi-chat-stream' })
+
+    watch(captionData, (event) => {
+      if (event?.type === 'caption-assistant') {
+        const activeSegment = event.segments.find((s: any) => s.isActive)
+        if (activeSegment) {
+          activeSpokenText.value = activeSegment.text
+          activeSpokenColor.value = activeSegment.color
+        }
+        else {
+          activeSpokenText.value = ''
+          activeSpokenColor.value = ''
+        }
+      }
+    })
+
+    watch(sessionUpdate, (event) => {
+      if (event?.type === 'session-updated' && event.message?.role === 'user') {
+        activeSpokenText.value = ''
+        activeSpokenColor.value = ''
       }
     })
   }
@@ -1314,6 +1342,9 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   return {
     sending,
     streamingMessage,
+
+    activeSpokenText,
+    activeSpokenColor,
 
     isMainWindow,
     toolsResolver,
