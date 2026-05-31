@@ -2,7 +2,7 @@
 import DOMPurify from 'dompurify'
 
 import { healMozibake } from '@proj-airi/stage-shared'
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, watchPostEffect } from 'vue'
 
 import { useMarkdown } from '../../composables/markdown'
 
@@ -266,21 +266,51 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
   }
 }
 
-function updateHighlight() {
-  nextTick(() => {
-    if (containerRef.value) {
-      applyHighlight(containerRef.value, props.activeText || '', props.activeColor)
+// Re-entrancy guard: prevents a new highlight from starting while one is still executing
+let isHighlighting = false
+// rAF handle: ensures at most one DOM mutation is queued per animation frame
+let pendingHighlightFrame: ReturnType<typeof requestAnimationFrame> | null = null
+
+function scheduleHighlight() {
+  // If a frame is already queued, drop this call — the queued one will handle it
+  if (pendingHighlightFrame !== null)
+    return
+  pendingHighlightFrame = requestAnimationFrame(() => {
+    pendingHighlightFrame = null
+    // If a previous invocation is still executing, drop this one
+    if (isHighlighting)
+      return
+    isHighlighting = true
+    try {
+      if (containerRef.value) {
+        applyHighlight(containerRef.value, props.activeText || '', props.activeColor)
+      }
+    }
+    finally {
+      isHighlighting = false
     }
   })
 }
 
 // Process content when it changes
 watch(() => props.content, processContent, { immediate: true })
-watch([processedContent, () => props.activeText, () => props.activeColor], updateHighlight)
+
+// FIX: Only watch activeText/activeColor — NOT processedContent.
+// During streaming, processedContent fires on every token. Including it in this watcher
+// means Vue's vdom patching and our raw DOM Range surgery fight over the same subtree
+// dozens of times per second, creating an infinite mutation loop → OOM → kernel panic.
+// Vue's vdom diff will naturally destroy stale highlight spans when content re-renders;
+// the next activeText change re-applies them cleanly via scheduleHighlight.
+watchPostEffect(() => {
+  // Track reactive dependencies (activeText + activeColor) so Vue re-runs this
+  // after the DOM has been patched — eliminating the nextTick race condition.
+  const _text = props.activeText
+  const _color = props.activeColor
+  scheduleHighlight()
+})
 
 onMounted(() => {
   processContent()
-  updateHighlight()
 })
 </script>
 
