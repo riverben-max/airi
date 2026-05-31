@@ -140,22 +140,23 @@ function handleLinkClick(e: MouseEvent) {
   }
 }
 
-function clearHighlight(el: HTMLElement) {
-  const spans = el.querySelectorAll('.active-spoken-line')
-  spans.forEach((span) => {
-    const parent = span.parentNode
-    if (parent) {
-      while (span.firstChild) {
-        parent.insertBefore(span.firstChild, span)
-      }
-      parent.removeChild(span)
-    }
-  })
-  el.normalize()
-}
-
 function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string) {
-  clearHighlight(el)
+  if (typeof CSS === 'undefined' || !('highlights' in CSS)) {
+    // Fallback if the CSS Highlights API is not supported in the runtime env
+    return
+  }
+
+  // Clear previous highlights
+  // @ts-expect-error - CSS.highlights is standard but might not be fully typed in all TS versions
+  CSS.highlights.delete('spoken-highlight')
+
+  if (actorColor && containerRef.value) {
+    containerRef.value.style.setProperty('--active-highlight-color', actorColor)
+  }
+  else if (containerRef.value) {
+    containerRef.value.style.removeProperty('--active-highlight-color')
+  }
+
   if (!activeText || !activeText.trim())
     return
 
@@ -240,29 +241,17 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
   if (!startNode || !endNode)
     return
 
-  const range = document.createRange()
-  range.setStart(startNode, startOffset)
-  range.setEnd(endNode, endOffset)
-
-  const span = document.createElement('span')
-  span.className = 'active-spoken-line'
-  if (actorColor) {
-    span.style.setProperty('--active-color', actorColor)
-  }
-
   try {
-    const fragment = range.extractContents()
-    span.appendChild(fragment)
-    range.insertNode(span)
+    const range = document.createRange()
+    range.setStart(startNode, startOffset)
+    range.setEnd(endNode, endOffset)
+
+    const highlight = new Highlight(range)
+    // @ts-expect-error - CSS.highlights is standard but might not be fully typed in all TS versions
+    CSS.highlights.set('spoken-highlight', highlight)
   }
   catch (error) {
-    console.warn('[MarkdownRenderer] Highlight wrapping error, using surround fallback:', error)
-    try {
-      range.surroundContents(span)
-    }
-    catch (e) {
-      console.error('[MarkdownRenderer] Highlight failed completely:', e)
-    }
+    console.error('[MarkdownRenderer] Highlight registration failed:', error)
   }
 }
 
@@ -304,8 +293,8 @@ watch(() => props.content, processContent, { immediate: true })
 watchPostEffect(() => {
   // Track reactive dependencies (activeText + activeColor) so Vue re-runs this
   // after the DOM has been patched — eliminating the nextTick race condition.
-  const _text = props.activeText
-  const _color = props.activeColor
+  void props.activeText
+  void props.activeColor
   scheduleHighlight()
 })
 
@@ -438,5 +427,11 @@ onMounted(() => {
   font-weight: 700;
   text-shadow: 0 0 8px var(--active-color, rgba(56, 189, 248, 0.4));
   transition: all 0.25s ease-out;
+}
+
+::highlight(spoken-highlight) {
+  color: var(--active-highlight-color, #38bdf8) !important;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--active-highlight-color, rgba(56, 189, 248, 0.4));
 }
 </style>
