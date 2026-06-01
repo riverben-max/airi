@@ -147,7 +147,6 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
   }
 
   // Clear previous highlights
-  // @ts-expect-error - CSS.highlights is standard but might not be fully typed in all TS versions
   CSS.highlights.delete('spoken-highlight')
 
   if (actorColor && containerRef.value) {
@@ -247,7 +246,6 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
     range.setEnd(endNode, endOffset)
 
     const highlight = new Highlight(range)
-    // @ts-expect-error - CSS.highlights is standard but might not be fully typed in all TS versions
     CSS.highlights.set('spoken-highlight', highlight)
   }
   catch (error) {
