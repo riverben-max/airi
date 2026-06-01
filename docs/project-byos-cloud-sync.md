@@ -148,4 +148,26 @@ Custom models are imported by the user and stored locally as binary files. The c
   - The BYOS Sync Engine will sync the model binaries as file streams directly to the bucket under `/assets/models/{id}.zip` (or `/assets/models/{id}/` folder structure).
   - A small metadata index mapping user-imported model IDs to their display names and hashes will be synced to `/assets/models/manifest.json`.
 
+---
+
+## 🚀 Rollout Phases
+
+To ensure reliability and isolate synchronization edge cases, the system will be implemented and tested in a phased rollout:
+
+### Phase 1: Local File System (FS) Adapter (Core Sync Validation)
+* **Goal:** Implement the complete reconciliation engine, schema extensions, change-tracking hooks, and conflict resolution logic.
+* **Implementation:** The FS adapter writes directly to a target local path using Node's standard `fs/promises` library.
+* **Network Mounting (Samba/SMB):**
+  - Users can connect their Windows machine as a mount point on macOS (e.g., using macOS Finder's "Connect to Server" to mount `smb://10.0.0.91/Users` under `/Volumes/Users/`).
+  - By pointing the FS Adapter path to `/Volumes/Users/h4rdc/Documents/Github/coding-agent/VRMs`, the operating system natively handles the network transit, allowing us to debug multi-device sync logic without dealing with network credentials or API libraries.
+
+### Phase 2: Dropbox Adapter (OAuth & Client API Integration)
+* **Goal:** Extend the sync pipeline to support the Dropbox storage API.
+* **Implementation:** Add the official `dropbox` Node library, wire up the authorization popup flow to store client tokens, and implement file chunk uploads.
+
+### Phase 3: S3/R2 Adapter (High-Throughput Cloud Storage)
+* **Goal:** Scale the storage target to include S3/R2 compatible object storage.
+* **Implementation:** Integrate the `@aws-sdk/client-s3` library to communicate with custom endpoints (such as Cloudflare R2, Backblaze B2, or Amazon S3), allowing high-throughput backups of both databases and large model binaries.
+
+
 
