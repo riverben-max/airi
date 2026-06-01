@@ -103,7 +103,9 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   const { activeSessionId } = storeToRefs(chatSession)
   const { streamingMessage } = storeToRefs(chatStream)
 
-  const isMainWindow = typeof window !== 'undefined' && (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#')
+  const isMainWindow = typeof window !== 'undefined'
+    && !window.location.hash.startsWith('#/actor')
+    && !window.location.hash.startsWith('#/caption')
 
   const { data: broadcastedInput, post: postInput } = useBroadcastChannel<
     {
