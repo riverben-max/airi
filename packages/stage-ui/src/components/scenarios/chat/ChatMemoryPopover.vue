@@ -23,6 +23,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'view-context'): void
   (e: 'manage-sessions'): void
+  (e: 'search-memories'): void
 }>()
 
 const router = useRouter()
@@ -130,6 +131,18 @@ function navigateToMemory() {
           <div class="flex flex-col">
             <span class="text-[13px] text-primary-900 font-semibold leading-none dark:text-primary-100">View System Prompt</span>
             <span class="mt-1 text-[10px] text-primary-600/70 dark:text-primary-400/70">Check character instructions</span>
+          </div>
+        </button>
+
+        <!-- Search Memories Quick View -->
+        <button
+          class="mb-2 w-full flex items-center gap-3 rounded-xl bg-emerald-50/50 p-2.5 text-left transition-all dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-800/30"
+          @click="emit('search-memories')"
+        >
+          <div class="i-solar:magnifer-bold-duotone text-lg text-emerald-600 dark:text-emerald-400" />
+          <div class="flex flex-col">
+            <span class="text-[13px] text-emerald-900 font-semibold leading-none dark:text-primary-100">Search Memories</span>
+            <span class="mt-1 text-[10px] text-emerald-600/70 dark:text-emerald-400/70">Natural language searches</span>
           </div>
         </button>
 
