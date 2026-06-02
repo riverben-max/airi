@@ -282,6 +282,18 @@ export const useAiriCardStore = defineStore('airi-card', () => {
   // Kick off loading; consumers use cards.value reactively (starts empty, fills quickly)
   void loadCards()
 
+  // Reload cards from IndexedDB whenever the sync engine signals that local:airi-cards was
+  // merged/updated during a sync cycle. Without this, the in-memory ref stays stale after sync.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('airi:idb-key-updated', (e: Event) => {
+      const detail = (e as CustomEvent<{ key: string }>).detail
+      if (detail?.key === 'local:airi-cards') {
+        console.log('[AiriCard] Detected sync update for local:airi-cards — reloading from IndexedDB')
+        void loadCards()
+      }
+    })
+  }
+
   const activeCard = computed(() => cards.value.get(activeCardId.value))
 
   const consciousnessStore = useConsciousnessStore()

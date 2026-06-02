@@ -999,6 +999,11 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       // 2.5. Restore synced values back to localStorage
       await restoreLocalStorageFromIndexedDb()
 
+      // 2.6. Notify stores that consume native IndexedDB keys (not localStorage) to reload.
+      // The airi-card store uses local:airi-cards directly in IndexedDB and has no automatic
+      // reactivity watcher — dispatch an event so it can call loadCards() to pick up merged data.
+      window.dispatchEvent(new CustomEvent('airi:idb-key-updated', { detail: { key: 'local:airi-cards' } }))
+
       await loadConflicts()
 
       lastSyncTime.value = Date.now()
