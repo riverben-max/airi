@@ -16,7 +16,7 @@ async function parallelLimit<T>(
   const promises: Promise<void>[] = []
   const executing = new Set<Promise<void>>()
   for (const item of items) {
-    const p = fn(item).then(() => {
+    const p = fn(item).finally(() => {
       executing.delete(p)
     })
     promises.push(p)
