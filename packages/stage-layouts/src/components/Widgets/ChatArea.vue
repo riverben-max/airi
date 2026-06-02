@@ -15,7 +15,6 @@ import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useChatMaintenanceStore } from '@proj-airi/stage-ui/stores/chat/maintenance'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
-import { useChatStreamStore } from '@proj-airi/stage-ui/stores/chat/stream-store'
 import { useShortTermMemoryStore } from '@proj-airi/stage-ui/stores/memory-short-term'
 import { buildSystemPrompt, useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { useAutonomousArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry-autonomous'
@@ -29,7 +28,6 @@ import { storeToRefs } from 'pinia'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import IndicatorMicVolume from './IndicatorMicVolume.vue'
@@ -40,7 +38,6 @@ const props = defineProps<{
   tools?: any[]
 }>()
 
-const router = useRouter()
 const messageInput = ref('')
 const attachments = ref<{ type: 'image', data: string, mimeType: string, url: string }[]>([])
 const hearingPopoverOpen = ref(false)
@@ -63,7 +60,6 @@ const { askPermission, startStream } = useSettingsAudioDevice()
 const { enabled, selectedAudioInput, stream, audioInputs } = storeToRefs(useSettingsAudioDevice())
 const chatOrchestrator = useChatOrchestratorStore()
 const chatSession = useChatSessionStore()
-const chatStream = useChatStreamStore()
 const airiCardStore = useAiriCardStore()
 const shortTermMemory = useShortTermMemoryStore()
 const { cleanupMessages } = useChatMaintenanceStore()
