@@ -8,6 +8,26 @@ import { toast } from 'vue-sonner'
 
 import { storage, storageState } from '../database/storage'
 
+async function parallelLimit<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+) {
+  const promises: Promise<void>[] = []
+  const executing = new Set<Promise<void>>()
+  for (const item of items) {
+    const p = fn(item).then(() => {
+      executing.delete(p)
+    })
+    promises.push(p)
+    executing.add(p)
+    if (executing.size >= limit) {
+      await Promise.race(executing)
+    }
+  }
+  await Promise.all(promises)
+}
+
 export const useSyncEngineStore = defineStore('sync-engine', () => {
   // Sync Configuration State
   const syncEnabled = useLocalStorageManualReset<boolean>('settings/sync/enabled', false)
@@ -532,7 +552,6 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       storageState.isImportingRemoteData = false
     }
   }
-
   // Run full two-way reconciliation (LWW)
   async function reconcile(): Promise<boolean> {
     if (!hasElectron() || !fsBackupPath.value)
@@ -574,9 +593,10 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       storageState.isImportingRemoteData = true
 
       // 3. Resolve conflict resolution per remote file
-      for (const [localKey, remoteFile] of remoteFileMap.entries()) {
+      const remoteEntries = Array.from(remoteFileMap.entries())
+      await parallelLimit(remoteEntries, 15, async ([localKey, remoteFile]) => {
         if (!localKey)
-          continue
+          return
 
         const localTime = localTimestamps.get(localKey)
         await logDebug(`Reconciling key: ${localKey}, localTime=${localTime}, remoteMtime=${remoteFile.mtime}, remoteSize=${remoteFile.size}`)
@@ -620,10 +640,8 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             mergedVal = mergeArraysById(localArr, remoteArr)
           }
 
-          // Overwrite local
-          storageState.isImportingRemoteData = true
+          // Overwrite local (isImportingRemoteData is already true)
           await storage.setItemRaw(localKey, mergedVal)
-          storageState.isImportingRemoteData = false
 
           // Overwrite remote
           const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
@@ -632,19 +650,12 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             content: JSON.stringify(mergedVal, null, 2),
           })
 
-          if (writeRes.success) {
-            // Get stats to align timestamp
-            const listRes = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
-            const matchingFile = listRes.files?.find((f: any) => f.relPath === remoteFile.relPath)
-            if (matchingFile) {
-              storageState.isImportingRemoteData = true
-              await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, matchingFile.mtime)
-              storageState.isImportingRemoteData = false
-            }
+          if (writeRes.success && writeRes.mtime) {
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, writeRes.mtime)
           }
           // Remove from localTimestamps map so normal loop doesn't process it again
           localTimestamps.delete(localKey)
-          continue
+          return
         }
 
         if (localTime === undefined) {
@@ -657,7 +668,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             const isConflict = await checkSyncConflict(localKey, 0, remoteFile, 'remote-newer')
             if (isConflict) {
               await logDebug(`[WARNING] Safety conflict registered for ${localKey} (Case A - local data exists). Overwrite blocked.`)
-              continue
+              return
             }
           }
 
@@ -678,7 +689,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           const isConflict = await checkSyncConflict(localKey, localTime, remoteFile, 'remote-newer')
           if (isConflict) {
             console.log(`[SyncEngine] Conflict safety guard blocked auto-overwrite of local key ${localKey}`)
-            continue
+            return
           }
 
           console.log(`[SyncEngine] Remote file for ${localKey} is newer. Overwriting local...`)
@@ -697,7 +708,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           const isConflict = await checkSyncConflict(localKey, localTime, remoteFile, 'local-newer')
           if (isConflict) {
             console.log(`[SyncEngine] Conflict safety guard blocked auto-overwrite of remote file for key ${localKey}`)
-            continue
+            return
           }
 
           console.log(`[SyncEngine] Local key ${localKey} is newer. Preparing upload...`)
@@ -713,47 +724,44 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             }
           }
         }
-      }
+      })
 
       // 4. Handle files that exist locally but not on remote
-      for (const fullKey of localKeys) {
+      const localKeysToUpload = localKeys.filter((fullKey) => {
         if (fullKey.startsWith('local:sync-metadata/') || fullKey === 'local:sync-metadata')
-          continue
+          return false
+        return !remoteFileMap.has(fullKey)
+      })
 
-        const remoteFile = remoteFileMap.get(fullKey)
-        if (!remoteFile) {
-          const relPath = getRelPathForKey(fullKey)
-          console.log(`[SyncEngine] Key ${fullKey} exists locally only. Uploading... Path: ${relPath}`)
+      await parallelLimit(localKeysToUpload, 15, async (fullKey) => {
+        const relPath = getRelPathForKey(fullKey)
+        console.log(`[SyncEngine] Key ${fullKey} exists locally only. Uploading... Path: ${relPath}`)
 
-          // Try both getItem and getItemRaw to see which returns the data
-          const localValRaw = await storage.getItemRaw(fullKey)
-          const localVal = await storage.getItem(fullKey)
-          console.log(`[SyncEngine] Key ${fullKey} localValRaw type: ${typeof localValRaw}, localVal type: ${typeof localVal}`)
+        // Try both getItem and getItemRaw to see which returns the data
+        const localValRaw = await storage.getItemRaw(fullKey)
+        const localVal = await storage.getItem(fullKey)
+        console.log(`[SyncEngine] Key ${fullKey} localValRaw type: ${typeof localValRaw}, localVal type: ${typeof localVal}`)
 
-          const valToUse = localVal ?? localValRaw
-          if (valToUse !== undefined && valToUse !== null) {
-            const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
-              dir: fsBackupPath.value,
-              relPath,
-              content: typeof valToUse === 'string' ? valToUse : JSON.stringify(valToUse, null, 2),
-            })
-            console.log(`[SyncEngine] Write response for ${fullKey}:`, writeRes)
-            if (!writeRes.success) {
-              console.error(`[SyncEngine] Failed to write remote file for ${fullKey}:`, writeRes.error)
-              continue
-            }
-            // Update remote mtime reference in local timestamps
-            const stats = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
-            const matchingFile = stats.files?.find((f: any) => f.relPath === relPath)
-            if (matchingFile) {
-              await storage.setItemRaw(`local:sync-metadata/timestamps/${fullKey.replace('local:', '')}`, matchingFile.mtime)
-            }
+        const valToUse = localVal ?? localValRaw
+        if (valToUse !== undefined && valToUse !== null) {
+          const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+            dir: fsBackupPath.value,
+            relPath,
+            content: typeof valToUse === 'string' ? valToUse : JSON.stringify(valToUse, null, 2),
+          })
+          console.log(`[SyncEngine] Write response for ${fullKey}:`, writeRes)
+          if (!writeRes.success) {
+            console.error(`[SyncEngine] Failed to write remote file for ${fullKey}:`, writeRes.error)
+            return
           }
-          else {
-            console.warn(`[SyncEngine] Key ${fullKey} has no local content (both getItem and getItemRaw returned null/undefined).`)
+          if (writeRes.mtime) {
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${fullKey.replace('local:', '')}`, writeRes.mtime)
           }
         }
-      }
+        else {
+          console.warn(`[SyncEngine] Key ${fullKey} has no local content (both getItem and getItemRaw returned null/undefined).`)
+        }
+      })
 
       await reconcileBackgrounds()
 
@@ -779,12 +787,13 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
     console.log(`[SyncEngine] Processing ${outboxKeys.length} outbox queue items...`)
 
+    storageState.isImportingRemoteData = true
     try {
-      for (const fullQueueKey of outboxKeys) {
+      await parallelLimit(outboxKeys, 15, async (fullQueueKey) => {
         const item = await storage.getItemRaw<{ key: string, action: 'upsert' | 'delete', timestamp: number }>(fullQueueKey)
         if (!item) {
           await storage.removeItem(fullQueueKey)
-          continue
+          return
         }
 
         // Safety Gate: Skip outbox upload if there is an active sync conflict registered for this key
@@ -792,7 +801,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
         const hasActiveConflict = await storage.getItemRaw(conflictKey)
         if (hasActiveConflict) {
           console.log(`[SyncEngine] Outbox processing skipped for ${item.key} due to active conflict.`)
-          continue
+          return
         }
 
         const relPath = getRelPathForKey(item.key)
@@ -835,9 +844,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             }
 
             // Overwrite local
-            storageState.isImportingRemoteData = true
             await storage.setItemRaw(item.key, mergedVal)
-            storageState.isImportingRemoteData = false
 
             // Overwrite remote
             const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
@@ -848,13 +855,8 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             if (!writeRes.success) {
               throw new Error(writeRes.error || 'Failed to write remote file')
             }
-            // Align local timestamp with file modification time
-            const stats = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
-            const matchingFile = stats.files?.find((f: any) => f.relPath === relPath)
-            if (matchingFile) {
-              storageState.isImportingRemoteData = true
-              await storage.setItemRaw(`local:sync-metadata/timestamps/${item.key.replace('local:', '')}`, matchingFile.mtime)
-              storageState.isImportingRemoteData = false
+            if (writeRes.mtime) {
+              await storage.setItemRaw(`local:sync-metadata/timestamps/${item.key.replace('local:', '')}`, writeRes.mtime)
             }
           }
           else {
@@ -868,13 +870,8 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
               if (!writeRes.success) {
                 throw new Error(writeRes.error || 'Failed to write remote file')
               }
-              // Align local timestamp with file modification time
-              const stats = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
-              const matchingFile = stats.files?.find((f: any) => f.relPath === relPath)
-              if (matchingFile) {
-                storageState.isImportingRemoteData = true
-                await storage.setItemRaw(`local:sync-metadata/timestamps/${item.key.replace('local:', '')}`, matchingFile.mtime)
-                storageState.isImportingRemoteData = false
+              if (writeRes.mtime) {
+                await storage.setItemRaw(`local:sync-metadata/timestamps/${item.key.replace('local:', '')}`, writeRes.mtime)
               }
             }
           }
@@ -891,10 +888,12 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
         // Clean up outbox item
         await storage.removeItem(fullQueueKey)
-      }
+      })
+      storageState.isImportingRemoteData = false
       return true
     }
     catch (err) {
+      storageState.isImportingRemoteData = false
       console.error('[SyncEngine] Failed to process outbox queue:', err)
       return false
     }

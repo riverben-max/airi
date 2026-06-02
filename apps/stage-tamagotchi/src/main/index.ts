@@ -905,7 +905,8 @@ app.whenReady().then(async () => {
             ? Buffer.from(data.content, 'base64')
             : data.content
           await fs.writeFile(fullPath, buffer, data.append ? { flag: 'a' } : undefined)
-          return { success: true }
+          const stats = await fs.stat(fullPath)
+          return { success: true, mtime: stats.mtimeMs }
         }
         catch (error) {
           console.error('[BYOS-FS] Failed to write file:', error)
