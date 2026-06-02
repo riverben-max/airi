@@ -268,7 +268,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       }
 
       // 2. Read remote manifest
-      let manifest: { models: Record<string, { id: string, format: string, name: string, importedAt: number, previewImage?: string, hasTextures: boolean }> } = { models: {} }
+      let manifest: { models: Record<string, { id: string, format: string, name: string, importedAt: number, previewImage?: string, hasTextures: boolean, hasPreview?: boolean }> } = { models: {} }
       try {
         const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
           dir: fsBackupPath.value,
@@ -284,6 +284,29 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
       let manifestModified = false
 
+      // Migration: convert inline previewImage strings to sidecar files to shrink bloated manifest.json
+      for (const [id, remoteModel] of Object.entries(manifest.models)) {
+        if (remoteModel.previewImage && typeof remoteModel.previewImage === 'string' && remoteModel.previewImage.startsWith('data:')) {
+          console.log(`[SyncEngine] Migrating bloated previewImage in manifest to sidecar for: ${id}`)
+          const parts = remoteModel.previewImage.split(',')
+          const base64 = parts[1]
+          if (base64) {
+            const previewRelPath = `assets/models/${id}-preview.png`
+            const uploadRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+              dir: fsBackupPath.value,
+              relPath: previewRelPath,
+              content: base64,
+              encoding: 'base64',
+            })
+            if (uploadRes.success) {
+              remoteModel.hasPreview = true
+            }
+          }
+          delete remoteModel.previewImage
+          manifestModified = true
+        }
+      }
+
       // 3. Process deletions (both remote and local)
       for (const id of deletedModelIds) {
         if (manifest.models[id]) {
@@ -296,6 +319,12 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             await electron.ipcRenderer.invoke('byos-fs:delete-file', {
               dir: fsBackupPath.value,
               relPath: `assets/models/${id}-textures.json`,
+            })
+          }
+          if (manifest.models[id].hasPreview) {
+            await electron.ipcRenderer.invoke('byos-fs:delete-file', {
+              dir: fsBackupPath.value,
+              relPath: `assets/models/${id}-preview.png`,
             })
           }
           delete manifest.models[id]
@@ -381,13 +410,36 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             }
           }
 
+          // Check and upload preview image if present
+          let hasPreview = false
+          if (entry.previewImage && typeof entry.previewImage === 'string' && entry.previewImage.startsWith('data:')) {
+            console.log(`[SyncEngine] Uploading preview image sidecar for: ${id}`)
+            const parts = entry.previewImage.split(',')
+            const base64 = parts[1]
+            if (base64) {
+              const previewRelPath = `assets/models/${id}-preview.png`
+              const previewUploadRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+                dir: fsBackupPath.value,
+                relPath: previewRelPath,
+                content: base64,
+                encoding: 'base64',
+              })
+              if (previewUploadRes.success) {
+                hasPreview = true
+              }
+              else {
+                console.error(`[SyncEngine] Failed to upload preview for ${id}:`, previewUploadRes.error)
+              }
+            }
+          }
+
           // Add to manifest
           manifest.models[id] = {
             id,
             format: entry.format,
             name: entry.name || '',
             importedAt: entry.importedAt || Date.now(),
-            previewImage: entry.previewImage,
+            hasPreview,
             hasTextures,
           }
           manifestModified = true
@@ -420,13 +472,27 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           const blob = await res.blob()
           const fileObj = new File([blob], remoteModel.name, { type: mimeType })
 
+          // Download preview sidecar if present
+          let previewImage: string | undefined
+          if (remoteModel.hasPreview) {
+            console.log(`[SyncEngine] Downloading model preview: ${id}`)
+            const readPreviewRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+              dir: fsBackupPath.value,
+              relPath: `assets/models/${id}-preview.png`,
+              encoding: 'base64',
+            })
+            if (readPreviewRes.success && readPreviewRes.content) {
+              previewImage = `data:image/png;base64,${readPreviewRes.content}`
+            }
+          }
+
           const entry = {
             id,
             format: remoteModel.format,
             type: 'file',
             file: fileObj,
             name: remoteModel.name,
-            previewImage: remoteModel.previewImage,
+            previewImage,
             importedAt: remoteModel.importedAt,
           }
 
