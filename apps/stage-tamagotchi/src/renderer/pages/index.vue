@@ -129,14 +129,6 @@ watch(stageEnabled, (newVal) => {
   }
 })
 
-watch(captionOpen, (newVal) => {
-  if (settingsStore.captionFollowStage) {
-    if (stageEnabled.value !== newVal) {
-      controlStripStore.stageEnabled = newVal
-    }
-  }
-})
-
 watch(() => settingsStore.captionFollowStage, (newVal) => {
   if (newVal) {
     // Immediately sync caption state to stage state
