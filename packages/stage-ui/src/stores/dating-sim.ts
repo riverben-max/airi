@@ -1,3 +1,4 @@
+import { useLocalStorage } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -38,6 +39,15 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     return 'normal'
   })
 
+  const settings = ref({
+    intimacyGating: true,
+    autoTicks: true,
+    branchingChoices: true,
+    lightningRounds: false,
+    inlineCaption: true,
+    contextDepth: useLocalStorage('airi:producer:context-depth', 6),
+  })
+
   const choices = ref<Choice[]>([])
   const currentSubtitle = ref<string>('')
 
@@ -58,7 +68,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
       lastTick = now
 
       // Process Timers (e.g. countdown for choices)
-      if (variables.value.Timer > 0) {
+      if (settings.value.lightningRounds && settings.value.autoTicks && variables.value.Timer > 0) {
         variables.value.Timer = Math.max(0, variables.value.Timer - dt)
         if (variables.value.Timer === 0) {
           handleTimeout()
@@ -86,10 +96,15 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
       const { useLLM } = await import('@proj-airi/stage-ui/stores/llm')
       const { useProvidersStore } = await import('@proj-airi/stage-ui/stores/providers')
       const { useConsciousnessStore } = await import('@proj-airi/stage-ui/stores/modules/consciousness')
+      const { useChatSessionStore } = await import('@proj-airi/stage-ui/stores/chat/session-store')
+      const { useAiriCardStore } = await import('@proj-airi/stage-ui/stores/modules/airi-card')
 
       const llm = useLLM()
       const providers = useProvidersStore()
       const consciousness = useConsciousnessStore()
+      const chatSession = useChatSessionStore()
+      const cardStore = useAiriCardStore()
+
       const provider = await providers.getProviderInstance(consciousness.activeProvider)
 
       if (!provider || !consciousness.activeModel) {
@@ -97,12 +112,50 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
         return
       }
 
+      const characterName = cardStore.activeCard?.name || 'Companion'
+      const rawMessages = chatSession.messages || []
+      const relevantMessages = rawMessages
+        .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+        .slice(-settings.value.contextDepth)
+
+      const chatHistoryText = relevantMessages
+        .map((m: any) => {
+          const speaker = m.role === 'user' ? 'User' : characterName
+          const content = typeof m.content === 'string' ? m.content : ''
+          return `${speaker}: ${content}`
+        })
+        .join('\n')
+
+      const systemPrompt = `You are a dialogue writing assistant for a Dating Sim. 
+Your job is to suggest exactly 4 things the USER could say next, written in the user's natural, personal voice, please ensure you follow their style of capitalization and punctuation and the way they say things including action brackets and asterisks to imitate the user as closely as possible.
+You also MUST generate the subtitle for the scene (the character's dialogue spoken in this turn, or a narrative subtitle if they didn't speak).
+
+The conversation so far involves the user chatting with ${characterName}.
+
+Rules:
+- Each suggestion must sound like something the user would naturally say, not a formal prompt
+- Keep each message under 2 sentences
+- Vary the emotional register: curious, playful, sincere, bold — don't make all 4 the same tone
+- No meta-commentary, no "(OOC)" notes, no quotation marks around the message text
+- Output exactly 4 options matching the requested voice style.
+
+Your output MUST be EXACTLY in this JSON format:
+{
+  "subtitle": "Character's subtitle/dialogue text for this turn",
+  "topics": ["First choice option in user's style", "Second choice option in user's style", "Third choice option in user's style", "Fourth choice option in user's style"]
+}`
+
+      const userPrompt = `Here is the conversation history so far:
+${chatHistoryText}
+
+Generate 4 options for what the User could say next and the subtitle.`
+
       const result = await llm.generate(
         consciousness.activeModel,
         provider as any,
         [
-          { role: 'system', content: `You are a Dating Sim engine. Generate 4 conversation topics and 2 gift items based on the current situation. The user and character intimacy is ${variables.value.Intimacy}/100 and tension is ${variables.value.Tension}/100. Keep choices under 4 words. Your output MUST be EXACTLY in this JSON format: {"topics": ["topic1", "topic2", "topic3", "topic4"], "items": ["gift1", "gift2"], "subtitle": "A brief inner thought from the character"}` },
-          { role: 'user', content: 'Output raw JSON only. Do not include markdown backticks or any preamble/postamble.' },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
         ],
       )
 
@@ -112,12 +165,14 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
         throw new Error('No JSON object found in response')
       const object = JSON.parse(match[0])
 
-      const liveChoices = [
-        ...object.topics.slice(0, 4).map((t: string, i: number) => ({ id: `t${i}`, text: t, icon: 'i-solar:chat-round-dots-bold-duotone', action: 'llm_topic' })),
-        ...object.items.slice(0, 2).map((t: string, i: number) => ({ id: `i${i}`, text: t, icon: 'i-solar:gift-bold-duotone', action: 'llm_item', cost: 1 })),
-      ]
+      const liveChoices = object.topics.slice(0, 4).map((t: string, i: number) => ({
+        id: `t${i}`,
+        text: t,
+        icon: 'i-solar:chat-round-dots-bold-duotone',
+        action: 'llm_topic',
+      }))
 
-      triggerTestSyncCustom(liveChoices, object.subtitle)
+      triggerTestSyncCustom(liveChoices, object.subtitle || '')
     }
     catch (err) {
       console.error('[DatingSim] Live Generation Failed:', err)
@@ -437,6 +492,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
 
   return {
     enabled,
+    settings,
     currentPhase,
     variables,
     mood,
@@ -456,5 +512,6 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     generateLiveChoices,
     evaluateParameters,
     broadcastMood,
+    isGenerating,
   }
 })

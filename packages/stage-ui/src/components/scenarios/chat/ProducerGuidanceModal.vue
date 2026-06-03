@@ -13,13 +13,12 @@ const emit = defineEmits<{
 }>()
 
 const guidance = ref('')
-const contextDepth = ref(6)
+const contextDepth = useLocalStorage('airi:producer:context-depth', 6)
 const autoSend = useLocalStorage('airi:producer:auto-send', true)
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     guidance.value = ''
-    contextDepth.value = 6
   }
 })
 

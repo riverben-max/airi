@@ -454,6 +454,8 @@ app.whenReady().then(async () => {
         }
       })
 
+      let cachedStageBounds: { x: number, y: number, width: number, height: number } | null = null
+
       defineInvokeHandler(context, electronApplySizePreset, async (payload) => {
         if (!payload)
           return
@@ -505,6 +507,7 @@ app.whenReady().then(async () => {
 
         const workArea = targetDisplay.workArea || screen.getPrimaryDisplay().workArea
 
+        let isRestoringCache = false
         if (preset && (preset as any) !== 'undefined') {
           if (target === 'actor') {
             switch (preset) {
@@ -523,6 +526,27 @@ app.whenReady().then(async () => {
               case 'full':
                 width = workArea.width
                 height = workArea.height
+                break
+              case 'dating-sim-on':
+                cachedStageBounds = {
+                  x: bounds.x,
+                  y: bounds.y,
+                  width: bounds.width,
+                  height: bounds.height,
+                }
+                width = 1200
+                height = 800
+                break
+              case 'dating-sim-off':
+                if (cachedStageBounds) {
+                  width = cachedStageBounds.width
+                  height = cachedStageBounds.height
+                  isRestoringCache = true
+                }
+                else {
+                  width = 450
+                  height = 600
+                }
                 break
             }
           }
@@ -550,63 +574,74 @@ app.whenReady().then(async () => {
 
         let newX = bounds?.x
         let newY = bounds?.y
-        if (newX === undefined || isNaN(newX))
-          newX = workArea.x
-        if (newY === undefined || isNaN(newY))
-          newY = workArea.y
-
-        if (alignment) {
-          switch (alignment) {
-            case 'top-left':
-              newX = workArea.x
-              newY = workArea.y
-              break
-            case 'top':
-              newX = workArea.x + (workArea.width - width) / 2
-              newY = workArea.y
-              break
-            case 'top-right':
-              newX = workArea.x + workArea.width - width
-              newY = workArea.y
-              break
-            case 'left':
-              newX = workArea.x
-              newY = workArea.y + (workArea.height - height) / 2
-              break
-            case 'center':
-              newX = workArea.x + (workArea.width - width) / 2
-              newY = workArea.y + (workArea.height - height) / 2
-              break
-            case 'right':
-              newX = workArea.x + workArea.width - width
-              newY = workArea.y + (workArea.height - height) / 2
-              break
-            case 'bottom-left':
-              newX = workArea.x
-              newY = workArea.y + workArea.height - height
-              break
-            case 'bottom':
-              newX = workArea.x + (workArea.width - width) / 2
-              newY = workArea.y + workArea.height - height
-              break
-            case 'bottom-right':
-              newX = workArea.x + workArea.width - width
-              newY = workArea.y + workArea.height - height
-              break
-          }
+        if (isRestoringCache && cachedStageBounds) {
+          newX = cachedStageBounds.x
+          newY = cachedStageBounds.y
+          cachedStageBounds = null
+        }
+        else if (preset === 'dating-sim-on') {
+          newX = workArea.x + (workArea.width - width) / 2
+          newY = workArea.y + (workArea.height - height) / 2
         }
         else {
-          if (monitorIndex !== undefined && monitorIndex !== null) {
-            newX = workArea.x + (workArea.width - width) / 2
-            newY = workArea.y + (workArea.height - height) / 2
+          if (newX === undefined || isNaN(newX))
+            newX = workArea.x
+          if (newY === undefined || isNaN(newY))
+            newY = workArea.y
+
+          if (alignment) {
+            switch (alignment) {
+              case 'top-left':
+                newX = workArea.x
+                newY = workArea.y
+                break
+              case 'top':
+                newX = workArea.x + (workArea.width - width) / 2
+                newY = workArea.y
+                break
+              case 'top-right':
+                newX = workArea.x + workArea.width - width
+                newY = workArea.y
+                break
+              case 'left':
+                newX = workArea.x
+                newY = workArea.y + (workArea.height - height) / 2
+                break
+              case 'center':
+                newX = workArea.x + (workArea.width - width) / 2
+                newY = workArea.y + (workArea.height - height) / 2
+                break
+              case 'right':
+                newX = workArea.x + workArea.width - width
+                newY = workArea.y + (workArea.height - height) / 2
+                break
+              case 'bottom-left':
+                newX = workArea.x
+                newY = workArea.y + workArea.height - height
+                break
+              case 'bottom':
+                newX = workArea.x + (workArea.width - width) / 2
+                newY = workArea.y + workArea.height - height
+                break
+              case 'bottom-right':
+                newX = workArea.x + workArea.width - width
+                newY = workArea.y + workArea.height - height
+                break
+            }
           }
           else {
-            const currentX = (bounds?.x === undefined || isNaN(bounds.x)) ? workArea.x : bounds.x
-            const currentY = (bounds?.y === undefined || isNaN(bounds.y)) ? workArea.y : bounds.y
-            const currentW = (bounds?.width === undefined || isNaN(bounds.width) || bounds.width <= 0) ? width : bounds.width
-            const currentH = (bounds?.height === undefined || isNaN(bounds.height) || bounds.height <= 0) ? height : bounds.height
-            newX = currentX + (currentW - width) / 2
-            newY = currentY + (currentH - height) / 2
+            if (monitorIndex !== undefined && monitorIndex !== null) {
+              newX = workArea.x + (workArea.width - width) / 2
+              newY = workArea.y + (workArea.height - height) / 2
+            }
+            else {
+              const currentX = (bounds?.x === undefined || isNaN(bounds.x)) ? workArea.x : bounds.x
+              const currentY = (bounds?.y === undefined || isNaN(bounds.y)) ? workArea.y : bounds.y
+              const currentW = (bounds?.width === undefined || isNaN(bounds.width) || bounds.width <= 0) ? width : bounds.width
+              const currentH = (bounds?.height === undefined || isNaN(bounds.height) || bounds.height <= 0) ? height : bounds.height
+              newX = currentX + (currentW - width) / 2
+              newY = currentY + (currentH - height) / 2
+            }
           }
         }
 

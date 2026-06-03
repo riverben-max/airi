@@ -3,16 +3,28 @@ import { useBroadcastChannel } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 import { useDatingSimStore } from '../../stores/dating-sim'
+import { useAiriCardStore } from '../../stores/modules/airi-card'
 
 const datingSimStore = useDatingSimStore()
+const cardStore = useAiriCardStore()
 const { post: postChatInput } = useBroadcastChannel({ name: 'airi-chat-input-bridge' })
 
 const visibleChoices = computed(() => {
   return datingSimStore.choices.filter((c: any) => datingSimStore.evaluateCondition(c.condition))
 })
 
+const autonomousEnabled = computed(() => {
+  return cardStore.activeCard?.extensions?.airi?.artistry?.autonomousEnabled ?? false
+})
+
 const timerPercentage = computed(() => {
   return Math.min(100, Math.max(0, (datingSimStore.getVariable('Timer') / 10) * 100))
+})
+
+const containerBottomClass = computed(() => {
+  return (datingSimStore.settings.inlineCaption && datingSimStore.currentSubtitle)
+    ? 'bottom-[240px]'
+    : 'bottom-[40px]'
 })
 
 function handleChoiceClick(choice: any) {
@@ -88,39 +100,52 @@ function submitCustomPrompt() {
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Center Floating Branching Choices -->
-    <div v-if="visibleChoices.length > 0" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[200px]">
-      <!-- Timer -->
-      <div v-if="datingSimStore.getVariable('Timer') > 0" class="pointer-events-auto mb-8 min-w-[400px] flex items-center gap-4 border border-white/20 rounded-full bg-white/10 px-6 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.2)] backdrop-blur-[12px] backdrop-saturate-[180%] dark:bg-black/40">
-        <div class="i-solar:clock-circle-bold-duotone animate-pulse text-3xl text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+      <!-- Timer Badge (Lightning Round Mode) -->
+      <div v-if="datingSimStore.settings.lightningRounds && datingSimStore.getVariable('Timer') > 0" class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
+        <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
+          <span>Time Remaining</span>
+          <div class="i-solar:clock-circle-bold-duotone text-xl text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+        </div>
         <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
-          <div class="h-full rounded-full transition-all duration-100 ease-linear" :class="timerPercentage < 30 ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.8)]' : 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.8)]'" :style="{ width: `${timerPercentage}%` }" />
+          <div class="h-full animate-pulse rounded-full transition-all duration-100 ease-linear" :class="timerPercentage < 30 ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.8)]' : 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.8)]'" :style="{ width: `${timerPercentage}%` }" />
         </div>
       </div>
+    </div>
 
-      <!-- Choices Stack -->
-      <div class="custom-scrollbar pointer-events-auto max-h-[40vh] max-w-[90vw] w-[650px] flex flex-col gap-4 overflow-y-auto pr-4">
-        <button
-          v-for="choice in visibleChoices"
-          :key="choice.id"
-          class="group relative flex flex-shrink-0 items-center gap-5 overflow-hidden border border-white/20 rounded-2xl bg-white/10 px-6 py-4 text-left shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all duration-300 active:scale-[0.98] hover:scale-[1.02] hover:border-white/40 dark:bg-black/30 hover:bg-white/20"
-          @click="handleChoiceClick(choice)"
-        >
-          <!-- Hover light reflection effect -->
-          <div class="absolute inset-0 from-transparent via-white/10 to-transparent bg-gradient-to-r transition-transform duration-700 ease-in-out -translate-x-[150%] group-hover:translate-x-[150%]" />
+    <!-- Center Floating Branching Choices & Input -->
+    <div :class="['pointer-events-none absolute inset-x-0 top-[20px] flex flex-col items-center justify-center', containerBottomClass]">
+      <!-- Choices/Input Stack -->
+      <div class="custom-scrollbar pointer-events-auto max-h-full max-w-[90vw] w-[650px] flex flex-col gap-4 overflow-y-auto pr-4">
+        <!-- AA Upsell Tip -->
+        <div v-if="visibleChoices.length === 0 && !autonomousEnabled" class="pointer-events-auto border border-yellow-400/20 rounded-2xl bg-yellow-500/10 p-4 text-center shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] transition-all hover:bg-yellow-500/15">
+          <p class="text-sm text-yellow-100/90 font-semibold tracking-wide drop-shadow-md">
+            Want options automatically generated? Enable <span class="text-yellow-300 font-bold underline">Autonomous Artistry</span> in your companion settings, or click the <span class="text-purple-300 font-bold">Sparkle ✨</span> button below to generate choices manually.
+          </p>
+        </div>
 
-          <div v-if="choice.icon" :class="[choice.icon, 'text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110']" />
-          <div v-else class="i-solar:chat-round-dots-bold-duotone text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110" />
+        <!-- Choices Stack -->
+        <template v-if="visibleChoices.length > 0">
+          <button
+            v-for="choice in visibleChoices"
+            :key="choice.id"
+            class="group relative flex flex-shrink-0 items-center gap-5 overflow-hidden border border-white/20 rounded-2xl bg-white/10 px-6 py-4 text-left shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all duration-300 active:scale-[0.98] hover:scale-[1.02] hover:border-white/40 dark:bg-black/30 hover:bg-white/20"
+            @click="handleChoiceClick(choice)"
+          >
+            <!-- Hover light reflection effect -->
+            <div class="absolute inset-0 from-transparent via-white/10 to-transparent bg-gradient-to-r transition-transform duration-700 ease-in-out -translate-x-[150%] group-hover:translate-x-[150%]" />
 
-          <span class="flex-1 text-xl text-white font-medium tracking-wide drop-shadow-md">{{ choice.text }}</span>
+            <div v-if="choice.icon" :class="[choice.icon, 'text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110']" />
+            <div v-else class="i-solar:chat-round-dots-bold-duotone text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110" />
 
-          <div v-if="choice.cost" class="flex items-center gap-1.5 border border-white/10 rounded-full bg-black/40 px-3 py-1.5">
-            <div class="i-solar:lightning-bold text-base text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
-            <span class="text-sm text-white/90 font-bold">{{ choice.cost }} AP</span>
-          </div>
-        </button>
+            <span class="flex-1 text-xl text-white font-medium tracking-wide drop-shadow-md">{{ choice.text }}</span>
+
+            <div v-if="choice.cost" class="flex items-center gap-1.5 border border-white/10 rounded-full bg-black/40 px-3 py-1.5">
+              <div class="i-solar:lightning-bold text-base text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
+              <span class="text-sm text-white/90 font-bold">{{ choice.cost }} AP</span>
+            </div>
+          </button>
+        </template>
 
         <!-- Custom Prompt Input -->
         <div class="group relative flex flex-shrink-0 items-center gap-4 border border-white/20 rounded-2xl bg-white/10 px-6 py-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all duration-300 focus-within:border-white/40 dark:bg-black/30 focus-within:bg-white/20">
@@ -132,16 +157,28 @@ function submitCustomPrompt() {
             class="w-full flex-1 bg-transparent text-xl text-white font-medium tracking-wide outline-none drop-shadow-md placeholder:text-white/40"
             @keydown.enter="submitCustomPrompt"
           >
-          <button class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-colors hover:bg-purple-500/50" @click="submitCustomPrompt">
-            <div class="i-solar:plain-2-bold text-xl text-white" />
-          </button>
+          <div class="flex gap-2">
+            <!-- Sparkle Button (Generate Choices manually / Retry) -->
+            <button
+              class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-all active:scale-95 hover:scale-105 hover:bg-purple-500/50"
+              title="Generate suggestions/Retry choices"
+              :disabled="datingSimStore.isGenerating"
+              @click="datingSimStore.generateLiveChoices()"
+            >
+              <div v-if="datingSimStore.isGenerating" class="i-solar:restart-square-bold animate-spin text-xl text-white" />
+              <div v-else class="i-solar:magic-stick-3-bold-duotone text-xl text-white" />
+            </button>
+            <button class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-colors hover:bg-purple-500/50" @click="submitCustomPrompt">
+              <div class="i-solar:plain-2-bold text-xl text-white" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Bottom Dialogue -->
-    <div class="pointer-events-none mb-4 w-full flex justify-center px-12">
-      <div v-if="datingSimStore.currentSubtitle" class="pointer-events-auto relative max-w-4xl w-full">
+    <div v-if="datingSimStore.settings.inlineCaption && datingSimStore.currentSubtitle" class="pointer-events-none mb-4 w-full flex justify-center px-12">
+      <div class="pointer-events-auto relative max-w-4xl w-full">
         <!-- Main Dialogue Box -->
         <div class="group relative min-h-[180px] flex flex-col justify-center overflow-hidden border border-white/20 rounded-3xl bg-white/10 p-10 shadow-[0_16px_40px_rgba(0,0,0,0.3)] backdrop-blur-[16px] backdrop-saturate-[200%] transition-all dark:bg-black/40 hover:bg-white/15">
           <!-- Subtle top gradient border effect -->

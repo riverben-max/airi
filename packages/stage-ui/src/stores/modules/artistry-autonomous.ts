@@ -13,6 +13,7 @@ import { toast } from 'vue-sonner'
 import { directorNotesRepo } from '../../database/repos/director-notes.repo'
 import { useBackgroundStore } from '../background'
 import { useChatSessionStore } from '../chat/session-store'
+import { useDatingSimStore } from '../dating-sim'
 import { useLLM } from '../llm'
 import { useProvidersStore } from '../providers'
 import { useAiriCardStore } from './airi-card'
@@ -31,6 +32,7 @@ export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () 
   const providersStore = useProvidersStore()
   const chatSessionStore = useChatSessionStore()
   const speechStore = useSpeechStore()
+  const datingSimStore = useDatingSimStore()
 
   const isProcessing = ref(false)
   const directorNotes = ref<DirectorNote[]>([])
@@ -460,6 +462,18 @@ export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () 
         ? ',\n  "selected_concepts": ["Array of zero or more concept IDs chosen from the Available Concepts list"]'
         : ''
 
+      let datingSimPromptAddon = ''
+      let datingSimSchemaAddon = ''
+      if (datingSimStore.enabled && target === 'assistant') {
+        datingSimPromptAddon = `
+DATING SIM MODE ACTIVE:
+You MUST also generate the subtitle for the scene (the character's dialogue spoken in this turn, or a narrative subtitle if they didn't speak) and exactly 4 suggested things the USER could say next as interactive options/choices.
+The choices MUST be written in the user's natural, personal voice (matching their capitalization style, spelling, punctuation style, or slang if applicable).
+For example, if the user does not use capitalization or punctuation, format the choices exactly in that style.
+`
+        datingSimSchemaAddon = `,\n  "subtitle": "Character's subtitle/dialogue text for this turn",\n  "choices": [\n    {\n      "id": "choice_1",\n      "text": "First choice option in user's style",\n      "action": "Select first topic"\n    },\n    {\n      "id": "choice_2",\n      "text": "Second choice option in user's style",\n      "action": "Select second topic"\n    },\n    {\n      "id": "choice_3",\n      "text": "Third choice option in user's style",\n      "action": "Select third topic"\n    },\n    {\n      "id": "choice_4",\n      "text": "Fourth choice option in user's style",\n      "action": "Select fourth topic"\n    }\n  ]`
+      }
+
       const commonInstructions = `
 A high grade (warranted) should be given for:
 - Descriptions of beautiful scenery or environment changes
@@ -470,6 +484,7 @@ A high grade (warranted) should be given for:
 
 Character Personality: ${activeCard.personality}
 ${conceptsInstruction}
+${datingSimPromptAddon}
 
 DIRECTOR'S VISUAL SCRATCHPAD INSTRUCTIONS:
 You maintain a persistent "scratchpad" state board (maximum 1000 characters) to track visual and spatial states (e.g. location, outfits, held items, time/lighting). This runs complementary to the recent sliding history window. You should follow these guidelines for the scratchpad:
@@ -484,7 +499,7 @@ Output EXACTLY this JSON format and nothing else:
   "intensity": 1-100,
   "prompt": "Highly detailed, illustrative prompt for the image generator capturing the character's reaction and scene. Use Mori's style (masterpiece, high quality, manga style, intricate details)",
   "title": "Short descriptive title for the scene"${conceptsSchema},
-  "scratchpad": "The updated scratchpad block following the instructions above"
+  "scratchpad": "The updated scratchpad block following the instructions above"${datingSimSchemaAddon}
 }`
 
       const systemPrompt = target === 'assistant'
@@ -586,6 +601,9 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
       }
 
       const analysis = JSON.parse(jsonContent)
+      if (datingSimStore.enabled && target === 'assistant' && Array.isArray(analysis.choices)) {
+        datingSimStore.triggerTestSyncCustom(analysis.choices, analysis.subtitle || '')
+      }
       const selectedConcepts: string[] = Array.isArray(analysis.selected_concepts) ? analysis.selected_concepts : []
       const scratchpadText: string = typeof analysis.scratchpad === 'string' ? analysis.scratchpad.substring(0, 1000) : ''
       artistLog('Parsed Analysis Result:', {

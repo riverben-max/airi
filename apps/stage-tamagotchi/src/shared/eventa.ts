@@ -268,7 +268,7 @@ export interface ControlStripStatePayload {
 export const electronControlStripSyncState = defineInvokeEventa<void, ControlStripStatePayload>('eventa:invoke:electron:windows:control-strip:sync-state')
 export interface ApplySizePresetPayload {
   target: 'actor' | 'chat'
-  preset?: 'mini' | 'medium' | 'large' | 'full'
+  preset?: string
   monitorIndex?: number
   alignment?: 'top-left' | 'top' | 'top-right' | 'left' | 'center' | 'right' | 'bottom-left' | 'bottom' | 'bottom-right'
 }

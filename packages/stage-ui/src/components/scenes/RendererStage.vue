@@ -322,9 +322,7 @@ onMounted(() => {
 
       const removeListener = (window as any).electron.ipcRenderer.on('dating-sim-toggle', () => {
         const ds = useDatingSimStore()
-        if (ds.enabled)
-          ds.disable()
-        else ds.enable()
+        ds.toggleDatingSim()
       })
 
       onUnmounted(() => {

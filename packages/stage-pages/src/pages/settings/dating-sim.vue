@@ -10,13 +10,7 @@ import { ref } from 'vue'
 const datingSimStore = useDatingSimStore()
 const isGenerating = ref(false)
 
-// Mock DSL settings for the UI
-const dslSettings = ref({
-  intimacyGating: true,
-  autoTicks: true,
-  dynamicModelHotSwap: true,
-  branchingChoices: true,
-})
+// Binding settings directly to datingSimStore.settings
 
 function toggleDatingSim(event: Event) {
   const target = event.target as HTMLInputElement
@@ -130,8 +124,85 @@ function clearTest() {
     </Section>
 
     <Section
-      title="DSL Engine Features"
+      title="Universal Features"
       icon="i-solar:settings-bold-duotone"
+      :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
+    >
+      <div :class="['flex flex-col gap-4', 'p-4']">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-medium">
+              Branching Choice Overlay
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Render dynamic dialogue choices from the DSL store.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.branchingChoices" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div>
+            <h3 class="font-medium">
+              Inline Captions Overlay
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Render character dialogue/subtitles directly overlaying the bottom screen.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.inlineCaption" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div>
+            <h3 class="font-medium">
+              Lightning Rounds (Timed Choices)
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Enable choice countdown timers to simulate high-pressure quick responses.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.lightningRounds" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">
+                Context Depth
+              </h3>
+              <p class="text-sm text-neutral-500">
+                Number of recent messages to include as context for generating suggestions/choices.
+              </p>
+            </div>
+            <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
+              {{ datingSimStore.settings.contextDepth }} messages
+            </span>
+          </div>
+          <input
+            v-model.number="datingSimStore.settings.contextDepth"
+            type="range"
+            min="5"
+            max="30"
+            step="1"
+            class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-blue-600 dark:bg-neutral-700"
+          >
+        </div>
+      </div>
+    </Section>
+
+    <Section
+      title="Live2D Exclusives"
+      icon="i-solar:crown-bold-duotone"
       :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     >
       <div :class="['flex flex-col gap-4', 'p-4']">
@@ -145,7 +216,7 @@ function clearTest() {
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.intimacyGating" type="checkbox" class="peer sr-only">
+            <input v-model="datingSimStore.settings.intimacyGating" type="checkbox" class="peer sr-only">
             <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
           </label>
         </div>
@@ -160,37 +231,7 @@ function clearTest() {
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.autoTicks" type="checkbox" class="peer sr-only">
-            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
-          </label>
-        </div>
-
-        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
-          <div>
-            <h3 class="font-medium">
-              Dynamic Model Hot-Swapping
-            </h3>
-            <p class="text-sm text-neutral-500">
-              Zero-latency outfit and character swaps via the pipeline.
-            </p>
-          </div>
-          <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.dynamicModelHotSwap" type="checkbox" class="peer sr-only">
-            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
-          </label>
-        </div>
-
-        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
-          <div>
-            <h3 class="font-medium">
-              Branching Choice Overlay
-            </h3>
-            <p class="text-sm text-neutral-500">
-              Render dynamic dialogue choices from the DSL store.
-            </p>
-          </div>
-          <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.branchingChoices" type="checkbox" class="peer sr-only">
+            <input v-model="datingSimStore.settings.autoTicks" type="checkbox" class="peer sr-only">
             <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
           </label>
         </div>
