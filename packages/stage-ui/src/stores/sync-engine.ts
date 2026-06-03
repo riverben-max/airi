@@ -112,6 +112,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   async function reconcileBackgrounds(): Promise<void> {
     console.log('[SyncEngine] Reconciling backgrounds...')
+    await logDebug('Starting reconcileBackgrounds()')
     try {
       // 1. Get list of deleted background IDs from sync metadata
       const rawLocalKeys = await storage.getKeys('local')
@@ -123,11 +124,14 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           deletedBgIds.add(k.substring(DELETED_PREFIX.length))
         }
       }
+      await logDebug(`deletedBgIds size: ${deletedBgIds.size}`)
 
       // 2. List all remote files to find backgrounds
       const listRes = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
-      if (!listRes.success)
+      if (!listRes.success) {
+        await logDebug(`Failed to list remote files: ${listRes.error}`)
         return
+      }
 
       const remoteFiles = (listRes.files || []) as Array<{ relPath: string, mtime: number, size: number }>
       const remoteBgs = new Map<string, { json?: string, png?: string }>()
@@ -147,6 +151,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             remoteBgs.get(id)!.png = file.relPath
         }
       }
+      await logDebug(`remoteBgs size: ${remoteBgs.size}`)
 
       // 3. Process deletions (both remote and local)
       for (const id of deletedBgIds) {
@@ -169,12 +174,13 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           localBgs.set(key, val)
         }
       })
+      await logDebug(`localBgs size (before uploads/downloads): ${localBgs.size}`)
 
       // 5. Upload backgrounds present locally but missing/incomplete on remote
       for (const [id, entry] of localBgs.entries()) {
         const remoteInfo = remoteBgs.get(id)
         if (!remoteInfo || !remoteInfo.png || !remoteInfo.json) {
-          console.log(`[SyncEngine] Uploading background to remote: ${id}`)
+          await logDebug(`Uploading background to remote: ${id} (title: ${entry.title}, characterId: ${entry.characterId})`)
           const { blob, ...metadata } = entry
           const jsonRelPath = `assets/backgrounds/${id}.json`
           await electron.ipcRenderer.invoke('byos-fs:write-file', {
@@ -193,6 +199,9 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
               encoding: 'base64',
             })
           }
+          else {
+            await logDebug(`Warning: background ${id} has no valid Blob object locally.`)
+          }
         }
       }
 
@@ -201,15 +210,21 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       for (const [id, remoteInfo] of remoteBgs.entries()) {
         if (deletedBgIds.has(id))
           continue
-        const existsLocally = localBgs.has(id)
+        const localEntry = localBgs.get(id)
+        const existsLocally = !!(localEntry && localEntry.blob instanceof Blob)
+
+        await logDebug(`Checking background ${id}: existsLocally=${existsLocally}, hasJson=${!!remoteInfo.json}, hasPng=${!!remoteInfo.png}`)
+
         if (!existsLocally && remoteInfo.json && remoteInfo.png) {
-          console.log(`[SyncEngine] Downloading background from remote: ${id}`)
+          await logDebug(`Downloading background from remote: ${id}`)
           const readJson = await electron.ipcRenderer.invoke('byos-fs:read-file', {
             dir: fsBackupPath.value,
             relPath: remoteInfo.json,
           })
-          if (!readJson.success || !readJson.content)
+          if (!readJson.success || !readJson.content) {
+            await logDebug(`Failed to read remote JSON for ${id}: ${readJson.error}`)
             continue
+          }
           const metadata = JSON.parse(readJson.content)
 
           const readPng = await electron.ipcRenderer.invoke('byos-fs:read-file', {
@@ -217,8 +232,10 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             relPath: remoteInfo.png,
             encoding: 'base64',
           })
-          if (!readPng.success || !readPng.content)
+          if (!readPng.success || !readPng.content) {
+            await logDebug(`Failed to read remote PNG for ${id}: ${readPng.error}`)
             continue
+          }
 
           const mimeType = 'image/png'
           const res = await fetch(`data:${mimeType};base64,${readPng.content}`)
@@ -231,6 +248,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           }
 
           await localforage.setItem(id, entry)
+          await logDebug(`Successfully saved downloaded background ${id} (title: ${entry.title}, characterId: ${entry.characterId}) to localforage.`)
           hasDownloads = true
         }
       }
@@ -247,9 +265,11 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           console.error('[SyncEngine] Failed to refresh background store:', e)
         }
       }
+      await logDebug('Finished reconcileBackgrounds()')
     }
-    catch (err) {
-      console.error('[SyncEngine] Background reconciliation error:', err)
+    catch (err: any) {
+      await logDebug(`Error in reconcileBackgrounds(): ${err.message || err}`)
+      throw err
     }
   }
 
