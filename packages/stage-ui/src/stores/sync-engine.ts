@@ -136,8 +136,9 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       const remoteFiles = (listRes.files || []) as Array<{ relPath: string, mtime: number, size: number }>
       const remoteBgs = new Map<string, { json?: string, png?: string }>()
       for (const file of remoteFiles) {
-        if (file.relPath.startsWith('assets/backgrounds/')) {
-          const base = file.relPath.substring('assets/backgrounds/'.length)
+        const normalizedPath = file.relPath.replace(/\\/g, '/')
+        if (normalizedPath.startsWith('assets/backgrounds/')) {
+          const base = normalizedPath.substring('assets/backgrounds/'.length)
           const ext = base.split('.').pop()
           const id = base.substring(0, base.length - (ext ? ext.length + 1 : 0))
           if (!id)
