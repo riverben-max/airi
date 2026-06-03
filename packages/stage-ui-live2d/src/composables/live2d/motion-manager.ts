@@ -237,8 +237,6 @@ export function useMotionUpdatePluginMouseFocus(
   let currentX = 0
   let currentY = 0
   let initialized = false
-  let lastLogTime = 0
-
   return (_ctx) => {
     if (disableFocusAt.value || !model.value)
       return
@@ -256,18 +254,6 @@ export function useMotionUpdatePluginMouseFocus(
 
     const targetNormX = Math.max(-1, Math.min(1, (targetX - charX) / halfW))
     const targetNormY = Math.max(-1, Math.min(1, -(targetY - charY) / halfH))
-
-    const now = Date.now()
-    if (now - lastLogTime > 1000) {
-      console.log('[LIVE2D-MOUSE-TRACKING]', {
-        target: { x: targetX, y: targetY },
-        char: { x: charX, y: charY },
-        canvas: { w: width.value, h: height.value },
-        normalized: { x: targetNormX, y: targetNormY },
-        current: { x: currentX, y: currentY },
-      })
-      lastLogTime = now
-    }
 
     if (!initialized) {
       currentX = targetNormX
