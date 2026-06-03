@@ -3,10 +3,11 @@ import type { Card, ccv3 } from '@proj-airi/ccc'
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { useLive2d } from '@proj-airi/stage-ui-live2d'
 import { useModelStore } from '@proj-airi/stage-ui-three'
+import { until, useBroadcastChannel } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 import { defineStore, storeToRefs } from 'pinia'
 import { safeParse } from 'valibot'
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import {
@@ -20,6 +21,7 @@ import {
   DEFAULT_HEARTBEATS_PROMPT,
   DEFAULT_POST_HISTORY_INSTRUCTIONS,
 } from '../../constants/prompts/character-defaults'
+import { storage } from '../../database/storage'
 import { AiriCardSchema } from '../../types/card.schema'
 import { useBackgroundStore } from '../background'
 import { DisplayModelFormat, useDisplayModelsStore } from '../display-models'
@@ -218,6 +220,8 @@ export interface AiriCard extends Card {
   extensions: {
     airi: AiriExtension
   } & Card['extensions']
+  updatedAt?: number
+  createdAt?: number
 }
 
 export const useAiriCardStore = defineStore('airi-card', () => {
@@ -225,18 +229,91 @@ export const useAiriCardStore = defineStore('airi-card', () => {
   const defaultSystemPrompt = t('settings.pages.card.creation.defaults.systemprompt')
   const defaultPostHistoryInstructions = t('settings.pages.card.creation.defaults.posthistoryinstructions')
 
-  const mapEntriesSerializer = {
-    read: (v: string) => {
-      const data = JSON.parse(v)
-      return new Map(data) as Map<string, AiriCard>
-    },
-    write: (v: Map<string, AiriCard>) => JSON.stringify(Array.from(v.entries())),
+  // NOTICE: airi-cards can exceed 600KB with large collections and cannot fit in localStorage
+  // (QuotaExceededError). We store it in IndexedDB under local:airi-cards so the sync engine
+  // can sync it as a first-class key without the localStorage dump/restore bridge.
+  const cards = ref<Map<string, AiriCard>>(new Map())
+  const cardsLoading = ref(true)
+  const activeCardId = useLocalStorageManualReset<string>('airi-card-active-id', 'default')
+
+  // One-time migration: move legacy localStorage airi-cards → IndexedDB, then clear the old key
+  async function migrateFromLocalStorage() {
+    const legacyRaw = localStorage.getItem('airi-cards')
+    if (!legacyRaw)
+      return
+    try {
+      const entries = JSON.parse(legacyRaw) as [string, AiriCard][]
+      if (Array.isArray(entries) && entries.length > 0) {
+        const existing = await storage.getItemRaw<[string, AiriCard][]>('local:airi-cards')
+        if (!existing || !Array.isArray(existing) || existing.length === 0) {
+          await storage.setItemRaw('local:airi-cards', entries)
+          console.log(`[AiriCard] Migrated ${entries.length} cards from localStorage → IndexedDB`)
+        }
+      }
+    }
+    catch (e) {
+      console.error('[AiriCard] Migration from localStorage failed:', e)
+    }
+    finally {
+      // Always remove the oversized localStorage key to free quota
+      localStorage.removeItem('airi-cards')
+    }
   }
 
-  const cards = useLocalStorageManualReset<Map<string, AiriCard>>('airi-cards', new Map(), {
-    serializer: mapEntriesSerializer,
+  async function loadCards(silent = false) {
+    if (!silent)
+      cardsLoading.value = true
+    await migrateFromLocalStorage()
+    try {
+      const raw = await storage.getItemRaw<[string, AiriCard][]>('local:airi-cards')
+      if (raw && Array.isArray(raw)) {
+        cards.value = new Map(raw)
+      }
+    }
+    catch (e) {
+      console.error('[AiriCard] Failed to load cards from IndexedDB:', e)
+    }
+    finally {
+      if (!silent)
+        cardsLoading.value = false
+    }
+  }
+
+  const { data: cardsSyncSignal, post: broadcastCardsSync } = useBroadcastChannel({ name: 'airi:cards-sync' })
+
+  watch(cardsSyncSignal, (val) => {
+    if (val) {
+      console.log('[AiriCard] Received cards sync signal, reloading from IndexedDB...')
+      void loadCards(true)
+    }
   })
-  const activeCardId = useLocalStorageManualReset<string>('airi-card-active-id', 'default')
+
+  async function persistCards(nextCards: Map<string, AiriCard>) {
+    cards.value = nextCards
+    try {
+      const cleanEntries = JSON.parse(JSON.stringify(Array.from(nextCards.entries())))
+      await storage.setItemRaw('local:airi-cards', cleanEntries)
+      broadcastCardsSync(Date.now())
+    }
+    catch (e) {
+      console.error('[AiriCard] Failed to persist cards to IndexedDB:', e)
+    }
+  }
+
+  // Kick off loading; consumers use cards.value reactively (starts empty, fills quickly)
+  void loadCards()
+
+  // Reload cards from IndexedDB whenever the sync engine signals that local:airi-cards was
+  // merged/updated during a sync cycle. Without this, the in-memory ref stays stale after sync.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('airi:idb-key-updated', (e: Event) => {
+      const detail = (e as CustomEvent<{ key: string }>).detail
+      if (detail?.key === 'local:airi-cards') {
+        console.log('[AiriCard] Detected sync update for local:airi-cards — reloading from IndexedDB')
+        void loadCards(true)
+      }
+    })
+  }
 
   const activeCard = computed(() => cards.value.get(activeCardId.value))
 
@@ -292,6 +369,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
   }
 
   const addCard = async (card: AiriCard | Card | ccv3.CharacterCardV3) => {
+    await until(cardsLoading).toBe(false)
     const newCardId = nanoid()
 
     // Extract embedded background before it gets stripped
@@ -312,17 +390,19 @@ export const useAiriCardStore = defineStore('airi-card', () => {
 
     const nextCards = new Map(cards.value)
     nextCards.set(newCardId, compactCard(card))
-    cards.value = nextCards
+    await persistCards(nextCards)
     return newCardId
   }
 
-  const removeCard = (id: string) => {
+  const removeCard = async (id: string) => {
+    await until(cardsLoading).toBe(false)
     const nextCards = new Map(cards.value)
     nextCards.delete(id)
-    cards.value = nextCards
+    void persistCards(nextCards)
   }
 
-  const updateCard = (id: string, updates: Partial<AiriCard> | Partial<Card> | Partial<ccv3.CharacterCardV3>) => {
+  const updateCard = async (id: string, updates: Partial<AiriCard> | Partial<Card> | Partial<ccv3.CharacterCardV3>) => {
+    await until(cardsLoading).toBe(false)
     const existingCard = cards.value.get(id)
     if (!existingCard)
       return false
@@ -330,15 +410,17 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     const updatedCard = {
       ...existingCard,
       ...updates,
+      updatedAt: Date.now(),
     }
 
     const nextCards = new Map(cards.value)
     nextCards.set(id, compactCard(updatedCard))
-    cards.value = nextCards
+    void persistCards(nextCards)
     return true
   }
 
-  const toggleGrounding = (id: string) => {
+  const toggleGrounding = async (id: string) => {
+    await until(cardsLoading).toBe(false)
     const card = cards.value.get(id)
     if (!card) {
       console.warn('[AiriCard] toggleGrounding: card not found for id', id)
@@ -360,7 +442,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     // Verify persistence
   }
 
-  const setAutonomousArtistry = (id: string, enabled: boolean) => {
+  const setAutonomousArtistry = async (id: string, enabled: boolean) => {
+    await until(cardsLoading).toBe(false)
     const card = cards.value.get(id)
     if (!card)
       return
@@ -454,6 +537,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
   }
 
   async function activateCard(id: string, force = false) {
+    await until(cardsLoading).toBe(false)
     isModelSyncPrevented.value = false
     activeCardId.value = id
     await syncCardState(cards.value.get(id), force)
@@ -773,6 +857,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
           ...ccv3Card.data.extensions,
           airi: stripEmbeddedBackgroundData(resolveAiriExtension(ccv3Card)),
         },
+        updatedAt: (ccv3Card as any).updatedAt || (ccv3Card.data as any).updatedAt,
+        createdAt: (ccv3Card as any).createdAt || (ccv3Card.data as any).createdAt,
       }
     }
 
@@ -797,11 +883,11 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     }
   }
 
-  function initialize() {
-    // Compact and normalize all cards on startup
-    cards.value = compactAllCardsMap(cards.value)
-
-    const nextCards = new Map(cards.value)
+  async function initialize() {
+    await until(cardsLoading).toBe(false)
+    // Compact and normalize all cards on startup and persist any changes back to IndexedDB
+    const compacted = compactAllCardsMap(cards.value)
+    const nextCards = new Map(compacted)
     let changed = false
 
     if (!nextCards.has('default')) {
@@ -945,7 +1031,11 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     }
 
     if (changed) {
-      cards.value = nextCards
+      await persistCards(nextCards)
+    }
+    else {
+      // Still update in-memory ref if compaction changed anything
+      cards.value = compacted
     }
 
     if (!activeCardId.value)
@@ -953,7 +1043,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
   }
 
   async function seedDefaults(selectedId: string) {
-    initialize()
+    await until(cardsLoading).toBe(false)
+    await initialize()
 
     if (selectedId && cards.value.has(selectedId)) {
       await activateCard(selectedId, true)
@@ -969,7 +1060,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
 
   function resetState() {
     activeCardId.reset()
-    cards.reset()
+    // Reload cards from IndexedDB (cards is no longer a ManualResetRefReturn)
+    void loadCards()
     isModelSyncPrevented.reset()
   }
 

@@ -146,9 +146,12 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
     return
   }
 
+  const highlightsRegistry = (CSS as any).highlights
+
   // Clear previous highlights
-  // @ts-expect-error - CSS.highlights is standard but might not be fully typed in all TS versions
-  CSS.highlights.delete('spoken-highlight')
+  if (highlightsRegistry) {
+    highlightsRegistry.delete('spoken-highlight')
+  }
 
   if (actorColor && containerRef.value) {
     containerRef.value.style.setProperty('--active-highlight-color', actorColor)
@@ -246,9 +249,10 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
     range.setStart(startNode, startOffset)
     range.setEnd(endNode, endOffset)
 
-    const highlight = new Highlight(range)
-    // @ts-expect-error - CSS.highlights is standard but might not be fully typed in all TS versions
-    CSS.highlights.set('spoken-highlight', highlight)
+    const highlight = new (window as any).Highlight(range)
+    if (highlightsRegistry) {
+      highlightsRegistry.set('spoken-highlight', highlight)
+    }
   }
   catch (error) {
     console.error('[MarkdownRenderer] Highlight registration failed:', error)

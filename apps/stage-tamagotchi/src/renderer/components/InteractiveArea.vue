@@ -10,6 +10,7 @@ import {
   ChatMemoryPopover,
   ChatSessionModal,
   JournalPreviewModal,
+  MarkdownRenderer,
   StageBackgroundDialogPicker,
 } from '@proj-airi/stage-ui/components'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
@@ -28,9 +29,9 @@ import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-ses
 import { useVisionStore } from '@proj-airi/stage-ui/stores/modules/vision'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
-import { BasicTextarea } from '@proj-airi/ui'
+import { BasicTextarea, Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
+import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -564,6 +565,50 @@ watch(messageInput, (newVal) => {
     }, 5000 - timeSinceLastSave)
   }
 })
+
+// --- Semantic Search Modal State & Handlers ---
+const isSearchModalOpen = ref(false)
+const modalSearchTerm = ref('')
+const modalIsSearching = ref(false)
+const modalSearchResults = ref<any[]>([])
+
+function openSearchModal() {
+  modalSearchTerm.value = ''
+  modalSearchResults.value = []
+  isSearchModalOpen.value = true
+}
+
+let modalSearchTimeout: any = null
+watch(modalSearchTerm, (term) => {
+  if (modalSearchTimeout)
+    clearTimeout(modalSearchTimeout)
+
+  const trimmed = term.trim()
+  if (!trimmed) {
+    modalSearchResults.value = []
+    return
+  }
+
+  modalSearchTimeout = setTimeout(async () => {
+    modalIsSearching.value = true
+    try {
+      const results = await textJournalStore.searchEntries({
+        query: trimmed,
+        limit: 30,
+      })
+      modalSearchResults.value = results.filter(
+        res => !activeCardId.value || res.characterId === activeCardId.value,
+      )
+    }
+    catch (err) {
+      console.error('[InteractiveArea:Search] Semantic search failed:', err)
+      modalSearchResults.value = []
+    }
+    finally {
+      modalIsSearching.value = false
+    }
+  }, 300)
+})
 </script>
 
 <template>
@@ -772,6 +817,7 @@ watch(messageInput, (newVal) => {
         :title="`Memory & Context for ${characterName}`"
         @view-context="showContext = true"
         @manage-sessions="showSessions = true"
+        @search-memories="openSearchModal"
       />
 
       <ChatImagesPopover
@@ -939,6 +985,90 @@ watch(messageInput, (newVal) => {
 
     <!-- Stage Background Dialog Picker -->
     <StageBackgroundDialogPicker v-model="stageBackgroundDialogOpen" :card-id="activeCardId" />
+
+    <!-- Semantic Search Modal -->
+    <DialogRoot :open="isSearchModalOpen" @update:open="isSearchModalOpen = $event">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-100 bg-black/50 backdrop-blur-sm data-[state=closed]:animate-fadeOut data-[state=open]:animate-fadeIn" />
+        <DialogContent class="fixed left-1/2 top-1/2 z-100 m-0 max-h-[85vh] max-w-xl w-[92vw] flex flex-col border border-neutral-200 rounded-2xl bg-white p-6 shadow-2xl -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow dark:border-neutral-700 dark:bg-neutral-800">
+          <div class="h-full flex flex-col gap-4 overflow-hidden">
+            <div class="flex items-center justify-between border-b border-neutral-200 pb-2 dark:border-neutral-700">
+              <div>
+                <DialogTitle class="from-emerald-500 to-emerald-400 bg-gradient-to-r bg-clip-text text-lg text-transparent font-bold">
+                  Search Memories
+                </DialogTitle>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                  Semantic queries across memories for {{ characterName }}.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <input
+                v-model="modalSearchTerm"
+                type="text"
+                placeholder="Search memories..."
+                class="w-full border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
+              >
+            </div>
+
+            <div class="min-h-[300px] flex-1 overflow-y-auto pr-1">
+              <div v-if="modalIsSearching" class="flex flex-col items-center justify-center py-12 text-neutral-400">
+                <div class="i-solar:loading-bold mb-2 animate-spin text-3xl" />
+                <span>Probing memory layers...</span>
+              </div>
+              <div v-else-if="modalSearchResults.length === 0" class="flex flex-col items-center justify-center py-12 text-neutral-400">
+                <p class="text-sm">
+                  No memory matches found.
+                </p>
+              </div>
+              <div v-else class="flex flex-col gap-4">
+                <article
+                  v-for="entry in modalSearchResults"
+                  :key="entry.id"
+                  class="border-neutral-150 border rounded-[1.2rem] bg-neutral-50/40 p-4 dark:border-neutral-700/60 dark:bg-neutral-900/20"
+                >
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <span
+                      :class="[
+                        'rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                        entry.kind === 'raw_turn'
+                          ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400'
+                          : entry.kind === 'stmm_block'
+                            ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                      ]"
+                    >
+                      {{ entry.kind === 'raw_turn' ? 'Chat' : entry.kind === 'stmm_block' ? 'Recap' : 'Journal' }}
+                    </span>
+                    <span class="text-[9px] text-neutral-400 font-semibold">
+                      {{ formatDate(entry.createdAt) }}
+                    </span>
+                  </div>
+                  <h5 class="dark:text-neutral-250 mb-2 text-sm text-neutral-800 font-bold">
+                    {{ entry.title }}
+                  </h5>
+                  <div class="relative overflow-hidden border border-neutral-100/50 rounded-xl bg-neutral-50/30 p-4 dark:border-neutral-800 dark:bg-black/10">
+                    <MarkdownRenderer
+                      :content="entry.content"
+                      class="select-text text-xs text-neutral-700 leading-relaxed dark:text-neutral-300"
+                    />
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end border-t border-neutral-200 pt-3 dark:border-neutral-700">
+              <Button
+                variant="secondary"
+                label="Close"
+                @click="isSearchModalOpen = false"
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </div>
 </template>
 

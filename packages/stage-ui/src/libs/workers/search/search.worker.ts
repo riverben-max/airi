@@ -301,9 +301,17 @@ globalThis.addEventListener('message', async (e) => {
         let indexedCount = 0
 
         for (const document of nextDocuments as SearchDocument[]) {
-          const embedding = document.embedding?.length
-            ? document.embedding
-            : await getVector(getDocumentContent(document))
+          let embedding = document.embedding
+
+          if (!embedding?.length) {
+            const existing = documents.get(document.id)
+            if (existing && existing.embedding?.length && getDocumentContent(existing) === getDocumentContent(document)) {
+              embedding = existing.embedding
+            }
+            else {
+              embedding = await getVector(getDocumentContent(document))
+            }
+          }
 
           const persistedDocument = { ...document, embedding }
           ensureDocumentCache(persistedDocument)

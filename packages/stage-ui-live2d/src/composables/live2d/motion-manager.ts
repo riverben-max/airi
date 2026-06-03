@@ -210,12 +210,64 @@ export function useMotionUpdatePluginIdleDisable(idleEyeFocus = useLive2DIdleEye
   }
 }
 
-export function useMotionUpdatePluginIdleFocus(idleEyeFocus = useLive2DIdleEyeFocus()): MotionManagerPlugin {
+export function useMotionUpdatePluginIdleFocus(
+  disableFocusAt?: Ref<boolean>,
+  idleEyeFocus = useLive2DIdleEyeFocus(),
+): MotionManagerPlugin {
   return (ctx) => {
     if (!ctx.isIdleMotion || ctx.handled)
       return
 
+    // If mouse tracking is enabled (disableFocusAt is false/undefined), skip random idle saccades
+    if (disableFocusAt && !disableFocusAt.value)
+      return
+
     idleEyeFocus.update(ctx.internalModel, ctx.now)
+  }
+}
+
+export function useMotionUpdatePluginMouseFocus(
+  focusAt: Ref<{ x: number, y: number }>,
+  disableFocusAt: Ref<boolean>,
+  followSpeed: Ref<number>,
+  model: Ref<any>,
+  width: Ref<number>,
+  height: Ref<number>,
+): MotionManagerPlugin {
+  let currentX = 0
+  let currentY = 0
+  let initialized = false
+  return (_ctx) => {
+    if (disableFocusAt.value || !model.value)
+      return
+
+    const targetX = focusAt.value?.x ?? 0
+    const targetY = focusAt.value?.y ?? 0
+
+    // Normalize coordinates to [-1, 1] relative to the model's current position
+    const charX = model.value.x ?? (width.value / 2)
+    const charY = model.value.y ?? (height.value / 2)
+
+    // Normalize relative to half width/height (distance from model center to bounds)
+    const halfW = width.value / 2 || 1
+    const halfH = height.value / 2 || 1
+
+    const targetNormX = Math.max(-1, Math.min(1, (targetX - charX) / halfW))
+    const targetNormY = Math.max(-1, Math.min(1, -(targetY - charY) / halfH))
+
+    if (!initialized) {
+      currentX = targetNormX
+      currentY = targetNormY
+      initialized = true
+    }
+
+    // Smoothly interpolate towards target
+    const speed = followSpeed.value
+    currentX = currentX + (targetNormX - currentX) * speed
+    currentY = currentY + (targetNormY - currentY) * speed
+
+    // Call focus on the internal focus controller directly with normalized coordinates [-1, 1]
+    _ctx.internalModel.focusController.focus(currentX, currentY, true)
   }
 }
 

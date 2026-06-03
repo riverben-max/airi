@@ -103,6 +103,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       kind: 'ltmm_entry',
       timestamp: new Date(e.createdAt).toISOString(),
       source: e.source,
+      embedding: e.embedding,
     }))
 
     // 2. STMM
