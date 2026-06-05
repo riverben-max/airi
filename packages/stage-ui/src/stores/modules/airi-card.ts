@@ -24,6 +24,7 @@ import {
 import { storage } from '../../database/storage'
 import { AiriCardSchema } from '../../types/card.schema'
 import { useBackgroundStore } from '../background'
+import { useDatingSimStore } from '../dating-sim'
 import { DisplayModelFormat, useDisplayModelsStore } from '../display-models'
 import { useSettingsStageModel } from '../settings/stage-model'
 import { useConsciousnessStore } from './consciousness'
@@ -1168,12 +1169,28 @@ export function buildSystemPrompt(card: AiriCard | undefined) {
   if (!card)
     return ''
 
+  let isDatingSimActive = false
+  let story: any = null
+  let premise = ''
+
+  try {
+    const datingSimStore = useDatingSimStore()
+    if (datingSimStore.enabled && datingSimStore.activeStoryline) {
+      isDatingSimActive = true
+      story = datingSimStore.activeStoryline
+      premise = datingSimStore.customPremise || story.premise || ''
+    }
+  }
+  catch (e) {
+    // Ignore store initialization exceptions outside of Pinia
+  }
+
   const components = [
     card.systemPrompt,
     card.nickname ? `Nickname: ${card.nickname}` : '',
     card.description,
     card.personality,
-    card.scenario,
+    isDatingSimActive ? '' : card.scenario,
     card.greetings && card.greetings.length > 0
       ? `Greetings / Dialog Starters:\n${card.greetings.map(g => `- ${g}`).join('\n')}`
       : '',
@@ -1191,6 +1208,18 @@ export function buildSystemPrompt(card: AiriCard | undefined) {
   const artistry = card.extensions?.airi?.artistry
   if (artistry?.provider && artistry.provider !== 'none' && artistry.widgetInstruction && !artistry.autonomousEnabled) {
     components.push(artistry.widgetInstruction)
+  }
+
+  if (isDatingSimActive && story) {
+    if (premise) {
+      components.push(`The user wants to customize or tweak the premise of this encounter, please adjust to the text below: ${premise}`)
+    }
+    if (story.appearances) {
+      components.push(`This is what your appearance is for this story. Try to make it work with your known appearance; you're free to modify or adjust as needed: ${story.appearances}`)
+    }
+    if (story.scene) {
+      components.push(`The setting and location for this encounter is: ${story.scene}`)
+    }
   }
 
   return components.join('\n')

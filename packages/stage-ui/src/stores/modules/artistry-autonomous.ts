@@ -636,7 +636,16 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
       )
 
       // Build the final prompt from the Director's base prompt + folded concept snippets
-      const finalPrompt = analysis.prompt + folded.promptSnippets
+      let finalPrompt = analysis.prompt + folded.promptSnippets
+      if (datingSimStore.enabled && datingSimStore.activeStoryline) {
+        const story = datingSimStore.activeStoryline
+        if (story.scene) {
+          finalPrompt += `, ${story.scene}`
+        }
+        if (story.appearances) {
+          finalPrompt += `, ${story.appearances}`
+        }
+      }
       artistLog('Stack Folding: Final resolved values:', {
         provider: folded.provider,
         model: folded.model,

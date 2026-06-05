@@ -65,6 +65,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
   const choices = ref<Choice[]>([])
   const currentSubtitle = ref<string>('')
   const activeStoryline = ref<any | null>(null)
+  const customPremise = ref<string>('')
 
   const resolvedSceneryRoute = computed(() => {
     const route = settings.value.sceneryRoute
@@ -156,6 +157,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     if (isGenerating.value)
       return
     isGenerating.value = true
+    customPremise.value = customPremiseVal || ''
     try {
       const { useLLM } = await import('@proj-airi/stage-ui/stores/llm')
       const { useProvidersStore } = await import('@proj-airi/stage-ui/stores/providers')
@@ -699,6 +701,7 @@ Generate 4 options for what the User could say next and the subtitle.`
     choices,
     currentSubtitle,
     activeStoryline,
+    customPremise,
     resolvedSceneryRoute,
     spawnSceneryWidget,
     setVariable,
