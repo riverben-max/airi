@@ -1518,7 +1518,7 @@ let hoveredArea: string | null = null
 let boundCanvas: HTMLCanvasElement | null = null
 
 function onCanvasMouseMove(event: MouseEvent) {
-  if (interactionMode.value !== 'tactile' || !model.value || !props.app)
+  if (!model.value || !props.app)
     return
 
   const canvasEl = props.app.view as HTMLCanvasElement
@@ -1553,7 +1553,7 @@ function onCanvasMouseMove(event: MouseEvent) {
 }
 
 function onCanvasClick(event: MouseEvent) {
-  if (interactionMode.value !== 'tactile' || !model.value || !props.app)
+  if (!model.value || !props.app)
     return
 
   const canvasEl = props.app.view as HTMLCanvasElement
@@ -1577,24 +1577,53 @@ function onCanvasClick(event: MouseEvent) {
     if (!motionManager)
       return
 
-    const groups = Object.keys(motionManager.definitions || {})
+    // Categorical pooling system based on body parts
+    const hitAreaLower = hitArea.toLowerCase()
 
-    // Smart matching rules for hitArea mapping to motion definitions:
-    // 1. Exact match (case insensitive)
+    const privateHitAreas = ['bust', 'chest', 'boob', 'breast', 'crotch', 'skirt', 'thigh', 'leg', 'butt', 'hip', 'belly', 'private', '胸', '股', '尻', '脚', '足', 'おっぱい', 'お腹']
+    const headHitAreas = ['head', 'face', 'hair', '頭', 'アタマ', '顔', '髪']
+    const handHitAreas = ['hand', 'arm', 'finger', '手', '腕']
+
+    let emotionKeywords: string[] = []
+
+    if (privateHitAreas.some(k => hitAreaLower.includes(k))) {
+      // Dynamic responses for sensitive areas
+      emotionKeywords = ['angry', 'anger', 'mad', 'frown', 'disgust', 'upset', 'hate', '怒', 'blush', 'shy', 'embarrass', 'red', '照', '恥', 'surprise', 'shock', 'gasp', '驚', 'cry', 'tear', 'sad', '泣', '悲']
+    }
+    else if (headHitAreas.some(k => hitAreaLower.includes(k))) {
+      // Dynamic responses for headpats
+      emotionKeywords = ['happy', 'smile', 'joy', 'laugh', 'glad', 'fun', '喜', '笑', 'wink', 'proud', 'smug', 'heh', 'ドヤ', 'blush', 'shy', '照', 'sleep', 'close', '眠', '閉']
+    }
+    else if (handHitAreas.some(k => hitAreaLower.includes(k))) {
+      // Dynamic responses for holding hands
+      emotionKeywords = ['happy', 'smile', 'fun', 'glad', '喜', '笑', 'wink', 'surprise', 'shock', '驚', 'confused', 'think', 'what', '困', '思']
+    }
+
+    let triggered = false
+
+    if (emotionKeywords.length > 0) {
+      // Filter expressions that match the context keywords
+      const choices = availableExpressions.value.filter(e => emotionKeywords.some(k => e.name.toLowerCase().includes(k)))
+      if (choices.length > 0) {
+        const selected = choices[Math.floor(Math.random() * choices.length)]
+        console.info(`[Live2D Tactile] Click mapped to expression: ${selected.name}`)
+        live2dStore.triggerEmotion(selected.name)
+        triggered = true
+      }
+    }
+
+    // Play corresponding motion if no expression triggered or in addition
+    const groups = Object.keys(motionManager.definitions || {})
     let matchedGroup = groups.find(g => g.toLowerCase() === hitArea.toLowerCase())
-    // 2. Definition group starts with hitArea
     if (!matchedGroup) {
       matchedGroup = groups.find(g => g.toLowerCase().startsWith(hitArea.toLowerCase()))
     }
-    // 3. HitArea starts with definition group
     if (!matchedGroup) {
       matchedGroup = groups.find(g => hitArea.toLowerCase().startsWith(g.toLowerCase()))
     }
-    // 4. Definition group contains hitArea
     if (!matchedGroup) {
       matchedGroup = groups.find(g => g.toLowerCase().includes(hitArea.toLowerCase()))
     }
-    // 5. HitArea contains definition group
     if (!matchedGroup) {
       matchedGroup = groups.find(g => hitArea.toLowerCase().includes(g.toLowerCase()))
     }
@@ -1605,12 +1634,20 @@ function onCanvasClick(event: MouseEvent) {
         const randomIndex = Math.floor(Math.random() * definitions.length)
         console.info(`[Live2D Tactile] Playing motion for matched group: group="${matchedGroup}", index=${randomIndex}`)
         model.value.motion(matchedGroup, randomIndex, MotionPriority.FORCE)
+        triggered = true
       }
     }
-    else {
-      console.warn(`[Live2D Tactile] No matching motion group found starting with or related to hitArea: ${hitArea}`)
+
+    if (!triggered) {
+      console.warn(`[Live2D Tactile] No matching motion/expression group found starting with or related to hitArea: ${hitArea}`)
       if (hitArea.toLowerCase().includes('body')) {
         model.value.motion('tap_body')
+      }
+      else if (availableExpressions.value.length > 0) {
+        // Fallback: pick any random expression if nothing specifically matched
+        const selected = availableExpressions.value[Math.floor(Math.random() * availableExpressions.value.length)]
+        console.info(`[Live2D Tactile] Playing generic fallback expression: ${selected.name}`)
+        live2dStore.triggerEmotion(selected.name)
       }
     }
   }
@@ -1619,7 +1656,7 @@ function onCanvasClick(event: MouseEvent) {
 function setupCanvasListeners() {
   cleanupCanvasListeners()
 
-  if (interactionMode.value !== 'tactile' || !model.value || !props.app)
+  if (!model.value || !props.app)
     return
 
   const canvasEl = props.app.view as HTMLCanvasElement

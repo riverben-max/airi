@@ -140,6 +140,36 @@ export const useLive2d = defineStore('live2d', () => {
         }
       }
 
+      // 3. Smart fuzzy match using emotion keyword clusters
+      if (targetFileNames.length === 0) {
+        const keyLower = emotionKey.toLowerCase()
+        let searchKeywords = [keyLower]
+
+        const emotionClusters = [
+          ['happy', 'smile', 'joy', 'laugh', 'glad', 'fun', '喜', '笑'],
+          ['angry', 'anger', 'mad', 'frown', 'disgust', 'upset', 'hate', '怒'],
+          ['sad', 'cry', 'tear', 'sorrow', 'depressed', '泣', '悲'],
+          ['surprise', 'shock', 'gasp', '驚'],
+          ['blush', 'shy', 'embarrass', 'red', '照', '恥'],
+          ['wink', 'smug', 'proud', 'heh', 'ドヤ'],
+          ['think', 'confused', 'what', '困', '思'],
+          ['sleep', 'close', '眠', '閉'],
+        ]
+
+        // Broaden the search keywords if the requested emotion belongs to a cluster
+        const matchedCluster = emotionClusters.find(cluster => cluster.some(k => keyLower.includes(k)))
+        if (matchedCluster) {
+          searchKeywords = matchedCluster
+        }
+
+        const matched = availableExpressions.value.find(
+          e => searchKeywords.some(k => e.name.toLowerCase().includes(k)) || keyLower.includes(e.name.toLowerCase().replace(/\.exp3$/, '')),
+        )
+        if (matched) {
+          targetFileNames = [matched.fileName]
+        }
+      }
+
       if (targetFileNames.length === 0) {
         return false
       }

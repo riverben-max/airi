@@ -22,7 +22,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import cardExportFrameUrl from './card-export-frame.png?url'
-import CardCreate from './components/CardCreate.vue'
 import CardCreationDialog from './components/CardCreationDialog.vue'
 import CardDetailDialog from './components/CardDetailDialog.vue'
 import CardImportWizard from './components/CardImportWizard.vue'
@@ -866,75 +865,84 @@ function getDisplayModelId(id: string) {
 
 <template>
   <div rounded-xl p-4 flex="~ col gap-4">
-    <!-- Toolbar with search and filters -->
-    <div flex="~ row" flex-wrap items-center justify-between gap-4>
-      <!-- Search bar -->
-      <div class="relative min-w-[200px] flex-1" inline-flex="~" w-full items-center>
-        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          <div i-solar:magnifer-line-duotone class="text-neutral-500 dark:text-neutral-400" />
+    <!-- Toolbar with search, filters, and primary buttons -->
+    <div flex="~ col lg:row" items-stretch justify-between gap-4 lg:items-center>
+      <!-- Left side: Search bar & Sort options -->
+      <div flex="~ col sm:row" flex-1 items-stretch gap-4 sm:items-center>
+        <!-- Search bar -->
+        <div class="relative flex-1" inline-flex="~" w-full items-center>
+          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <div i-solar:magnifer-line-duotone class="text-neutral-500 dark:text-neutral-400" />
+          </div>
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="w-full rounded-xl p-2.5 pl-10 text-sm outline-none"
+            border="focus:primary-100 dark:focus:primary-400/50 2 solid neutral-200 dark:neutral-800"
+            transition="all duration-200 ease-in-out"
+            bg="white dark:neutral-900"
+            :placeholder="t('settings.pages.card.search')"
+          >
         </div>
-        <input
-          v-model="searchQuery"
-          type="search"
-          class="w-full rounded-xl p-2.5 pl-10 text-sm outline-none"
-          border="focus:primary-100 dark:focus:primary-400/50 2 solid neutral-200 dark:neutral-800"
-          transition="all duration-200 ease-in-out"
-          bg="white dark:neutral-900"
-          :placeholder="t('settings.pages.card.search')"
-        >
+
+        <!-- Sort options -->
+        <div class="relative flex flex-row items-center gap-2">
+          <div class="whitespace-nowrap text-sm text-neutral-500 dark:text-neutral-400">
+            {{ t('settings.pages.card.sort_by') }}:
+          </div>
+          <Select
+            v-model="sortOption"
+            :options="[
+              { value: 'nameAsc', label: t('settings.pages.card.name_asc') },
+              { value: 'nameDesc', label: t('settings.pages.card.name_desc') },
+              { value: 'recent', label: t('settings.pages.card.recent') },
+            ]"
+            placeholder="Select sort option"
+            class="min-w-[150px]"
+          />
+        </div>
       </div>
 
-      <!-- Sort options -->
-      <div class="relative flex flex-row justify-start gap-2 lg:flex-col">
-        <div class="top-[-32px] whitespace-nowrap text-sm text-neutral-500 leading-10 lg:absolute dark:text-neutral-400">
-          {{ t('settings.pages.card.sort_by') }}:
-        </div>
-        <Select
-          v-model="sortOption"
-          :options="[
-            { value: 'nameAsc', label: t('settings.pages.card.name_asc') },
-            { value: 'nameDesc', label: t('settings.pages.card.name_desc') },
-            { value: 'recent', label: t('settings.pages.card.recent') },
+      <!-- Right side: Import & Create Buttons side-by-side above grid -->
+      <div flex="~ row" items-stretch gap-4 class="w-full lg:w-auto">
+        <InputFile v-model="inputFiles" accept="*.json,*.png" class="flex-1 lg:w-[160px] lg:flex-none">
+          <template #default="{ isDragging }">
+            <div
+              :class="[
+                'relative flex flex-col cursor-pointer items-center justify-center p-3 rounded-xl border-2 border-solid transition-all duration-300 opacity-95 h-[100px] w-full',
+                isDragging
+                  ? 'border-primary-500 bg-primary-500/5 dark:bg-primary-500/10'
+                  : 'border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/30 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-white/80 dark:hover:bg-neutral-900/40',
+              ]"
+            >
+              <div i-solar:upload-square-line-duotone class="mb-2 text-2xl text-neutral-400 dark:text-neutral-500" />
+              <p class="text-center text-xs text-neutral-600 font-medium leading-tight dark:text-neutral-300">
+                {{ isDragging ? t('settings.pages.card.drop_here') : 'Import Card' }}
+              </p>
+            </div>
+          </template>
+        </InputFile>
+
+        <div
+          :class="[
+            'relative flex flex-col cursor-pointer items-center justify-center p-3 rounded-xl border-2 border-solid transition-all duration-300 opacity-95 h-[100px] flex-1 lg:w-[160px] lg:flex-none',
+            'border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/30 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-white/80 dark:hover:bg-neutral-900/40',
           ]"
-          placeholder="Select sort option"
-          class="min-w-[150px]"
-        />
+          @click="handleCardCreationDialog"
+        >
+          <div i-solar:add-square-line-duotone class="mb-2 text-2xl text-neutral-400 dark:text-neutral-500" />
+          <p class="text-center text-xs text-neutral-600 font-medium leading-tight dark:text-neutral-300">
+            Create Card
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- Masonry card layout -->
+    <!-- Responsive card layout (multi-column grid across screens) -->
     <div
       class="mt-4"
-      :class="{ 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 grid-auto-rows-[minmax(min-content,max-content)] grid-auto-flow-dense sm:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] sm:gap-5 md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]': cards.size > 0 }"
+      :class="{ 'grid grid-cols-2 md:grid-cols-3 gap-5': cards.size > 0 }"
     >
-      <!-- Upload card -->
-      <InputFile v-model="inputFiles" accept="*.json,*.png" class="h-[280px]">
-        <template #default="{ isDragging }">
-          <template v-if="!isDragging">
-            <div flex flex-col items-center>
-              <div i-solar:upload-square-line-duotone mb-4 text-5xl text="neutral-400 dark:neutral-500" />
-              <p font-medium text="neutral-600 dark:neutral-300">
-                Import Card
-              </p>
-              <p text="neutral-500 dark:neutral-400" mt-2 text-sm>
-                Import AIRI JSON or SillyTavern / chara_card_v2 PNG cards
-              </p>
-            </div>
-          </template>
-          <template v-else>
-            <div flex flex-col items-center>
-              <div i-solar:upload-minimalistic-bold class="mb-2 text-5xl text-primary-500 dark:text-primary-400" />
-              <p font-medium text="primary-600 dark:primary-300">
-                {{ t('settings.pages.card.drop_here') }}
-              </p>
-            </div>
-          </template>
-        </template>
-      </InputFile>
-
-      <!-- Create card -->
-      <CardCreate class="h-[280px]" @click="handleCardCreationDialog" />
-
       <!-- Card Items -->
       <template v-if="cards.size > 0">
         <CardListItem
@@ -970,7 +978,7 @@ function getDisplayModelId(id: string) {
       </div>
 
       <!-- No search results -->
-      <Alert v-if="searchQuery && sortedFilteredCards.length === 0" type="warning">
+      <Alert v-if="searchQuery && sortedFilteredCards.length === 0" type="warning" class="col-span-full">
         <template #title>
           {{ t('settings.pages.card.no_results') }}
         </template>
