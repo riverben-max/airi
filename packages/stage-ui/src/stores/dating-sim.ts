@@ -207,7 +207,7 @@ Rules:
 - Generate 4 varied ideas for a way to initiate this story line, it might not be perfect or make perfect sense but just do your best.
 - Vary the emotional/tonal approach across the 4 options: one bold/flirty, one helpful/focused, one playful/teasing, one silent/observational.
 - Keep each choice short (under 2 sentences).
-- For each choice, assign its score impact based on how positive/productive or negative/risky it is in initiating this scenario:
+- For each choice, assign its score impact based on how positive/productive or negative/risky it is in initiating this scenario. Every choice MUST have at least 1 point on either positive or negative (or both). Do not make any choice positive: 0 and negative: 0.
   * "positive": How much this choice adds to the user's positive score (typically 0 or 1, or 2 for high-risk/high-reward positive moves).
   * "negative": How much this choice adds to the user's negative score (typically 0 or 1, or 2 for risky/bad moves).
 - Generate a "subtitle" that sets the starting scene or describes the companion's initial posture/look (written in third-person descriptive text or representing the companion's first words).
@@ -228,8 +228,8 @@ Your output MUST be EXACTLY in this JSON format and nothing else:
     },
     {
       "text": "Third choice option",
-      "positive": 0,
-      "negative": 0
+      "positive": 1,
+      "negative": 1
     },
     {
       "text": "Fourth choice option",
@@ -335,7 +335,7 @@ Rules:
 - No meta-commentary, no "(OOC)" notes, no quotation marks around the message text
 - Output exactly 4 options matching the requested voice style.
 ${isGoalDriven
-  ? `- For each suggestion, assign its score impact based on how positive/productive or negative/risky it is in advancing the terms of encounter:
+  ? `- For each suggestion, assign its score impact based on how positive/productive or negative/risky it is in advancing the terms of encounter. Every suggestion MUST have at least 1 point on either positive or negative (or both). Do not make any suggestion positive: 0 and negative: 0.
   * "positive": How much this choice adds to the user's connection score (typically 0 or 1, or 2 for high-risk/high-reward positive moves).
   * "negative": How much this choice adds to the user's friction score (typically 0 or 1, or 2 for risky/bad moves).`
   : ''}
@@ -347,7 +347,7 @@ Your output MUST be EXACTLY in this JSON format:
     ${isGoalDriven
       ? `{ "text": "First choice option in user's style", "positive": 1, "negative": 0 },
     { "text": "Second choice option in user's style", "positive": 0, "negative": 1 },
-    { "text": "Third choice option in user's style", "positive": 0, "negative": 0 },
+    { "text": "Third choice option in user's style", "positive": 1, "negative": 1 },
     { "text": "Fourth choice option in user's style", "positive": 2, "negative": 0 }`
       : `"First choice option in user's style", "Second choice option in user's style", "Third choice option in user's style", "Fourth choice option in user's style"`}
   ]
