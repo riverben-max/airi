@@ -44,9 +44,6 @@ onMounted(async () => {
     context.value.on(captionIsFollowingWindowChanged, (event) => {
       const val = Boolean(event?.body)
       attached.value = val
-      if (settingsStore.captionFollowStage !== val) {
-        settingsStore.captionFollowStage = val
-      }
     })
   }
   catch {}
