@@ -31,6 +31,12 @@ const turnsElapsed = computed(() => {
   return msgs.filter((m: any) => m.role === 'assistant').length
 })
 
+const lastAssistantMessage = computed(() => {
+  const msgs = chatSessionStore.messages || []
+  const assistantMsgs = msgs.filter((m: any) => m.role === 'assistant')
+  return assistantMsgs[assistantMsgs.length - 1]?.content || ''
+})
+
 const isInitialTurn = computed(() => {
   return turnsElapsed.value === 0
 })
@@ -48,6 +54,9 @@ const isGameOver = computed(() => {
 
 const subtitleText = computed(() => {
   if (isGameOver.value && datingSimStore.activeStoryline) {
+    if (lastAssistantMessage.value) {
+      return lastAssistantMessage.value
+    }
     const pos = datingSimStore.getVariable('positiveScore')
     const maxScore = datingSimStore.settings.maxScore
     if (pos >= maxScore) {
@@ -72,13 +81,6 @@ function handleChoiceClick(choice: any) {
   }
   if (typeof choice.negativeScoreChange === 'number') {
     datingSimStore.setVariable('negativeScore', datingSimStore.getVariable('negativeScore') + choice.negativeScoreChange)
-  }
-
-  if (isGameOver.value) {
-    postChatInput({ sendingMessage: choice.text, options: { skipAssistant: true, metadata: { source: 'dating-sim' } } })
-    datingSimStore.setVariable('Timer', 0)
-    datingSimStore.choices = []
-    return
   }
 
   if (choice.action === 'llm_topic') {
