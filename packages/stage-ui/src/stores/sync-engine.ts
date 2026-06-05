@@ -1,0 +1,1433 @@
+import localforage from 'localforage'
+
+import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
+import { useBroadcastChannel } from '@vueuse/core'
+import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
+
+import { storage, storageState } from '../database/storage'
+
+async function parallelLimit<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+) {
+  const promises: Promise<void>[] = []
+  const executing = new Set<Promise<void>>()
+  for (const item of items) {
+    const p = fn(item).finally(() => {
+      executing.delete(p)
+    })
+    promises.push(p)
+    executing.add(p)
+    if (executing.size >= limit) {
+      await Promise.race(executing)
+    }
+  }
+  await Promise.all(promises)
+}
+
+export const useSyncEngineStore = defineStore('sync-engine', () => {
+  // Sync Configuration State
+  const syncEnabled = useLocalStorageManualReset<boolean>('settings/sync/enabled', false)
+  const syncInterval = useLocalStorageManualReset<number>('settings/sync/interval', 30) // in minutes
+  const conflictStrategy = useLocalStorageManualReset<'lww'>('settings/sync/conflict-strategy', 'lww')
+  const activeProvider = useLocalStorageManualReset<string>('settings/sync/active-provider', 'local-fs')
+  const fsBackupPath = useLocalStorageManualReset<string>('settings/sync/fs-path', '')
+
+  // Runtime State
+  const isSyncing = ref(false)
+  const lastSyncTime = ref<number>(Number(localStorage.getItem('settings/sync/last-time') || '0'))
+  const syncError = ref('')
+
+  // Check and initialize default OS path if empty
+  if (!fsBackupPath.value) {
+    const userAgent = navigator.userAgent.toLowerCase()
+    if (userAgent.includes('win')) {
+      fsBackupPath.value = 'C:\\AIRI-Backup-Share'
+    }
+    else if (userAgent.includes('linux')) {
+      fsBackupPath.value = '/mnt/AIRI-Backup-Share'
+    }
+    else {
+      fsBackupPath.value = '/Volumes/AIRI-Backup-Share'
+    }
+  }
+
+  // Helper to call Electron IPC
+  const electron = (window as any).electron
+
+  function hasElectron(): boolean {
+    return Boolean(electron?.ipcRenderer)
+  }
+
+  async function validatePath(path: string): Promise<{ success: boolean, error?: string }> {
+    if (!hasElectron()) {
+      return { success: false, error: 'File system access is only available in the desktop application.' }
+    }
+    try {
+      return await electron.ipcRenderer.invoke('byos-fs:validate-path', { path })
+    }
+    catch (err) {
+      return { success: false, error: String(err) }
+    }
+  }
+
+  // Normalize keys returned by storage.getKeys to their canonical slash-separated form
+  function normalizeStorageKey(fullKey: string): string | null {
+    if (fullKey.startsWith('local:airi-local:')) {
+      const relative = fullKey.substring('local:airi-local:'.length)
+      return `local:${relative.replace(/:/g, '/')}`
+    }
+    if (fullKey.startsWith('outbox:airi-sync-queue:')) {
+      const relative = fullKey.substring('outbox:airi-sync-queue:'.length)
+      return `outbox:${relative.replace(/:/g, '/')}`
+    }
+    return null
+  }
+
+  // Convert storage key to relative path on disk (e.g. local:chat/sessions/123 -> db/chat/sessions/123.json)
+  function getRelPathForKey(key: string): string {
+    const cleanKey = key.replace(/^local:/, '')
+    // Replace colons with slashes to create nested directories, avoiding Windows filename colon restrictions
+    return `db/${cleanKey.replace(/:/g, '/')}.json`
+  }
+
+  const { post: broadcastBgSync } = useBroadcastChannel({ name: 'airi:background-sync' })
+  const { post: broadcastReload } = useBroadcastChannel({ name: 'airi:store-reload' })
+
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        const base64 = result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  async function reconcileBackgrounds(): Promise<void> {
+    console.log('[SyncEngine] Reconciling backgrounds...')
+    await logDebug('Starting reconcileBackgrounds()')
+    try {
+      // 1. Get list of deleted background IDs from sync metadata
+      const rawLocalKeys = await storage.getKeys('local')
+      const localKeys = rawLocalKeys.map(normalizeStorageKey).filter((k): k is string => k !== null)
+      const deletedBgIds = new Set<string>()
+      const DELETED_PREFIX = 'local:sync-metadata/deleted-backgrounds/'
+      for (const k of localKeys) {
+        if (k.startsWith(DELETED_PREFIX)) {
+          deletedBgIds.add(k.substring(DELETED_PREFIX.length))
+        }
+      }
+      await logDebug(`deletedBgIds size: ${deletedBgIds.size}`)
+
+      // 2. List all remote files to find backgrounds
+      const listRes = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
+      if (!listRes.success) {
+        await logDebug(`Failed to list remote files: ${listRes.error}`)
+        return
+      }
+
+      const remoteFiles = (listRes.files || []) as Array<{ relPath: string, mtime: number, size: number }>
+      const remoteBgs = new Map<string, { json?: string, png?: string }>()
+      for (const file of remoteFiles) {
+        const normalizedPath = file.relPath.replace(/\\/g, '/')
+        if (normalizedPath.startsWith('assets/backgrounds/')) {
+          const base = normalizedPath.substring('assets/backgrounds/'.length)
+          const ext = base.split('.').pop()
+          const id = base.substring(0, base.length - (ext ? ext.length + 1 : 0))
+          if (!id)
+            continue
+          if (!remoteBgs.has(id)) {
+            remoteBgs.set(id, {})
+          }
+          if (ext === 'json')
+            remoteBgs.get(id)!.json = file.relPath
+          if (ext === 'png')
+            remoteBgs.get(id)!.png = file.relPath
+        }
+      }
+      await logDebug(`remoteBgs size: ${remoteBgs.size}`)
+
+      // 3. Process deletions (both remote and local)
+      for (const id of deletedBgIds) {
+        const remoteInfo = remoteBgs.get(id)
+        if (remoteInfo) {
+          if (remoteInfo.json) {
+            await electron.ipcRenderer.invoke('byos-fs:delete-file', { dir: fsBackupPath.value, relPath: remoteInfo.json })
+          }
+          if (remoteInfo.png) {
+            await electron.ipcRenderer.invoke('byos-fs:delete-file', { dir: fsBackupPath.value, relPath: remoteInfo.png })
+          }
+        }
+        await localforage.removeItem(id)
+      }
+
+      // 4. Load all local backgrounds from localforage
+      const localBgs = new Map<string, any>()
+      await localforage.iterate<any, void>((val, key) => {
+        if (key.startsWith('bg-') && !deletedBgIds.has(key)) {
+          localBgs.set(key, val)
+        }
+      })
+      await logDebug(`localBgs size (before uploads/downloads): ${localBgs.size}`)
+
+      // 5. Upload backgrounds present locally but missing/incomplete on remote
+      for (const [id, entry] of localBgs.entries()) {
+        const remoteInfo = remoteBgs.get(id)
+        if (!remoteInfo || !remoteInfo.png || !remoteInfo.json) {
+          await logDebug(`Uploading background to remote: ${id} (title: ${entry.title}, characterId: ${entry.characterId})`)
+          const { blob, ...metadata } = entry
+          const jsonRelPath = `assets/backgrounds/${id}.json`
+          await electron.ipcRenderer.invoke('byos-fs:write-file', {
+            dir: fsBackupPath.value,
+            relPath: jsonRelPath,
+            content: JSON.stringify(metadata, null, 2),
+          })
+
+          if (blob instanceof Blob) {
+            const base64 = await blobToBase64(blob)
+            const pngRelPath = `assets/backgrounds/${id}.png`
+            await electron.ipcRenderer.invoke('byos-fs:write-file', {
+              dir: fsBackupPath.value,
+              relPath: pngRelPath,
+              content: base64,
+              encoding: 'base64',
+            })
+          }
+          else {
+            await logDebug(`Warning: background ${id} has no valid Blob object locally.`)
+          }
+        }
+      }
+
+      // 6. Download backgrounds present on remote but missing locally
+      let hasDownloads = false
+      for (const [id, remoteInfo] of remoteBgs.entries()) {
+        if (deletedBgIds.has(id))
+          continue
+        const localEntry = localBgs.get(id)
+        const existsLocally = !!(localEntry && localEntry.blob instanceof Blob)
+
+        await logDebug(`Checking background ${id}: existsLocally=${existsLocally}, hasJson=${!!remoteInfo.json}, hasPng=${!!remoteInfo.png}`)
+
+        if (!existsLocally && remoteInfo.json && remoteInfo.png) {
+          await logDebug(`Downloading background from remote: ${id}`)
+          const readJson = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+            dir: fsBackupPath.value,
+            relPath: remoteInfo.json,
+          })
+          if (!readJson.success || !readJson.content) {
+            await logDebug(`Failed to read remote JSON for ${id}: ${readJson.error}`)
+            continue
+          }
+          const metadata = JSON.parse(readJson.content)
+
+          const readPng = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+            dir: fsBackupPath.value,
+            relPath: remoteInfo.png,
+            encoding: 'base64',
+          })
+          if (!readPng.success || !readPng.content) {
+            await logDebug(`Failed to read remote PNG for ${id}: ${readPng.error}`)
+            continue
+          }
+
+          const mimeType = 'image/png'
+          const res = await fetch(`data:${mimeType};base64,${readPng.content}`)
+          const blob = await res.blob()
+
+          const entry = {
+            ...metadata,
+            id,
+            blob,
+          }
+
+          await localforage.setItem(id, entry)
+          await logDebug(`Successfully saved downloaded background ${id} (title: ${entry.title}, characterId: ${entry.characterId}) to localforage.`)
+          hasDownloads = true
+        }
+      }
+
+      if (hasDownloads) {
+        // Trigger reload on other tabs and in the current store
+        broadcastBgSync(Date.now())
+        try {
+          const { useBackgroundStore } = await import('./background')
+          const bgStore = useBackgroundStore()
+          await bgStore.initializeStore()
+        }
+        catch (e) {
+          console.error('[SyncEngine] Failed to refresh background store:', e)
+        }
+      }
+      await logDebug('Finished reconcileBackgrounds()')
+    }
+    catch (err: any) {
+      await logDebug(`Error in reconcileBackgrounds(): ${err.message || err}`)
+      throw err
+    }
+  }
+
+  async function reconcileModels(): Promise<void> {
+    console.log('[SyncEngine] Reconciling models...')
+    try {
+      // 1. Get list of deleted model IDs from sync metadata
+      const rawLocalKeys = await storage.getKeys('local')
+      const localKeys = rawLocalKeys.map(normalizeStorageKey).filter((k): k is string => k !== null)
+      const deletedModelIds = new Set<string>()
+      const DELETED_PREFIX = 'local:sync-metadata/deleted-models/'
+      for (const k of localKeys) {
+        if (k.startsWith(DELETED_PREFIX)) {
+          deletedModelIds.add(k.substring(DELETED_PREFIX.length))
+        }
+      }
+
+      // 2. Read remote manifest
+      let manifest: { models: Record<string, { id: string, format: string, name: string, importedAt: number, previewImage?: string, hasTextures: boolean, hasPreview?: boolean }> } = { models: {} }
+      try {
+        const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+          dir: fsBackupPath.value,
+          relPath: 'assets/models/manifest.json',
+        })
+        if (readRes.success && readRes.content) {
+          manifest = JSON.parse(readRes.content)
+        }
+      }
+      catch (e) {
+        console.warn('[SyncEngine] Failed to read remote model manifest or it does not exist, initializing new manifest.', e)
+      }
+
+      let manifestModified = false
+
+      // Migration: convert inline previewImage strings to sidecar files to shrink bloated manifest.json
+      for (const [id, remoteModel] of Object.entries(manifest.models)) {
+        if (remoteModel.previewImage && typeof remoteModel.previewImage === 'string' && remoteModel.previewImage.startsWith('data:')) {
+          console.log(`[SyncEngine] Migrating bloated previewImage in manifest to sidecar for: ${id}`)
+          const parts = remoteModel.previewImage.split(',')
+          const base64 = parts[1]
+          if (base64) {
+            const previewRelPath = `assets/models/${id}-preview.png`
+            const uploadRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+              dir: fsBackupPath.value,
+              relPath: previewRelPath,
+              content: base64,
+              encoding: 'base64',
+            })
+            if (uploadRes.success) {
+              remoteModel.hasPreview = true
+            }
+          }
+          delete remoteModel.previewImage
+          manifestModified = true
+        }
+      }
+
+      // 3. Process deletions (both remote and local)
+      for (const id of deletedModelIds) {
+        if (manifest.models[id]) {
+          console.log(`[SyncEngine] Deleting remote model assets for: ${id}`)
+          await electron.ipcRenderer.invoke('byos-fs:delete-file', {
+            dir: fsBackupPath.value,
+            relPath: `assets/models/${id}.bin`,
+          })
+          if (manifest.models[id].hasTextures) {
+            await electron.ipcRenderer.invoke('byos-fs:delete-file', {
+              dir: fsBackupPath.value,
+              relPath: `assets/models/${id}-textures.json`,
+            })
+          }
+          if (manifest.models[id].hasPreview) {
+            await electron.ipcRenderer.invoke('byos-fs:delete-file', {
+              dir: fsBackupPath.value,
+              relPath: `assets/models/${id}-preview.png`,
+            })
+          }
+          delete manifest.models[id]
+          manifestModified = true
+        }
+        await localforage.removeItem(id)
+        await localforage.removeItem(`${id}-textures`)
+        await storage.removeItem(`local:sync-metadata/timestamps/${id}`)
+        await storage.removeItem(`local:sync-metadata/deleted-models/${id}`)
+      }
+
+      // 4. Load all local models from localforage (excluding presets & deleted models)
+      const localModels = new Map<string, any>()
+      await localforage.iterate<any, void>((val, key) => {
+        if (key.startsWith('display-model-') && !deletedModelIds.has(key)) {
+          localModels.set(key, val)
+        }
+      })
+
+      // 5. Upload local-only models (not in remote manifest and not in local deleted list)
+      for (const [id, entry] of localModels.entries()) {
+        if (!manifest.models[id]) {
+          // Check if we have sync history for it (which would mean it was deleted on remote)
+          const hasSyncHistory = await storage.getItemRaw<number>(`local:sync-metadata/timestamps/${id}`)
+          if (hasSyncHistory) {
+            console.log(`[SyncEngine] Model ${id} (${entry.name}) has sync history but is missing from remote manifest. Deleting locally.`)
+            await localforage.removeItem(id)
+            await localforage.removeItem(`${id}-textures`)
+            await storage.removeItem(`local:sync-metadata/timestamps/${id}`)
+            continue
+          }
+
+          console.log(`[SyncEngine] Uploading model to remote: ${id} (${entry.name})`)
+          if (entry.file instanceof Blob || entry.file instanceof File) {
+            const base64 = await blobToBase64(entry.file)
+            const binRelPath = `assets/models/${id}.bin`
+            const uploadRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+              dir: fsBackupPath.value,
+              relPath: binRelPath,
+              content: base64,
+              encoding: 'base64',
+            })
+            if (!uploadRes.success) {
+              console.error(`[SyncEngine] Failed to upload model binary for ${id}:`, uploadRes.error)
+              continue
+            }
+          }
+          else {
+            console.warn(`[SyncEngine] Local model ${id} does not contain a valid File/Blob.`, entry)
+            continue
+          }
+
+          // Check and upload textures if present
+          let hasTextures = false
+          const textures = await localforage.getItem<any[]>(`${id}-textures`).catch(() => null)
+          if (textures && Array.isArray(textures) && textures.length > 0) {
+            console.log(`[SyncEngine] Uploading textures for model: ${id}`)
+            const texturesData = []
+            for (const tex of textures) {
+              if (tex.file instanceof Blob || tex.file instanceof File) {
+                const texBase64 = await blobToBase64(tex.file)
+                texturesData.push({
+                  relativePath: tex.relativePath,
+                  name: tex.file.name,
+                  type: tex.file.type,
+                  base64: texBase64,
+                })
+              }
+            }
+            if (texturesData.length > 0) {
+              const texturesRelPath = `assets/models/${id}-textures.json`
+              const texUploadRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+                dir: fsBackupPath.value,
+                relPath: texturesRelPath,
+                content: JSON.stringify(texturesData, null, 2),
+              })
+              if (texUploadRes.success) {
+                hasTextures = true
+              }
+              else {
+                console.error(`[SyncEngine] Failed to upload textures for ${id}:`, texUploadRes.error)
+              }
+            }
+          }
+
+          // Check and upload preview image if present
+          let hasPreview = false
+          if (entry.previewImage && typeof entry.previewImage === 'string' && entry.previewImage.startsWith('data:')) {
+            console.log(`[SyncEngine] Uploading preview image sidecar for: ${id}`)
+            const parts = entry.previewImage.split(',')
+            const base64 = parts[1]
+            if (base64) {
+              const previewRelPath = `assets/models/${id}-preview.png`
+              const previewUploadRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+                dir: fsBackupPath.value,
+                relPath: previewRelPath,
+                content: base64,
+                encoding: 'base64',
+              })
+              if (previewUploadRes.success) {
+                hasPreview = true
+              }
+              else {
+                console.error(`[SyncEngine] Failed to upload preview for ${id}:`, previewUploadRes.error)
+              }
+            }
+          }
+
+          // Add to manifest
+          manifest.models[id] = {
+            id,
+            format: entry.format,
+            name: entry.name || '',
+            importedAt: entry.importedAt || Date.now(),
+            hasPreview,
+            hasTextures,
+          }
+          manifestModified = true
+
+          // Record sync history timestamp
+          await storage.setItemRaw(`local:sync-metadata/timestamps/${id}`, Date.now())
+        }
+      }
+
+      // 6. Download remote-only models (in remote manifest but missing locally)
+      let hasDownloads = false
+      for (const [id, remoteModel] of Object.entries(manifest.models)) {
+        if (deletedModelIds.has(id))
+          continue
+        if (!localModels.has(id)) {
+          console.log(`[SyncEngine] Downloading model from remote: ${id} (${remoteModel.name})`)
+          const readBinRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+            dir: fsBackupPath.value,
+            relPath: `assets/models/${id}.bin`,
+            encoding: 'base64',
+          })
+          if (!readBinRes.success || !readBinRes.content) {
+            console.error(`[SyncEngine] Failed to read remote model binary for ${id}:`, readBinRes.error)
+            continue
+          }
+
+          // Reconstruct File object
+          const mimeType = 'application/octet-stream'
+          const res = await fetch(`data:${mimeType};base64,${readBinRes.content}`)
+          const blob = await res.blob()
+          const fileObj = new File([blob], remoteModel.name, { type: mimeType })
+
+          // Download preview sidecar if present
+          let previewImage: string | undefined
+          if (remoteModel.hasPreview) {
+            console.log(`[SyncEngine] Downloading model preview: ${id}`)
+            const readPreviewRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+              dir: fsBackupPath.value,
+              relPath: `assets/models/${id}-preview.png`,
+              encoding: 'base64',
+            })
+            if (readPreviewRes.success && readPreviewRes.content) {
+              previewImage = `data:image/png;base64,${readPreviewRes.content}`
+            }
+          }
+
+          const entry = {
+            id,
+            format: remoteModel.format,
+            type: 'file',
+            file: fileObj,
+            name: remoteModel.name,
+            previewImage,
+            importedAt: remoteModel.importedAt,
+          }
+
+          await localforage.setItem(id, entry)
+
+          // Download textures if present
+          if (remoteModel.hasTextures) {
+            const readTexRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+              dir: fsBackupPath.value,
+              relPath: `assets/models/${id}-textures.json`,
+            })
+            if (readTexRes.success && readTexRes.content) {
+              const texturesData = JSON.parse(readTexRes.content)
+              const textures: any[] = []
+              for (const tex of texturesData) {
+                const texMime = tex.type || 'image/png'
+                const texRes = await fetch(`data:${texMime};base64,${tex.base64}`)
+                const texBlob = await texRes.blob()
+                const texFile = new File([texBlob], tex.name, { type: texMime })
+                textures.push({
+                  relativePath: tex.relativePath,
+                  file: texFile,
+                })
+              }
+              await localforage.setItem(`${id}-textures`, textures)
+            }
+          }
+
+          // Record sync history timestamp
+          await storage.setItemRaw(`local:sync-metadata/timestamps/${id}`, Date.now())
+          hasDownloads = true
+        }
+      }
+
+      // Write updated manifest to remote
+      if (manifestModified) {
+        console.log('[SyncEngine] Writing updated model manifest to remote.')
+        await electron.ipcRenderer.invoke('byos-fs:write-file', {
+          dir: fsBackupPath.value,
+          relPath: 'assets/models/manifest.json',
+          content: JSON.stringify(manifest, null, 2),
+        })
+      }
+
+      if (hasDownloads) {
+        try {
+          const { useDisplayModelsStore } = await import('./display-models')
+          const modelStore = useDisplayModelsStore()
+          await modelStore.loadDisplayModelsFromIndexedDB()
+        }
+        catch (e) {
+          console.error('[SyncEngine] Failed to refresh display models store:', e)
+        }
+      }
+    }
+    catch (err) {
+      console.error('[SyncEngine] Model reconciliation error:', err)
+    }
+  }
+
+  function getKeyForRelPath(relPath: string): string {
+    const normalized = relPath.replace(/\\/g, '/')
+    if (normalized.startsWith('db/') && normalized.endsWith('.json')) {
+      const clean = normalized.substring(3, normalized.length - 5)
+      return `local:${clean}`
+    }
+    return ''
+  }
+
+  function mergeArraysById(localArr: any[], remoteArr: any[]): any[] {
+    const mergedMap = new Map<string, any>()
+    for (const item of localArr) {
+      if (item && item.id) {
+        mergedMap.set(item.id, item)
+      }
+    }
+    for (const item of remoteArr) {
+      if (item && item.id) {
+        const existing = mergedMap.get(item.id)
+        if (existing) {
+          const existingTime = existing.updatedAt || existing.createdAt || 0
+          const remoteTime = item.updatedAt || item.createdAt || 0
+          if (remoteTime > existingTime) {
+            mergedMap.set(item.id, item)
+          }
+        }
+        else {
+          mergedMap.set(item.id, item)
+        }
+      }
+    }
+    return Array.from(mergedMap.values())
+  }
+
+  // Merges two airi-cards Map-entry arrays. Each value is a raw JSON-stringified
+  // array of [id, card] tuples — no {value: ...} wrapper since it lives in IndexedDB natively.
+  function mergeAiriCards(localVal: any, remoteVal: any): any {
+    try {
+      // localVal and remoteVal are raw Map-entries arrays: [[id, card], ...]
+      const localEntries = Array.isArray(localVal) ? localVal as [string, any][] : []
+      const remoteEntries = Array.isArray(remoteVal) ? remoteVal as [string, any][] : []
+
+      const mergedMap = new Map<string, any>()
+      for (const [id, card] of localEntries) {
+        if (id && card) {
+          mergedMap.set(id, card)
+        }
+      }
+      for (const [id, card] of remoteEntries) {
+        if (id && card) {
+          const existing = mergedMap.get(id)
+          if (existing) {
+            const existingTime = existing.updatedAt || existing.createdAt || 0
+            const remoteTime = card.updatedAt || card.createdAt || 0
+            if (remoteTime > existingTime) {
+              mergedMap.set(id, card)
+            }
+          }
+          else {
+            mergedMap.set(id, card)
+          }
+        }
+      }
+      return Array.from(mergedMap.entries())
+    }
+    catch (e) {
+      console.error('[SyncEngine] Failed to merge airi-cards:', e)
+      return localVal || remoteVal
+    }
+  }
+
+  // Reactive State for conflicts
+  const conflicts = ref<any[]>([])
+
+  async function logDebug(msg: string) {
+    console.log(`[SyncEngine] ${msg}`)
+    if (hasElectron() && fsBackupPath.value) {
+      try {
+        const logLine = `[${new Date().toISOString()}] ${msg}\n`
+        await electron.ipcRenderer.invoke('byos-fs:write-file', {
+          dir: fsBackupPath.value,
+          relPath: 'sync-engine-debug.log',
+          content: logLine,
+          encoding: 'utf-8',
+          append: true,
+        })
+      }
+      catch (e) {
+        console.error('[SyncEngine] Debug log failed:', e)
+      }
+    }
+  }
+
+  async function loadConflicts() {
+    try {
+      const rawLocalKeys = await storage.getKeys('local')
+      const localKeys = rawLocalKeys.map(normalizeStorageKey).filter((k): k is string => k !== null)
+      const list: any[] = []
+      const PREFIX = 'local:sync-metadata/conflicts/'
+      for (const k of localKeys) {
+        if (k.startsWith(PREFIX)) {
+          const conflictData = await storage.getItemRaw<any>(k)
+          if (conflictData) {
+            // Enrich chat session details for local & remote sides to aid user in conflict resolution UI
+            if (conflictData.key.startsWith('local:chat/sessions/')) {
+              try {
+                const localVal = await storage.getItemRaw<any>(conflictData.key)
+                let remoteVal: any = null
+                const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+                  dir: fsBackupPath.value,
+                  relPath: conflictData.remoteRelPath,
+                })
+                if (readRes.success && readRes.content) {
+                  try {
+                    remoteVal = JSON.parse(readRes.content)
+                  }
+                  catch (e) {}
+                }
+
+                conflictData.sessionDetails = {
+                  local: localVal
+                    ? {
+                        characterId: localVal.meta?.characterId || '',
+                        title: localVal.meta?.title || '',
+                        messageCount: localVal.messages?.length || localVal.meta?.messageCount || 0,
+                        lastMessage: localVal.messages?.[localVal.messages.length - 1]?.content || '',
+                      }
+                    : null,
+                  remote: remoteVal
+                    ? {
+                        characterId: remoteVal.meta?.characterId || '',
+                        title: remoteVal.meta?.title || '',
+                        messageCount: remoteVal.messages?.length || remoteVal.meta?.messageCount || 0,
+                        lastMessage: remoteVal.messages?.[remoteVal.messages.length - 1]?.content || '',
+                      }
+                    : null,
+                }
+              }
+              catch (e) {
+                console.error('[SyncEngine] Failed to enrich conflict details:', e)
+              }
+            }
+            list.push(conflictData)
+          }
+        }
+      }
+      conflicts.value = list
+      await logDebug(`loadConflicts: Loaded ${list.length} conflicts.`)
+    }
+    catch (e) {
+      console.error('[SyncEngine] Failed to load conflicts:', e)
+      await logDebug(`loadConflicts error: ${e}`)
+    }
+  }
+
+  // Safety Heuristics Guard
+  async function checkSyncConflict(localKey: string, localTime: number, remoteFile: { size: number, mtime: number, relPath: string }, type: 'remote-newer' | 'local-newer'): Promise<boolean> {
+    const isCritical = localKey.startsWith('local:chat/sessions/') || localKey.startsWith('local:characters/') || localKey.startsWith('local:localstorage/') || localKey.startsWith('local:director/sessions/')
+    await logDebug(`checkSyncConflict: key=${localKey}, type=${type}, critical=${isCritical}`)
+    if (!isCritical)
+      return false
+
+    try {
+      const localVal = await storage.getItemRaw(localKey)
+      const localSize = localVal ? JSON.stringify(localVal).length : 0
+      const remoteSize = remoteFile.size
+      await logDebug(`checkSyncConflict stats for ${localKey}: localSize=${localSize}, remoteSize=${remoteSize}`)
+
+      // Safety Guard Contraction Rule:
+      // A conflict is registered if the newer file is significantly smaller than the older file:
+      let isContraction = false
+      if (type === 'remote-newer') {
+        // Remote is newer but remote is much smaller than local
+        isContraction = remoteSize < localSize && localSize > 10240 && (remoteSize < 2048 || localSize > 5 * remoteSize)
+      }
+      else {
+        // Local is newer but local is much smaller than remote
+        isContraction = localSize < remoteSize && remoteSize > 10240 && (localSize < 2048 || remoteSize > 5 * localSize)
+      }
+
+      await logDebug(`checkSyncConflict outcome for ${localKey}: isContraction=${isContraction}`)
+
+      if (isContraction) {
+        await logDebug(`[WARNING] Safety conflict registered for ${localKey} (${type}). Local Size = ${localSize} bytes, Remote Size = ${remoteSize} bytes. Overwrite blocked.`)
+
+        const conflictData = {
+          key: localKey,
+          localTimestamp: localTime,
+          remoteTimestamp: remoteFile.mtime,
+          localSize,
+          remoteSize,
+          remoteRelPath: remoteFile.relPath,
+          conflictTime: Date.now(),
+        }
+        await storage.setItemRaw(`local:sync-metadata/conflicts/${localKey.replace('local:', '')}`, conflictData)
+        return true
+      }
+    }
+    catch (e) {
+      console.error(`[SyncEngine] Error during safety check for ${localKey}:`, e)
+      await logDebug(`checkSyncConflict error for ${localKey}: ${e}`)
+    }
+    return false
+  }
+
+  // Apply Resolution
+  async function resolveConflict(localKey: string, choice: 'local' | 'remote' | 'merge') {
+    if (!hasElectron() || !fsBackupPath.value)
+      return false
+
+    const relPath = getRelPathForKey(localKey)
+    const conflictMetadataKey = `local:sync-metadata/conflicts/${localKey.replace('local:', '')}`
+
+    try {
+      storageState.isImportingRemoteData = true
+
+      if (choice === 'local') {
+        console.log(`[SyncEngine] Resolving conflict for ${localKey} keeping LOCAL.`)
+        const localVal = await storage.getItemRaw(localKey)
+        if (localVal !== undefined && localVal !== null) {
+          const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+            dir: fsBackupPath.value,
+            relPath,
+            content: JSON.stringify(localVal, null, 2),
+          })
+          if (writeRes.success) {
+            const stats = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
+            const matchingFile = stats.files?.find((f: any) => f.relPath === relPath)
+            if (matchingFile) {
+              await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, matchingFile.mtime)
+            }
+          }
+          else {
+            throw new Error(`Failed to write remote file: ${writeRes.error}`)
+          }
+        }
+      }
+      else if (choice === 'remote') {
+        console.log(`[SyncEngine] Resolving conflict for ${localKey} keeping REMOTE.`)
+        const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+          dir: fsBackupPath.value,
+          relPath,
+        })
+        if (readRes.success && readRes.content) {
+          const remoteVal = JSON.parse(readRes.content)
+          await storage.setItemRaw(localKey, remoteVal)
+
+          const stats = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
+          const matchingFile = stats.files?.find((f: any) => f.relPath === relPath)
+          if (matchingFile) {
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, matchingFile.mtime)
+          }
+        }
+        else {
+          throw new Error(`Failed to read remote file: ${readRes.error}`)
+        }
+      }
+      else if (choice === 'merge') {
+        console.log(`[SyncEngine] Resolving conflict for ${localKey} by MERGING arrays.`)
+        const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+          dir: fsBackupPath.value,
+          relPath,
+        })
+        if (readRes.success && readRes.content) {
+          const remoteData = JSON.parse(readRes.content)
+          const localData = await storage.getItemRaw(localKey)
+
+          let mergedData: any = null
+
+          if (localKey.startsWith('local:chat/sessions/')) {
+            const isLocalObj = localData && typeof localData === 'object' && !Array.isArray(localData)
+            const isRemoteObj = remoteData && typeof remoteData === 'object' && !Array.isArray(remoteData)
+
+            const localMsgs = isLocalObj ? (localData.messages || []) : (Array.isArray(localData) ? localData : [])
+            const remoteMsgs = isRemoteObj ? (remoteData.messages || []) : (Array.isArray(remoteData) ? remoteData : [])
+
+            const mergedMsgs = mergeArraysById(localMsgs, remoteMsgs)
+
+            if (isLocalObj) {
+              mergedData = {
+                ...localData,
+                ...remoteData,
+                messages: mergedMsgs,
+                updatedAt: Date.now(),
+              }
+            }
+            else {
+              mergedData = mergedMsgs
+            }
+          }
+          else {
+            if (Array.isArray(localData) && Array.isArray(remoteData)) {
+              mergedData = mergeArraysById(localData, remoteData)
+            }
+            else {
+              mergedData = localData || remoteData
+            }
+          }
+
+          // Save locally
+          await storage.setItemRaw(localKey, mergedData)
+
+          // Write remotely
+          const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+            dir: fsBackupPath.value,
+            relPath,
+            content: JSON.stringify(mergedData, null, 2),
+          })
+
+          if (writeRes.success) {
+            const stats = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
+            const matchingFile = stats.files?.find((f: any) => f.relPath === relPath)
+            if (matchingFile) {
+              await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, matchingFile.mtime)
+            }
+          }
+          else {
+            throw new Error(`Failed to write remote file: ${writeRes.error}`)
+          }
+        }
+        else {
+          throw new Error(`Failed to read remote file: ${readRes.error}`)
+        }
+      }
+
+      // Cleanup conflict metadata
+      await storage.removeItem(conflictMetadataKey)
+      await loadConflicts()
+      toast.success(`Conflict resolved successfully using ${choice} strategy`)
+    }
+    catch (e) {
+      console.error(`[SyncEngine] Conflict resolution failed for ${localKey}:`, e)
+      toast.error(`Resolution failed: ${e}`)
+    }
+    finally {
+      storageState.isImportingRemoteData = false
+    }
+  }
+  // Run full two-way reconciliation (LWW)
+  async function reconcile(): Promise<boolean> {
+    if (!hasElectron() || !fsBackupPath.value)
+      return false
+
+    const pathValidation = await validatePath(fsBackupPath.value)
+    if (!pathValidation.success) {
+      console.warn('[SyncEngine] Backup path is invalid/not mounted, skipping reconciliation:', pathValidation.error)
+      return false
+    }
+
+    console.log('[SyncEngine] Starting reconciliation...')
+    try {
+      // 1. List all remote files in the backup directory
+      const listRes = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
+      if (!listRes.success) {
+        throw new Error(listRes.error || 'Failed to list remote files')
+      }
+
+      const remoteFiles = (listRes.files || []) as Array<{ relPath: string, mtime: number, size: number }>
+      const remoteFileMap = new Map(remoteFiles.map(f => [getKeyForRelPath(f.relPath), f]))
+
+      // 2. Scan all local metadata timestamps
+      const rawLocalKeys = await storage.getKeys('local')
+      const localKeys = rawLocalKeys.map(normalizeStorageKey).filter((k): k is string => k !== null)
+      const localTimestamps = new Map<string, number>()
+
+      for (const fullKey of localKeys) {
+        if (fullKey.startsWith('local:sync-metadata/timestamps/')) {
+          const actualKey = `local:${fullKey.replace('local:sync-metadata/timestamps/', '')}`
+          const t = await storage.getItemRaw<number>(fullKey)
+          if (t) {
+            localTimestamps.set(actualKey, t)
+          }
+        }
+      }
+
+      // Bypass sync outbox enqueuing during remote reconciliation writes
+      storageState.isImportingRemoteData = true
+
+      // 3. Resolve conflict resolution per remote file
+      const remoteEntries = Array.from(remoteFileMap.entries())
+      await parallelLimit(remoteEntries, 15, async ([localKey, remoteFile]) => {
+        if (!localKey)
+          return
+
+        const localTime = localTimestamps.get(localKey)
+        await logDebug(`Reconciling key: ${localKey}, localTime=${localTime}, remoteMtime=${remoteFile.mtime}, remoteSize=${remoteFile.size}`)
+
+        const isMergeableKey = [
+          'local:memory/short-term/local',
+          'local:memory/text-journal/local',
+          'local:memory/echo-chips/local',
+          'local:airi-cards',
+        ].includes(localKey)
+
+        if (isMergeableKey) {
+          console.log(`[SyncEngine] Key ${localKey} is mergeable. Executing merge...`)
+          let remoteVal: any = null
+          const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+            dir: fsBackupPath.value,
+            relPath: remoteFile.relPath,
+          })
+          if (readRes.success && readRes.content) {
+            try {
+              remoteVal = JSON.parse(readRes.content)
+            }
+            catch (e) {
+              console.error(`[SyncEngine] Failed to parse remote data for mergeable key ${localKey}:`, e)
+            }
+          }
+
+          const localVal = await storage.getItemRaw<any>(localKey)
+          let mergedVal: any = null
+
+          if (localKey === 'local:airi-cards') {
+            mergedVal = mergeAiriCards(localVal, remoteVal)
+          }
+          else {
+            let localArr = localVal || []
+            let remoteArr = remoteVal || []
+            if (!Array.isArray(localArr))
+              localArr = []
+            if (!Array.isArray(remoteArr))
+              remoteArr = []
+            mergedVal = mergeArraysById(localArr, remoteArr)
+          }
+
+          // Overwrite local (isImportingRemoteData is already true)
+          await storage.setItemRaw(localKey, mergedVal)
+
+          // Overwrite remote
+          const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+            dir: fsBackupPath.value,
+            relPath: remoteFile.relPath,
+            content: JSON.stringify(mergedVal, null, 2),
+          })
+
+          if (writeRes.success && writeRes.mtime) {
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, writeRes.mtime)
+          }
+          // Remove from localTimestamps map so normal loop doesn't process it again
+          localTimestamps.delete(localKey)
+          return
+        }
+
+        if (localTime === undefined) {
+          // Case A: Remote exists, but missing locally -> Download and import
+          // Safety Check: if the local key actually has data, run the safety conflict check
+          // to prevent silently wiping out existing local data.
+          const localVal = await storage.getItemRaw(localKey)
+          if (localVal !== undefined && localVal !== null) {
+            await logDebug(`[Case A] Local key ${localKey} exists but localTime is undefined. Running safety check.`)
+            const isConflict = await checkSyncConflict(localKey, 0, remoteFile, 'remote-newer')
+            if (isConflict) {
+              await logDebug(`[WARNING] Safety conflict registered for ${localKey} (Case A - local data exists). Overwrite blocked.`)
+              return
+            }
+          }
+
+          await logDebug(`[SyncEngine] Key ${localKey} missing locally (or safe). Downloading from remote...`)
+          const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+            dir: fsBackupPath.value,
+            relPath: remoteFile.relPath,
+          })
+          if (readRes.success && readRes.content) {
+            const data = JSON.parse(readRes.content)
+            await storage.setItemRaw(localKey, data)
+            // Set local timestamp to match remote mtime
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, remoteFile.mtime)
+          }
+        }
+        else if (remoteFile.mtime > localTime) {
+          // Case B: Remote file is newer -> Download and overwrite local
+          const isConflict = await checkSyncConflict(localKey, localTime, remoteFile, 'remote-newer')
+          if (isConflict) {
+            console.log(`[SyncEngine] Conflict safety guard blocked auto-overwrite of local key ${localKey}`)
+            return
+          }
+
+          console.log(`[SyncEngine] Remote file for ${localKey} is newer. Overwriting local...`)
+          const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+            dir: fsBackupPath.value,
+            relPath: remoteFile.relPath,
+          })
+          if (readRes.success && readRes.content) {
+            const data = JSON.parse(readRes.content)
+            await storage.setItemRaw(localKey, data)
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, remoteFile.mtime)
+          }
+        }
+        else if (localTime > remoteFile.mtime) {
+          // Case C: Local is newer -> Upload to remote
+          const isConflict = await checkSyncConflict(localKey, localTime, remoteFile, 'local-newer')
+          if (isConflict) {
+            console.log(`[SyncEngine] Conflict safety guard blocked auto-overwrite of remote file for key ${localKey}`)
+            return
+          }
+
+          console.log(`[SyncEngine] Local key ${localKey} is newer. Preparing upload...`)
+          const localVal = await storage.getItemRaw(localKey)
+          if (localVal) {
+            const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+              dir: fsBackupPath.value,
+              relPath: remoteFile.relPath,
+              content: JSON.stringify(localVal, null, 2),
+            })
+            if (!writeRes.success) {
+              console.error(`[SyncEngine] Failed to write remote file for ${localKey}:`, writeRes.error)
+            }
+          }
+        }
+      })
+
+      // 4. Handle files that exist locally but not on remote
+      const localKeysToUpload = localKeys.filter((fullKey) => {
+        if (fullKey.startsWith('local:sync-metadata/') || fullKey === 'local:sync-metadata')
+          return false
+        return !remoteFileMap.has(fullKey)
+      })
+
+      await parallelLimit(localKeysToUpload, 15, async (fullKey) => {
+        const relPath = getRelPathForKey(fullKey)
+        console.log(`[SyncEngine] Key ${fullKey} exists locally only. Uploading... Path: ${relPath}`)
+
+        // Try both getItem and getItemRaw to see which returns the data
+        const localValRaw = await storage.getItemRaw(fullKey)
+        const localVal = await storage.getItem(fullKey)
+        console.log(`[SyncEngine] Key ${fullKey} localValRaw type: ${typeof localValRaw}, localVal type: ${typeof localVal}`)
+
+        const valToUse = localVal ?? localValRaw
+        if (valToUse !== undefined && valToUse !== null) {
+          const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+            dir: fsBackupPath.value,
+            relPath,
+            content: typeof valToUse === 'string' ? valToUse : JSON.stringify(valToUse, null, 2),
+          })
+          console.log(`[SyncEngine] Write response for ${fullKey}:`, writeRes)
+          if (!writeRes.success) {
+            console.error(`[SyncEngine] Failed to write remote file for ${fullKey}:`, writeRes.error)
+            return
+          }
+          if (writeRes.mtime) {
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${fullKey.replace('local:', '')}`, writeRes.mtime)
+          }
+        }
+        else {
+          console.warn(`[SyncEngine] Key ${fullKey} has no local content (both getItem and getItemRaw returned null/undefined).`)
+        }
+      })
+
+      await reconcileBackgrounds()
+      await reconcileModels()
+
+      storageState.isImportingRemoteData = false
+      return true
+    }
+    catch (err) {
+      storageState.isImportingRemoteData = false
+      console.error('[SyncEngine] Reconciliation error:', err)
+      return false
+    }
+  }
+
+  // Process the pending mutations in the outbox queue
+  async function processOutbox(): Promise<boolean> {
+    if (!hasElectron() || !fsBackupPath.value)
+      return false
+
+    const rawOutboxKeys = await storage.getKeys('outbox')
+    const outboxKeys = rawOutboxKeys.map(normalizeStorageKey).filter((k): k is string => k !== null).filter(k => k.startsWith('outbox:queue/'))
+    if (outboxKeys.length === 0)
+      return true
+
+    console.log(`[SyncEngine] Processing ${outboxKeys.length} outbox queue items...`)
+
+    storageState.isImportingRemoteData = true
+    try {
+      await parallelLimit(outboxKeys, 15, async (fullQueueKey) => {
+        const item = await storage.getItemRaw<{ key: string, action: 'upsert' | 'delete', timestamp: number }>(fullQueueKey)
+        if (!item) {
+          await storage.removeItem(fullQueueKey)
+          return
+        }
+
+        // Safety Gate: Skip outbox upload if there is an active sync conflict registered for this key
+        const conflictKey = `local:sync-metadata/conflicts/${item.key.replace('local:', '')}`
+        const hasActiveConflict = await storage.getItemRaw(conflictKey)
+        if (hasActiveConflict) {
+          console.log(`[SyncEngine] Outbox processing skipped for ${item.key} due to active conflict.`)
+          return
+        }
+
+        const relPath = getRelPathForKey(item.key)
+
+        if (item.action === 'upsert') {
+          const isMergeableKey = [
+            'local:memory/short-term/local',
+            'local:memory/text-journal/local',
+            'local:memory/echo-chips/local',
+            'local:airi-cards',
+          ].includes(item.key)
+
+          if (isMergeableKey) {
+            console.log(`[SyncEngine] Outbox key ${item.key} is mergeable. Merging with remote...`)
+            let remoteVal: any = null
+            const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
+              dir: fsBackupPath.value,
+              relPath,
+            })
+            if (readRes.success && readRes.content) {
+              try {
+                remoteVal = JSON.parse(readRes.content)
+              }
+              catch (e) {}
+            }
+            const localVal = await storage.getItemRaw<any>(item.key)
+            let mergedVal: any = null
+
+            if (item.key === 'local:airi-cards') {
+              mergedVal = mergeAiriCards(localVal, remoteVal)
+            }
+            else {
+              let localArr = localVal || []
+              let remoteArr = remoteVal || []
+              if (!Array.isArray(localArr))
+                localArr = []
+              if (!Array.isArray(remoteArr))
+                remoteArr = []
+              mergedVal = mergeArraysById(localArr, remoteArr)
+            }
+
+            // Overwrite local
+            await storage.setItemRaw(item.key, mergedVal)
+
+            // Overwrite remote
+            const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+              dir: fsBackupPath.value,
+              relPath,
+              content: JSON.stringify(mergedVal, null, 2),
+            })
+            if (!writeRes.success) {
+              throw new Error(writeRes.error || 'Failed to write remote file')
+            }
+            if (writeRes.mtime) {
+              await storage.setItemRaw(`local:sync-metadata/timestamps/${item.key.replace('local:', '')}`, writeRes.mtime)
+            }
+          }
+          else {
+            const val = await storage.getItemRaw(item.key)
+            if (val) {
+              const writeRes = await electron.ipcRenderer.invoke('byos-fs:write-file', {
+                dir: fsBackupPath.value,
+                relPath,
+                content: JSON.stringify(val, null, 2),
+              })
+              if (!writeRes.success) {
+                throw new Error(writeRes.error || 'Failed to write remote file')
+              }
+              if (writeRes.mtime) {
+                await storage.setItemRaw(`local:sync-metadata/timestamps/${item.key.replace('local:', '')}`, writeRes.mtime)
+              }
+            }
+          }
+        }
+        else if (item.action === 'delete') {
+          const delRes = await electron.ipcRenderer.invoke('byos-fs:delete-file', {
+            dir: fsBackupPath.value,
+            relPath,
+          })
+          if (!delRes.success) {
+            throw new Error(delRes.error || 'Failed to delete remote file')
+          }
+        }
+
+        // Clean up outbox item
+        await storage.removeItem(fullQueueKey)
+      })
+      storageState.isImportingRemoteData = false
+      return true
+    }
+    catch (err) {
+      storageState.isImportingRemoteData = false
+      console.error('[SyncEngine] Failed to process outbox queue:', err)
+      return false
+    }
+  }
+
+  function shouldExcludeLocalStorageKey(key: string): boolean {
+    // NOTICE: airi-cards is too large (~600KB+) for localStorage quota; it is synced
+    // natively via IndexedDB under local:airi-cards so we exclude it from the dump/restore bridge.
+    if (key === 'airi-cards')
+      return true
+    if (key.startsWith('airi_cc_'))
+      return true
+    if (key.startsWith('settings/sync/'))
+      return true
+    return false
+  }
+
+  async function dumpLocalStorageToIndexedDb() {
+    await logDebug('dumpLocalStorageToIndexedDb starting...')
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && !shouldExcludeLocalStorageKey(key)) {
+        const val = localStorage.getItem(key) || ''
+        const cachedVal = await storage.getItemRaw<{ value: string }>(`local:localstorage/${key}`)
+        if (!cachedVal || cachedVal.value !== val) {
+          await logDebug(`dumpLocalStorageToIndexedDb: key=${key} has changed. Writing to IndexedDB.`)
+          await storage.setItemRaw(`local:localstorage/${key}`, { value: val })
+        }
+      }
+    }
+    await logDebug('dumpLocalStorageToIndexedDb completed.')
+  }
+
+  async function restoreLocalStorageFromIndexedDb() {
+    await logDebug('restoreLocalStorageFromIndexedDb starting...')
+    let anyChanged = false
+    try {
+      const rawLocalKeys = await storage.getKeys('local')
+      const localKeys = rawLocalKeys.map(normalizeStorageKey).filter((k): k is string => k !== null)
+      for (const fullKey of localKeys) {
+        if (fullKey.startsWith('local:localstorage/')) {
+          const key = fullKey.substring('local:localstorage/'.length)
+          if (!shouldExcludeLocalStorageKey(key)) {
+            const valObj = await storage.getItemRaw<{ value: string }>(fullKey)
+            if (valObj && typeof valObj === 'object' && 'value' in valObj) {
+              const val = valObj.value
+              if (val !== null && val !== undefined) {
+                const currentVal = localStorage.getItem(key)
+                if (currentVal !== val) {
+                  await logDebug(`restoreLocalStorageFromIndexedDb: key=${key} updated from IndexedDB.`)
+                  localStorage.setItem(key, val)
+                  anyChanged = true
+                  window.dispatchEvent(new StorageEvent('storage', {
+                    key,
+                    newValue: val,
+                    storageArea: localStorage,
+                  }))
+                }
+              }
+            }
+          }
+        }
+      }
+      if (anyChanged) {
+        await logDebug('restoreLocalStorageFromIndexedDb: LocalStorage changed. Reloading window...')
+        toast.info('Settings updated, reloading interface...', { duration: 1500 })
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500)
+      }
+    }
+    catch (e) {
+      console.error('[SyncEngine] Failed to restore localStorage from IndexedDB:', e)
+      await logDebug(`restoreLocalStorageFromIndexedDB error: ${e}`)
+    }
+    await logDebug('restoreLocalStorageFromIndexedDb completed.')
+  }
+
+  // Manual Trigger Sync
+  async function triggerSync() {
+    if (isSyncing.value)
+      return
+    isSyncing.value = true
+    syncError.value = ''
+
+    try {
+      // 0. Dump local storage changes
+      await dumpLocalStorageToIndexedDb()
+
+      // 1. Reconcile both ends
+      const reconSuccess = await reconcile()
+      if (!reconSuccess) {
+        throw new Error('Reconciliation failed or backup directory is inaccessible.')
+      }
+
+      // 2. Process any remaining local outbox items
+      const queueSuccess = await processOutbox()
+      if (!queueSuccess) {
+        throw new Error('Failed to fully process sync outbox.')
+      }
+
+      // 2.5. Restore synced values back to localStorage
+      await restoreLocalStorageFromIndexedDb()
+
+      // 2.6. Notify stores that consume native IndexedDB keys (not localStorage) to reload.
+      // The airi-card store uses local:airi-cards directly in IndexedDB and has no automatic
+      // reactivity watcher — dispatch an event so it can call loadCards() to pick up merged data.
+      window.dispatchEvent(new CustomEvent('airi:idb-key-updated', { detail: { key: 'local:airi-cards' } }))
+
+      await loadConflicts()
+
+      lastSyncTime.value = Date.now()
+      localStorage.setItem('settings/sync/last-time', String(lastSyncTime.value))
+      toast.success('Cloud Sync completed successfully')
+      broadcastReload(Date.now())
+    }
+    catch (err) {
+      syncError.value = String(err)
+      toast.error(`Sync Failed: ${syncError.value}`)
+    }
+    finally {
+      isSyncing.value = false
+    }
+  }
+
+  // Background Auto Sync Interval Trigger
+  let syncTimer: any = null
+
+  function startAutoSyncTimer() {
+    stopAutoSyncTimer()
+    if (!syncEnabled.value)
+      return
+
+    const ms = syncInterval.value * 60 * 1000
+    syncTimer = setInterval(() => {
+      void triggerSync()
+    }, ms)
+  }
+
+  function stopAutoSyncTimer() {
+    if (syncTimer) {
+      clearInterval(syncTimer)
+      syncTimer = null
+    }
+  }
+
+  // Watchers to restart timer when config changes
+  watch([syncEnabled, syncInterval], () => {
+    if (syncEnabled.value) {
+      startAutoSyncTimer()
+    }
+    else {
+      stopAutoSyncTimer()
+    }
+  }, { immediate: true })
+
+  // Initialize conflicts on store load
+  void loadConflicts()
+
+  return {
+    syncEnabled,
+    syncInterval,
+    conflictStrategy,
+    activeProvider,
+    fsBackupPath,
+    isSyncing,
+    lastSyncTime,
+    syncError,
+    conflicts,
+
+    validatePath,
+    triggerSync,
+    resolveConflict,
+    loadConflicts,
+  }
+})

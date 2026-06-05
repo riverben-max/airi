@@ -158,7 +158,32 @@ export const useProactivityStore = defineStore('proactivity', () => {
         idleTimeSec.value = Math.floor((idleMsResult as any).value / 1000)
       }
       if (activeWinResult.status === 'fulfilled') {
+        const prevWinStr = activeWinStr.value
         activeWinStr.value = (activeWinResult as any).value?.title || ''
+
+        // osu! Proactivity Trigger
+        if (activeWinStr.value.toLowerCase().includes('osu!') && !prevWinStr.toLowerCase().includes('osu!')) {
+          const { useOsuStore } = await import('./modules/gaming-osu')
+          const osuStore = useOsuStore()
+          if (osuStore.enabled) {
+            const sessionId = chatSession.activeSessionId
+            if (sessionId) {
+              const currentMessages = chatSession.getSessionMessages(sessionId)
+              const systemMessage = {
+                role: 'system' as const,
+                content: `[SYSTEM EVENT] The user just launched osu!. You should enthusiastically ask if you can play the game for them. Tell them you can either use your visual model to watch the screen or parse the beatmaps directly based on your configured Play Mode.`,
+                createdAt: Date.now(),
+                id: nanoid()
+              }
+              chatSession.setSessionMessages(sessionId, [...currentMessages, systemMessage])
+              
+              // Trigger the orchestrator to generate a response without a new user message
+              setTimeout(() => {
+                chatOrchestrator.ingest('', { triggerOnly: true })
+              }, 500)
+            }
+          }
+        }
       }
       if (winHistoryResult.status === 'fulfilled') {
         winHistory.value = (winHistoryResult as any).value || []

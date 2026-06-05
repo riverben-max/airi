@@ -2,6 +2,7 @@ menu:
   labels:
     label:
       show: Show
+      open_control_strip: Launch Control Strip
       adjust_sizes: Adjust sizes
       recommended_size: Recommended (450x600)
       mini_size: Mini (220x315)

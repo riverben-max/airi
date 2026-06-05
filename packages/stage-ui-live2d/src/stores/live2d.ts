@@ -132,9 +132,16 @@ export const useLive2d = defineStore('live2d', () => {
 
       // 2. Fallback: Case-insensitive match against available expressions if no explicit mapping
       if (targetFileNames.length === 0) {
-        const matched = availableExpressions.value.find(
+        let matched = availableExpressions.value.find(
           e => e.name.toLowerCase() === emotionKey.toLowerCase(),
         )
+        // 3. Smart fuzzy match (e.g. 'happy' matches 'exp_happy.exp3')
+        if (!matched) {
+          matched = availableExpressions.value.find(
+            e => e.name.toLowerCase().includes(emotionKey.toLowerCase()) || emotionKey.toLowerCase().includes(e.name.toLowerCase().replace(/\.exp3$/, ''))
+          )
+        }
+        
         if (matched) {
           targetFileNames = [matched.fileName]
         }

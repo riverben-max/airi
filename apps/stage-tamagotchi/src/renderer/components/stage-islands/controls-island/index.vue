@@ -9,6 +9,7 @@ import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-ses
 import { useVisionStore } from '@proj-airi/stage-ui/stores/modules/vision'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
+import { useDatingSimStore } from '@proj-airi/stage-ui/stores/dating-sim'
 import { useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
@@ -44,6 +45,7 @@ const { t } = useI18n()
 const providersStore = useProvidersStore()
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const settingsStore = useSettings()
+const datingSimStore = useDatingSimStore()
 const modelStore = useModelStore()
 const cardStore = useAiriCardStore()
 const live2dStore = useLive2d()
@@ -574,9 +576,23 @@ function triggerWardrobeItem(id: string) {
                 </template>
               </ControlButtonTooltip>
 
-              <div key="spacer-2" class="flex items-center justify-center opacity-20">
-                <div i-solar:add-circle-linear :class="adjustStyleClasses.icon" />
-              </div>
+              <ControlButtonTooltip>
+                <ControlButton
+                  :button-style="adjustStyleClasses.button"
+                  @click="datingSimStore.toggleDatingSim()"
+                >
+                  <div
+                    i-solar:heart-bold-duotone
+                    :class="[
+                      adjustStyleClasses.icon,
+                      datingSimStore.enabled ? 'text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 'text-neutral-500 opacity-40',
+                    ]"
+                  />
+                </ControlButton>
+                <template #tooltip>
+                  {{ datingSimStore.enabled ? 'Close Intimacy Studio' : 'Open Intimacy Studio' }}
+                </template>
+              </ControlButtonTooltip>
             </div>
 
             <!-- Emotions Sub-menu -->

@@ -17,7 +17,7 @@ import { env } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import { is } from '@electron-toolkit/utils'
-import { BrowserWindow, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
 import { debounce, throttle } from 'es-toolkit'
 
 import icon from '../../../../resources/icon.png?asset'
@@ -129,6 +129,19 @@ export async function setupMainWindow(params: {
     window.show()
     // NOTICE: on some platforms/transparency settings, first bounds application might be ignored
     setTimeout(() => restoreBounds(), 500)
+  })
+
+  let isAppQuitting = false
+  app.on('before-quit', () => {
+    isAppQuitting = true
+  })
+
+  window.on('close', (event) => {
+    if (isAppQuitting) {
+      return
+    }
+    event.preventDefault()
+    window.hide()
   })
 
   window.webContents.setWindowOpenHandler((details) => {

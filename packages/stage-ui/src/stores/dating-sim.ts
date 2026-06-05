@@ -1,5 +1,10 @@
+import { defineInvoke, defineInvokeEventa } from '@moeru/eventa'
+import { createContext } from '@moeru/eventa/adapters/electron/renderer'
+import { useLocalStorage } from '@vueuse/core'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { useAiriCardStore } from './modules/airi-card'
 
 export type GamePhase = 'idle' | 'conversation' | 'map' | 'action'
 export type MoodState = 'low' | 'normal' | 'high' | 'max'
@@ -7,10 +12,13 @@ export type MoodState = 'low' | 'normal' | 'high' | 'max'
 export interface Choice {
   id: string
   text: string
+  title?: string
   icon?: string
   action: string
   condition?: string
   cost?: number // Time or tension cost
+  positiveScore?: number
+  negativeScore?: number
 }
 
 export const useDatingSimStore = defineStore('dating-sim', () => {
@@ -24,6 +32,9 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     ActionPoints: 5, // For conversation topics
     TimeOfDay: 12, // 24h format
     Timer: 0, // Choice countdown
+    positiveScore: 0,
+    negativeScore: 0,
+    turnsElapsed: 0,
   })
 
   const mood = computed<MoodState>(() => {
@@ -38,8 +49,66 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     return 'normal'
   })
 
+  const settings = ref({
+    intimacyGating: true,
+    autoTicks: true,
+    branchingChoices: true,
+    lightningRounds: false,
+    inlineCaption: true,
+    contextDepth: useLocalStorage('airi:producer:context-depth', 6),
+    gameMode: useLocalStorage<'open_ended' | 'goal_driven'>('airi:dating-sim:game-mode', 'open_ended'),
+    showChoiceWeights: useLocalStorage<boolean>('airi:dating-sim:show-choice-weights', false),
+    maxScore: useLocalStorage<number>('airi:dating-sim:max-score', 15),
+    maxTurns: useLocalStorage<number>('airi:dating-sim:max-turns', 8),
+    sceneryRoute: useLocalStorage<'background' | 'widget' | 'inherit'>('airi:dating-sim:scenery-route', 'inherit'),
+    enableSpecialSauce: useLocalStorage<boolean>('airi:dating-sim:enable-special-sauce', true),
+    tensionDecayRate: useLocalStorage<number>('airi:dating-sim:tension-decay-rate', 1),
+    intimacyGainMultiplier: useLocalStorage<number>('airi:dating-sim:intimacy-gain-multiplier', 1)
+  })
+
   const choices = ref<Choice[]>([])
   const currentSubtitle = ref<string>('')
+  const activeStoryline = ref<any | null>(null)
+
+  const resolvedSceneryRoute = computed(() => {
+    const route = settings.value.sceneryRoute
+    if (route === 'inherit') {
+      const cardStore = useAiriCardStore()
+      const cardRoute = cardStore.activeCard?.extensions?.airi?.artistry?.spawnMode || 'bg_widget'
+      return cardRoute === 'bg' ? 'background' : cardRoute
+    }
+    return route
+  })
+
+  let addWidget: any = null
+  if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
+    const win = window as any
+    const { context } = createContext(win.electron.ipcRenderer as any)
+    const widgetsAdd = defineInvokeEventa<string | undefined, any>('eventa:invoke:electron:windows:widgets:add')
+    addWidget = defineInvoke(context, widgetsAdd)
+  }
+
+  async function spawnSceneryWidget(imageUrl: string, title: string) {
+    if (!addWidget)
+      return
+
+    try {
+      await addWidget({
+        componentName: 'artistry',
+        componentProps: {
+          status: 'done',
+          imageUrl,
+          title,
+          _skipIngestion: true,
+        },
+        size: 'm',
+        ttlMs: 0,
+      })
+    }
+    catch (widgetErr) {
+      console.warn('Failed to spawn Dating Sim scenery widget', widgetErr)
+    }
+  }
 
   // Delta Ticking Engine
   let lastTick = 0
@@ -58,7 +127,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
       lastTick = now
 
       // Process Timers (e.g. countdown for choices)
-      if (variables.value.Timer > 0) {
+      if (settings.value.lightningRounds && settings.value.autoTicks && variables.value.Timer > 0) {
         variables.value.Timer = Math.max(0, variables.value.Timer - dt)
         if (variables.value.Timer === 0) {
           handleTimeout()
@@ -78,7 +147,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
 
   const isGenerating = ref(false)
 
-  async function generateLiveChoices() {
+  async function directorICSweep() {
     if (isGenerating.value)
       return
     isGenerating.value = true
@@ -86,97 +155,256 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
       const { useLLM } = await import('@proj-airi/stage-ui/stores/llm')
       const { useProvidersStore } = await import('@proj-airi/stage-ui/stores/providers')
       const { useConsciousnessStore } = await import('@proj-airi/stage-ui/stores/modules/consciousness')
+      const { useChatSessionStore } = await import('@proj-airi/stage-ui/stores/chat/session-store')
+      const { useAiriCardStore } = await import('@proj-airi/stage-ui/stores/modules/airi-card')
 
       const llm = useLLM()
       const providers = useProvidersStore()
       const consciousness = useConsciousnessStore()
-      const provider = await providers.getProviderInstance(consciousness.activeProvider)
+      const chatSession = useChatSessionStore()
+      const cardStore = useAiriCardStore()
 
+      const provider = await providers.getProviderInstance(consciousness.activeProvider)
       if (!provider || !consciousness.activeModel) {
         console.error('[DatingSim] No active model or provider')
         return
       }
 
+      const characterName = cardStore.activeCard?.name || 'Companion'
+      const rawMessages = chatSession.messages || []
+      const relevantMessages = rawMessages
+        .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+        .slice(-settings.value.contextDepth)
+
+      const chatHistoryText = relevantMessages
+        .map((m: any) => {
+          const speaker = m.role === 'user' ? 'User' : characterName
+          const content = typeof m.content === 'string' ? m.content : ''
+          return `${speaker}: ${content}`
+        })
+        .join('\n')
+
+      const isGameMode = settings.value.gameMode === 'goal_driven'
+      const scenarioPromptContext = activeStoryline.value?.description || 'A cozy romantic interaction'
+
+      const systemPrompt = `[HARDCODED SCHEMA WRAPPER]
+The current intimacy scenario context is: "${scenarioPromptContext}"
+Current state - Intimacy: ${variables.value.Intimacy}/100, Tension: ${variables.value.Tension}/100
+Scratchpad: ${variables.value.Scratchpad || 'None'}
+
+You are the Director and Intimacy Coordinator (IC) for a Dating Sim.
+Read the Chat History and evaluate how the most recent interactions affect the scene, then output ONE structured JSON payload.
+
+[HARDCODED OUTPUT REQUIREMENT]
+Output raw JSON only matching this exact schema:
+{
+  "visuals": {
+    "threshold": 80,
+    "prompt": "Description of the scene to generate",
+    "concepts": ["tag1", "tag2"]
+  },
+  "state_updates": {
+    "intimacy_delta": <number, e.g. 3 or -2>,
+    "tension_delta": <number, e.g. -5 or 2>,
+    "mood": "<low | normal | high | max>"
+  },
+  "scratchpad": {
+    "spatial_continuity": "Short description of where characters are physically positioned right now."
+  },
+  "player_options": [
+    {
+      "title": "Short action title, e.g. Challenge Her",
+      "message": "Full spoken sentence in the user's voice",
+      "positiveScore": ${isGameMode ? '<number>' : 0},
+      "negativeScore": ${isGameMode ? '<number>' : 0},
+      "apCost": <number>
+    }
+  ]
+}
+
+Rules for player_options:
+- Provide exactly 4 options.
+- The "title" is what is shown on the button. The "message" is what the user actually says.
+- Message MUST be written in the user's natural voice, no meta-commentary.
+${isGameMode ? '- As this is a Goal-Driven mode, assign positiveScore and negativeScore weights to each choice (0-5).' : ''}`
+
+      const userPrompt = `Here is the conversation history so far:
+${chatHistoryText}
+
+Perform the background Director/IC Sweep and generate the next state and player options in raw JSON format.`
+
       const result = await llm.generate(
         consciousness.activeModel,
         provider as any,
         [
-          { role: 'system', content: `You are a Dating Sim engine. Generate 4 conversation topics and 2 gift items based on the current situation. The user and character intimacy is ${variables.value.Intimacy}/100 and tension is ${variables.value.Tension}/100. Keep choices under 4 words. Your output MUST be EXACTLY in this JSON format: {"topics": ["topic1", "topic2", "topic3", "topic4"], "items": ["gift1", "gift2"], "subtitle": "A brief inner thought from the character"}` },
-          { role: 'user', content: 'Output raw JSON only. Do not include markdown backticks or any preamble/postamble.' },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
         ],
       )
 
       const rawText = result.text || (result as any).reasoning || ''
       const match = rawText.match(/\{[\s\S]*\}/)
-      if (!match)
-        throw new Error('No JSON object found in response')
+      if (!match) throw new Error('No JSON object found in response')
       const object = JSON.parse(match[0])
 
-      const liveChoices = [
-        ...object.topics.slice(0, 4).map((t: string, i: number) => ({ id: `t${i}`, text: t, icon: 'i-solar:chat-round-dots-bold-duotone', action: 'llm_topic' })),
-        ...object.items.slice(0, 2).map((t: string, i: number) => ({ id: `i${i}`, text: t, icon: 'i-solar:gift-bold-duotone', action: 'llm_item', cost: 1 })),
-      ]
+      // Apply state updates (only if NOT in goal_driven mode; in goal_driven mode, choices directly adjust scores)
+      if (!isGameMode) {
+        if (typeof object.state_updates?.intimacy_delta === 'number') {
+          let delta = object.state_updates.intimacy_delta
+          if (delta > 0) delta *= settings.value.intimacyGainMultiplier
+          setVariable('Intimacy', Math.max(0, Math.min(100, getVariable('Intimacy') + delta)))
+        }
+        if (typeof object.state_updates?.tension_delta === 'number') {
+          let delta = object.state_updates.tension_delta
+          if (delta < 0) delta *= settings.value.tensionDecayRate
+          setVariable('Tension', Math.max(0, Math.min(100, getVariable('Tension') + delta)))
+        }
+        if (object.state_updates?.mood) {
+          broadcastMood(object.state_updates.mood)
+        }
+      }
 
-      triggerTestSyncCustom(liveChoices, object.subtitle)
+      if (object.scratchpad?.spatial_continuity) {
+        setVariable('Scratchpad', object.scratchpad.spatial_continuity)
+      }
+
+      // Generate Background Visuals
+      if (object.visuals && object.visuals.prompt) {
+        // Trigger Autonomous Artistry with the prompt
+        // TODO: Map to actual Artistry bridge call. For now we use scenery widget if applicable.
+        const cardRoute = resolvedSceneryRoute.value
+        if (cardRoute === 'background' || cardRoute === 'widget' || cardRoute === 'bg_widget') {
+          // Send to background artistry here
+          console.log('[DatingSim] Director visual prompt:', object.visuals.prompt)
+        }
+      }
+
+      // Setup choices
+      const liveChoices = (object.player_options || []).slice(0, 4).map((o: any, i: number) => ({
+        id: `t${i}`,
+        title: o.title,
+        text: o.message,
+        positiveScore: o.positiveScore || 0,
+        negativeScore: o.negativeScore || 0,
+        cost: o.apCost || 0,
+        icon: 'i-solar:chat-round-dots-bold-duotone',
+        action: 'llm_topic',
+      }))
+
+      // The Director Sweep does not generate a subtitle for the current turn, 
+      // as the Assistant just spoke. We wait for the user to make a choice.
+      choices.value = liveChoices
     }
     catch (err) {
-      console.error('[DatingSim] Live Generation Failed:', err)
+      console.error('[DatingSim] Director/IC Sweep Failed:', err)
     }
     finally {
       isGenerating.value = false
     }
   }
 
-  async function evaluateParameters(userPrompt: string) {
-    if (!enabled.value)
+  async function producerSetup(customPromptVal: string, story?: any) {
+    if (isGenerating.value)
       return
+    isGenerating.value = true
     try {
+      activeStoryline.value = story || { description: customPromptVal }
+
       const { useLLM } = await import('@proj-airi/stage-ui/stores/llm')
       const { useProvidersStore } = await import('@proj-airi/stage-ui/stores/providers')
       const { useConsciousnessStore } = await import('@proj-airi/stage-ui/stores/modules/consciousness')
-
+      const { useChatSessionStore } = await import('@proj-airi/stage-ui/stores/chat/session-store')
+      
       const llm = useLLM()
       const providers = useProvidersStore()
       const consciousness = useConsciousnessStore()
+      const chatSession = useChatSessionStore()
+
       const provider = await providers.getProviderInstance(consciousness.activeProvider)
+      if (!provider || !consciousness.activeModel) return
 
-      if (!provider || !consciousness.activeModel)
-        return
+      const rawMessages = chatSession.messages || []
+      const relevantMessages = rawMessages
+        .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+        .slice(-settings.value.contextDepth)
+      const chatHistoryText = relevantMessages.map((m: any) => `${m.role}: ${m.content}`).join('\n')
 
-      const result = await llm.generate(
-        consciousness.activeModel,
-        provider as any,
-        [
-          { role: 'system', content: `You are a Dating Sim engine evaluating a user's prompt. The user said: "${userPrompt}". How does this affect Intimacy and Tension? (Range -20 to +20). Your output MUST be EXACTLY in this JSON format: {"intimacyChange": 2, "tensionChange": -5, "mood": "happy"}` },
-          { role: 'user', content: 'Output raw JSON only. Do not include markdown backticks or any preamble/postamble.' },
-        ],
-      )
+      const isGameMode = settings.value.gameMode === 'goal_driven'
+
+      const systemPrompt = `You are the Producer establishing a Dating Sim scene.
+Given the scenario prompt "${customPromptVal}" and the last ${settings.value.contextDepth} turns of dialogue, generate:
+1. An initial inner thought/subtitle for the character setting the scene.
+2. Four starting dialogue options (Title + Message) written exactly in the user's conversational voice.
+
+Output MUST be raw JSON: 
+{
+  "subtitle": "...", 
+  "options": [
+    {
+      "title": "Short title", 
+      "message": "Full sentence message in user's voice", 
+      "positiveScore": ${isGameMode ? '<number 0-5>' : 0}, 
+      "negativeScore": ${isGameMode ? '<number 0-5>' : 0}, 
+      "apCost": <number 0-3>
+    }
+  ]
+}`
+      
+      const userPrompt = `Chat History:\n${chatHistoryText}\n\nGenerate the starting scene payload in raw JSON.`
+
+      const result = await llm.generate(consciousness.activeModel, provider as any, [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ])
 
       const rawText = result.text || (result as any).reasoning || ''
       const match = rawText.match(/\{[\s\S]*\}/)
-      if (!match)
-        throw new Error('No JSON object found in response')
+      if (!match) throw new Error('No JSON object found in response')
       const object = JSON.parse(match[0])
 
-      if (typeof object.intimacyChange === 'number') {
-        setVariable('Intimacy', Math.max(0, Math.min(100, getVariable('Intimacy') + object.intimacyChange)))
-      }
-      if (typeof object.tensionChange === 'number') {
-        setVariable('Tension', Math.max(0, Math.min(100, getVariable('Tension') + object.tensionChange)))
-      }
-      if (object.mood) {
-        broadcastMood(object.mood)
-      }
-
-      // Regenerate choices after parameters update
-      generateLiveChoices()
+      currentSubtitle.value = object.subtitle || ''
+      
+      const liveChoices = (object.options || []).slice(0, 4).map((o: any, i: number) => ({
+        id: `sc${i}`,
+        title: o.title,
+        text: o.message,
+        positiveScore: o.positiveScore || 0,
+        negativeScore: o.negativeScore || 0,
+        cost: o.apCost || 0,
+        icon: 'i-solar:chat-round-dots-bold-duotone',
+        action: 'llm_topic',
+      }))
+      
+      choices.value = liveChoices
     }
     catch (err) {
-      console.error('[DatingSim] Parameter Evaluation Failed:', err)
-      // Fallback: still regenerate choices so UI isn't stuck
-      generateLiveChoices()
+      console.error('[DatingSim] Producer Setup Failed:', err)
+    }
+    finally {
+      isGenerating.value = false
     }
   }
+
+  // Hook into Chat Turn Completion
+  let unhookChat: (() => void) | null = null
+  watch(() => enabled.value, async (val) => {
+    if (val) {
+      const { useChatOrchestratorStore } = await import('@proj-airi/stage-ui/stores/chat')
+      const orchestrator = useChatOrchestratorStore()
+      if (!unhookChat) {
+        unhookChat = orchestrator.onChatTurnComplete(async () => {
+          if (enabled.value) {
+            await directorICSweep()
+          }
+        })
+      }
+    } else {
+      if (unhookChat) {
+        unhookChat()
+        unhookChat = null
+      }
+    }
+  }, { immediate: true })
 
   function setVariable(name: string, value: number) {
     variables.value[name] = value
@@ -200,8 +428,12 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
       case 'equal': return currentValue === target
       case 'greater': return currentValue > target
       case 'less': return currentValue < target
+      case 'greater_equal':
       case 'greater_eq': return currentValue >= target
+      case 'lower_equal':
+      case 'less_equal':
       case 'less_eq': return currentValue <= target
+      case 'not_equal': return currentValue !== target
       default: return false
     }
   }
@@ -268,6 +500,100 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     }
   }
 
+  // 4. The JSON Command Interpreter (For complex Steam DSL objects)
+  function executeJSONCommand(payload: any) {
+    // 1. Evaluate Intimacy bounds if present
+    if (payload.Intimacy) {
+      const currentIntimacy = getVariable('Intimacy')
+      if (payload.Intimacy.Min !== undefined && currentIntimacy < payload.Intimacy.Min) {
+        console.info(`[Dating Sim Pipeline] Command rejected. Intimacy too low (${currentIntimacy} < ${payload.Intimacy.Min})`)
+        return false // Block execution
+      }
+      if (payload.Intimacy.Max !== undefined && currentIntimacy > payload.Intimacy.Max) {
+        console.info(`[Dating Sim Pipeline] Command rejected. Intimacy too high (${currentIntimacy} > ${payload.Intimacy.Max})`)
+        return false
+      }
+      if (payload.Intimacy.Bonus) {
+        const bonus = payload.Intimacy.Bonus * settings.value.intimacyGainMultiplier
+        setVariable('Intimacy', Math.min(100, currentIntimacy + bonus))
+        console.info(`[Dating Sim Pipeline] Applied Intimacy Bonus: +${bonus}`)
+      }
+    }
+
+    // 2. Evaluate VarFloats conditional guards (Type 1)
+    if (payload.VarFloats && Array.isArray(payload.VarFloats)) {
+      for (const v of payload.VarFloats) {
+        if (v.Type === 1) {
+          const conditionStr = `${v.Name} ${v.Code}`
+          if (!evaluateCondition(conditionStr)) {
+            console.info(`[Dating Sim Pipeline] Command rejected by VarFloats condition: ${conditionStr}`)
+            return false // Block execution
+          }
+        }
+      }
+    }
+
+    // 3. Execute the primary command
+    if (payload.Command) {
+      executeScript(payload.Command)
+    }
+
+    // 4. Handle explicit variable assignments from VarFloats (Type 2)
+    if (payload.VarFloats && Array.isArray(payload.VarFloats)) {
+      for (const v of payload.VarFloats) {
+        if (v.Type === 2) {
+          executeAssignment(`${v.Name} ${v.Code}`)
+        }
+      }
+    }
+
+    // 5. Handle Text / Subtitle dynamically parsing variable templates
+    if (payload.Text) {
+      let text = payload.Text.replace(/\{\$br\}/g, '\n')
+      // Map {$vi_IntimacyVI} to the actual variable
+      text = text.replace(/\{\$vi_([A-Za-z0-9_]+)\}/g, (_: any, varName: string) => {
+        return String(getVariable(varName))
+      })
+      currentSubtitle.value = text
+    }
+
+    // 6. Handle UI Choices branching
+    if (payload.Choices && Array.isArray(payload.Choices)) {
+      choices.value = payload.Choices.map((c: any, index: number) => {
+        let text = c.Text || 'Option'
+        text = text.replace(/\{\$vi_([A-Za-z0-9_]+)\}/g, (_: any, varName: string) => {
+          return String(getVariable(varName))
+        })
+        return {
+          id: `dsl_choice_${index}`,
+          title: text,
+          text: text, // The overlay expects this
+          action: 'dsl_mtn', // custom action type
+          metadata: { NextMtn: c.NextMtn } // we need to store NextMtn
+        }
+      })
+    }
+
+    // 7. Handle Expression (Special Sauce DSL)
+    if (payload.Expression) {
+      if (payload.Expression === 'clear') {
+        window.dispatchEvent(new CustomEvent('dating-sim:clear-exp'))
+        import('@proj-airi/stage-ui-three').then(({ useModelStore }) => {
+          useModelStore().activeExpressions = {}
+        }).catch(() => {})
+      } else {
+        broadcastMood(payload.Expression)
+      }
+    }
+
+    // 8. Execute PostCommand if present
+    if (payload.PostCommand) {
+      executeScript(payload.PostCommand)
+    }
+
+    return true
+  }
+
   // Lifecycle
   function enable() {
     enabled.value = true
@@ -284,11 +610,16 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     }
     choices.value = []
     currentSubtitle.value = ''
+    activeStoryline.value = null
     variables.value = {
       Intimacy: 0,
-      Tension: 0,
+      Tension: 50,
       ActionPoints: 5,
+      TimeOfDay: 12,
       Timer: 0,
+      positiveScore: 0,
+      negativeScore: 0,
+      turnsElapsed: 0,
     }
     if (loopId !== null) {
       cancelAnimationFrame(loopId)
@@ -340,7 +671,9 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     }
     else {
       syncToggle(true)
-      generateLiveChoices()
+      if (settings.value.gameMode !== 'goal_driven') {
+        directorICSweep()
+      }
     }
   }
 
@@ -361,23 +694,69 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
           love: 'exp12',
           blush: 'exp01',
         }
-        if (m in specialSauceMap) {
+        let handled = false
+        const motionManager = live2dStore.model?.internalModel?.motionManager
+
+        if (settings.value.enableSpecialSauce && m in specialSauceMap) {
           const mapped = specialSauceMap[m]
           if (typeof mapped === 'string') {
-            live2dStore.triggerEmotion(mapped)
+            handled = live2dStore.triggerEmotion(mapped)
           }
-          else if (live2dStore.model?.internalModel?.motionManager) {
-            live2dStore.model.internalModel.motionManager.startMotion(mapped.group, mapped.index)
-          }
-          else {
-            live2dStore.triggerEmotion(m)
+          else if (motionManager && motionManager.definitions && motionManager.definitions[mapped.group]) {
+            motionManager.startMotion(mapped.group, mapped.index)
+            handled = true
           }
         }
-        else {
-          live2dStore.triggerEmotion(m)
+
+        if (!handled) {
+          handled = live2dStore.triggerEmotion(m)
+        }
+
+        // Ultimate Fallback: Try to find a motion group matching the mood
+        if (!handled && motionManager && motionManager.definitions) {
+          const groups = Object.keys(motionManager.definitions)
+          const matchedGroup = groups.find(g => g.toLowerCase() === m) ||
+                               groups.find(g => g.toLowerCase().includes(m))
+          if (matchedGroup) {
+            motionManager.startMotion(matchedGroup, 0)
+          }
         }
       }
-    })
+    }).catch(() => {})
+
+    import('@proj-airi/stage-ui-three').then(({ useModelStore }) => {
+      const vrmStore = useModelStore()
+      if (vrmStore.activeVrm) {
+        const m = newMood.toLowerCase()
+        let matched: string | null = null
+
+        if (settings.value.enableSpecialSauce) {
+          matched = vrmStore.availableExpressions.find((e: string) => e.toLowerCase() === m) || null
+          if (!matched) {
+            matched = vrmStore.availableExpressions.find((e: string) => e.toLowerCase().includes(m)) || null
+          }
+          const vrmSpecialSauce: Record<string, string> = {
+            happy: 'joy',
+            sad: 'sorrow',
+            angry: 'angry',
+            surprised: 'surprised',
+            neutral: 'neutral',
+            cool: 'fun',
+            shy: 'blush', // Assuming shy maps to a blush
+            love: 'joy'
+          }
+          if (!matched && m in vrmSpecialSauce) {
+            matched = vrmStore.availableExpressions.find((e: string) => e.toLowerCase() === vrmSpecialSauce[m]) || null
+          }
+        } else {
+          matched = vrmStore.availableExpressions.find((e: string) => e.toLowerCase() === m) || null
+        }
+
+        if (matched) {
+          vrmStore.activeExpressions = { [matched]: 1 }
+        }
+      }
+    }).catch(() => {})
   }
 
   function broadcastMood(newMood: string) {
@@ -420,8 +799,23 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     choices.value = customChoices
     currentSubtitle.value = subtitle
 
+    if (activeStoryline.value) {
+      const route = resolvedSceneryRoute.value
+      if (route === 'widget' || route === 'bg_widget') {
+        spawnSceneryWidget(activeStoryline.value.coverImage, activeStoryline.value.title)
+      }
+    }
+
     if (bc)
       bc.postMessage({ type: 'test', choices: customChoices, subtitle })
+  }
+
+  function clearTestSync() {
+    disable()
+    choices.value = []
+    currentSubtitle.value = ''
+    if (bc)
+      bc.postMessage({ type: 'clear' })
   }
 
   if (typeof window !== 'undefined' && (window as any).electron) {
@@ -437,24 +831,31 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
 
   return {
     enabled,
+    settings,
     currentPhase,
     variables,
     mood,
     choices,
     currentSubtitle,
+    activeStoryline,
+    resolvedSceneryRoute,
+    spawnSceneryWidget,
     setVariable,
     getVariable,
     evaluateCondition,
     executeAssignment,
     executeScript,
+    executeJSONCommand,
     enable,
     disable,
     triggerTestSync,
     triggerTestSyncCustom,
+    clearTestSync,
     toggleDatingSim,
     syncToggle,
-    generateLiveChoices,
-    evaluateParameters,
+    directorICSweep,
+    producerSetup,
     broadcastMood,
+    isGenerating,
   }
 })

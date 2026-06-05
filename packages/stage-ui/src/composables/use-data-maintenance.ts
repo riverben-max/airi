@@ -3,6 +3,7 @@ import type { ChatSessionsExport } from '../types/chat-session'
 import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { useLive2d } from '@proj-airi/stage-ui-live2d'
 
+import { chatSessionsRepo } from '../database/repos/chat-sessions.repo'
 import { useBackgroundStore } from '../stores/background'
 import { useChatOrchestratorStore } from '../stores/chat'
 import { useChatSessionStore } from '../stores/chat/session-store'
@@ -15,6 +16,7 @@ import { useConsciousnessStore } from '../stores/modules/consciousness'
 import { useDiscordStore } from '../stores/modules/discord'
 import { useFactorioStore } from '../stores/modules/gaming-factorio'
 import { useMinecraftStore } from '../stores/modules/gaming-minecraft'
+import { useOsuStore } from '../stores/modules/gaming-osu'
 import { useHearingStore } from '../stores/modules/hearing'
 import { useSpeechStore } from '../stores/modules/speech'
 import { useTwitterStore } from '../stores/modules/twitter'
@@ -37,6 +39,7 @@ export function useDataMaintenance() {
   const discordStore = useDiscordStore()
   const factorioStore = useFactorioStore()
   const minecraftStore = useMinecraftStore()
+  const osuStore = useOsuStore()
   const mcpStore = useMcpStore()
   const onboardingStore = useOnboardingStore()
   const airiCardStore = useAiriCardStore()
@@ -62,6 +65,7 @@ export function useDataMaintenance() {
     discordStore.resetState()
     factorioStore.resetState()
     minecraftStore.resetState()
+    osuStore.resetState()
   }
 
   function deleteAllChatSessions() {
@@ -229,6 +233,203 @@ export function useDataMaintenance() {
     resetModulesSettings()
   }
 
+  // --- Orphaned Sessions Maintenance ---
+
+  async function getOrphanedGroups() {
+    const chatStoreAny = chatStore as any
+    if (!chatStoreAny.ready) {
+      await chatStoreAny.initialize()
+    }
+    const index = chatStoreAny.index
+    if (!index)
+      return []
+
+    const cards = airiCardStore.cards
+    const orphans = []
+
+    for (const [characterId, charIndex] of Object.entries(index.characters) as [string, any][]) {
+      if (!cards.has(characterId)) {
+        let messageCount = 0
+        let lastActive = 0
+        for (const [sid, s] of Object.entries(charIndex.sessions) as [string, any][]) {
+          if (s) {
+            let sessionMsgCount = s.messageCount ?? 0
+            if (sessionMsgCount === 0) {
+              try {
+                const sessionRecord = await chatSessionsRepo.getSession(sid)
+                sessionMsgCount = sessionRecord?.messages?.length ?? 0
+              }
+              catch (e) {
+                console.error(`Failed to fetch session record to count messages for ${sid}`, e)
+              }
+            }
+            messageCount += sessionMsgCount
+            if (s.updatedAt > lastActive) {
+              lastActive = s.updatedAt
+            }
+          }
+        }
+
+        const activeSessionId = charIndex.activeSessionId
+        let preview = ''
+        if (activeSessionId) {
+          try {
+            const sessionRecord = await chatSessionsRepo.getSession(activeSessionId)
+            const messages = sessionRecord?.messages ?? []
+            const lastMsg = messages[messages.length - 1]
+            if (lastMsg) {
+              let text = ''
+              if (typeof lastMsg.content === 'string') {
+                text = lastMsg.content
+              }
+              else if (Array.isArray(lastMsg.content)) {
+                text = lastMsg.content.map((part: any) => {
+                  if (typeof part === 'string')
+                    return part
+                  if (part && typeof part === 'object' && 'text' in part)
+                    return String(part.text ?? '')
+                  return ''
+                }).join('')
+              }
+              preview = text.length > 300 ? `...${text.slice(-300)}` : text
+            }
+          }
+          catch (e) {
+            console.error(`Failed to load session preview for ${activeSessionId}`, e)
+          }
+        }
+
+        orphans.push({
+          characterId,
+          messageCount,
+          lastActive,
+          preview,
+        })
+      }
+    }
+
+    // Sort by lastActive descending (newest activity first)
+    orphans.sort((a, b) => b.lastActive - a.lastActive)
+
+    return orphans
+  }
+
+  async function nukeOrphanedGroups(characterIds: string[]) {
+    const chatStoreAny = chatStore as any
+    if (!chatStoreAny.ready) {
+      await chatStoreAny.initialize()
+    }
+    const index = chatStoreAny.index
+    if (!index)
+      return
+
+    for (const characterId of characterIds) {
+      const charIndex = index.characters[characterId] as any
+      if (charIndex) {
+        const sessionIds = Object.keys(charIndex.sessions)
+        for (const sessionId of sessionIds) {
+          await chatSessionsRepo.deleteSession(sessionId)
+          delete chatStoreAny.sessionMessages[sessionId]
+          delete chatStoreAny.sessionMetas[sessionId]
+          delete chatStoreAny.sessionGenerations[sessionId]
+        }
+        delete index.characters[characterId]
+      }
+    }
+    await chatStoreAny.persistIndex()
+  }
+
+  async function restoreOrphanedGroups(mappings: string[] | Record<string, string>) {
+    const chatStoreAny = chatStore as any
+    if (!chatStoreAny.ready) {
+      await chatStoreAny.initialize()
+    }
+    const index = chatStoreAny.index
+
+    const nextCards = new Map(airiCardStore.cards)
+    const mappingObj: Record<string, string> = {}
+
+    if (Array.isArray(mappings)) {
+      for (const id of mappings) {
+        mappingObj[id] = 'new'
+      }
+    }
+    else {
+      Object.assign(mappingObj, mappings)
+    }
+
+    for (const [orphanId, targetId] of Object.entries(mappingObj)) {
+      if (targetId === 'new') {
+        nextCards.set(orphanId, {
+          name: orphanId,
+          nickname: '',
+          version: '1.0.0',
+          description: 'Restored from orphaned sessions',
+          personality: '',
+          scenario: '',
+          greetings: [],
+          greetingsGroupOnly: [],
+          systemPrompt: '',
+          postHistoryInstructions: '',
+          messageExample: [],
+          tags: [],
+          extensions: {
+            airi: {
+              modules: {
+                consciousness: { provider: '', model: '' },
+                speech: { provider: '', model: '', voice_id: '' },
+                displayModelId: 'preset-live2d-1',
+                activeBackgroundId: 'none',
+              },
+              agents: {},
+              groundingEnabled: false,
+            },
+          },
+        } as any)
+      }
+      else {
+        if (index && index.characters[orphanId]) {
+          if (!index.characters[targetId]) {
+            index.characters[targetId] = {
+              activeSessionId: '',
+              sessions: {},
+            }
+          }
+          const orphanCharIndex = index.characters[orphanId] as any
+          const targetCharIndex = index.characters[targetId] as any
+
+          for (const [sessionId, meta] of Object.entries(orphanCharIndex.sessions) as [string, any][]) {
+            meta.characterId = targetId
+            targetCharIndex.sessions[sessionId] = meta
+
+            try {
+              const sessionRecord = await chatSessionsRepo.getSession(sessionId)
+              if (sessionRecord) {
+                sessionRecord.meta.characterId = targetId
+                await chatSessionsRepo.saveSession(sessionId, sessionRecord)
+              }
+            }
+            catch (e) {
+              console.error(`Failed to update session record ${sessionId} during merge`, e)
+            }
+          }
+
+          if (!targetCharIndex.activeSessionId) {
+            targetCharIndex.activeSessionId = orphanCharIndex.activeSessionId
+          }
+
+          delete index.characters[orphanId]
+        }
+      }
+    }
+
+    if (index) {
+      await chatStoreAny.persistIndex()
+    }
+
+    airiCardStore.cards = nextCards
+  }
+
   return {
     deleteAllModels,
     resetProvidersSettings,
@@ -244,5 +445,8 @@ export function useDataMaintenance() {
     importBackgrounds,
     deleteAllData,
     resetDesktopApplicationState,
+    getOrphanedGroups,
+    nukeOrphanedGroups,
+    restoreOrphanedGroups,
   }
 }

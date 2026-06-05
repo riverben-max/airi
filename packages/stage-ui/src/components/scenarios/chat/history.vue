@@ -2,12 +2,13 @@
 import type { ChatAssistantMessage, ChatHistoryItem, ContextMessage } from '../../../types/chat'
 import type { DirectorNote } from '../../../types/director'
 
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import ChatAssistantItem from './assistant-item.vue'
 import DirectorNoteBubble from './DirectorNoteBubble.vue'
 import ChatErrorItem from './error-item.vue'
+import ProducerChoiceBubble from './ProducerChoiceBubble.vue'
 import ChatUserItem from './user-item.vue'
 
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
@@ -16,7 +17,7 @@ import { useSettingsChat } from '../../../stores/settings'
 import { chatScrollContainerKey } from './constants'
 
 const props = withDefaults(defineProps<{
-  messages: ChatHistoryItem[]
+  messages: any[]
   streamingMessage?: ChatAssistantMessage & { createdAt?: number }
   sending?: boolean
   assistantLabel?: string
@@ -27,6 +28,12 @@ const props = withDefaults(defineProps<{
   sending: false,
   variant: 'desktop',
 })
+
+const emit = defineEmits<{
+  (e: 'choose', choice: { title: string, message: string }): void
+  (e: 'retry-producer'): void
+  (e: 'delete-producer'): void
+}>()
 
 const chatHistoryRef = ref<HTMLDivElement>()
 const isAtBottom = ref(true)
@@ -60,7 +67,7 @@ function handleScroll() {
 }
 
 // Use a ResizeObserver to catch changes even during v-auto-animate transitions
-onMounted(() => {
+onMounted(async () => {
   if (!chatHistoryRef.value)
     return
 
@@ -72,16 +79,28 @@ onMounted(() => {
 
   // We observe the container itself; as it animates/resizes, we keep pinned
   observer.observe(chatHistoryRef.value)
-  // Also observe children if they are the ones causing scrollHeight changes
-  // But usually observing the div with overflow-y-auto is sufficient for ResizeObserver
-  // because its scrollHeight changes trigger the callback if we track content.
 
+  // Force scroll to bottom after initial mount DOM generation
+  await nextTick()
   scrollToBottom(true)
+
+  // Ensure scroll is correct even if dynamic styling or images cause height shifts
+  setTimeout(() => scrollToBottom(true), 50)
+  setTimeout(() => scrollToBottom(true), 150)
 
   onUnmounted(() => observer.disconnect())
 })
 
 watch([() => props.messages, () => props.streamingMessage], () => scrollToBottom(), { deep: true, flush: 'post' })
+watch(() => props.messages.length, (newLen, oldLen) => {
+  if (oldLen === 0 && newLen > 0) {
+    nextTick(() => {
+      scrollToBottom(true)
+      setTimeout(() => scrollToBottom(true), 50)
+      setTimeout(() => scrollToBottom(true), 150)
+    })
+  }
+})
 watch(() => props.sending, (val) => {
   if (!val) {
     // When sending finishes, ensure we are at the bottom
@@ -161,6 +180,15 @@ const renderMessages = computed<(ChatHistoryItem | DirectorNote)[]>(() => {
     <template v-for="(message, index) in renderMessages" :key="'id' in message && message.id ? message.id : ('createdAt' in message && message.createdAt ? `ts-${message.createdAt}` : `idx-${index}`)">
       <div v-if="'type' in message && message.type === 'director-note'">
         <DirectorNoteBubble :note="message" />
+      </div>
+
+      <div v-else-if="'type' in message && (message as any).type === 'producer-suggestion'">
+        <ProducerChoiceBubble
+          :message="message as any"
+          @choose="emit('choose', $event)"
+          @retry="emit('retry-producer')"
+          @delete="emit('delete-producer')"
+        />
       </div>
 
       <div v-else-if="'role' in message && message.role === 'error'">

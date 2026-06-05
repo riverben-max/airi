@@ -2,13 +2,15 @@
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { useLive2d } from '@proj-airi/stage-ui-live2d'
 import { useCustomVrmAnimationsStore, useModelStore } from '@proj-airi/stage-ui-three'
-import { onClickOutside, useColorMode, useLocalStorage } from '@vueuse/core'
+import { onClickOutside, useBroadcastChannel, useColorMode, useLocalStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, toRef, watch } from 'vue'
 // Ported stores & states for Popovers
 
 import CharacterAvatar from '../../misc/CharacterAvatar.vue'
 
+import { useBackgroundStore } from '../../../stores/background'
+import { useDatingSimStore } from '../../../stores/dating-sim'
 import { useDisplayModelsStore } from '../../../stores/display-models'
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 import { useLiveSessionStore } from '../../../stores/modules/live-session'
@@ -21,10 +23,12 @@ import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
 import { useSettingsControlsIsland } from '../../../stores/settings/controls-island'
 
 const settingsStore = useSettings()
+console.log('[ControlStrip.vue] Setup loaded with Selfie feature support')
 const colorMode = useColorMode()
 const controlStripStore = useSettingsControlStrip()
-const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed } = storeToRefs(controlStripStore)
+const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed, selfieIncludeBg } = storeToRefs(controlStripStore)
 const displayModelsStore = useDisplayModelsStore()
+const datingSimStore = useDatingSimStore()
 
 const avatarSearch = ref('')
 const avatarTypeFilter = ref('all')
@@ -345,7 +349,72 @@ const vrmIdleAnimation = toRef(modelStore as any, 'vrmIdleAnimation')
 const live2dStore = useLive2d()
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
 
+// Selfies popover state & actions
+const backgroundStore = useBackgroundStore()
+const selfies = computed(() => {
+  if (!activeCardId.value)
+    return []
+  return backgroundStore.getCharacterJournalEntries(activeCardId.value)
+    .filter(e => e.type === 'selfie')
+})
+
+const selfieCountdown = ref<number | null>(null)
+const { post: postCapture } = useBroadcastChannel<{ characterId: string, includeBg: boolean }, { characterId: string, includeBg: boolean }>({ name: 'airi:stage-capture' })
+
+function triggerSelfie() {
+  if (!activeCardId.value) {
+    console.warn('[ControlStrip] Cannot trigger selfie: no activeCardId')
+    return
+  }
+  if (selfieCountdown.value !== null)
+    return
+
+  console.log('[ControlStrip] Starting selfie countdown for character:', activeCardId.value)
+  selfieCountdown.value = 3
+  const interval = setInterval(() => {
+    if (selfieCountdown.value === null) {
+      clearInterval(interval)
+      return
+    }
+    selfieCountdown.value--
+    console.log('[ControlStrip] Selfie countdown:', selfieCountdown.value)
+    if (selfieCountdown.value === 0) {
+      clearInterval(interval)
+      selfieCountdown.value = null
+      console.log('[ControlStrip] Broadcast stage capture request for character:', activeCardId.value, 'includeBg:', selfieIncludeBg.value)
+      postCapture({ characterId: activeCardId.value, includeBg: selfieIncludeBg.value })
+    }
+  }, 1000)
+}
+
+function selectSelfieBackground(bgId: string) {
+  if (activeCard.value && activeCardId.value) {
+    cardStore.updateCard(activeCardId.value, {
+      extensions: {
+        ...activeCard.value.extensions,
+        airi: {
+          ...activeCard.value.extensions.airi,
+          modules: {
+            ...activeCard.value.extensions.airi.modules,
+            activeBackgroundId: bgId,
+          },
+        },
+      },
+    } as any)
+  }
+}
+
 const activePopover = ref<string | null>(null)
+
+const { post: postViewfinderState } = useBroadcastChannel<{ active: boolean, countdown: number | null }, { active: boolean, countdown: number | null }>({ name: 'airi:stage-selfie-viewfinder' })
+
+watch([activePopover, selfieCountdown], ([popover, countdown]) => {
+  postViewfinderState({
+    active: popover === 'actor-selfies',
+    countdown,
+  })
+}, { immediate: true })
+
 const hoveredButtonId = ref<string | null>(null)
 const popoverRef = ref<HTMLElement | null>(null)
 const wardrobeFilter = ref<'all' | 'base' | 'overlay'>('all')
@@ -369,7 +438,7 @@ onMounted(async () => {
 
 function applySizePreset(
   target: 'actor' | 'chat',
-  preset?: 'mini' | 'medium' | 'large' | 'full',
+  preset?: string,
   alignment?: string,
 ) {
   if (typeof window !== 'undefined') {
@@ -385,6 +454,11 @@ function applySizePreset(
   if (preset) {
     activePopover.value = null
   }
+}
+
+function toggleDatingSimMode() {
+  datingSimStore.toggleDatingSim()
+  applySizePreset('actor', datingSimStore.enabled ? 'dating-sim-on' : 'dating-sim-off')
 }
 
 function selectMonitor(target: 'actor' | 'chat', m: number) {
@@ -735,7 +809,7 @@ function cleanupDragListeners() {
 function handleAction(actionId: string) {
   console.info(`[Control Strip] Button clicked: "${actionId}".`)
 
-  const menuButtons = ['actor-characters', 'actor-avatars', 'actor-wardrobe', 'actor-expressions', 'actor-motions', 'actor-all-emotions', 'gemini-voice']
+  const menuButtons = ['actor-characters', 'actor-avatars', 'actor-wardrobe', 'actor-expressions', 'actor-motions', 'actor-all-emotions', 'actor-selfies', 'gemini-voice']
   if (menuButtons.includes(actionId)) {
     if (activePopover.value === actionId) {
       activePopover.value = null
@@ -842,6 +916,7 @@ function getShortLabel(btnId: string): string {
     'actor-expressions': 'Expr',
     'actor-motions': 'Move',
     'actor-all-emotions': 'Mood',
+    'actor-selfies': 'Self',
     'theme-mode': 'Color',
     'caption-docking': 'Dock',
     'caption-layout-mode': 'Rows',
@@ -859,7 +934,6 @@ function getShortLabel(btnId: string): string {
       'bg-neutral-100/30 dark:bg-neutral-900/40',
       'backdrop-blur-xl border border-white/20 dark:border-neutral-800/60',
       'shadow-2xl shadow-black/10 rounded-full',
-      'transition-all duration-300 ease-out',
       isDragging ? 'scale-102 border-primary-500/30 shadow-primary-500/5' : '',
       orientation === 'vertical' ? 'flex flex-col items-center py-2 px-1 gap-2 w-12' : 'flex flex-row items-center px-2 py-1 gap-2 h-12',
     ]"
@@ -874,7 +948,7 @@ function getShortLabel(btnId: string): string {
         'bg-white/10 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15',
         'border border-white/10 dark:border-white/5',
         'text-neutral-700 dark:text-neutral-300',
-        'transition-all duration-200 active:scale-90',
+        'transition-all duration-200',
         isDragging ? 'cursor-grabbing' : 'cursor-grab',
       ]"
       title="Drag to Reposition | Double Click to Collapse/Expand | Click to Toggle Layout"
@@ -904,7 +978,7 @@ function getShortLabel(btnId: string): string {
           'relative flex items-center justify-center overflow-hidden',
           'w-9 h-9 rounded-full border border-white/15 dark:border-white/5',
           'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200',
-          'transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer control-strip-btn',
+          'transition-all duration-200 hover:scale-105 cursor-pointer control-strip-btn',
         ]"
         :title="getButtonTitle(btn.id, btn.label)"
         @mouseenter="hoveredButtonId = btn.id"
@@ -1091,9 +1165,28 @@ function getShortLabel(btnId: string): string {
         <!-- STAGE PRESETS POPOVER -->
         <div v-if="activePopover === 'stage-preset'" class="flex flex-col gap-2">
           <div class="flex items-center justify-between border-b border-neutral-200 pb-1.5 dark:border-neutral-800">
-            <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase">Stage Size Presets</span>
+            <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase">Stage Layout & Presets</span>
             <button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300" @click="activePopover = null">
               <span class="i-solar:close-circle-outline text-lg" />
+            </button>
+          </div>
+
+          <!-- Dating Sim Mode Toggle Row -->
+          <div class="flex items-center justify-between border border-rose-500/10 rounded-xl bg-rose-500/5 p-2 dark:border-rose-500/20 dark:bg-rose-950/10">
+            <div class="flex items-center gap-2">
+              <span class="i-solar:heart-bold text-base text-rose-500" :class="{ 'animate-pulse': datingSimStore.enabled }" />
+              <span class="text-[11px] text-neutral-700 font-bold dark:text-neutral-300">Dating Sim Mode</span>
+            </div>
+            <button
+              :class="[
+                'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all active:scale-95 border cursor-pointer',
+                datingSimStore.enabled
+                  ? 'bg-gradient-to-r from-rose-500 to-fuchsia-600 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.4)]'
+                  : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200/60 dark:border-neutral-750 text-neutral-500 hover:border-rose-400/40 hover:text-rose-400',
+              ]"
+              @click="toggleDatingSimMode"
+            >
+              {{ datingSimStore.enabled ? 'On' : 'Off' }}
             </button>
           </div>
 
@@ -2118,6 +2211,80 @@ function getShortLabel(btnId: string): string {
             >
               <span class="i-solar:arrow-right-linear text-xs" />
             </button>
+          </div>
+        </div>
+
+        <!-- SELFIES POPOVER -->
+        <div v-if="activePopover === 'actor-selfies'" class="flex flex-col gap-2">
+          <div class="flex items-center justify-between border-b border-neutral-200 pb-1.5 dark:border-neutral-800">
+            <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase">Selfies</span>
+            <button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300" @click="activePopover = null">
+              <span class="i-solar:close-circle-outline text-lg" />
+            </button>
+          </div>
+
+          <!-- Take Selfie Button & Countdown Overlay -->
+          <div class="relative flex flex-col gap-1.5">
+            <button
+              class="w-full flex cursor-pointer items-center justify-center gap-1.5 border border-primary-500/25 rounded-xl bg-primary-500/20 py-2 text-center text-xs text-primary-600 font-semibold transition-all disabled:cursor-not-allowed hover:bg-primary-500/30 dark:text-primary-300 disabled:opacity-50"
+              :disabled="selfieCountdown !== null"
+              @click="triggerSelfie"
+            >
+              <span class="i-solar:camera-bold text-sm" />
+              <span>{{ selfieCountdown !== null ? `Capturing in ${selfieCountdown}...` : 'Take Selfie' }}</span>
+            </button>
+            <label class="flex cursor-pointer select-none items-center justify-between rounded-lg bg-neutral-100/50 p-1.5 text-[10px] text-neutral-500 dark:bg-neutral-800/50 hover:bg-neutral-200/40 dark:text-neutral-400 dark:hover:bg-neutral-800/80">
+              <span class="font-medium">Include Stage Background</span>
+              <input
+                v-model="selfieIncludeBg"
+                type="checkbox"
+                class="border-neutral-300/80 rounded text-primary-600 dark:border-neutral-700/80 dark:bg-neutral-800 focus:ring-primary-500"
+              >
+            </label>
+          </div>
+
+          <!-- Selfies Gallery (3-column grid) -->
+          <div class="max-h-48 overflow-y-auto py-1 scrollbar-thin">
+            <div v-if="selfies.length > 0" class="grid grid-cols-3 gap-1">
+              <div
+                v-for="selfie in selfies"
+                :key="selfie.id"
+                :class="[
+                  'group relative aspect-square border rounded-xl overflow-hidden cursor-pointer bg-neutral-200/10 dark:bg-neutral-800/10 transition-all duration-200',
+                  activeCard?.extensions?.airi?.modules?.activeBackgroundId === selfie.id
+                    ? 'border-sky-500 ring-2 ring-sky-500/40'
+                    : 'border-neutral-200/40 dark:border-neutral-800/40 hover:ring-2 hover:ring-sky-500/50',
+                ]"
+                @click="selectSelfieBackground(selfie.id)"
+              >
+                <img
+                  v-if="selfie.url"
+                  :src="selfie.url"
+                  class="h-full w-full object-cover"
+                >
+                <div v-else class="h-full w-full flex items-center justify-center bg-neutral-500/10 text-neutral-400">
+                  <span class="i-solar:camera-broken text-lg" />
+                </div>
+
+                <!-- Hover Date/Time banner -->
+                <div class="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-1 py-0.5 text-center text-[8px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  {{ selfie.title }}
+                </div>
+
+                <!-- Set Background Top-Right Overlay Button -->
+                <button
+                  class="absolute right-1 top-1 h-5 w-5 flex items-center justify-center rounded-full bg-black/45 text-white transition-all duration-150 hover:scale-105 hover:bg-black/70"
+                  title="Set as stage background"
+                  @click.stop="selectSelfieBackground(selfie.id)"
+                >
+                  <span class="i-solar:gallery-bold text-xs" />
+                </button>
+              </div>
+            </div>
+            <div v-else class="flex flex-col items-center justify-center py-8 text-center opacity-40">
+              <span class="i-solar:camera-bold-duotone text-2xl" />
+              <span class="mt-2 text-[10px]">No selfies captured yet.</span>
+            </div>
           </div>
         </div>
       </div>

@@ -1,18 +1,33 @@
 <script setup lang="ts">
 import { useBroadcastChannel } from '@vueuse/core'
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+
+import CaptionPanel from './CaptionPanel.vue'
+import StorySelectorModal from './StorySelectorModal.vue'
 
 import { useDatingSimStore } from '../../stores/dating-sim'
+import { useAiriCardStore } from '../../stores/modules/airi-card'
 
 const datingSimStore = useDatingSimStore()
+const cardStore = useAiriCardStore()
 const { post: postChatInput } = useBroadcastChannel({ name: 'airi-chat-input-bridge' })
 
 const visibleChoices = computed(() => {
   return datingSimStore.choices.filter((c: any) => datingSimStore.evaluateCondition(c.condition))
 })
 
+const autonomousEnabled = computed(() => {
+  return cardStore.activeCard?.extensions?.airi?.artistry?.autonomousEnabled ?? false
+})
+
 const timerPercentage = computed(() => {
   return Math.min(100, Math.max(0, (datingSimStore.getVariable('Timer') / 10) * 100))
+})
+
+const containerBottomClass = computed(() => {
+  return datingSimStore.settings.inlineCaption
+    ? 'bottom-[150px]'
+    : 'bottom-[60px]'
 })
 
 function handleChoiceClick(choice: any) {
@@ -20,21 +35,23 @@ function handleChoiceClick(choice: any) {
     datingSimStore.setVariable('ActionPoints', datingSimStore.getVariable('ActionPoints') - choice.cost)
   }
 
-  const toolInstruction = `\n(System Note: You MUST use the 'update_dating_sim_variables' tool to react to this and update Intimacy/Tension/Mood!)`
-  if (choice.action === 'llm_topic') {
-    datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 2))
-    postChatInput({ sendingMessage: `[Dating Sim Choice] I want to talk about: ${choice.text}${toolInstruction}`, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
-    datingSimStore.evaluateParameters(`I want to talk about: ${choice.text}`)
+  // If in Goal-Driven mode, apply deterministic scores
+  if (datingSimStore.settings.gameMode === 'goal_driven') {
+    if (choice.positiveScore) {
+      datingSimStore.setVariable('positiveScore', datingSimStore.getVariable('positiveScore') + choice.positiveScore)
+    }
+    if (choice.negativeScore) {
+      datingSimStore.setVariable('negativeScore', datingSimStore.getVariable('negativeScore') + choice.negativeScore)
+    }
+    // Increment turns elapsed
+    datingSimStore.setVariable('turnsElapsed', datingSimStore.getVariable('turnsElapsed') + 1)
   }
-  else if (choice.action === 'llm_item') {
-    datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 5))
-    postChatInput({ sendingMessage: `[Dating Sim Choice] *I give you a gift:* ${choice.text}${toolInstruction}`, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
-    datingSimStore.evaluateParameters(`*I give you a gift:* ${choice.text}`)
-  }
-  else {
-    datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 1))
-    postChatInput({ sendingMessage: `[Dating Sim Choice] I choose: ${choice.text}${toolInstruction}`, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
-    datingSimStore.evaluateParameters(`I choose: ${choice.text}`)
+
+  if (choice.action === 'dsl_mtn' && choice.metadata?.NextMtn) {
+    window.dispatchEvent(new CustomEvent('dating-sim:trigger-motion', { detail: choice.metadata.NextMtn }))
+  } else {
+    // The 'text' contains the full message to send in user's voice
+    postChatInput({ sendingMessage: choice.text, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
   }
 
   datingSimStore.setVariable('Timer', 0)
@@ -46,32 +63,113 @@ const customPrompt = ref('')
 function submitCustomPrompt() {
   if (!customPrompt.value.trim())
     return
-  const toolInstruction = `\n(System Note: You MUST use the 'update_dating_sim_variables' tool to react to this and update Intimacy/Tension/Mood!)`
-  datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 1))
-  postChatInput({ sendingMessage: `[Dating Sim Choice] ${customPrompt.value}${toolInstruction}`, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
-  datingSimStore.evaluateParameters(customPrompt.value)
+  
+  if (datingSimStore.settings.gameMode === 'goal_driven') {
+    datingSimStore.setVariable('turnsElapsed', datingSimStore.getVariable('turnsElapsed') + 1)
+  }
+
+  postChatInput({ sendingMessage: customPrompt.value, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
   customPrompt.value = ''
   datingSimStore.setVariable('Timer', 0)
   datingSimStore.choices = []
   datingSimStore.currentSubtitle = ''
 }
+
+const showSelector = ref(false)
+
+function onGlobalKeydown(e: KeyboardEvent) {
+  // If Enter is pressed, and we aren't focused in an input/textarea, dismiss the subtitle
+  if (e.key === 'Enter') {
+    const active = document.activeElement
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+      return
+    }
+    if (datingSimStore.currentSubtitle) {
+      datingSimStore.currentSubtitle = ''
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
+})
+
+watch(() => [datingSimStore.enabled, datingSimStore.settings.gameMode], ([enabled, mode]) => {
+  if (enabled && mode === 'goal_driven' && !datingSimStore.activeStoryline) {
+    showSelector.value = true
+  }
+  else {
+    showSelector.value = false
+  }
+}, { immediate: true })
+
+function handleStorySelect(story: any, customPromptVal: string) {
+  showSelector.value = false
+  datingSimStore.producerSetup(customPromptVal, story)
+}
 </script>
 
 <template>
   <div v-if="datingSimStore.enabled" class="pointer-events-none absolute inset-0 z-50 flex flex-col justify-end overflow-hidden pb-8">
+    <!-- Background cover image (Goal-Driven initial phase) -->
+    <div
+      v-if="datingSimStore.settings.gameMode === 'goal_driven' && datingSimStore.activeStoryline && (datingSimStore.resolvedSceneryRoute === 'background' || datingSimStore.resolvedSceneryRoute === 'bg_widget')"
+      class="absolute inset-0 h-full w-full transition-opacity duration-1000 -z-10"
+    >
+      <img
+        :src="datingSimStore.activeStoryline.coverImage"
+        class="h-full w-full object-cover opacity-100"
+        alt="Storyline Background"
+      >
+    </div>
+
     <!-- Top-Right Floating Stats -->
     <div class="pointer-events-auto absolute right-8 top-6 flex flex-col gap-4">
-      <!-- Intimacy Badge -->
+      <!-- Intimacy & Tension Badge -->
       <div class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
-        <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-          <span>Intimacy</span>
-          <div class="i-solar:heart-bold text-xl text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]" />
+        <!-- Intimacy -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
+            <span>Intimacy</span>
+            <div class="i-solar:heart-bold text-xl text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]" />
+          </div>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
+            <div class="h-full rounded-full from-rose-400 to-pink-500 bg-gradient-to-r shadow-[0_0_10px_rgba(244,63,94,0.6)] transition-all duration-300 ease-out" :style="{ width: `${Math.min(100, datingSimStore.getVariable('Intimacy'))}%` }" />
+          </div>
         </div>
-        <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
-          <div class="h-full rounded-full from-rose-400 to-pink-500 bg-gradient-to-r shadow-[0_0_10px_rgba(244,63,94,0.6)] transition-all duration-300 ease-out" :style="{ width: `${Math.min(100, datingSimStore.getVariable('Intimacy'))}%` }" />
+
+        <!-- Tension -->
+        <div class="flex flex-col gap-1.5 mt-1">
+          <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
+            <span>Tension</span>
+            <div class="i-solar:bolt-bold text-xl text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]" />
+          </div>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
+            <div class="h-full rounded-full from-yellow-400 to-amber-500 bg-gradient-to-r shadow-[0_0_10px_rgba(245,158,11,0.6)] transition-all duration-300 ease-out" :style="{ width: `${Math.min(100, datingSimStore.getVariable('Tension'))}%` }" />
+          </div>
         </div>
-        <div class="text-right text-xs text-white/80 font-mono">
-          {{ datingSimStore.getVariable('Intimacy') }} / 100
+      </div>
+
+      <!-- Session Variables (Goal Driven Mode) -->
+      <div v-if="datingSimStore.settings.gameMode === 'goal_driven'" class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
+        <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide border-b border-white/10 pb-2">
+          <span>Game Session</span>
+          <span class="text-xs text-white/70 font-mono">Turn {{ datingSimStore.getVariable('turnsElapsed') }} / {{ datingSimStore.settings.maxTurns }}</span>
+        </div>
+        
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-green-300 font-bold uppercase tracking-wider">Success Score</span>
+            <span class="text-sm text-green-400 font-mono">{{ datingSimStore.getVariable('positiveScore') }} / {{ datingSimStore.settings.maxScore }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-red-300 font-bold uppercase tracking-wider">Failure Score</span>
+            <span class="text-sm text-red-400 font-mono">{{ datingSimStore.getVariable('negativeScore') }} / {{ datingSimStore.settings.maxScore }}</span>
+          </div>
         </div>
       </div>
 
@@ -81,46 +179,66 @@ function submitCustomPrompt() {
           <span>Mood</span>
           <span class="border border-blue-400/50 rounded-full bg-blue-500/30 px-2.5 py-0.5 text-white font-medium shadow-[0_0_10px_rgba(59,130,246,0.3)] backdrop-blur-md">{{ datingSimStore.mood }}</span>
         </div>
-        <div v-if="datingSimStore.currentPhase === 'conversation'" class="mt-2 flex items-center justify-between text-sm text-white font-semibold tracking-wide">
+        <div class="mt-2 flex items-center justify-between text-sm text-white font-semibold tracking-wide">
           <span>AP</span>
           <div class="flex gap-1.5">
             <div v-for="i in 5" :key="i" class="h-3 w-3 rounded-full transition-all duration-300" :class="i <= datingSimStore.getVariable('ActionPoints') ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-black/40'" />
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Center Floating Branching Choices -->
-    <div v-if="visibleChoices.length > 0" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-[200px]">
-      <!-- Timer -->
-      <div v-if="datingSimStore.getVariable('Timer') > 0" class="pointer-events-auto mb-8 min-w-[400px] flex items-center gap-4 border border-white/20 rounded-full bg-white/10 px-6 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.2)] backdrop-blur-[12px] backdrop-saturate-[180%] dark:bg-black/40">
-        <div class="i-solar:clock-circle-bold-duotone animate-pulse text-3xl text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+      <!-- Timer Badge (Lightning Round Mode) -->
+      <div v-if="datingSimStore.settings.lightningRounds && datingSimStore.getVariable('Timer') > 0" class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
+        <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
+          <span>Time Remaining</span>
+          <div class="i-solar:clock-circle-bold-duotone text-xl text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+        </div>
         <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
-          <div class="h-full rounded-full transition-all duration-100 ease-linear" :class="timerPercentage < 30 ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.8)]' : 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.8)]'" :style="{ width: `${timerPercentage}%` }" />
+          <div class="h-full animate-pulse rounded-full transition-all duration-100 ease-linear" :class="timerPercentage < 30 ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.8)]' : 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.8)]'" :style="{ width: `${timerPercentage}%` }" />
         </div>
       </div>
+    </div>
 
-      <!-- Choices Stack -->
-      <div class="custom-scrollbar pointer-events-auto max-h-[40vh] max-w-[90vw] w-[650px] flex flex-col gap-4 overflow-y-auto pr-4">
-        <button
-          v-for="choice in visibleChoices"
-          :key="choice.id"
-          class="group relative flex flex-shrink-0 items-center gap-5 overflow-hidden border border-white/20 rounded-2xl bg-white/10 px-6 py-4 text-left shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all duration-300 active:scale-[0.98] hover:scale-[1.02] hover:border-white/40 dark:bg-black/30 hover:bg-white/20"
-          @click="handleChoiceClick(choice)"
-        >
-          <!-- Hover light reflection effect -->
-          <div class="absolute inset-0 from-transparent via-white/10 to-transparent bg-gradient-to-r transition-transform duration-700 ease-in-out -translate-x-[150%] group-hover:translate-x-[150%]" />
+    <!-- Center Floating Branching Choices & Input -->
+    <div :class="['pointer-events-none absolute inset-x-0 top-[20px] flex flex-col items-center justify-center', containerBottomClass]">
+      <!-- Choices/Input Stack -->
+      <div class="custom-scrollbar pointer-events-auto max-h-full max-w-[90vw] w-[650px] flex flex-col gap-4 overflow-y-auto pr-4">
+        <!-- AA Upsell Tip -->
+        <div v-if="visibleChoices.length === 0 && !autonomousEnabled" class="pointer-events-auto border border-yellow-400/20 rounded-2xl bg-yellow-500/10 p-4 text-center shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] transition-all hover:bg-yellow-500/15">
+          <p class="text-sm text-yellow-100/90 font-semibold tracking-wide drop-shadow-md">
+            Want options automatically generated? Enable <span class="text-yellow-300 font-bold underline">Autonomous Artistry</span> in your companion settings, or click the <span class="text-purple-300 font-bold">Sparkle ✨</span> button below to generate choices manually.
+          </p>
+        </div>
 
-          <div v-if="choice.icon" :class="[choice.icon, 'text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110']" />
-          <div v-else class="i-solar:chat-round-dots-bold-duotone text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110" />
+        <!-- Choices Stack -->
+        <template v-if="visibleChoices.length > 0">
+          <button
+            v-for="choice in visibleChoices"
+            :key="choice.id"
+            class="group relative flex flex-shrink-0 items-center gap-5 overflow-hidden border border-white/20 rounded-2xl bg-white/10 px-6 py-4 text-left shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all duration-300 active:scale-[0.98] hover:scale-[1.02] hover:border-white/40 dark:bg-black/30 hover:bg-white/20"
+            @click="handleChoiceClick(choice)"
+          >
+            <!-- Hover light reflection effect -->
+            <div class="absolute inset-0 from-transparent via-white/10 to-transparent bg-gradient-to-r transition-transform duration-700 ease-in-out -translate-x-[150%] group-hover:translate-x-[150%]" />
 
-          <span class="flex-1 text-xl text-white font-medium tracking-wide drop-shadow-md">{{ choice.text }}</span>
+            <div v-if="choice.icon" :class="[choice.icon, 'text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110']" />
+            <div v-else class="i-solar:chat-round-dots-bold-duotone text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110" />
 
-          <div v-if="choice.cost" class="flex items-center gap-1.5 border border-white/10 rounded-full bg-black/40 px-3 py-1.5">
-            <div class="i-solar:lightning-bold text-base text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
-            <span class="text-sm text-white/90 font-bold">{{ choice.cost }} AP</span>
-          </div>
-        </button>
+            <div class="flex-1 flex flex-col justify-center">
+              <span v-if="datingSimStore.settings.showChoiceWeights && datingSimStore.settings.gameMode === 'goal_driven'" class="text-xs text-yellow-300 font-mono tracking-wider opacity-80 mb-1">
+                [+{{ choice.positiveScore || 0 }} Pos / -{{ choice.negativeScore || 0 }} Neg]
+              </span>
+              <span class="text-xl text-white font-medium tracking-wide drop-shadow-md">
+                {{ choice.title || choice.text }}
+              </span>
+            </div>
+
+            <div v-if="choice.cost" class="flex items-center gap-1.5 border border-white/10 rounded-full bg-black/40 px-3 py-1.5">
+              <div class="i-solar:lightning-bold text-base text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
+              <span class="text-sm text-white/90 font-bold">{{ choice.cost }} AP</span>
+            </div>
+          </button>
+        </template>
 
         <!-- Custom Prompt Input -->
         <div class="group relative flex flex-shrink-0 items-center gap-4 border border-white/20 rounded-2xl bg-white/10 px-6 py-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all duration-300 focus-within:border-white/40 dark:bg-black/30 focus-within:bg-white/20">
@@ -132,16 +250,28 @@ function submitCustomPrompt() {
             class="w-full flex-1 bg-transparent text-xl text-white font-medium tracking-wide outline-none drop-shadow-md placeholder:text-white/40"
             @keydown.enter="submitCustomPrompt"
           >
-          <button class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-colors hover:bg-purple-500/50" @click="submitCustomPrompt">
-            <div class="i-solar:plain-2-bold text-xl text-white" />
-          </button>
+          <div class="flex gap-2">
+            <!-- Sparkle Button (Generate Choices manually / Retry) -->
+            <button
+              class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-all active:scale-95 hover:scale-105 hover:bg-purple-500/50"
+              title="Generate suggestions/Retry choices"
+              :disabled="datingSimStore.isGenerating"
+              @click="datingSimStore.directorICSweep()"
+            >
+              <div v-if="datingSimStore.isGenerating" class="i-solar:restart-square-bold animate-spin text-xl text-white" />
+              <div v-else class="i-solar:magic-stick-3-bold-duotone text-xl text-white" />
+            </button>
+            <button class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-colors hover:bg-purple-500/50" @click="submitCustomPrompt">
+              <div class="i-solar:plain-2-bold text-xl text-white" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Bottom Dialogue -->
-    <div class="pointer-events-none mb-4 w-full flex justify-center px-12">
-      <div v-if="datingSimStore.currentSubtitle" class="pointer-events-auto relative max-w-4xl w-full">
+    <div v-if="datingSimStore.settings.inlineCaption && datingSimStore.currentSubtitle" class="pointer-events-none mb-4 w-full flex justify-center px-12">
+      <div class="pointer-events-auto relative max-w-4xl w-full">
         <!-- Main Dialogue Box -->
         <div class="group relative min-h-[180px] flex flex-col justify-center overflow-hidden border border-white/20 rounded-3xl bg-white/10 p-10 shadow-[0_16px_40px_rgba(0,0,0,0.3)] backdrop-blur-[16px] backdrop-saturate-[200%] transition-all dark:bg-black/40 hover:bg-white/15">
           <!-- Subtle top gradient border effect -->
@@ -153,14 +283,27 @@ function submitCustomPrompt() {
             <span class="text-sm text-blue-200 font-bold tracking-widest uppercase drop-shadow-md">Character</span>
           </div>
 
-          <p class="mt-6 w-full text-3xl text-white font-medium leading-[1.6] drop-shadow-lg">
-            {{ datingSimStore.currentSubtitle }}
-          </p>
+          <!-- Modular Real-Time Caption Panel inside original frame -->
+          <div class="mt-8 w-full flex justify-center">
+            <CaptionPanel
+              :show-active-sentence-only="true"
+              :transparent-bg="true"
+              text-size="text-3xl"
+              :fallback-text="datingSimStore.currentSubtitle"
+            />
+          </div>
 
           <!-- Auto-advance indicator -->
           <div class="i-solar:alt-arrow-down-bold absolute bottom-6 right-8 animate-bounce text-3xl text-white/50" />
         </div>
       </div>
     </div>
+
+    <!-- Story Select Modal -->
+    <StorySelectorModal
+      :show="showSelector"
+      @close="showSelector = false"
+      @select="handleStorySelect"
+    />
   </div>
 </template>

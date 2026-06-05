@@ -10,13 +10,7 @@ import { ref } from 'vue'
 const datingSimStore = useDatingSimStore()
 const isGenerating = ref(false)
 
-// Mock DSL settings for the UI
-const dslSettings = ref({
-  intimacyGating: true,
-  autoTicks: true,
-  dynamicModelHotSwap: true,
-  branchingChoices: true,
-})
+// Binding settings directly to datingSimStore.settings
 
 function toggleDatingSim(event: Event) {
   const target = event.target as HTMLInputElement
@@ -130,8 +124,267 @@ function clearTest() {
     </Section>
 
     <Section
-      title="DSL Engine Features"
+      title="Universal Features"
       icon="i-solar:settings-bold-duotone"
+      :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
+    >
+      <div :class="['flex flex-col gap-4', 'p-4']">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-medium">
+              Branching Choice Overlay
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Render dynamic dialogue choices from the DSL store.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.branchingChoices" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div>
+            <h3 class="font-medium">
+              Inline Captions Overlay
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Render character dialogue/subtitles directly overlaying the bottom screen.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.inlineCaption" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div>
+            <h3 class="font-medium">
+              Lightning Rounds (Timed Choices)
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Enable choice countdown timers to simulate high-pressure quick responses.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.lightningRounds" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">
+                Context Depth
+              </h3>
+              <p class="text-sm text-neutral-500">
+                Number of recent messages to include as context for generating suggestions/choices.
+              </p>
+            </div>
+            <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
+              {{ datingSimStore.settings.contextDepth }} messages
+            </span>
+          </div>
+          <input
+            v-model.number="datingSimStore.settings.contextDepth"
+            type="range"
+            min="5"
+            max="30"
+            step="1"
+            class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-blue-600 dark:bg-neutral-700"
+          >
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">
+                Game Mode
+              </h3>
+              <p class="text-sm text-neutral-500">
+                Choose between sandbox dialogue assisting and goal-driven dating sessions.
+              </p>
+            </div>
+            <select
+              v-model="datingSimStore.settings.gameMode"
+              class="border border-neutral-300 rounded-lg bg-white px-3 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
+            >
+              <option value="open_ended">
+                Sandbox (Open-Ended)
+              </option>
+              <option value="goal_driven">
+                Date Session (Goal-Driven)
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">
+                Scenery Image Spawn Route
+              </h3>
+              <p class="text-sm text-neutral-500">
+                Choose how story scenario concept arts are delivered to the interface.
+              </p>
+            </div>
+            <select
+              v-model="datingSimStore.settings.sceneryRoute"
+              class="border border-neutral-300 rounded-lg bg-white px-3 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
+            >
+              <option value="background">
+                Stage Background (Clean Overlay)
+              </option>
+              <option value="widget">
+                Standalone Widget
+              </option>
+              <option value="bg_widget">
+                Background & Widget (Default)
+              </option>
+              <option value="inherit">
+                Respect Autonomous Artistry settings
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div>
+            <h3 class="font-medium">
+              Live2D "Special Sauce" Expressions
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Enable advanced interactive expression hooks and automated motion matching for Live2D models.
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.enableSpecialSauce" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">
+                Tension Decay Rate
+              </h3>
+              <p class="text-sm text-neutral-500">
+                How quickly the tension drops each turn (higher means harder to maintain tension).
+              </p>
+            </div>
+            <span class="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-500 font-bold font-mono dark:bg-yellow-400/10 dark:text-yellow-400">
+              x{{ datingSimStore.settings.tensionDecayRate }}
+            </span>
+          </div>
+          <input
+            v-model.number="datingSimStore.settings.tensionDecayRate"
+            type="range"
+            min="0"
+            max="5"
+            step="0.5"
+            class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-yellow-500 dark:bg-neutral-700"
+          >
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">
+                Intimacy Gain Multiplier
+              </h3>
+              <p class="text-sm text-neutral-500">
+                Adjusts the speed at which intimacy grows from correct dialogue choices.
+              </p>
+            </div>
+            <span class="rounded bg-pink-500/10 px-2 py-0.5 text-xs text-pink-500 font-bold font-mono dark:bg-pink-400/10 dark:text-pink-400">
+              x{{ datingSimStore.settings.intimacyGainMultiplier }}
+            </span>
+          </div>
+          <input
+            v-model.number="datingSimStore.settings.intimacyGainMultiplier"
+            type="range"
+            min="0.5"
+            max="3"
+            step="0.5"
+            class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-pink-500 dark:bg-neutral-700"
+          >
+        </div>
+
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div>
+            <h3 class="font-medium">
+              Show Choice Weights
+            </h3>
+            <p class="text-sm text-neutral-500">
+              Display intimacy, tension, and AP costs directly on overlay choices (Debug Mode).
+            </p>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input v-model="datingSimStore.settings.showChoiceWeights" type="checkbox" class="peer sr-only">
+            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </label>
+        </div>
+
+        <div v-if="datingSimStore.settings.gameMode === 'goal_driven'" class="flex flex-col gap-4 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-medium">
+                  Max Score Threshold
+                </h3>
+                <p class="text-sm text-neutral-500">
+                  Target score required to resolve the date session.
+                </p>
+              </div>
+              <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
+                {{ datingSimStore.settings.maxScore }} points
+              </span>
+            </div>
+            <input
+              v-model.number="datingSimStore.settings.maxScore"
+              type="range"
+              min="10"
+              max="30"
+              step="1"
+              class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-blue-600 dark:bg-neutral-700"
+            >
+          </div>
+
+          <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-medium">
+                  Max Session Turns
+                </h3>
+                <p class="text-sm text-neutral-500">
+                  Turn/message limit constraint for the session.
+                </p>
+              </div>
+              <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
+                {{ datingSimStore.settings.maxTurns }} turns
+              </span>
+            </div>
+            <input
+              v-model.number="datingSimStore.settings.maxTurns"
+              type="range"
+              min="5"
+              max="15"
+              step="1"
+              class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-blue-600 dark:bg-neutral-700"
+            >
+          </div>
+        </div>
+      </div>
+    </Section>
+
+    <Section
+      title="Live2D Exclusives"
+      icon="i-solar:crown-bold-duotone"
       :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     >
       <div :class="['flex flex-col gap-4', 'p-4']">
@@ -145,7 +398,7 @@ function clearTest() {
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.intimacyGating" type="checkbox" class="peer sr-only">
+            <input v-model="datingSimStore.settings.intimacyGating" type="checkbox" class="peer sr-only">
             <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
           </label>
         </div>
@@ -160,37 +413,7 @@ function clearTest() {
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.autoTicks" type="checkbox" class="peer sr-only">
-            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
-          </label>
-        </div>
-
-        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
-          <div>
-            <h3 class="font-medium">
-              Dynamic Model Hot-Swapping
-            </h3>
-            <p class="text-sm text-neutral-500">
-              Zero-latency outfit and character swaps via the pipeline.
-            </p>
-          </div>
-          <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.dynamicModelHotSwap" type="checkbox" class="peer sr-only">
-            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
-          </label>
-        </div>
-
-        <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
-          <div>
-            <h3 class="font-medium">
-              Branching Choice Overlay
-            </h3>
-            <p class="text-sm text-neutral-500">
-              Render dynamic dialogue choices from the DSL store.
-            </p>
-          </div>
-          <label class="relative inline-flex cursor-pointer items-center">
-            <input v-model="dslSettings.branchingChoices" type="checkbox" class="peer sr-only">
+            <input v-model="datingSimStore.settings.autoTicks" type="checkbox" class="peer sr-only">
             <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
           </label>
         </div>
@@ -231,6 +454,36 @@ function clearTest() {
             <span class="text-blue-500 font-bold">{{ datingSimStore.variables.ActionPoints }}</span>
           </div>
           <input v-model.number="datingSimStore.variables.ActionPoints" type="range" min="0" max="5" step="1" class="w-full accent-blue-500">
+        </div>
+
+        <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+          <div class="flex items-center justify-between">
+            <h3 class="font-medium">
+              Positive Score
+            </h3>
+            <span class="text-emerald-500 font-bold">{{ datingSimStore.variables.positiveScore }}</span>
+          </div>
+          <input v-model.number="datingSimStore.variables.positiveScore" type="range" min="0" :max="datingSimStore.settings.maxScore" step="1" class="w-full accent-emerald-500">
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <h3 class="font-medium">
+              Negative Score
+            </h3>
+            <span class="text-red-500 font-bold">{{ datingSimStore.variables.negativeScore }}</span>
+          </div>
+          <input v-model.number="datingSimStore.variables.negativeScore" type="range" min="0" :max="datingSimStore.settings.maxScore" step="1" class="w-full accent-red-500">
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <h3 class="font-medium">
+              Turns Elapsed
+            </h3>
+            <span class="text-purple-500 font-bold">{{ datingSimStore.variables.turnsElapsed }}</span>
+          </div>
+          <input v-model.number="datingSimStore.variables.turnsElapsed" type="range" min="0" :max="datingSimStore.settings.maxTurns" step="1" class="w-full accent-purple-500">
         </div>
       </div>
     </Section>

@@ -93,6 +93,10 @@ export function setupTray(params: {
           params.mainWindow.show()
           params.mainWindow.focus()
         } },
+        { label: params.i18n.t('tamagotchi.electron.tray.menu.labels.label.open_control_strip'), click: () => {
+          params.mainWindow.show()
+          params.mainWindow.focus()
+        } },
         { type: 'separator' },
         {
           label: params.i18n.t('tamagotchi.electron.tray.menu.labels.label.align_to'),

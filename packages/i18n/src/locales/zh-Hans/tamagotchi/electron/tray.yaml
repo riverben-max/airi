@@ -29,3 +29,4 @@ menu:
       devtools: 开发者工具
       troubleshoot_beatsync: 排查「同步音律」问题...
       quit: 退出
+      open_control_strip: Open Control Strip

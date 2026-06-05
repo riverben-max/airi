@@ -11,10 +11,12 @@ import { useConsciousnessStore } from '../stores/modules/consciousness'
 import { useDiscordStore } from '../stores/modules/discord'
 import { useFactorioStore } from '../stores/modules/gaming-factorio'
 import { useMinecraftStore } from '../stores/modules/gaming-minecraft'
+import { useOsuStore } from '../stores/modules/gaming-osu'
 import { useHearingStore } from '../stores/modules/hearing'
 import { useSpeechStore } from '../stores/modules/speech'
 import { useTwitterStore } from '../stores/modules/twitter'
 import { useVisionStore } from '../stores/modules/vision'
+import { useSyncEngineStore } from '../stores/sync-engine'
 
 export interface Module {
   id: string
@@ -39,8 +41,10 @@ export function useModulesList() {
   const twitterStore = useTwitterStore()
   const minecraftStore = useMinecraftStore()
   const factorioStore = useFactorioStore()
+  const osuStore = useOsuStore()
   const artistryStore = useArtistryStore()
   const visionStore = useVisionStore()
+  const syncEngineStore = useSyncEngineStore()
   const beatSyncState = ref<BeatSyncDetectorState>()
 
   const modulesList = computed<Module[]>(() => [
@@ -144,6 +148,15 @@ export function useModulesList() {
       category: 'gaming',
     },
     {
+      id: 'gaming-osu',
+      name: t('settings.pages.modules.gaming-osu.title'),
+      description: t('settings.pages.modules.gaming-osu.description'),
+      icon: 'i-simple-icons:osu',
+      to: '/settings/modules/gaming-osu',
+      configured: osuStore.configured,
+      category: 'gaming',
+    },
+    {
       id: 'mcp-server',
       name: t('settings.pages.modules.mcp-server.title'),
       description: t('settings.pages.modules.mcp-server.description'),
@@ -159,6 +172,15 @@ export function useModulesList() {
       icon: 'i-solar:music-notes-bold-duotone',
       to: '/settings/modules/beat-sync',
       configured: beatSyncState.value?.isActive ?? false,
+      category: 'essential',
+    },
+    {
+      id: 'cloud-sync',
+      name: 'Cloud Sync',
+      description: 'Synchronize database and assets.',
+      icon: 'i-solar:cloud-bold-duotone',
+      to: '/settings/modules/cloud-sync',
+      configured: syncEngineStore.syncEnabled,
       category: 'essential',
     },
   ])

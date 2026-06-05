@@ -104,8 +104,12 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   const { streamingMessage } = storeToRefs(chatStream)
 
   const isMainWindow = typeof window !== 'undefined'
-    && !window.location.hash.startsWith('#/actor')
-    && !window.location.hash.startsWith('#/caption')
+    && (window.location.hash === '' || window.location.hash === '#/' || window.location.hash === '#')
+
+  const isChatWindow = typeof window !== 'undefined'
+    && window.location.hash.startsWith('#/chat')
+
+  const shouldListenToCaptions = isMainWindow || isChatWindow
 
   const { data: broadcastedInput, post: postInput } = useBroadcastChannel<
     {
@@ -139,7 +143,9 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
         }, payload.targetSessionId)
       }
     })
+  }
 
+  if (shouldListenToCaptions) {
     // Single Inter-Window IPC Listeners for real-time spoken sentence highlighting
     const { data: captionData } = useBroadcastChannel<any, any>({ name: 'airi-caption-overlay' })
     const { data: sessionUpdate } = useBroadcastChannel<any, any>({ name: 'airi-chat-stream' })
@@ -975,7 +981,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
                 import('@proj-airi/stage-ui/stores/dating-sim').then(({ useDatingSimStore }) => {
                   const store = useDatingSimStore()
                   if (store.enabled && store.choices.length === 0) {
-                    store.generateLiveChoices()
+                    store.directorICSweep()
                   }
                 }).catch(() => {})
                 break
@@ -1061,6 +1067,13 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       if (!speechText.trim() && (buildingMessage as any).categorization?.reasoning?.trim() && fallbackActive) {
         const fallbackText = (buildingMessage as any).categorization.reasoning
         buildingMessage.content = fallbackText
+        fullText = fallbackText
+        rawFullText = fallbackText
+        if (!(buildingMessage as any).categorization) {
+          ;(buildingMessage as any).categorization = { speech: '', reasoning: '' }
+        }
+        ;(buildingMessage as any).categorization.speech = fallbackText
+
         // Check if there is no text slice to display, and add one if missing
         const textSlice = buildingMessage.slices.find(s => s.type === 'text')
         if (textSlice && textSlice.type === 'text') {

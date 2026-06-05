@@ -35,7 +35,7 @@ export function useElectronMouseInElement(
   const elementWidth = shallowRef(0)
   const isOutside = shallowRef(true)
 
-  function resolveElement(val: any): Element | null {
+  function resolveElement(val: any): HTMLElement | SVGElement | null {
     let el = val
     while (el && typeof el === 'object') {
       if ('value' in el) {
@@ -48,7 +48,7 @@ export function useElectronMouseInElement(
         break
       }
     }
-    return el instanceof Element ? el : null
+    return (el instanceof Element ? el : null) as HTMLElement | SVGElement | null
   }
 
   const resolvedElement = computed(() => resolveElement(targetRef.value))

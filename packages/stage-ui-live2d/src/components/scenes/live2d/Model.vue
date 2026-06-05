@@ -25,12 +25,14 @@ import {
   useMotionUpdatePluginBeatSync,
   useMotionUpdatePluginIdleDisable,
   useMotionUpdatePluginIdleFocus,
+  useMotionUpdatePluginMouseFocus,
 } from '../../../composables/live2d'
 import { Emotion, EmotionNeutralMotionName } from '../../../constants/emotions'
 import { useLive2d } from '../../../stores/live2d'
 import { setOnZipLoaded } from '../../../utils/live2d-zip-loader'
 import { OPFSCacheV2 } from '../../../utils/opfs-loader'
 import { extractArtMeshColorsFromVTube, listVTubeColorRelatedKeys } from '../../../utils/vtube-artmesh-colors'
+import { useDatingSimStore } from '@proj-airi/stage-ui/stores/dating-sim'
 
 const props = withDefaults(defineProps<{
   modelSrc?: string
@@ -44,6 +46,7 @@ const props = withDefaults(defineProps<{
   paused?: boolean
   focusAt?: { x: number, y: number }
   disableFocusAt?: boolean
+  followSpeed?: number
   xOffset?: number | string
   yOffset?: number | string
   scale?: number
@@ -60,6 +63,7 @@ const props = withDefaults(defineProps<{
   paused: false,
   focusAt: () => ({ x: 0, y: 0 }),
   disableFocusAt: false,
+  followSpeed: 0.5,
   scale: 1,
   themeColorsHue: 220.44,
   themeColorsHueDynamic: false,
@@ -133,7 +137,6 @@ const offset = computed(() => parsePropsOffset())
 
 const pixiApp = toRef(() => props.app)
 const paused = toRef(() => props.paused)
-const focusAt = toRef(() => props.focusAt)
 const live2dStore = useLive2d()
 const { post: postCaption } = useBroadcastChannel<any, any>({ name: 'airi-caption-overlay' })
 const { model } = storeToRefs(live2dStore)
@@ -792,9 +795,15 @@ async function loadModel() {
       lastUpdateTime,
     })
 
+    const disableFocusAtRef = toRef(() => props.disableFocusAt)
+    const followSpeedRef = toRef(() => props.followSpeed)
+    const focusAtRef = toRef(() => props.focusAt)
+    const modelRef = ref(model)
+
     motionManagerUpdate.register(useMotionUpdatePluginBeatSync(beatSync), 'pre')
     motionManagerUpdate.register(useMotionUpdatePluginIdleDisable(), 'pre')
-    motionManagerUpdate.register(useMotionUpdatePluginIdleFocus(), 'post')
+    motionManagerUpdate.register(useMotionUpdatePluginMouseFocus(focusAtRef, disableFocusAtRef, followSpeedRef, modelRef, toRef(() => props.width), toRef(() => props.height)), 'post')
+    motionManagerUpdate.register(useMotionUpdatePluginIdleFocus(disableFocusAtRef), 'post')
     motionManagerUpdate.register(useMotionUpdatePluginAutoEyeBlink(), 'post')
 
     // NOTICE: ArtMesh colors must be applied after coreModel.update(), not in the motion hook.
@@ -1482,15 +1491,6 @@ watch(live2dIdleAnimationEnabled, (enabled) => {
   }
 })
 
-watch(focusAt, (value) => {
-  if (!model.value)
-    return
-  if (props.disableFocusAt)
-    return
-
-  model.value.focus(value.x, value.y)
-})
-
 onMounted(() => {
   const removeListener = listenBeatSyncBeatSignal(() => beatSync.scheduleBeat())
   onUnmounted(() => removeListener())
@@ -1604,8 +1604,18 @@ function onCanvasClick(event: MouseEvent) {
       const definitions = motionManager.definitions[matchedGroup]
       if (definitions && definitions.length > 0) {
         const randomIndex = Math.floor(Math.random() * definitions.length)
+        const def = definitions[randomIndex]
         console.info(`[Live2D Tactile] Playing motion for matched group: group="${matchedGroup}", index=${randomIndex}`)
-        model.value.motion(matchedGroup, randomIndex, MotionPriority.FORCE)
+        
+        // Pass the definition to the Dating Sim state machine (Special Sauce DSL)
+        const datingSimStore = useDatingSimStore()
+        const allowExecution = datingSimStore.executeJSONCommand(def)
+        
+        if (allowExecution !== false) {
+          model.value.motion(matchedGroup, randomIndex, MotionPriority.FORCE)
+        } else {
+          console.info(`[Live2D Tactile] Motion blocked by Dating Sim store bounds.`)
+        }
       }
     }
     else {

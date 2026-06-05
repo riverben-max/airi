@@ -11,7 +11,7 @@ import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&u
 import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
 import { useBackgroundThemeColor } from '@proj-airi/stage-layouts/composables/theme-color'
 import { useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
-import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
+import { RendererStage, WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
@@ -24,6 +24,8 @@ import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/
 import { breakpointsTailwind, useBreakpoints, useMouse } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+
+import { builtinTools } from '../stores/tools/builtin'
 
 const paused = ref(false)
 const componentStateStage = ref<'pending' | 'loading' | 'mounted'>('pending')
@@ -57,6 +59,7 @@ const providersStore = useProvidersStore()
 const consciousnessStore = useConsciousnessStore()
 const { activeProvider: activeChatProvider, activeModel: activeChatModel } = storeToRefs(consciousnessStore)
 const chatStore = useChatOrchestratorStore()
+chatStore.setToolsResolver(builtinTools)
 const llmStore = useLLM()
 
 watch([activeChatProvider, activeChatModel], async () => {
@@ -183,18 +186,31 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
         <div v-if="!isMobile" class="fixed left-4 top-[50%] z-10 px-3 -translate-y-1/2">
           <ViewControlInputs />
         </div>
-        <WidgetStage
-          v-model:state="componentStateStage"
-          flex-1 min-w="1/2"
-          :paused="paused"
-          :focus-at="{
-            x: positionCursor.x.value,
-            y: positionCursor.y.value,
-          }"
-          :x-offset="`${isMobile ? position.x : position.x - 10}%`"
-          :y-offset="positionInPercentageString.y"
-          :scale="scale"
-        />
+        <div relative flex-1 min-w="1/2">
+          <RendererStage
+            v-model:state="componentStateStage"
+            class="absolute inset-0 z-0"
+            :paused="paused"
+            :focus-at="{
+              x: positionCursor.x.value,
+              y: positionCursor.y.value,
+            }"
+            :x-offset="`${isMobile ? position.x : position.x - 10}%`"
+            :y-offset="positionInPercentageString.y"
+            :scale="scale"
+          />
+          <WidgetStage
+            class="absolute inset-0 z-10"
+            :paused="paused"
+            :focus-at="{
+              x: positionCursor.x.value,
+              y: positionCursor.y.value,
+            }"
+            :x-offset="`${isMobile ? position.x : position.x - 10}%`"
+            :y-offset="positionInPercentageString.y"
+            :scale="scale"
+          />
+        </div>
         <div v-if="isLoading" class="pointer-events-none absolute left-0 top-0 z-100 h-full w-full">
           <div class="absolute left-0 top-0 z-99 h-full w-full flex cursor-grab items-center justify-center overflow-hidden">
             <div

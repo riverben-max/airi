@@ -69,6 +69,8 @@ function saveSettings() {
       :placeholder="t(`${i18nKeyPrefix}.username-placeholder`)"
     />
 
+    <slot />
+
     <div>
       <Button
         :label="t('settings.common.save')"

@@ -1,19 +1,21 @@
 import type { Tool } from '@xsai/shared-chat'
 
+import { useDatingSimStore } from '@proj-airi/stage-ui/stores/dating-sim'
 import { tryGetMcpToolBridge } from '@proj-airi/stage-ui/stores/mcp-tool-bridge'
 import { useArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry'
 import { useStickersStore } from '@proj-airi/stage-ui/stores/stickers'
 
-import { datingSimTools } from './dating-sim'
 import { imageJournalTools } from './image-journal'
 import { mcpTools } from './mcp'
 import { stickersTools } from './stickers'
 import { textJournalTools } from './text-journal'
 import { widgetsTools } from './widgets'
+import { datingSimTools } from './dating-sim'
 
 export async function builtinTools(): Promise<Tool[]> {
   const artistry = useArtistryStore()
   const stickers = useStickersStore()
+  const datingSim = useDatingSimStore()
 
   const mcpBridge = tryGetMcpToolBridge()
   let hasMcpServers = false
@@ -35,12 +37,16 @@ export async function builtinTools(): Promise<Tool[]> {
 
   // Always enabled
   toolPromises.push(textJournalTools())
-  toolPromises.push(datingSimTools())
 
   // Artistry suite
   if (artistry.configured) {
-    console.log('[builtinTools] 🎨 Artistry configured, enabling widgets and image journal.')
-    toolPromises.push(widgetsTools())
+    if (datingSim.enabled) {
+      console.log('[builtinTools] 🎨 Artistry configured, but Dating Sim is enabled. Disabling widgets (stage_widgets) to prevent context pollution, keeping image journal.')
+    }
+    else {
+      console.log('[builtinTools] 🎨 Artistry configured, enabling widgets.')
+      toolPromises.push(widgetsTools())
+    }
     toolPromises.push(imageJournalTools())
   }
 
@@ -54,6 +60,11 @@ export async function builtinTools(): Promise<Tool[]> {
   if (hasMcpServers) {
     console.log('[builtinTools] 🔌 MCP Servers found, enabling mcp tools.')
     toolPromises.push(mcpTools())
+  }
+
+  if (datingSim.enabled) {
+    console.log('[builtinTools] 💖 Dating Sim enabled, enabling tools.')
+    toolPromises.push(datingSimTools())
   }
 
   const groups = await Promise.all(toolPromises)

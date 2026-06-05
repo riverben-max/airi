@@ -17,6 +17,10 @@ export function toggleWindowShow(window?: BrowserWindow | null): void {
     console.warn('[Main Process] [toggleWindowShow] Aborted: window instance is undefined or null')
     return
   }
+  if (window.isDestroyed()) {
+    console.warn('[Main Process] [toggleWindowShow] Aborted: window is destroyed')
+    return
+  }
   if (isRendererUnavailable(window)) {
     console.warn('[Main Process] [toggleWindowShow] Aborted: window renderer is unavailable')
     return

@@ -112,11 +112,18 @@ const { activeCard } = storeToRefs(cardStore)
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
 const vrmIdleAnimation = toRef(modelStore as any, 'vrmIdleAnimation')
 
+let lastIpcCaptionOpen: boolean | null = null
+let lastIpcStageEnabled: boolean | null = null
+
 watch(stageEnabled, (val) => {
+  if (val === lastIpcStageEnabled)
+    return
   toggleStageVisibility(val)
 }, { immediate: true })
 
 watch(captionOpen, (val) => {
+  if (val === lastIpcCaptionOpen)
+    return
   toggleCaptionVisibility(val)
 }, { immediate: true })
 
@@ -125,14 +132,6 @@ watch(stageEnabled, (newVal) => {
   if (settingsStore.captionFollowStage) {
     if (captionOpen.value !== newVal) {
       captionOpen.value = newVal
-    }
-  }
-})
-
-watch(captionOpen, (newVal) => {
-  if (settingsStore.captionFollowStage) {
-    if (stageEnabled.value !== newVal) {
-      controlStripStore.stageEnabled = newVal
     }
   }
 })
@@ -769,9 +768,11 @@ onMounted(async () => {
       controlStripStore.chatOpen = isOpen
     })
     window.electron.ipcRenderer.on('caption-window-state', (_, isOpen: boolean) => {
+      lastIpcCaptionOpen = isOpen
       controlStripStore.captionOpen = isOpen
     })
     window.electron.ipcRenderer.on('stage-window-state', (_, isOpen: boolean) => {
+      lastIpcStageEnabled = isOpen
       controlStripStore.stageEnabled = isOpen
     })
   }
