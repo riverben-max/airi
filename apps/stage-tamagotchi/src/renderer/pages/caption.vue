@@ -7,9 +7,9 @@ import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { refDebounced } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { captionGetIsFollowingWindow, captionIsFollowingWindowChanged, electronCaptionSetFollowWindow, electronSetIgnoreMouseEvents } from '../../shared/eventa'
+import { captionGetIsFollowingWindow, captionIsFollowingWindowChanged, electron, electronCaptionSetFollowWindow } from '../../shared/eventa'
 
-const setIgnoreMouseEvents = useElectronEventaInvoke(electronSetIgnoreMouseEvents)
+const setIgnoreMouseEvents = useElectronEventaInvoke(electron.window.setIgnoreMouseEvents)
 const setFollowWindow = useElectronEventaInvoke(electronCaptionSetFollowWindow)
 const attached = ref(true)
 const settingsStore = useSettings()
@@ -23,7 +23,7 @@ const { isOutside: isOutsideDragHandle } = useElectronMouseInElement(dragHandleR
 
 watch(isOutsideDragHandle, (outside) => {
   console.log('[Caption] drag handle hover outside changed:', outside)
-  setIgnoreMouseEvents(outside)
+  setIgnoreMouseEvents([outside, { forward: true }])
 })
 
 const { isNearAnyBorder: isAroundWindowBorder } = useElectronMouseAroundWindowBorder({ threshold: 30 })
