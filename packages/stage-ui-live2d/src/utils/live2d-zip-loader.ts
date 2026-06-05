@@ -28,6 +28,21 @@ ZipLoader.createSettings = async (reader: JSZip) => {
   // Handle models with anonymous motion groups (empty string)
   // We remap them to 'Idle' to ensure AIRI can start initial animations
   const rawJson = (settings as any).json
+
+  // Manually parse the raw model3.json from the zip to preserve the custom triggers/DSL
+  try {
+    const filePaths = Object.keys(reader.files)
+    const settingsPath = filePaths.find(file => isSettingsFile(file))
+    if (settingsPath) {
+      const text = await reader.file(settingsPath)!.async('text')
+      ;(settings as any)._rawModelJson = JSON.parse(text)
+      console.info('[ZipLoader] Successfully preserved _rawModelJson with custom DSL triggers')
+    }
+  }
+  catch (e) {
+    console.warn('[ZipLoader] Failed to preserve _rawModelJson:', e)
+  }
+
   const fileRefs = rawJson?.FileReferences || rawJson?.fileReferences
   const motions = fileRefs?.Motions || (settings as any).motions
 

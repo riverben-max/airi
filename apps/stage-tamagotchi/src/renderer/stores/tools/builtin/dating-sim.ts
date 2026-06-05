@@ -31,7 +31,7 @@ export async function datingSimTools(): Promise<Tool[]> {
 
       // Generate the next set of choices in the background
       setTimeout(() => {
-        store.generateLiveChoices()
+        store.directorICSweep()
       }, 1000)
 
       return `Updated variables: Intimacy=${store.getVariable('Intimacy')}, Tension=${store.getVariable('Tension')}, ActionPoints=${store.getVariable('ActionPoints')}.`

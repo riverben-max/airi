@@ -6,6 +6,7 @@ import type { PixiLive2DInternalModel } from '../../../composables/live2d'
 import JSZip from 'jszip'
 
 import { listenBeatSyncBeatSignal } from '@proj-airi/stage-shared/beat-sync'
+import { useDatingSimStore } from '@proj-airi/stage-ui/stores/dating-sim'
 import { useTheme } from '@proj-airi/ui'
 import { breakpointsTailwind, until, useBreakpoints, useBroadcastChannel, useDebounceFn } from '@vueuse/core'
 import { formatHex } from 'culori'
@@ -32,7 +33,6 @@ import { useLive2d } from '../../../stores/live2d'
 import { setOnZipLoaded } from '../../../utils/live2d-zip-loader'
 import { OPFSCacheV2 } from '../../../utils/opfs-loader'
 import { extractArtMeshColorsFromVTube, listVTubeColorRelatedKeys } from '../../../utils/vtube-artmesh-colors'
-import { useDatingSimStore } from '@proj-airi/stage-ui/stores/dating-sim'
 
 const props = withDefaults(defineProps<{
   modelSrc?: string
@@ -1016,7 +1016,7 @@ async function loadModel() {
     // --- Metadata Parsing (CDI & EXP) - ALPHA DEBUG MODE
     try {
       const settings = internalModel.settings as any
-      const rawJson = settings?.json
+      const rawJson = settings?._rawModelJson || settings?.json
 
       const fileRefs = rawJson?.FileReferences || rawJson?.fileReferences
 
@@ -1026,6 +1026,11 @@ async function loadModel() {
       artMeshColors.value = resolvedMeta.artMeshColors || {}
       if (Object.keys(artMeshColors.value).length > 0) {
         console.info('[Live2D] Loaded ArtMesh colors from .vtube.json:', Object.keys(artMeshColors.value).length)
+      }
+
+      console.info('[Live2D Load] Raw JSON fileRefs motions keys:', Object.keys(rawJson?.FileReferences?.Motions || rawJson?.fileReferences?.motions || {}))
+      if (rawJson?.FileReferences?.Motions?.Tapbody) {
+        console.info('[Live2D Load] Tapbody raw definitions in manifest:', rawJson.FileReferences.Motions.Tapbody)
       }
 
       if (!cdiData) {
@@ -1250,14 +1255,97 @@ async function setMotion(motionName: string, index?: number) {
     return
   }
 
-  console.info('Setting motion:', motionName, 'index:', index)
+  const internalModel = model.value.internalModel
+  const motionManager = internalModel?.motionManager
+
+  // Resolve group and index from colon-separated string or conditional guards
+  let resolvedGroup = motionName
+  let resolvedIndex = index
+
+  if (motionName.includes(':')) {
+    const parts = motionName.split(':')
+    resolvedGroup = parts[0]
+    const nameOrIndex = parts[1]
+
+    const parsedIdx = Number.parseInt(nameOrIndex, 10)
+    if (!Number.isNaN(parsedIdx)) {
+      resolvedIndex = parsedIdx
+    }
+    else {
+      if (motionManager && motionManager.definitions && motionManager.definitions[resolvedGroup]) {
+        const defs = motionManager.definitions[resolvedGroup]
+        if (defs) {
+          const foundIndex = defs.findIndex((d: any) =>
+            d.Name === nameOrIndex
+            || d.name === nameOrIndex
+            || d.File === nameOrIndex
+            || (d.File && d.File.includes(nameOrIndex)),
+          )
+          if (foundIndex !== -1) {
+            resolvedIndex = foundIndex
+          }
+          else {
+            const match = availableMotions.value.find(m =>
+              m.motionName === resolvedGroup
+              && (m.fileName.toLowerCase() === nameOrIndex.toLowerCase()
+                || m.fileName.toLowerCase().includes(nameOrIndex.toLowerCase())
+                || (m.sound && m.sound.toLowerCase().includes(nameOrIndex.toLowerCase()))),
+            )
+            if (match) {
+              resolvedIndex = match.motionIndex
+            }
+          }
+        }
+      }
+    }
+  }
+  else if (index === undefined) {
+    if (motionManager && motionManager.definitions && !motionManager.definitions[motionName]) {
+      const match = availableMotions.value.find(m =>
+        m.fileName.toLowerCase() === motionName.toLowerCase()
+        || m.fileName.toLowerCase().includes(motionName.toLowerCase())
+        || (m.sound && m.sound.toLowerCase().includes(motionName.toLowerCase())),
+      )
+      if (match) {
+        resolvedGroup = match.motionName
+        resolvedIndex = match.motionIndex
+      }
+    }
+  }
+
+  // If resolvedIndex is still undefined, evaluate VarFloats conditional guards to pick the correct index
+  if (resolvedIndex === undefined && motionManager && motionManager.definitions && motionManager.definitions[resolvedGroup]) {
+    const defs = motionManager.definitions[resolvedGroup]
+    if (defs) {
+      const datingSimStore = useDatingSimStore()
+      const matchedIndex = defs.findIndex((def: any) => {
+        if (def.VarFloats && Array.isArray(def.VarFloats)) {
+          for (const v of def.VarFloats) {
+            if (v.Type === 1) {
+              const conditionStr = `${v.Name} ${v.Code}`
+              if (!datingSimStore.evaluateCondition(conditionStr)) {
+                return false
+              }
+            }
+          }
+        }
+        return true
+      })
+      if (matchedIndex !== -1) {
+        resolvedIndex = matchedIndex
+      }
+    }
+  }
+
+  const finalIndex = resolvedIndex ?? 0
+  console.info('Setting motion resolved:', resolvedGroup, 'index:', finalIndex)
   try {
-    await applyMotionPlaybackPolicy(motionName, index ?? 0)
-    await model.value.motion(motionName, index, MotionPriority.FORCE)
-    console.info('Motion started successfully:', motionName)
+    await applyMotionPlaybackPolicy(resolvedGroup, finalIndex)
+    await model.value.motion(resolvedGroup, finalIndex, MotionPriority.FORCE)
+    console.info('Motion started successfully:', resolvedGroup)
   }
   catch (error) {
-    console.error('Failed to start motion:', motionName, error)
+    console.error('Failed to start motion:', resolvedGroup, error)
   }
 }
 
@@ -1425,6 +1513,38 @@ watch(modelParameters, (params) => {
   }
 }, { deep: true })
 
+// Watch activeExpressions and restore parameter baseline if cleared or modified
+watch(activeExpressions, (newVal) => {
+  const coreModel = getCoreModel()
+  if (!coreModel)
+    return
+
+  if (Object.keys(newVal).length === 0) {
+    restoreNeutralParameterBaseline(coreModel)
+    const paramIds = coreModel._parameterIds || coreModel._model?._parameterIds || []
+    paramIds.forEach((id: string, index: number) => {
+      modelParameters.value[id] = coreModel.getParameterValueByIndex?.(index) ?? 0
+    })
+  }
+  else {
+    restoreNeutralParameterBaseline(coreModel)
+    for (const [fileName, weight] of Object.entries(newVal)) {
+      if (weight > 0) {
+        const expEntry = expressionData.value.find((e: any) => e.fileName === fileName)
+        if (expEntry?.data?.Parameters) {
+          for (const param of expEntry.data.Parameters) {
+            const id = param.Id || param.id
+            const value = param.Value ?? param.value
+            if (id !== undefined && value !== undefined) {
+              modelParameters.value[id] = value
+            }
+          }
+        }
+      }
+    }
+  }
+}, { deep: true })
+
 function applyParameters(coreModel: any, params: Record<string, number>) {
   // Standard parameters
   coreModel.setParameterValueById('ParamAngleX', params.angleX)
@@ -1573,56 +1693,84 @@ function onCanvasClick(event: MouseEvent) {
     const hitArea = hitAreas[0]
     console.info(`[Live2D Tactile] Clicked hit area: ${hitArea} at global(${globalX.toFixed(1)}, ${globalY.toFixed(1)})`)
 
-    const internalModel = model.value.internalModel
-    const motionManager = internalModel?.motionManager
-    if (!motionManager)
-      return
+    try {
+      const internalModel = model.value.internalModel
+      const motionManager = internalModel?.motionManager
+      console.info('[Live2D Tactile] Diagnostic: motionManager exists:', !!motionManager, 'definitions:', motionManager ? Object.keys(motionManager.definitions || {}) : 'none')
 
-    const groups = Object.keys(motionManager.definitions || {})
+      if (!motionManager) {
+        console.warn('[Live2D Tactile] early exit: no motionManager found')
+        return
+      }
 
-    // Smart matching rules for hitArea mapping to motion definitions:
-    // 1. Exact match (case insensitive)
-    let matchedGroup = groups.find(g => g.toLowerCase() === hitArea.toLowerCase())
-    // 2. Definition group starts with hitArea
-    if (!matchedGroup) {
-      matchedGroup = groups.find(g => g.toLowerCase().startsWith(hitArea.toLowerCase()))
-    }
-    // 3. HitArea starts with definition group
-    if (!matchedGroup) {
-      matchedGroup = groups.find(g => hitArea.toLowerCase().startsWith(g.toLowerCase()))
-    }
-    // 4. Definition group contains hitArea
-    if (!matchedGroup) {
-      matchedGroup = groups.find(g => g.toLowerCase().includes(hitArea.toLowerCase()))
-    }
-    // 5. HitArea contains definition group
-    if (!matchedGroup) {
-      matchedGroup = groups.find(g => hitArea.toLowerCase().includes(g.toLowerCase()))
-    }
+      const groups = Object.keys(motionManager.definitions || {})
 
-    if (matchedGroup) {
-      const definitions = motionManager.definitions[matchedGroup]
-      if (definitions && definitions.length > 0) {
-        const randomIndex = Math.floor(Math.random() * definitions.length)
-        const def = definitions[randomIndex]
-        console.info(`[Live2D Tactile] Playing motion for matched group: group="${matchedGroup}", index=${randomIndex}`)
-        
-        // Pass the definition to the Dating Sim state machine (Special Sauce DSL)
-        const datingSimStore = useDatingSimStore()
-        const allowExecution = datingSimStore.executeJSONCommand(def)
-        
-        if (allowExecution !== false) {
-          model.value.motion(matchedGroup, randomIndex, MotionPriority.FORCE)
-        } else {
-          console.info(`[Live2D Tactile] Motion blocked by Dating Sim store bounds.`)
+      // Smart matching rules for hitArea mapping to motion definitions:
+      // 1. Exact match (case insensitive)
+      let matchedGroup = groups.find(g => g.toLowerCase() === hitArea.toLowerCase())
+      // 2. Definition group starts with hitArea
+      if (!matchedGroup) {
+        matchedGroup = groups.find(g => g.toLowerCase().startsWith(hitArea.toLowerCase()))
+      }
+      // 3. HitArea starts with definition group
+      if (!matchedGroup) {
+        matchedGroup = groups.find(g => hitArea.toLowerCase().startsWith(g.toLowerCase()))
+      }
+      // 4. Definition group contains hitArea
+      if (!matchedGroup) {
+        matchedGroup = groups.find(g => g.toLowerCase().includes(hitArea.toLowerCase()))
+      }
+      // 5. HitArea contains definition group
+      if (!matchedGroup) {
+        matchedGroup = groups.find(g => hitArea.toLowerCase().includes(g.toLowerCase()))
+      }
+
+      console.info('[Live2D Tactile] matchedGroup:', matchedGroup)
+
+      if (matchedGroup) {
+        const settings = internalModel?.settings as any
+        const rawJson = settings?._rawModelJson || settings?.json
+        const rawDefs = rawJson?.FileReferences?.Motions?.[matchedGroup]
+          || rawJson?.fileReferences?.motions?.[matchedGroup]
+          || (motionManager?.definitions ? motionManager.definitions[matchedGroup] : null)
+
+        console.info('[Live2D Tactile] Definitions for matchedGroup:', matchedGroup, 'count:', rawDefs?.length, rawDefs)
+
+        if (rawDefs && rawDefs.length > 0) {
+          const randomIndex = Math.floor(Math.random() * rawDefs.length)
+          const def = rawDefs[randomIndex]
+          console.info(`[Live2D Tactile] Playing motion for matched group: group="${matchedGroup}", index=${randomIndex}`, def)
+
+          // Pass the definition to the Dating Sim state machine (Special Sauce DSL)
+          const datingSimStore = useDatingSimStore()
+          const allowExecution = datingSimStore.executeJSONCommand(def)
+          console.info('[Live2D Tactile] datingSimStore execution allowed:', allowExecution)
+
+          if (allowExecution !== false) {
+            if (def.File || def.file) {
+              model.value.motion(matchedGroup, randomIndex, MotionPriority.FORCE)
+            }
+            else {
+              console.info(`[Live2D Tactile] Command-only motion executed without WebGL animation file.`)
+            }
+          }
+          else {
+            console.info(`[Live2D Tactile] Motion blocked by Dating Sim store bounds.`)
+          }
+        }
+        else {
+          console.warn('[Live2D Tactile] Matched group has no definitions in raw JSON or motionManager')
+        }
+      }
+      else {
+        console.warn(`[Live2D Tactile] No matching motion group found starting with or related to hitArea: ${hitArea}`)
+        if (hitArea.toLowerCase().includes('body')) {
+          model.value.motion('tap_body')
         }
       }
     }
-    else {
-      console.warn(`[Live2D Tactile] No matching motion group found starting with or related to hitArea: ${hitArea}`)
-      if (hitArea.toLowerCase().includes('body')) {
-        model.value.motion('tap_body')
-      }
+    catch (err) {
+      console.error('[Live2D Tactile] Error inside onCanvasClick execution:', err)
     }
   }
 }

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import CaptionPanel from '@proj-airi/stage-ui/components/scenes/CaptionPanel.vue'
-
 import { defineInvoke } from '@moeru/eventa'
 import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseAroundWindowBorder, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
 import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { refDebounced } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
+
+import CaptionPanel from '../../../../../packages/stage-ui/src/components/scenes/CaptionPanel.vue'
 
 import { captionGetIsFollowingWindow, captionIsFollowingWindowChanged, electronCaptionSetFollowWindow, electronSetIgnoreMouseEvents } from '../../shared/eventa'
 
