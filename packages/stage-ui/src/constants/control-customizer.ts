@@ -191,7 +191,7 @@ export const CUSTOMIZER_CATALOG: CustomizerGroup[] = [
       {
         id: 'caption-layout-mode',
         label: 'Caption Layout Mode',
-        description: 'Cycles subtitle display layout (Standard Bubble vs Multi-line History).',
+        description: 'Toggles subtitle display layout (Active Sentence Only vs Full Dialogue Block).',
         icon: 'i-solar:window-frame-linear',
         type: 'cycler',
         defaultOnStrip: false,

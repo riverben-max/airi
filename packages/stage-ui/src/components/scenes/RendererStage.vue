@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { Live2DScene } from '@proj-airi/stage-ui-live2d'
+import { Live2DScene, useLive2d } from '@proj-airi/stage-ui-live2d'
 import { MMDScene } from '@proj-airi/stage-ui-mmd'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene, useModelStore } from '@proj-airi/stage-ui-three'
 import { useBroadcastChannel } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, ref, toRaw, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, toRaw, watch } from 'vue'
+
+import DatingSimOverlay from './DatingSimOverlay.vue'
 
 import { useBackgroundStore } from '../../stores/background'
+import { useDatingSimStore } from '../../stores/dating-sim'
 import { useAiriCardStore } from '../../stores/modules'
 import { useSettings } from '../../stores/settings'
 import { useVHackStore } from '../../stores/vhack'
@@ -283,6 +286,66 @@ watch(stageCaptureSignal, async (val) => {
   }
 })
 
+// Dating Sim DSL event handlers — bridge custom window events from the DSL pipeline to Live2D store
+function handleTriggerMotion(e: Event) {
+  const detail = (e as CustomEvent).detail
+  useLive2d().currentMotion = { group: detail }
+}
+function handleClearExp() {
+  useLive2d().activeExpressions = {}
+}
+function handleMotionsEnable(e: Event) {
+  const detail = (e as CustomEvent).detail
+  settingsStore.live2dIdleAnimationEnabled = detail
+}
+function handleChangeCos(e: Event) {
+  const detail = (e as CustomEvent).detail
+  settingsStore.stageModelSelectedUrl = detail
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('dating-sim:trigger-motion', handleTriggerMotion)
+    window.addEventListener('dating-sim:clear-exp', handleClearExp)
+    window.addEventListener('dating-sim:motions-enable', handleMotionsEnable)
+    window.addEventListener('dating-sim:change-cos', handleChangeCos)
+
+    if ((window as any).electron) {
+      try {
+        if (typeof (window as any).electron.ipcRenderer.removeAllListeners === 'function') {
+          (window as any).electron.ipcRenderer.removeAllListeners('dating-sim-toggle')
+        }
+      }
+      catch (e) {
+        console.warn('[RendererStage] Failed to remove dating-sim-toggle listeners', e)
+      }
+
+      const removeListener = (window as any).electron.ipcRenderer.on('dating-sim-toggle', () => {
+        const ds = useDatingSimStore()
+        ds.toggleDatingSim()
+      })
+
+      onUnmounted(() => {
+        if (removeListener)
+          removeListener()
+      })
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('dating-sim:trigger-motion', handleTriggerMotion)
+    window.removeEventListener('dating-sim:clear-exp', handleClearExp)
+    window.removeEventListener('dating-sim:motions-enable', handleMotionsEnable)
+    window.removeEventListener('dating-sim:change-cos', handleChangeCos)
+
+    if ((window as any).electron) {
+      (window as any).electron.ipcRenderer.removeAllListeners('dating-sim-toggle')
+    }
+  }
+})
+
 defineExpose({
   canvasElement,
   captureFrame,
@@ -396,5 +459,6 @@ defineExpose({
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
     />
+    <DatingSimOverlay />
   </div>
 </template>

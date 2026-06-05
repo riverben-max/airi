@@ -10,6 +10,7 @@ import { computed, onMounted, ref, toRef, watch } from 'vue'
 import CharacterAvatar from '../../misc/CharacterAvatar.vue'
 
 import { useBackgroundStore } from '../../../stores/background'
+import { useDatingSimStore } from '../../../stores/dating-sim'
 import { useDisplayModelsStore } from '../../../stores/display-models'
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 import { useLiveSessionStore } from '../../../stores/modules/live-session'
@@ -27,6 +28,7 @@ const colorMode = useColorMode()
 const controlStripStore = useSettingsControlStrip()
 const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed, selfieIncludeBg } = storeToRefs(controlStripStore)
 const displayModelsStore = useDisplayModelsStore()
+const datingSimStore = useDatingSimStore()
 
 const avatarSearch = ref('')
 const avatarTypeFilter = ref('all')
@@ -436,7 +438,7 @@ onMounted(async () => {
 
 function applySizePreset(
   target: 'actor' | 'chat',
-  preset?: 'mini' | 'medium' | 'large' | 'full',
+  preset?: string,
   alignment?: string,
 ) {
   if (typeof window !== 'undefined') {
@@ -452,6 +454,11 @@ function applySizePreset(
   if (preset) {
     activePopover.value = null
   }
+}
+
+function toggleDatingSimMode() {
+  datingSimStore.toggleDatingSim()
+  applySizePreset('actor', datingSimStore.enabled ? 'dating-sim-on' : 'dating-sim-off')
 }
 
 function selectMonitor(target: 'actor' | 'chat', m: number) {
@@ -1158,9 +1165,28 @@ function getShortLabel(btnId: string): string {
         <!-- STAGE PRESETS POPOVER -->
         <div v-if="activePopover === 'stage-preset'" class="flex flex-col gap-2">
           <div class="flex items-center justify-between border-b border-neutral-200 pb-1.5 dark:border-neutral-800">
-            <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase">Stage Size Presets</span>
+            <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase">Stage Layout & Presets</span>
             <button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300" @click="activePopover = null">
               <span class="i-solar:close-circle-outline text-lg" />
+            </button>
+          </div>
+
+          <!-- Dating Sim Mode Toggle Row -->
+          <div class="flex items-center justify-between border border-rose-500/10 rounded-xl bg-rose-500/5 p-2 dark:border-rose-500/20 dark:bg-rose-950/10">
+            <div class="flex items-center gap-2">
+              <span class="i-solar:heart-bold text-base text-rose-500" :class="{ 'animate-pulse': datingSimStore.enabled }" />
+              <span class="text-[11px] text-neutral-700 font-bold dark:text-neutral-300">Dating Sim Mode</span>
+            </div>
+            <button
+              :class="[
+                'px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all active:scale-95 border cursor-pointer',
+                datingSimStore.enabled
+                  ? 'bg-gradient-to-r from-rose-500 to-fuchsia-600 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.4)]'
+                  : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200/60 dark:border-neutral-750 text-neutral-500 hover:border-rose-400/40 hover:text-rose-400',
+              ]"
+              @click="toggleDatingSimMode"
+            >
+              {{ datingSimStore.enabled ? 'On' : 'Off' }}
             </button>
           </div>
 

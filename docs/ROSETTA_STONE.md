@@ -153,4 +153,23 @@ Concise mapping of conceptual features to technical file paths for rapid context
   1. Modifying operations (`recordDirectorDecision`, `updateDirectorDecision`, `archiveSessionNotes`) post a synchronization event: `broadcastDirectorEvent({ type: 'director-note-added', sessionId, note })`.
   2. Every store instance listens to the channel, filters events matching the currently active `sessionId`, and reactively updates its local `directorNotes` ref in memory.
 
+## MCP (Model Context Protocol) Architecture
+
+- **Configuration Path**: `%AppData%/airi/mcp.json` (Managed by Electron `userData` paths).
+- **Electron Client Manager (Main Process)**: `apps/stage-tamagotchi/src/main/services/airi/mcp-servers/index.ts` (Controls stdio connection, server lifecycles, lists tools, and delegates qualified `serverName::toolName` executions).
+- **IPC Eventa Contracts**: `electronMcpListTools`, `electronMcpCallTool` defined in `apps/stage-tamagotchi/src/shared/eventa.ts`.
+- **Renderer Bridge**: `packages/stage-ui/src/stores/mcp-tool-bridge.ts` (Exposes `listTools()`, `callTool()`, and `getRuntimeStatus()` cross-window via `window.__AIRI_MCP_BRIDGE__`).
+- **Builtin LLM-Level Meta-Tools**: `apps/stage-tamagotchi/src/renderer/stores/tools/builtin/mcp.ts`
+  - `mcp_list_tools`: Discovers all tools on active MCP servers.
+  - `mcp_call_tool`: Dynamically executes tools on the connected servers.
+- **Multi-Step Execution Gating**: `packages/stage-ui/src/stores/llm.ts` configures `maxSteps: 10` for `@xsai/stream-text` and `generateText`, enabling the LLM to autonomously chain consecutive tool calls (e.g. discovery, search, read) inside a single response cycle.
+- **Google Search Grounding (Gemini Live)**: `packages/stage-ui/src/stores/modules/live-session.ts` (Conditioned on `isGroundingEnabled`, bypasses traditional tool calls by directly attaching google search grounding to the socket context).
+
+## Memory Systems (LTMM & Proactivity)
+
+- **Long-Term Memory Module (LTMM)**: `packages/stage-ui/src/stores/memory-text-journal.ts` (IndexedDB persistent storage for per-character memory records).
+- **Built-in Memory Tools**: `apps/stage-tamagotchi/src/renderer/stores/tools/builtin/text-journal.ts` (Declares `text_journal` capabilities `create` and `search` actions directly to the LLM).
+- **Proactive Execution (Heartbeats)**: `packages/stage-ui/src/stores/proactivity.ts` (Active heartbeat loop that compiles environmental sensors and calls `resolveRegisteredTools()` to expose both internal tools and external MCP tools proactively to the character when idle).
+
+
 
