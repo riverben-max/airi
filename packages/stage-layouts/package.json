@@ -57,6 +57,7 @@
     "vue-sonner": "catalog:"
   },
   "devDependencies": {
+    "@moeru/three-mmd": "^0.1.0-beta.3",
     "@nekopaw/tempora": "catalog:",
     "@proj-airi/stage-shared": "workspace:^",
     "@types/audioworklet": "catalog:",

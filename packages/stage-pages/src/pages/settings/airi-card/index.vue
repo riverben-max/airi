@@ -105,10 +105,17 @@ onMounted(() => {
       (window as any).electron?.ipcRenderer.removeListener('chara-card-downloaded', handler)
     }
   }
+
+  window.addEventListener('dragover', onDragOver)
+  window.addEventListener('dragleave', onDragLeave)
+  window.addEventListener('drop', onDrop)
 })
 
 onUnmounted(() => {
   removeIpcListener()
+  window.removeEventListener('dragover', onDragOver)
+  window.removeEventListener('dragleave', onDragLeave)
+  window.removeEventListener('drop', onDrop)
 })
 
 // Initial tab for the detail dialog
@@ -142,11 +149,49 @@ watch(
 
 // Search query
 const searchQuery = ref('')
+const isSearchExpanded = ref(false)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+watch(isSearchExpanded, (expanded) => {
+  if (expanded) {
+    setTimeout(() => {
+      searchInputRef.value?.focus()
+    }, 50)
+  }
+})
 
 // Sort option
 const sortOption = ref('nameAsc')
 
 const inputFiles = ref<File[]>([])
+
+// Upload/Import panel & page drag states
+const isUploadZoneOpen = ref(false)
+const isWindowDragging = ref(false)
+
+function onDragOver(e: DragEvent) {
+  e.preventDefault()
+  isWindowDragging.value = true
+}
+
+function onDragLeave(e: DragEvent) {
+  e.preventDefault()
+  if (e.relatedTarget === null) {
+    isWindowDragging.value = false
+  }
+}
+
+async function onDrop(e: DragEvent) {
+  e.preventDefault()
+  isWindowDragging.value = false
+  const files = e.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    if (file.name.toLowerCase().endsWith('.png') || file.name.toLowerCase().endsWith('.json')) {
+      inputFiles.value = [file]
+    }
+  }
+}
 
 const cardSourceLinks = [
   {
@@ -865,31 +910,47 @@ function getDisplayModelId(id: string) {
 
 <template>
   <div rounded-xl p-4 flex="~ col gap-4">
-    <!-- Toolbar with search, filters, and primary buttons -->
-    <div flex="~ col lg:row" items-stretch justify-between gap-4 lg:items-center>
-      <!-- Left side: Search bar & Sort options -->
-      <div flex="~ col sm:row" flex-1 items-stretch gap-4 sm:items-center>
-        <!-- Search bar -->
-        <div class="relative flex-1" inline-flex="~" w-full items-center>
-          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <div i-solar:magnifer-line-duotone class="text-neutral-500 dark:text-neutral-400" />
+    <!-- Compact actions toolbar -->
+    <div flex="~ row" items-center justify-between gap-2 class="relative min-h-[38px] w-full">
+      <!-- Left actions / Expandable Search & Sort -->
+      <div flex="~ row" min-w-0 flex-1 items-center gap-2>
+        <!-- Search Toggle & Input -->
+        <div class="relative flex items-center" :class="isSearchExpanded || searchQuery ? 'flex-1' : ''">
+          <Button
+            v-if="!isSearchExpanded && !searchQuery"
+            variant="ghost"
+            icon="i-solar:magnifer-line-duotone"
+            class="h-[38px] w-[38px] border border-neutral-200 rounded-xl bg-white/60 dark:border-neutral-800 dark:bg-neutral-900/30 !p-0"
+            @click="isSearchExpanded = true"
+          />
+          <div v-else class="relative w-full flex items-center">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <div i-solar:magnifer-line-duotone class="text-sm text-neutral-500 dark:text-neutral-400" />
+            </div>
+            <input
+              ref="searchInputRef"
+              v-model="searchQuery"
+              type="search"
+              class="h-[38px] w-full rounded-xl p-2 pl-9 pr-7 text-xs outline-none"
+              border="focus:primary-100 dark:focus:primary-400/50 2 solid neutral-200 dark:neutral-800"
+              transition="all duration-200 ease-in-out"
+              bg="white dark:neutral-900"
+              :placeholder="t('settings.pages.card.search')"
+              @blur="searchQuery === '' ? isSearchExpanded = false : null"
+            >
+            <button
+              v-if="isSearchExpanded || searchQuery"
+              class="absolute right-2.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              @click="searchQuery = ''; isSearchExpanded = false"
+            >
+              <div i-solar:close-square-bold-duotone />
+            </button>
           </div>
-          <input
-            v-model="searchQuery"
-            type="search"
-            class="w-full rounded-xl p-2.5 pl-10 text-sm outline-none"
-            border="focus:primary-100 dark:focus:primary-400/50 2 solid neutral-200 dark:neutral-800"
-            transition="all duration-200 ease-in-out"
-            bg="white dark:neutral-900"
-            :placeholder="t('settings.pages.card.search')"
-          >
         </div>
 
-        <!-- Sort options -->
-        <div class="relative flex flex-row items-center gap-2">
-          <div class="whitespace-nowrap text-sm text-neutral-500 dark:text-neutral-400">
-            {{ t('settings.pages.card.sort_by') }}:
-          </div>
+        <!-- Sort dropdown (compact) -->
+        <div class="relative h-[38px] flex items-center gap-1.5">
+          <div i-solar:sort-vertical-line-duotone class="ml-1 text-lg text-neutral-500 dark:text-neutral-400" />
           <Select
             v-model="sortOption"
             :options="[
@@ -897,51 +958,63 @@ function getDisplayModelId(id: string) {
               { value: 'nameDesc', label: t('settings.pages.card.name_desc') },
               { value: 'recent', label: t('settings.pages.card.recent') },
             ]"
-            placeholder="Select sort option"
-            class="min-w-[150px]"
+            placeholder="Sort"
+            class="h-[32px] min-w-[100px] text-xs !border-transparent !bg-transparent hover:!bg-neutral-100 dark:hover:!bg-neutral-800/50"
           />
         </div>
       </div>
 
-      <!-- Right side: Import & Create Buttons side-by-side above grid -->
-      <div flex="~ row" items-stretch gap-4 class="w-full lg:w-auto">
-        <InputFile v-model="inputFiles" accept="*.json,*.png" class="flex-1 lg:w-[160px] lg:flex-none">
+      <!-- Right actions (Import / Create) -->
+      <div flex="~ row" items-center gap-2 class="flex-shrink-0">
+        <!-- Import Button (Toggles Drawer) -->
+        <Button
+          :variant="isUploadZoneOpen ? 'secondary' : 'ghost'"
+          class="h-[38px] flex items-center gap-1.5 border border-neutral-200 rounded-xl bg-white/60 px-3 dark:border-neutral-800 hover:border-primary-300 dark:bg-neutral-900/30 dark:hover:border-primary-700"
+          @click="isUploadZoneOpen = !isUploadZoneOpen"
+        >
+          <div i-solar:upload-square-line-duotone class="text-base text-neutral-400 dark:text-neutral-500" />
+          <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Import</span>
+        </Button>
+
+        <!-- Create Button -->
+        <Button
+          variant="primary"
+          class="h-[38px] flex items-center gap-1.5 border border-primary-500/20 rounded-xl bg-primary-500/10 px-3.5 text-primary-600 dark:border-primary-500/30 hover:bg-primary-500/20 dark:text-primary-400"
+          @click="handleCardCreationDialog"
+        >
+          <div i-solar:add-square-line-duotone class="text-base text-primary-500" />
+          <span class="text-xs font-medium">Create</span>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Toggleable Upload Area -->
+    <Transition name="fade-slide">
+      <div v-if="isUploadZoneOpen" class="w-full">
+        <InputFile v-model="inputFiles" accept="*.json,*.png" class="w-full">
           <template #default="{ isDragging }">
             <div
               :class="[
-                'relative flex flex-col cursor-pointer items-center justify-center p-3 rounded-xl border-2 border-solid transition-all duration-300 opacity-95 h-[100px] w-full',
+                'relative flex flex-col cursor-pointer items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all duration-300 h-[80px] w-full',
                 isDragging
-                  ? 'border-primary-500 bg-primary-500/5 dark:bg-primary-500/10'
-                  : 'border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/30 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-white/80 dark:hover:bg-neutral-900/40',
+                  ? 'border-primary-500 bg-primary-500/5 dark:bg-primary-500/10 text-primary-500'
+                  : 'border-neutral-200 dark:border-neutral-800 bg-white/40 dark:bg-neutral-900/10 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-white/60 dark:hover:bg-neutral-900/20',
               ]"
             >
-              <div i-solar:upload-square-line-duotone class="mb-2 text-2xl text-neutral-400 dark:text-neutral-500" />
-              <p class="text-center text-xs text-neutral-600 font-medium leading-tight dark:text-neutral-300">
-                {{ isDragging ? t('settings.pages.card.drop_here') : 'Import Card' }}
+              <div i-solar:upload-square-line-duotone class="mb-1 text-xl text-neutral-400 dark:text-neutral-500" />
+              <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                {{ isDragging ? t('settings.pages.card.drop_here') : 'Click or drag card files here' }}
               </p>
             </div>
           </template>
         </InputFile>
-
-        <div
-          :class="[
-            'relative flex flex-col cursor-pointer items-center justify-center p-3 rounded-xl border-2 border-solid transition-all duration-300 opacity-95 h-[100px] flex-1 lg:w-[160px] lg:flex-none',
-            'border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/30 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-white/80 dark:hover:bg-neutral-900/40',
-          ]"
-          @click="handleCardCreationDialog"
-        >
-          <div i-solar:add-square-line-duotone class="mb-2 text-2xl text-neutral-400 dark:text-neutral-500" />
-          <p class="text-center text-xs text-neutral-600 font-medium leading-tight dark:text-neutral-300">
-            Create Card
-          </p>
-        </div>
       </div>
-    </div>
+    </Transition>
 
-    <!-- Responsive card layout (multi-column grid across screens) -->
+    <!-- Responsive card layout (2 columns for portrait, 4 columns for landscape) -->
     <div
       class="mt-4"
-      :class="{ 'grid grid-cols-2 md:grid-cols-3 gap-5': cards.size > 0 }"
+      :class="{ 'grid grid-cols-2 md:grid-cols-4 gap-4': cards.size > 0 }"
     >
       <!-- Card Items -->
       <template v-if="cards.size > 0">
@@ -1119,6 +1192,24 @@ function getDisplayModelId(id: string) {
       Prefer exports explicitly labeled for SillyTavern, `chara_card_v2`, or ST PNG / JSON compatibility. Not every character site exports in a portable format.
     </div>
   </div>
+
+  <!-- Full screen Drag and Drop Overlay -->
+  <Transition name="fade-slide">
+    <div
+      v-if="isWindowDragging"
+      class="pointer-events-none fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 text-white backdrop-blur-md"
+    >
+      <div class="max-w-sm flex flex-col items-center gap-4 border-2 border-primary-500 rounded-2xl border-dashed bg-neutral-900/80 p-8 text-center">
+        <div i-solar:upload-square-line-duotone class="animate-bounce text-6xl text-primary-500" />
+        <h3 class="text-xl font-bold">
+          Import Character Card
+        </h3>
+        <p class="text-sm opacity-80">
+          Drop your .png (Chara Card V2) or .json files anywhere to import them into AIRI
+        </p>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <route lang="yaml">
@@ -1133,3 +1224,15 @@ meta:
   stageTransition:
     name: slide
 </route>
+
+<style scoped>
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.2s ease-in-out;
+}
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+</style>

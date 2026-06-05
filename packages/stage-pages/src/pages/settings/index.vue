@@ -45,12 +45,6 @@ const settingsGroups = computed(() => [
         to: '/settings/scene',
       },
       {
-        title: 'Dating Sim Preferences',
-        description: 'Configure Live2D DSL settings and dating sim interactions',
-        icon: 'i-solar:heart-bold-duotone',
-        to: '/settings/dating-sim',
-      },
-      {
         title: t('settings.pages.models.title'),
         description: t('settings.pages.models.description'),
         icon: 'i-solar:people-nearby-bold-duotone',
@@ -61,6 +55,12 @@ const settingsGroups = computed(() => [
         description: t('settings.pages.memory.description'),
         icon: 'i-solar:leaf-bold-duotone',
         to: '/settings/memory',
+      },
+      {
+        title: 'Dating Sim',
+        description: 'Dating sim settings where you can control the dating sim game and live2d integration options',
+        icon: 'i-solar:heart-bold-duotone',
+        to: '/settings/dating-sim',
       },
     ],
   },
