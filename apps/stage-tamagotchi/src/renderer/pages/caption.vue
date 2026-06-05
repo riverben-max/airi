@@ -82,7 +82,7 @@ onMounted(async () => {
   >
     <!-- Modular Caption Panel -->
     <CaptionPanel
-      :show-active-sentence-only="false"
+      :show-active-sentence-only="settingsStore.captionLayoutMode === 'single'"
       :fade-on-cursor="shouldFadeOnCursorWithin"
     />
 
