@@ -12,7 +12,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 const { locale } = useI18n()
 
-// NOTICE: Relative path from this file to project root is 7 segments.
+// NOTICE: Relative path from this file to project root is 7 segments. (Triggering re-glob scan)
 const modules = import.meta.glob('../../../../../../../docs/content/**/*.md', { query: '?raw', import: 'default', eager: false })
 
 const content = ref('')

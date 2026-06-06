@@ -103,6 +103,22 @@ async function toggleConcept(conceptId: string) {
   <div class="h-full flex flex-col gap-6 overflow-hidden lg:flex-row">
     <!-- Left Pane: The Stage / Production Controls -->
     <div class="custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto pr-2">
+      <!-- Studio Intro Blurb -->
+      <div class="border border-neutral-200 rounded-xl bg-neutral-50/50 p-4 text-xs text-neutral-600 dark:border-neutral-700/50 dark:bg-neutral-800/20 dark:text-neutral-400">
+        <p class="leading-relaxed">
+          <strong>Studio brings multi-actor and costume orchestration to your cards.</strong> Map concepts to different outfits or characters, binding specific assets like voices, 2D/3D models, or custom background scenes to each. Trigger them automatically with the Director, or programmatically via dialogue tags (<code class="rounded bg-neutral-200/50 px-1 text-[11px] font-mono dark:bg-neutral-800">&lt;|ACTOR:id|&gt;</code>). Sift through the possibilities, mix and match, and build your scene.
+        </p>
+        <div class="mt-2.5 flex items-center">
+          <RouterLink
+            to="/settings/docs/manual/tamagotchi/"
+            class="inline-flex items-center gap-1 text-[11px] text-primary-500 font-bold hover:underline"
+          >
+            <div class="i-solar:document-bold-duotone text-sm" />
+            Read the Studio orchestration guide in the docs &rarr;
+          </RouterLink>
+        </div>
+      </div>
+
       <!-- Active Concepts Stack -->
       <section class="flex flex-col gap-3">
         <div class="flex items-center justify-between">
@@ -180,7 +196,7 @@ async function toggleConcept(conceptId: string) {
                   class="i-solar:t-shirt-outline shrink-0 text-sm text-neutral-300"
                 />
                 <div
-                  v-if="asset.speech && asset.speech.voice_id"
+                  v-if="(asset as any).speech && (asset as any).speech.voice_id"
                   class="i-solar:volume-loud-outline shrink-0 text-sm text-neutral-300"
                 />
               </div>

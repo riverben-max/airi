@@ -42,6 +42,7 @@ export const DOCS_SIDEBAR: Record<string, SidebarItem[]> = {
             { text: 'Character & Card', link: 'manual/config/character-card' },
             { text: 'Intelligence & Modules', link: 'manual/config/modules' },
             { text: 'System & Data', link: 'manual/config/system-data' },
+            { text: 'Studio', link: 'manual/config/studio' },
           ],
         },
       ],

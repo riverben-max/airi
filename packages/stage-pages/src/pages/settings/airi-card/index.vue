@@ -545,6 +545,17 @@ function handleEditCard(cardId: string) {
   isCardCreationDialogOpen.value = true
 }
 
+function handleOpenStudio(cardId: string) {
+  if (!cards.value.has(cardId)) {
+    console.error(`Card with id ${cardId} not found`)
+    return
+  }
+  isCardCreationDialogOpen.value = false
+  selectedCardId.value = cardId
+  initialTab.value = 'studio'
+  isCardDialogOpen.value = true
+}
+
 function handleCardCreationDialog() {
   editingCardId.value = '' // Clear editing state for new card creation
   isCardCreationDialogOpen.value = true
@@ -1096,6 +1107,7 @@ function getDisplayModelId(id: string) {
   <CardCreationDialog
     v-model="isCardCreationDialogOpen"
     :card-id="editingCardId"
+    @studio="handleOpenStudio"
   />
 
   <!-- Card import wizard dialog -->
