@@ -113,10 +113,10 @@ function handlePreviewEntry(id: string, title: string) {
     </div>
 
     <!-- Grid -->
-    <div class="grid grid-cols-1 max-h-[60vh] gap-3 overflow-y-auto pr-2 scrollbar-none lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
+    <div class="grid grid-cols-2 max-h-[60vh] gap-3 overflow-y-auto pr-2 scrollbar-none lg:grid-cols-4 md:grid-cols-3">
       <!-- "None" Option -->
       <button
-        class="group relative h-48 flex flex-col items-center justify-center overflow-hidden border-2 rounded-xl transition-all sm:aspect-square sm:h-auto active:scale-95"
+        class="group relative h-36 flex flex-col items-center justify-center overflow-hidden border-2 rounded-xl transition-all sm:aspect-square sm:h-auto active:scale-95"
         :class="[
           activeBackgroundId === 'none'
             ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
@@ -143,7 +143,7 @@ function handlePreviewEntry(id: string, title: string) {
       <div
         v-for="entry in allBackgrounds"
         :key="entry.id"
-        class="group relative h-48 overflow-hidden border-2 rounded-xl bg-neutral-100 transition-all sm:aspect-square sm:h-auto active:scale-95 dark:bg-neutral-900"
+        class="group relative h-36 overflow-hidden border-2 rounded-xl bg-neutral-100 transition-all sm:aspect-square sm:h-auto active:scale-95 dark:bg-neutral-900"
         :class="[
           activeBackgroundId === entry.id
             ? 'border-primary-500 ring-2 ring-primary-500/20'
