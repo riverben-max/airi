@@ -5,6 +5,7 @@ env.backends.onnx.logLevel = 'error'
 
 interface SearchDocument {
   id: string
+  characterId?: string
   what?: string
   fact?: string
   kind: string
@@ -181,8 +182,9 @@ function cosineSimilarity(a: number[], b: number[]) {
   return dot / (Math.sqrt(magA) * Math.sqrt(magB))
 }
 
-function getVectorCandidates(queryVector: number[], limit: number) {
+function getVectorCandidates(queryVector: number[], limit: number, characterId?: string) {
   const results = [...documents.values()]
+    .filter(doc => !characterId || doc.characterId === characterId)
     .map((document) => {
       const embedding = document.embedding
       if (!embedding?.length)
@@ -199,16 +201,17 @@ function getVectorCandidates(queryVector: number[], limit: number) {
   return results.slice(0, limit)
 }
 
-function getKeywordCandidates(query: string, limit: number) {
+function getKeywordCandidates(query: string, limit: number, characterId?: string) {
   const queryTerms = tokenize(query)
   if (!queryTerms.length)
     return []
 
-  const totalDocuments = documents.size || 1
+  const filteredDocs = [...documents.values()].filter(doc => !characterId || doc.characterId === characterId)
+  const totalDocuments = filteredDocs.length || 1
   const k1 = 1.5
   const b = 0.75
 
-  const scored = [...documents.values()]
+  const scored = filteredDocs
     .map((document) => {
       ensureDocumentCache(document)
       const tokens = document.tokens!
@@ -326,12 +329,12 @@ globalThis.addEventListener('message', async (e) => {
       }
 
       case 'search': {
-        const { query, limit = 10 } = payload
+        const { query, limit = 10, characterId } = payload
         const queryVector = await getVector(query)
         const candidateLimit = Math.max(limit * 5, 20)
 
-        const vectorHits = getVectorCandidates(queryVector, candidateLimit)
-        const keywordHits = getKeywordCandidates(query, candidateLimit)
+        const vectorHits = getVectorCandidates(queryVector, candidateLimit, characterId)
+        const keywordHits = getKeywordCandidates(query, candidateLimit, characterId)
         const candidateIds = new Set([
           ...vectorHits.map(h => h.id),
           ...keywordHits.map(h => h.id),
@@ -344,6 +347,7 @@ globalThis.addEventListener('message', async (e) => {
             .filter(document => candidateIds.has(document.id))
             .map(document => ({
               id: document.id,
+              characterId: document.characterId,
               content: getDocumentContent(document),
               kind: document.kind,
               timestamp: document.timestamp,

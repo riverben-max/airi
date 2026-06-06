@@ -97,9 +97,9 @@ export const searchWorker = {
     await loadEmbeddingModel()
     return callWorker('index', { documents })
   },
-  search: async (query: string, limit?: number) => {
+  search: async (query: string, limit?: number, characterId?: string) => {
     await loadEmbeddingModel()
-    return callWorker('search', { query, limit })
+    return callWorker('search', { query, limit, characterId })
   },
   persist: () => callWorker('persist'),
 }

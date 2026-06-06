@@ -34,7 +34,7 @@ import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
 import { BasicTextarea, Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -57,7 +57,7 @@ const liveSessionStore = useLiveSessionStore()
 
 const { cleanupMessages } = useChatMaintenanceStore()
 const { ingest, onAfterMessageComposed } = chatOrchestrator
-const { messages } = storeToRefs(chatSession)
+const { messages, activeSessionId } = storeToRefs(chatSession)
 const { streamingMessage } = storeToRefs(chatStream)
 const { sending } = storeToRefs(chatOrchestrator)
 const { activeCardId } = storeToRefs(airiCardStore)
@@ -690,6 +690,27 @@ watch(modalSearchTerm, (term) => {
     }
   }, 300)
 })
+
+function isSameSession(entry: any) {
+  if (!entry.source?.startsWith('chat:'))
+    return false
+  const sid = entry.source.replace('chat:', '')
+  return sid === activeSessionId.value
+}
+
+function jumpToMessage(messageId: string) {
+  isSearchModalOpen.value = false
+  nextTick(() => {
+    const el = document.getElementById(`msg-${messageId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('bg-primary-500/10')
+      setTimeout(() => {
+        el.classList.remove('bg-primary-500/10')
+      }, 2000)
+    }
+  })
+}
 </script>
 
 <template>
@@ -1120,23 +1141,35 @@ watch(modalSearchTerm, (term) => {
                   v-for="entry in modalSearchResults"
                   :key="entry.id"
                   class="border-neutral-150 border rounded-[1.2rem] bg-neutral-50/40 p-4 dark:border-neutral-700/60 dark:bg-neutral-900/20"
+                  :class="[isSameSession(entry) ? 'cursor-pointer hover:bg-neutral-100/70 dark:hover:bg-neutral-900/50 transition-colors' : '']"
+                  @click="isSameSession(entry) ? jumpToMessage(entry.id) : undefined"
                 >
                   <div class="mb-2 flex items-center justify-between gap-2">
                     <span
                       :class="[
                         'rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-                        entry.kind === 'raw_turn'
+                        entry.kind === 'raw'
                           ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400'
-                          : entry.kind === 'stmm_block'
+                          : entry.kind === 'stmm'
                             ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
                             : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                       ]"
                     >
-                      {{ entry.kind === 'raw_turn' ? 'Chat' : entry.kind === 'stmm_block' ? 'Recap' : 'Journal' }}
+                      {{ entry.kind === 'raw' ? 'Chat' : entry.kind === 'stmm' ? 'Recap' : 'Journal' }}
                     </span>
-                    <span class="text-[9px] text-neutral-400 font-semibold">
-                      {{ formatDate(entry.createdAt) }}
-                    </span>
+                    <div class="flex flex-col items-end gap-1">
+                      <div class="flex items-center gap-2">
+                        <span v-if="isSameSession(entry)" class="text-[10px] text-primary-500 font-bold hover:underline">
+                          Jump to message &rarr;
+                        </span>
+                        <span class="text-[9px] text-neutral-400 font-semibold">
+                          {{ formatDate(entry.createdAt) }}
+                        </span>
+                      </div>
+                      <span class="text-neutral-450 text-[9px] tracking-tight font-mono opacity-75 dark:text-neutral-400">
+                        ID: {{ entry.id }} | Source: {{ entry.source }}
+                      </span>
+                    </div>
                   </div>
                   <h5 class="dark:text-neutral-250 mb-2 text-sm text-neutral-800 font-bold">
                     {{ entry.title }}

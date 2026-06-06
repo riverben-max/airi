@@ -26,6 +26,8 @@ const KIND_MAP: Record<string, MemoryLayer> = {
   assistant_turn: 'raw',
   memory_block: 'stmm',
   journal_entry: 'ltmm',
+  echo_chip: 'stmm',
+  lifetime_entry: 'ltmm',
 }
 
 function resolveMemoryLayer(kind: string): MemoryLayer {
@@ -61,8 +63,8 @@ export const layeredMemory = {
     }
   },
 
-  async search(query: string, limit = 10): Promise<LayeredSearchResult[]> {
-    const rawResults = await searchWorker.search(query, limit)
+  async search(query: string, limit = 10, characterId?: string): Promise<LayeredSearchResult[]> {
+    const rawResults = await searchWorker.search(query, limit, characterId)
     const documents = rawResults.documents.map((document: SearchDocumentMeta & { kind: string }) => ({
       ...document,
       kind: resolveMemoryLayer(document.kind),

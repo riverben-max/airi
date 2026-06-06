@@ -9,6 +9,8 @@ import { computed, ref, watch } from 'vue'
 import * as v from 'valibot'
 
 import { chatSessionsRepo } from '../database/repos/chat-sessions.repo'
+import { echoChipsRepo } from '../database/repos/echo-chips.repo'
+import { lifetimeMemoryRepo } from '../database/repos/lifetime-memory.repo'
 import { shortTermMemoryRepo } from '../database/repos/short-term-memory.repo'
 import { textJournalRepo } from '../database/repos/text-journal.repo'
 import { layeredMemory } from '../libs/search/layered-memory'
@@ -90,6 +92,21 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     }
   }
 
+  function extractTextContent(content: any): string {
+    if (typeof content === 'string')
+      return content
+    if (Array.isArray(content)) {
+      return content.map((part) => {
+        if (typeof part === 'string')
+          return part
+        if (part && typeof part === 'object' && 'text' in part)
+          return String(part.text ?? '')
+        return ''
+      }).join('')
+    }
+    return ''
+  }
+
   async function backgroundIndexAll() {
     const userId = getCurrentUserId()
     const cardId = activeCardId.value
@@ -99,6 +116,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     // 1. LTMM
     const ltmm = entries.value.filter(e => e.characterId === cardId).map(e => ({
       id: e.id,
+      characterId: cardId,
       fact: e.content,
       kind: 'ltmm_entry',
       timestamp: new Date(e.createdAt).toISOString(),
@@ -107,46 +125,97 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     }))
 
     // 2. STMM
-    const stmmRaw = await shortTermMemoryRepo.getAll(userId) ?? []
-    const stmm = stmmRaw.filter(b => b.characterId === cardId).map(b => ({
-      id: b.id,
-      fact: b.summary,
-      kind: 'stmm_block',
-      timestamp: b.date,
-      source: b.source,
-    }))
+    let stmm: any[] = []
+    try {
+      const stmmRaw = await shortTermMemoryRepo.getAll(userId) ?? []
+      stmm = stmmRaw.filter(b => b.characterId === cardId).map(b => ({
+        id: b.id,
+        characterId: cardId,
+        fact: b.summary,
+        kind: 'stmm_block',
+        timestamp: b.date,
+        source: b.source || 'stmm',
+      }))
+    }
+    catch (err) {
+      console.error('[TextJournal:Index] Failed to load STMM for indexing:', err)
+    }
 
     // 3. Raw (Sampling recent sessions)
-    const index = await chatSessionsRepo.getIndex(userId)
     const raw: any[] = []
-    if (index && index.characters[cardId]) {
-      const characterSessions = index.characters[cardId]
-      const sessions = Object.values(characterSessions.sessions)
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-        .slice(0, 5) // Last 5 sessions
+    try {
+      const index = await chatSessionsRepo.getIndex(userId)
+      if (index && index.characters[cardId]) {
+        const characterSessions = index.characters[cardId]
+        const sessions = Object.values(characterSessions.sessions)
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .slice(0, 5) // Last 5 sessions
 
-      for (const s of sessions) {
-        const session = await chatSessionsRepo.getSession(s.sessionId)
-        if (session) {
-          for (const m of session.messages) {
-            if (m.role === 'user' || m.role === 'assistant') {
-              const text = typeof m.content === 'string' ? m.content : ''
-              if (text.length > 40) {
-                raw.push({
-                  id: m.id,
-                  fact: text,
-                  kind: 'raw_turn',
-                  timestamp: new Date(m.createdAt || Date.now()).toISOString(),
-                  source: `chat:${s.sessionId}`,
-                })
+        for (const s of sessions) {
+          const session = await chatSessionsRepo.getSession(s.sessionId)
+          if (session) {
+            for (const m of session.messages) {
+              if (m.role === 'user' || m.role === 'assistant') {
+                const text = extractTextContent(m.content)
+                if (text.length > 10) {
+                  raw.push({
+                    id: m.id,
+                    characterId: cardId,
+                    fact: text,
+                    kind: 'raw_turn',
+                    timestamp: new Date(m.createdAt || Date.now()).toISOString(),
+                    source: `chat:${s.sessionId}`,
+                  })
+                }
               }
             }
           }
         }
       }
     }
+    catch (err) {
+      console.error('[TextJournal:Index] Failed to load Chat Sessions for indexing:', err)
+    }
 
-    await layeredMemory.indexDocuments([...ltmm, ...stmm, ...raw])
+    // 4. Echo Chips (Dreamstate)
+    let echoes: any[] = []
+    try {
+      const echoRaw = await echoChipsRepo.getAll(userId) ?? []
+      echoes = echoRaw.filter(c => c.characterId === cardId).map(c => ({
+        id: c.id,
+        characterId: cardId,
+        fact: c.content,
+        kind: 'echo_chip',
+        timestamp: new Date(c.createdAt || Date.now()).toISOString(),
+        source: `echo:${c.type}`,
+      }))
+    }
+    catch (err) {
+      console.error('[TextJournal:Index] Failed to load Echo Chips for indexing:', err)
+    }
+
+    // 5. Lifetime Memory (Eternal Thread)
+    const lifetime: any[] = []
+    try {
+      const lifetimeRaw = await lifetimeMemoryRepo.getByCharacter(cardId)
+      if (lifetimeRaw) {
+        lifetime.push({
+          id: lifetimeRaw.id,
+          characterId: cardId,
+          fact: lifetimeRaw.distilledContent,
+          kind: 'lifetime_entry',
+          timestamp: new Date(lifetimeRaw.updatedAt || Date.now()).toISOString(),
+          source: 'lifetime',
+        })
+      }
+    }
+    catch (err) {
+      console.error('[TextJournal:Index] Failed to load Lifetime Memory for indexing:', err)
+    }
+
+    console.info(`[TextJournal:Index] Indexing counts for ${cardId}: LTMM=${ltmm.length}, STMM=${stmm.length}, Raw=${raw.length}, Echoes=${echoes.length}, Lifetime=${lifetime.length}`)
+
+    await layeredMemory.indexDocuments([...ltmm, ...stmm, ...raw, ...echoes, ...lifetime])
   }
 
   async function persist(nextEntries: TextJournalEntry[]) {
@@ -244,7 +313,8 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     if (!query)
       return []
 
-    const results = await layeredMemory.search(query, input.limit ?? 3)
+    const targetCharacterId = input.characterId ?? activeCardId.value
+    const results = await layeredMemory.search(query, input.limit ?? 3, targetCharacterId)
 
     // Log search results for developer review
     console.log(`[TextJournal:Search] Query: "${query}" | Results:`, results)
@@ -269,7 +339,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
         title: `[${res.kind.toUpperCase()}] Memory`,
         content: res.content,
         kind: res.kind,
-        source: 'tool',
+        source: res.source ?? 'tool',
         type: 'message',
         createdAt: new Date(res.timestamp).getTime(),
         updatedAt: new Date(res.timestamp).getTime(),

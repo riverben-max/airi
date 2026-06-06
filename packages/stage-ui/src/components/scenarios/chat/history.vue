@@ -191,7 +191,7 @@ const renderMessages = computed<(ChatHistoryItem | DirectorNote)[]>(() => {
         />
       </div>
 
-      <div v-else-if="'role' in message && message.role === 'error'">
+      <div v-else-if="'role' in message && message.role === 'error'" :id="message.id ? `msg-${message.id}` : undefined">
         <ChatErrorItem
           :message="message"
           :label="labels.error"
@@ -200,7 +200,7 @@ const renderMessages = computed<(ChatHistoryItem | DirectorNote)[]>(() => {
         />
       </div>
 
-      <div v-else-if="'role' in message && message.role === 'assistant'">
+      <div v-else-if="'role' in message && message.role === 'assistant'" :id="message.id ? `msg-${message.id}` : undefined">
         <ChatAssistantItem
           :message="message as any"
           :label="labels.assistant"
@@ -209,7 +209,7 @@ const renderMessages = computed<(ChatHistoryItem | DirectorNote)[]>(() => {
         />
       </div>
 
-      <div v-else-if="'role' in message && message.role === 'user'">
+      <div v-else-if="'role' in message && message.role === 'user'" :id="message.id ? `msg-${message.id}` : undefined">
         <ChatUserItem
           :message="message as any"
           :label="labels.user"
