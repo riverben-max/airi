@@ -112,6 +112,11 @@ const containerBottomClass = computed(() => {
     : 'bottom-[40px]'
 })
 
+const isExpanded = ref(false)
+watch(() => subtitleText.value, () => {
+  isExpanded.value = false
+})
+
 function handleChoiceClick(choice: any) {
   if (typeof choice.positiveScoreChange === 'number') {
     datingSimStore.setVariable('positiveScore', datingSimStore.getVariable('positiveScore') + choice.positiveScoreChange)
@@ -120,19 +125,18 @@ function handleChoiceClick(choice: any) {
     datingSimStore.setVariable('negativeScore', datingSimStore.getVariable('negativeScore') + choice.negativeScoreChange)
   }
 
+  let intimacyDelta = 1
   if (choice.action === 'llm_topic') {
-    datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 2))
-    postChatInput({ sendingMessage: choice.text, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
-    datingSimStore.evaluateParameters(`I want to talk about: ${choice.text}`)
+    intimacyDelta = 2
   }
   else if (choice.action === 'llm_item') {
-    datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 5))
-    postChatInput({ sendingMessage: `*I give you a gift:* ${choice.text}`, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
-    datingSimStore.evaluateParameters(`*I give you a gift:* ${choice.text}`)
+    intimacyDelta = 5
   }
-  else {
-    datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + 1))
-    postChatInput({ sendingMessage: choice.text, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
+  datingSimStore.setVariable('Intimacy', Math.min(100, datingSimStore.getVariable('Intimacy') + intimacyDelta))
+
+  postChatInput({ sendingMessage: choice.text, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
+
+  if (!autonomousEnabled.value) {
     datingSimStore.evaluateParameters(choice.text)
   }
 
@@ -371,7 +375,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
               class="border border-purple-400/50 rounded-xl bg-purple-500/30 p-2 transition-all active:scale-95 hover:scale-105 hover:bg-purple-500/50"
               title="Generate suggestions/Retry choices"
               :disabled="datingSimStore.isGenerating || isGameOver"
-              @click="datingSimStore.generateLiveChoices()"
+              @click="datingSimStore.generateLiveChoices(true)"
             >
               <div v-if="datingSimStore.isGenerating" class="i-solar:restart-square-bold animate-spin text-xl text-white" />
               <div v-else class="i-solar:magic-stick-3-bold-duotone text-xl text-white" />
@@ -389,10 +393,14 @@ function handleStorySelect(story: any, customPromptVal: string) {
     </div>
 
     <!-- Bottom Dialogue -->
-    <div v-if="datingSimStore.settings.inlineCaption && (datingSimStore.currentSubtitle || isGameOver || hasActiveCaption)" class="pointer-events-none mb-4 w-full flex justify-center px-12">
+    <div v-show="datingSimStore.settings.inlineCaption && (datingSimStore.currentSubtitle || isGameOver || hasActiveCaption)" class="pointer-events-none mb-4 w-full flex justify-center px-12">
       <div class="pointer-events-auto relative max-w-4xl w-full">
         <!-- Main Dialogue Box (Shorted to 130px, smaller padding and spacing) -->
-        <div class="group relative max-h-[220px] min-h-[130px] flex flex-col justify-center overflow-hidden border border-white/20 rounded-3xl bg-white/10 px-8 py-6 shadow-[0_16px_40px_rgba(0,0,0,0.3)] backdrop-blur-[16px] backdrop-saturate-[200%] transition-all dark:bg-black/40 hover:bg-white/15">
+        <div
+          class="group relative min-h-[130px] flex flex-col cursor-pointer justify-center border border-white/20 rounded-3xl bg-white/10 px-8 py-6 shadow-[0_16px_40px_rgba(0,0,0,0.3)] backdrop-blur-[16px] backdrop-saturate-[200%] transition-all duration-300 dark:bg-black/40 hover:bg-white/15"
+          :class="isExpanded ? 'max-h-[70vh] overflow-y-auto' : 'max-h-[220px] overflow-hidden'"
+          @click="isExpanded = !isExpanded"
+        >
           <!-- Subtle top gradient border effect -->
           <div class="absolute left-0 right-0 top-0 h-[1px] from-transparent via-white/40 to-transparent bg-gradient-to-r" />
 
@@ -403,7 +411,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
           </div>
 
           <!-- Modular Real-Time Caption Panel inside original frame -->
-          <div class="mt-6 max-h-[140px] w-full flex justify-center overflow-hidden">
+          <div class="mt-6 w-full flex justify-center overflow-hidden" :class="isExpanded ? 'max-h-[60vh]' : 'max-h-[140px]'">
             <CaptionPanel
               :show-active-sentence-only="true"
               :transparent-bg="true"
@@ -412,8 +420,14 @@ function handleStorySelect(story: any, customPromptVal: string) {
             />
           </div>
 
-          <!-- Auto-advance indicator -->
-          <div class="i-solar:alt-arrow-down-bold absolute bottom-4 right-8 animate-bounce text-3xl text-white/50" />
+          <!-- Auto-advance / Expand indicator -->
+          <div
+            :class="[
+              isExpanded ? 'i-solar:alt-arrow-up-bold' : 'i-solar:alt-arrow-down-bold animate-bounce',
+              'absolute bottom-4 right-8 text-3xl text-white/50 transition-all duration-300 hover:text-white',
+            ]"
+            @click.stop="isExpanded = !isExpanded"
+          />
         </div>
       </div>
     </div>

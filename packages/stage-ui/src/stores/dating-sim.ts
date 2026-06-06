@@ -275,9 +275,19 @@ Your output MUST be EXACTLY in this JSON format and nothing else:
     }
   }
 
-  async function generateLiveChoices() {
+  async function generateLiveChoices(force = false) {
     if (isGenerating.value)
       return
+
+    if (!force) {
+      const cardStore = useAiriCardStore()
+      const aaEnabled = cardStore.activeCard?.extensions?.airi?.artistry?.autonomousEnabled ?? false
+      if (aaEnabled) {
+        console.log('[DatingSim] Skipping generateLiveChoices: Autonomous Artistry is enabled.')
+        return
+      }
+    }
+
     isGenerating.value = true
     try {
       const { useLLM } = await import('@proj-airi/stage-ui/stores/llm')
