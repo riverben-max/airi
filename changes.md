@@ -135,4 +135,3 @@ if (!matched) {
     e => searchKeywords.some(k => e.name.toLowerCase().includes(k)) || keyLower.includes(e.name.toLowerCase().replace(/\.exp3$/, ''))
   )
 }
-```

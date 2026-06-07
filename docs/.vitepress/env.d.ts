@@ -1,0 +1,5 @@
+declare module '@fontsource-variable/comfortaa'
+declare module '@fontsource-variable/dm-sans'
+declare module '@fontsource-variable/quicksand'
+declare module '@fontsource/dm-mono'
+declare module '@fontsource/dm-serif-display'

@@ -152,16 +152,22 @@ function handleStartSession() {
                   step="1"
                   class="h-1.5 w-full appearance-none rounded-full bg-white/10 outline-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-rose-500 [&::-webkit-slider-thumb]:transition-transform hover:[&::-webkit-slider-thumb]:scale-125"
                 >
-                <p class="text-[10px] text-white/40">How many recent messages to read before generating the scene.</p>
+                <p class="text-[10px] text-white/40">
+                  How many recent messages to read before generating the scene.
+                </p>
               </div>
 
               <!-- Game Settings -->
-              <div class="flex flex-col gap-4 mt-2 border-t border-white/10 pt-4">
+              <div class="mt-2 flex flex-col gap-4 border-t border-white/10 pt-4">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs text-white/70 font-semibold">Game Mode</label>
                   <select v-model="datingSimStore.settings.gameMode" class="w-full border border-white/10 rounded-lg bg-neutral-800 p-2 text-xs text-white outline-none">
-                    <option value="open_ended">Open-Ended (Sandbox)</option>
-                    <option value="goal_driven">Goal-Driven (Game Mode)</option>
+                    <option value="open_ended">
+                      Open-Ended (Sandbox)
+                    </option>
+                    <option value="goal_driven">
+                      Goal-Driven (Game Mode)
+                    </option>
                   </select>
                 </div>
 

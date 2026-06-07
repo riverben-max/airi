@@ -1,4 +1,5 @@
-import type { DefaultTheme } from 'vitepress'
+import type MarkdownIt from 'markdown-it'
+import type { DefaultTheme, PageData } from 'vitepress'
 
 import { join, posix, resolve } from 'node:path'
 import { env } from 'node:process'
@@ -27,6 +28,10 @@ import {
 } from './meta'
 import { frontmatterAssets } from './plugins/vite-frontmatter-assets'
 
+interface AnchorToken {
+  attrSet: (name: string, value: string) => void
+}
+
 function withBase(url: string) {
   return env.BASE_URL
     ? env.BASE_URL.endsWith('/')
@@ -36,7 +41,7 @@ function withBase(url: string) {
 }
 
 // https://vitepress.dev/reference/site-config
-export default defineConfig({
+const config = {
   cleanUrls: true,
   ignoreDeadLinks: true,
   title: projectName,
@@ -558,12 +563,12 @@ export default defineConfig({
     headers: {
       level: [2, 3, 4, 5, 6],
     },
-    config(md) {
+    config(md: MarkdownIt) {
       md.use(tasklist)
       md.use(footnote)
     },
     anchor: {
-      callback(token) {
+      callback(token: AnchorToken) {
         // set tw `group` modifier to heading element
         token.attrSet(
           'class',
@@ -591,7 +596,7 @@ export default defineConfig({
       }),
     },
   },
-  transformPageData(pageData) {
+  transformPageData(pageData: PageData) {
     if (pageData.frontmatter.sidebar != null)
       return
 
@@ -615,9 +620,11 @@ export default defineConfig({
     css: {
       postcss: {
         plugins: [
-          postcssIsolateStyles({ includeFiles: [/vp-doc\.css/] }),
+          postcssIsolateStyles({ includeFiles: [/vp-doc\.css/] }) as never,
         ],
       },
     },
   },
-})
+}
+
+export default defineConfig(config as never)

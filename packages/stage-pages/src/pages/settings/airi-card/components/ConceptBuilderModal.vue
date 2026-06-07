@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useModelStore } from '@proj-airi/stage-ui-three'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
@@ -55,7 +54,6 @@ const artistryStore = useArtistryStore()
 const displayModelsStore = useDisplayModelsStore()
 const providersStore = useProvidersStore()
 const speechStore = useSpeechStore()
-const modelStore = useModelStore()
 const backgroundStore = useBackgroundStore()
 const airiCardStore = useAiriCardStore()
 
@@ -168,14 +166,6 @@ const providerOptions = [
   { value: 'none', label: 'Disable Artistry' },
 ]
 
-const displayModelOptions = computed(() => [
-  { value: 'inherit', label: 'Inherit Default' },
-  ...displayModelsStore.displayModels.map(m => ({
-    value: m.id,
-    label: m.name,
-  })),
-])
-
 const speechProviderOptions = computed(() => [
   { value: 'inherit', label: 'Inherit Global' },
   { value: 'none', label: 'Disable Speech' },
@@ -227,19 +217,6 @@ watch(selectedSpeechProvider, async (newProvider) => {
     }
   }
 })
-
-function toggleExpression(name: string) {
-  if (selectedExpressions.value[name] === 1) {
-    delete selectedExpressions.value[name]
-  }
-  else {
-    selectedExpressions.value[name] = 1
-  }
-}
-
-function clearAllExpressions() {
-  selectedExpressions.value = {}
-}
 
 function handleSave() {
   if (!id.value.trim())

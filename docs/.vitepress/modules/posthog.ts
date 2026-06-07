@@ -1,6 +1,15 @@
+import type { PostHogConfig } from 'posthog-js'
+
 import posthog from 'posthog-js'
 
-import { DEFAULT_POSTHOG_CONFIG, POSTHOG_PROJECT_KEY_DOCS } from '../../../posthog.config'
+const POSTHOG_PROJECT_KEY_DOCS
+  = import.meta.env.VITE_POSTHOG_PROJECT_KEY_DOCS
+    ?? 'phc_pzjziJjrVZpa9SqnQqq0QEKvkmuCPH7GDTA6TbRTEf9' // cspell:disable-line
+
+const DEFAULT_POSTHOG_CONFIG = {
+  api_host: 'https://us.i.posthog.com',
+  person_profiles: 'identified_only',
+} as const satisfies Partial<PostHogConfig>
 
 posthog.init(POSTHOG_PROJECT_KEY_DOCS, {
   ...DEFAULT_POSTHOG_CONFIG,

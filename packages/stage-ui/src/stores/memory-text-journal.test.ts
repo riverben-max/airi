@@ -15,6 +15,13 @@ vi.mock('../database/repos/text-journal.repo', () => ({
   },
 }))
 
+vi.mock('../libs/search/layered-memory', () => ({
+  layeredMemory: {
+    init: vi.fn(),
+    search: vi.fn(async () => []),
+  },
+}))
+
 // NOTICE: Pinia v3's storeToRefs iterates all keys and does `value.effect` before
 // isRef/isReactive — it crashes on null/primitive values. The correct pattern is to
 // return a `reactive()` object wrapping Vue refs so storeToRefs gets a Pinia-like

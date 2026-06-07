@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useBroadcastChannel } from '@vueuse/core'
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import CaptionPanel from './CaptionPanel.vue'
 import StorySelectorModal from './StorySelectorModal.vue'
@@ -49,7 +49,8 @@ function handleChoiceClick(choice: any) {
 
   if (choice.action === 'dsl_mtn' && choice.metadata?.NextMtn) {
     window.dispatchEvent(new CustomEvent('dating-sim:trigger-motion', { detail: choice.metadata.NextMtn }))
-  } else {
+  }
+  else {
     // The 'text' contains the full message to send in user's voice
     postChatInput({ sendingMessage: choice.text, options: { skipAssistant: false, metadata: { source: 'dating-sim' } } })
   }
@@ -63,7 +64,7 @@ const customPrompt = ref('')
 function submitCustomPrompt() {
   if (!customPrompt.value.trim())
     return
-  
+
   if (datingSimStore.settings.gameMode === 'goal_driven') {
     datingSimStore.setVariable('turnsElapsed', datingSimStore.getVariable('turnsElapsed') + 1)
   }
@@ -143,7 +144,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
         </div>
 
         <!-- Tension -->
-        <div class="flex flex-col gap-1.5 mt-1">
+        <div class="mt-1 flex flex-col gap-1.5">
           <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
             <span>Tension</span>
             <div class="i-solar:bolt-bold text-xl text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]" />
@@ -156,18 +157,18 @@ function handleStorySelect(story: any, customPromptVal: string) {
 
       <!-- Session Variables (Goal Driven Mode) -->
       <div v-if="datingSimStore.settings.gameMode === 'goal_driven'" class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
-        <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide border-b border-white/10 pb-2">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2 text-sm text-white font-semibold tracking-wide">
           <span>Game Session</span>
           <span class="text-xs text-white/70 font-mono">Turn {{ datingSimStore.getVariable('turnsElapsed') }} / {{ datingSimStore.settings.maxTurns }}</span>
         </div>
-        
+
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-green-300 font-bold uppercase tracking-wider">Success Score</span>
+            <span class="text-xs text-green-300 font-bold tracking-wider uppercase">Success Score</span>
             <span class="text-sm text-green-400 font-mono">{{ datingSimStore.getVariable('positiveScore') }} / {{ datingSimStore.settings.maxScore }}</span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-xs text-red-300 font-bold uppercase tracking-wider">Failure Score</span>
+            <span class="text-xs text-red-300 font-bold tracking-wider uppercase">Failure Score</span>
             <span class="text-sm text-red-400 font-mono">{{ datingSimStore.getVariable('negativeScore') }} / {{ datingSimStore.settings.maxScore }}</span>
           </div>
         </div>
@@ -224,8 +225,8 @@ function handleStorySelect(story: any, customPromptVal: string) {
             <div v-if="choice.icon" :class="[choice.icon, 'text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110']" />
             <div v-else class="i-solar:chat-round-dots-bold-duotone text-3xl text-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.5)] transition-transform group-hover:scale-110" />
 
-            <div class="flex-1 flex flex-col justify-center">
-              <span v-if="datingSimStore.settings.showChoiceWeights && datingSimStore.settings.gameMode === 'goal_driven'" class="text-xs text-yellow-300 font-mono tracking-wider opacity-80 mb-1">
+            <div class="flex flex-1 flex-col justify-center">
+              <span v-if="datingSimStore.settings.showChoiceWeights && datingSimStore.settings.gameMode === 'goal_driven'" class="mb-1 text-xs text-yellow-300 tracking-wider font-mono opacity-80">
                 [+{{ choice.positiveScore || 0 }} Pos / -{{ choice.negativeScore || 0 }} Neg]
               </span>
               <span class="text-xl text-white font-medium tracking-wide drop-shadow-md">

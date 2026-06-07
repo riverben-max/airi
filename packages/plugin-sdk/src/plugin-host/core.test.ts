@@ -37,7 +37,7 @@ describe('for FileSystemPluginHost', () => {
     const onVitestCall = vi.fn()
     ctx.on(defineEventa('vitest-call:init'), onVitestCall)
 
-    await expect(pluginDef.init?.({ channels: { host: ctx }, apis })).resolves.not.toThrow()
+    await expect(pluginDef.init?.({ channels: { host: ctx as any }, apis })).resolves.not.toThrow()
     expect(onVitestCall).toHaveBeenCalledTimes(1)
   })
 
@@ -103,17 +103,17 @@ describe('for FileSystemPluginHost', () => {
     expect(host.resolveEntrypointFor(runtimeEntryManifest, {
       cwd: '/tmp/plugin',
       runtime: 'node',
-    })).toBe('/tmp/plugin/node-entry.ts')
+    })).toBe(join('/tmp/plugin', 'node-entry.ts'))
 
     expect(host.resolveEntrypointFor(defaultFallbackManifest, {
       cwd: '/tmp/plugin',
       runtime: 'node',
-    })).toBe('/tmp/plugin/default-entry.ts')
+    })).toBe(join('/tmp/plugin', 'default-entry.ts'))
 
     expect(host.resolveEntrypointFor(electronFallbackManifest, {
       cwd: '/tmp/plugin',
       runtime: 'node',
-    })).toBe('/tmp/plugin/electron-entry.ts')
+    })).toBe(join('/tmp/plugin', 'electron-entry.ts'))
   })
 
   it('should preserve absolute runtime entrypoints', () => {
@@ -233,7 +233,7 @@ describe('for PluginHost', () => {
     const onVitestCall = vi.fn()
     ctx.on(defineEventa('vitest-call:init'), onVitestCall)
 
-    await expect(pluginDef.init?.({ channels: { host: ctx }, apis })).resolves.not.toThrow()
+    await expect(pluginDef.init?.({ channels: { host: ctx as any }, apis })).resolves.not.toThrow()
     expect(onVitestCall).toHaveBeenCalledTimes(1)
 
     defineInvokeHandler(ctx, protocolProviders.listProviders, async () => {
@@ -251,7 +251,7 @@ describe('for PluginHost', () => {
 
     const onProviderListCall = vi.fn()
     ctx.on(protocolProviders.listProviders.sendEvent, onProviderListCall)
-    await expect(pluginDef.setupModules?.({ channels: { host: ctx }, apis })).resolves.not.toThrow()
+    await expect(pluginDef.setupModules?.({ channels: { host: ctx as any }, apis })).resolves.not.toThrow()
     expect(onProviderListCall).toHaveBeenCalledTimes(1)
   })
 

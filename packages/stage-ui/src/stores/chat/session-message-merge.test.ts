@@ -16,7 +16,7 @@ describe('mergeLoadedSessionMessages', () => {
       { role: 'system', content: 'system', createdAt: 3, id: 'system-current' },
     ]
 
-    assert.equal(mergeLoadedSessionMessages(storedMessages, currentMessages), storedMessages)
+    assert.deepEqual(mergeLoadedSessionMessages(storedMessages, currentMessages), storedMessages)
   })
 
   it('appends in-flight messages when IndexedDB finishes loading after a new send starts', () => {
@@ -45,6 +45,6 @@ describe('mergeLoadedSessionMessages', () => {
       { role: 'user', content: 'latest prompt', createdAt: 4 },
     ]
 
-    assert.equal(mergeLoadedSessionMessages(storedMessages, currentMessages), storedMessages)
+    assert.deepEqual(mergeLoadedSessionMessages(storedMessages, currentMessages), storedMessages)
   })
 })

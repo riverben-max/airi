@@ -6,7 +6,6 @@ import DOMPurify from 'dompurify'
 import { CharacterContextDialog, StageBackgroundPicker } from '@proj-airi/stage-ui/components/scenarios/dialogs'
 import {
   useArtistryStore,
-  useBackgroundStore,
   useConsciousnessStore,
   useSpeechStore,
 } from '@proj-airi/stage-ui/stores'
@@ -44,8 +43,6 @@ const { t } = useI18n()
 const cardStore = useAiriCardStore()
 const consciousnessStore = useConsciousnessStore()
 const speechStore = useSpeechStore()
-const backgroundStore = useBackgroundStore()
-const isRefreshingGallery = ref(false)
 
 const { removeCard } = cardStore
 const { activeCardId } = storeToRefs(cardStore)
@@ -141,24 +138,6 @@ interface Tab {
   label: string
   icon: string
 }
-
-const activeBackgroundId = computed({
-  get: () => selectedCard.value?.extensions?.airi?.modules?.activeBackgroundId || 'none',
-  set: async (val: string) => {
-    if (!selectedCard.value)
-      return
-    const extension = JSON.parse(JSON.stringify(selectedCard.value.extensions))
-    if (!extension.airi.modules)
-      extension.airi.modules = {}
-
-    extension.airi.modules.activeBackgroundId = val
-
-    cardStore.updateCard(props.cardId, {
-      ...selectedCard.value,
-      extensions: extension,
-    })
-  },
-})
 
 // Active tab ID state
 const activeTabId = ref(props.initialTab || '')

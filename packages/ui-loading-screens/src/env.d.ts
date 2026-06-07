@@ -1,9 +1,11 @@
-declare module '*.riv' {
-  const url: string
-  export default url
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue'
+
+  const component: DefineComponent<object, object, any>
+  export default component
 }
 
-declare module '*.rev' {
-  const url: string
-  export default url
+declare module '*.riv' {
+  const src: string
+  export default src
 }

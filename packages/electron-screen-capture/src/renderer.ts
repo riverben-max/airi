@@ -29,13 +29,13 @@ export function setupElectronScreenCapture(context: ReturnType<typeof createCont
     useFn: () => R | Promise<R>,
     options?: SourceOptionsWithRequest,
   ): Promise<R> {
-    const sources = await getSources(options?.sourcesOptions)
+    const sources = await getSources(options?.sourcesOptions as SourcesOptions)
     const sourceId = await selectFn(sources)
 
     let handle: string | undefined
     try {
       handle = await setSource({
-        options: options?.sourcesOptions,
+        options: options?.sourcesOptions as SourcesOptions,
         sourceId,
         timeout: options?.request?.timeout,
       })

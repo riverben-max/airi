@@ -135,6 +135,8 @@ export interface AiriExtension {
       url?: string // Example: "https://example.com/live2d/model.json"
       activeExpressions?: Record<string, number>
       modelParameters?: Record<string, number>
+      motionMappings?: Record<string, string>
+      hiddenMotions?: string[]
     }
 
     // ID from display-models store (e.g. 'preset-live2d-1', 'display-model-<nanoid>')
@@ -196,6 +198,11 @@ export interface AiriExtension {
       mood?: string
       backgroundId?: string
       active_expressions?: Record<string, number>
+    }
+    speech?: {
+      provider?: string
+      model?: string
+      voice_id?: string
     }
   }>
   eternal_record?: {

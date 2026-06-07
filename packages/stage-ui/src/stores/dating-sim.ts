@@ -63,7 +63,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     sceneryRoute: useLocalStorage<'background' | 'widget' | 'inherit'>('airi:dating-sim:scenery-route', 'inherit'),
     enableSpecialSauce: useLocalStorage<boolean>('airi:dating-sim:enable-special-sauce', true),
     tensionDecayRate: useLocalStorage<number>('airi:dating-sim:tension-decay-rate', 1),
-    intimacyGainMultiplier: useLocalStorage<number>('airi:dating-sim:intimacy-gain-multiplier', 1)
+    intimacyGainMultiplier: useLocalStorage<number>('airi:dating-sim:intimacy-gain-multiplier', 1),
   })
 
   const choices = ref<Choice[]>([])
@@ -244,19 +244,22 @@ Perform the background Director/IC Sweep and generate the next state and player 
 
       const rawText = result.text || (result as any).reasoning || ''
       const match = rawText.match(/\{[\s\S]*\}/)
-      if (!match) throw new Error('No JSON object found in response')
+      if (!match)
+        throw new Error('No JSON object found in response')
       const object = JSON.parse(match[0])
 
       // Apply state updates (only if NOT in goal_driven mode; in goal_driven mode, choices directly adjust scores)
       if (!isGameMode) {
         if (typeof object.state_updates?.intimacy_delta === 'number') {
           let delta = object.state_updates.intimacy_delta
-          if (delta > 0) delta *= settings.value.intimacyGainMultiplier
+          if (delta > 0)
+            delta *= settings.value.intimacyGainMultiplier
           setVariable('Intimacy', Math.max(0, Math.min(100, getVariable('Intimacy') + delta)))
         }
         if (typeof object.state_updates?.tension_delta === 'number') {
           let delta = object.state_updates.tension_delta
-          if (delta < 0) delta *= settings.value.tensionDecayRate
+          if (delta < 0)
+            delta *= settings.value.tensionDecayRate
           setVariable('Tension', Math.max(0, Math.min(100, getVariable('Tension') + delta)))
         }
         if (object.state_updates?.mood) {
@@ -291,7 +294,7 @@ Perform the background Director/IC Sweep and generate the next state and player 
         action: 'llm_topic',
       }))
 
-      // The Director Sweep does not generate a subtitle for the current turn, 
+      // The Director Sweep does not generate a subtitle for the current turn,
       // as the Assistant just spoke. We wait for the user to make a choice.
       choices.value = liveChoices
     }
@@ -314,14 +317,15 @@ Perform the background Director/IC Sweep and generate the next state and player 
       const { useProvidersStore } = await import('@proj-airi/stage-ui/stores/providers')
       const { useConsciousnessStore } = await import('@proj-airi/stage-ui/stores/modules/consciousness')
       const { useChatSessionStore } = await import('@proj-airi/stage-ui/stores/chat/session-store')
-      
+
       const llm = useLLM()
       const providers = useProvidersStore()
       const consciousness = useConsciousnessStore()
       const chatSession = useChatSessionStore()
 
       const provider = await providers.getProviderInstance(consciousness.activeProvider)
-      if (!provider || !consciousness.activeModel) return
+      if (!provider || !consciousness.activeModel)
+        return
 
       const rawMessages = chatSession.messages || []
       const relevantMessages = rawMessages
@@ -349,7 +353,7 @@ Output MUST be raw JSON:
     }
   ]
 }`
-      
+
       const userPrompt = `Chat History:\n${chatHistoryText}\n\nGenerate the starting scene payload in raw JSON.`
 
       const result = await llm.generate(consciousness.activeModel, provider as any, [
@@ -359,11 +363,12 @@ Output MUST be raw JSON:
 
       const rawText = result.text || (result as any).reasoning || ''
       const match = rawText.match(/\{[\s\S]*\}/)
-      if (!match) throw new Error('No JSON object found in response')
+      if (!match)
+        throw new Error('No JSON object found in response')
       const object = JSON.parse(match[0])
 
       currentSubtitle.value = object.subtitle || ''
-      
+
       const liveChoices = (object.options || []).slice(0, 4).map((o: any, i: number) => ({
         id: `sc${i}`,
         title: o.title,
@@ -374,7 +379,7 @@ Output MUST be raw JSON:
         icon: 'i-solar:chat-round-dots-bold-duotone',
         action: 'llm_topic',
       }))
-      
+
       choices.value = liveChoices
     }
     catch (err) {
@@ -398,7 +403,8 @@ Output MUST be raw JSON:
           }
         })
       }
-    } else {
+    }
+    else {
       if (unhookChat) {
         unhookChat()
         unhookChat = null
@@ -551,7 +557,7 @@ Output MUST be raw JSON:
     if (payload.Text) {
       let text = payload.Text.replace(/\{\$br\}/g, '\n')
       // Map {$vi_IntimacyVI} to the actual variable
-      text = text.replace(/\{\$vi_([A-Za-z0-9_]+)\}/g, (_: any, varName: string) => {
+      text = text.replace(/\{\$vi_(\w+)\}/g, (_: any, varName: string) => {
         return String(getVariable(varName))
       })
       currentSubtitle.value = text
@@ -561,15 +567,15 @@ Output MUST be raw JSON:
     if (payload.Choices && Array.isArray(payload.Choices)) {
       choices.value = payload.Choices.map((c: any, index: number) => {
         let text = c.Text || 'Option'
-        text = text.replace(/\{\$vi_([A-Za-z0-9_]+)\}/g, (_: any, varName: string) => {
+        text = text.replace(/\{\$vi_(\w+)\}/g, (_: any, varName: string) => {
           return String(getVariable(varName))
         })
         return {
           id: `dsl_choice_${index}`,
           title: text,
-          text: text, // The overlay expects this
+          text, // The overlay expects this
           action: 'dsl_mtn', // custom action type
-          metadata: { NextMtn: c.NextMtn } // we need to store NextMtn
+          metadata: { NextMtn: c.NextMtn }, // we need to store NextMtn
         }
       })
     }
@@ -581,7 +587,8 @@ Output MUST be raw JSON:
         import('@proj-airi/stage-ui-three').then(({ useModelStore }) => {
           useModelStore().activeExpressions = {}
         }).catch(() => {})
-      } else {
+      }
+      else {
         broadcastMood(payload.Expression)
       }
     }
@@ -715,8 +722,8 @@ Output MUST be raw JSON:
         // Ultimate Fallback: Try to find a motion group matching the mood
         if (!handled && motionManager && motionManager.definitions) {
           const groups = Object.keys(motionManager.definitions)
-          const matchedGroup = groups.find(g => g.toLowerCase() === m) ||
-                               groups.find(g => g.toLowerCase().includes(m))
+          const matchedGroup = groups.find(g => g.toLowerCase() === m)
+            || groups.find(g => g.toLowerCase().includes(m))
           if (matchedGroup) {
             motionManager.startMotion(matchedGroup, 0)
           }
@@ -743,12 +750,13 @@ Output MUST be raw JSON:
             neutral: 'neutral',
             cool: 'fun',
             shy: 'blush', // Assuming shy maps to a blush
-            love: 'joy'
+            love: 'joy',
           }
           if (!matched && m in vrmSpecialSauce) {
             matched = vrmStore.availableExpressions.find((e: string) => e.toLowerCase() === vrmSpecialSauce[m]) || null
           }
-        } else {
+        }
+        else {
           matched = vrmStore.availableExpressions.find((e: string) => e.toLowerCase() === m) || null
         }
 

@@ -45,5 +45,8 @@
     "@proj-airi/server-shared": "workspace:*",
     "valibot": "^1.2.0",
     "xstate": "^5.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
   }
 }

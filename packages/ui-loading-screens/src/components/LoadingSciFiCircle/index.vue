@@ -270,7 +270,8 @@ function handleUpdateDone(value: boolean) {
 // Method to update typing speed for a specific message
 function setMessageTypingSpeed(index: number, speed: number) {
   if (index >= 0 && index < bootMessages.value.length && speed > 0) {
-    bootMessages[index].typingSpeed = speed
+    // @ts-ignore
+    bootMessages.value[index].typingSpeed = speed
   }
 }
 
@@ -374,15 +375,17 @@ async function writeLine<T extends any[]>(
 }
 
 onMounted(async () => {
-  riveCanvas.value.width = Math.max(window.innerWidth, 500) * 2
-  riveCanvas.value.height = Math.max(window.innerWidth, 500) * 2
+  if (riveCanvas.value) {
+    riveCanvas.value.width = Math.max(window.innerWidth, 500) * 2
+    riveCanvas.value.height = Math.max(window.innerWidth, 500) * 2
 
-  rive.value = new Rive({
-    src: CircleFadeInAnimation,
-    canvas: riveCanvas.value,
-    autoplay: true,
-    artboard: isDark.value ? 'Bold' : 'Bold (Light)',
-  })
+    rive.value = new Rive({
+      src: CircleFadeInAnimation,
+      canvas: riveCanvas.value,
+      autoplay: true,
+      artboard: isDark.value ? 'Bold' : 'Bold (Light)',
+    })
+  }
 
   // Boot sequence
   for (const message of bootMessages.value) {
@@ -396,13 +399,15 @@ onMounted(async () => {
 })
 
 watch(isDark, () => {
-  rive.value?.cleanup()
-  rive.value = new Rive({
-    src: CircleFadeInAnimation,
-    canvas: riveCanvas.value,
-    autoplay: true,
-    artboard: isDark.value ? 'Bold' : 'Bold (Light)',
-  })
+  if (riveCanvas.value) {
+    rive.value?.cleanup()
+    rive.value = new Rive({
+      src: CircleFadeInAnimation,
+      canvas: riveCanvas.value,
+      autoplay: true,
+      artboard: isDark.value ? 'Bold' : 'Bold (Light)',
+    })
+  }
 })
 watch(consoleEntries, () => crtRef.value && crtRef.value.handleWriteLine(), { deep: true })
 

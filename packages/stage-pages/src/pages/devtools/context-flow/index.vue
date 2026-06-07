@@ -508,7 +508,9 @@ watch(incomingStreamEvent, (event) => {
         ? truncateText(event.special, 80)
         : event.type === 'assistant-message'
           ? truncateText(event.messageText ?? '', 120)
-          : `session=${event.sessionId}`,
+          : 'sessionId' in event
+            ? `session=${event.sessionId}`
+            : '',
     payload: event,
   })
 })
