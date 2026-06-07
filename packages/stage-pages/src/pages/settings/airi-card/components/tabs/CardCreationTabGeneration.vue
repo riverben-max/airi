@@ -97,11 +97,19 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
           Model
         </label>
         <Select
+          v-if="modelOptions && modelOptions.length > 0"
           v-model="generationModel"
           :options="modelOptions"
           :placeholder="modelPlaceholder"
           class="w-full"
         />
+        <input
+          v-else
+          v-model="generationModel"
+          type="text"
+          class="w-full border border-neutral-200 rounded-lg border-solid bg-neutral-50 px-2.5 py-1.5 text-sm text-neutral-800 shadow-sm outline-none dark:border-neutral-800 focus:border-primary-300 dark:bg-neutral-950 focus:bg-neutral-50 dark:text-neutral-200 dark:focus:border-primary-400/50 dark:focus:bg-neutral-900"
+          :placeholder="t('settings.pages.modules.consciousness.sections.section.provider-model-selection.manual_model_placeholder')"
+        >
       </div>
 
       <FieldInput
