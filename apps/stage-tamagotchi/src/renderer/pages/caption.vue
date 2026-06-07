@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import CaptionPanel from '@proj-airi/stage-ui/components/scenes/CaptionPanel.vue'
-
 import { defineInvoke } from '@moeru/eventa'
 import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseAroundWindowBorder, useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
+import { CaptionPanel } from '@proj-airi/stage-ui/components/scenes'
 import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { refDebounced } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'

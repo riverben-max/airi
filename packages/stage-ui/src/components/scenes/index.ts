@@ -1,3 +1,4 @@
+export { default as CaptionPanel } from './CaptionPanel.vue'
 export { default as WidgetStage } from './ControlStripHost.vue'
 export { default as RendererStage } from './RendererStage.vue'
 export {

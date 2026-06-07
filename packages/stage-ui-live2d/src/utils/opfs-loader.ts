@@ -5,12 +5,6 @@ interface OPFSContext extends Live2DFactoryContext {
   opfsUrl?: string
 }
 
-declare global {
-  interface FileSystemDirectoryHandle {
-    values: () => FileSystemDirectoryHandleAsyncIterator<FileSystemHandle>
-  }
-}
-
 export class OPFSCacheV2 {
   static async clearAll(): Promise<void> {
     try {

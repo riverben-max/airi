@@ -1731,6 +1731,24 @@ function onCanvasClick(event: MouseEvent) {
       }
     }
 
+    // NOTICE: Many models only have generic motion groups like "tap", "touch", "click", or "idle".
+    // If no zone-specific group matched, fall back to any tap/touch/click group so the model
+    // always reacts visually to a click instead of silently doing nothing.
+    if (!matchedGroup) {
+      const genericFallbacks = ['tap', 'touch', 'click', 'reaction', 'interact', 'flick']
+      for (const fb of genericFallbacks) {
+        matchedGroup = groups.find(g => g.toLowerCase().includes(fb))
+        if (matchedGroup)
+          break
+      }
+    }
+
+    // Ultimate fallback: pick any non-idle motion group so the model does *something*
+    if (!matchedGroup) {
+      matchedGroup = groups.find(g => !g.toLowerCase().includes('idle') && !g.toLowerCase().includes('start'))
+        ?? groups[0]
+    }
+
     if (matchedGroup) {
       const definitions = motionManager.definitions[matchedGroup]
       if (definitions && definitions.length > 0) {
@@ -1751,7 +1769,7 @@ function onCanvasClick(event: MouseEvent) {
       }
     }
     else {
-      console.info(`[Live2D Tactile] No matching motion group for zone "${bodyZone}" — skipping motion playback`)
+      console.info(`[Live2D Tactile] No motion groups available at all — skipping motion playback`)
     }
   }
 
