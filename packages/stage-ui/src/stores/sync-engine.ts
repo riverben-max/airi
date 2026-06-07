@@ -849,6 +849,77 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     }
   }
 
+  // Merges two chat-session indexes.
+  function mergeChatIndices(localVal: any, remoteVal: any): any {
+    try {
+      const localIdx = localVal && typeof localVal === 'object' && !Array.isArray(localVal) ? localVal : { characters: {} }
+      const remoteIdx = remoteVal && typeof remoteVal === 'object' && !Array.isArray(remoteVal) ? remoteVal : { characters: {} }
+
+      const mergedCharacters: Record<string, any> = {}
+      const allCharacterIds = new Set([
+        ...Object.keys(localIdx.characters || {}),
+        ...Object.keys(remoteIdx.characters || {}),
+      ])
+
+      for (const charId of allCharacterIds) {
+        const localChar = localIdx.characters?.[charId] || { sessions: {} }
+        const remoteChar = remoteIdx.characters?.[charId] || { sessions: {} }
+
+        const mergedSessions: Record<string, any> = {}
+        const allSessionIds = new Set([
+          ...Object.keys(localChar.sessions || {}),
+          ...Object.keys(remoteChar.sessions || {}),
+        ])
+
+        let activeSessionId = localChar.activeSessionId || remoteChar.activeSessionId || ''
+
+        for (const sessId of allSessionIds) {
+          const localSess = localChar.sessions?.[sessId]
+          const remoteSess = remoteChar.sessions?.[sessId]
+
+          if (localSess && remoteSess) {
+            const localTime = localSess.updatedAt || localSess.createdAt || 0
+            const remoteTime = remoteSess.updatedAt || remoteSess.createdAt || 0
+            if (remoteTime > localTime) {
+              mergedSessions[sessId] = remoteSess
+            }
+            else {
+              mergedSessions[sessId] = localSess
+            }
+          }
+          else {
+            mergedSessions[sessId] = localSess || remoteSess
+          }
+        }
+
+        const localActiveSess = localChar.sessions?.[localChar.activeSessionId]
+        const remoteActiveSess = remoteChar.sessions?.[remoteChar.activeSessionId]
+        const localActiveTime = localActiveSess?.updatedAt || localActiveSess?.createdAt || 0
+        const remoteActiveTime = remoteActiveSess?.updatedAt || remoteActiveSess?.createdAt || 0
+        if (remoteActiveTime > localActiveTime && remoteChar.activeSessionId) {
+          activeSessionId = remoteChar.activeSessionId
+        }
+        else if (localChar.activeSessionId) {
+          activeSessionId = localChar.activeSessionId
+        }
+
+        mergedCharacters[charId] = {
+          activeSessionId,
+          sessions: mergedSessions,
+        }
+      }
+
+      return {
+        userId: localIdx.userId || remoteIdx.userId || 'local',
+        characters: mergedCharacters,
+      }
+    }
+    catch (e) {
+      console.error('[SyncEngine] Failed to merge chat indices:', e)
+      return localVal || remoteVal
+    }
+  }
+
   const conflicts = ref<any[]>([])
 
   async function logDebug(msg: string) {
@@ -926,7 +997,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   // Safety Heuristics Guard
   async function checkSyncConflict(localKey: string, localTime: number, remoteFile: { size: number, mtime: number, relPath: string }, type: 'remote-newer' | 'local-newer'): Promise<boolean> {
-    const isCritical = localKey.startsWith('local:chat/sessions/') || localKey.startsWith('local:characters/') || localKey.startsWith('local:localstorage/') || localKey.startsWith('local:director/sessions/')
+    const isCritical = localKey.startsWith('local:chat/sessions/') || localKey.startsWith('local:characters/') || localKey.startsWith('local:localstorage/') || localKey.startsWith('local:director/sessions/') || localKey.startsWith('local:chat/index/')
     await logDebug(`checkSyncConflict: key=${localKey}, type=${type}, critical=${isCritical}`)
     if (!isCritical)
       return false
@@ -1132,7 +1203,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           'local:memory/text-journal/local',
           'local:memory/echo-chips/local',
           'local:airi-cards',
-        ].includes(localKey)
+        ].includes(localKey) || localKey.startsWith('local:chat/index/')
 
         if (isMergeableKey) {
           console.log(`[SyncEngine] Key ${localKey} is mergeable. Executing merge...`)
@@ -1152,6 +1223,9 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
           if (localKey === 'local:airi-cards') {
             mergedVal = mergeAiriCards(localVal, remoteVal)
+          }
+          else if (localKey.startsWith('local:chat/index/')) {
+            mergedVal = mergeChatIndices(localVal, remoteVal)
           }
           else {
             let localArr = localVal || []
@@ -1302,7 +1376,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
             'local:memory/text-journal/local',
             'local:memory/echo-chips/local',
             'local:airi-cards',
-          ].includes(item.key)
+          ].includes(item.key) || item.key.startsWith('local:chat/index/')
 
           if (isMergeableKey) {
             console.log(`[SyncEngine] Outbox key ${item.key} is mergeable. Merging with remote...`)
@@ -1319,6 +1393,9 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
             if (item.key === 'local:airi-cards') {
               mergedVal = mergeAiriCards(localVal, remoteVal)
+            }
+            else if (item.key.startsWith('local:chat/index/')) {
+              mergedVal = mergeChatIndices(localVal, remoteVal)
             }
             else {
               let localArr = localVal || []

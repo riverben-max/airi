@@ -11,6 +11,7 @@ import { client } from '../../composables/api'
 import { stripMarkers } from '../../composables/response-categoriser'
 import { useLocalFirstRequest } from '../../composables/use-local-first'
 import { chatSessionsRepo } from '../../database/repos/chat-sessions.repo'
+import { storage } from '../../database/storage'
 import { useAuthStore } from '../auth'
 import { useMemoryLifetimeStore } from '../memory-lifetime'
 import { useShortTermMemoryStore } from '../memory-short-term'
@@ -248,12 +249,85 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       sessionGenerations.value[sessionId] = 0
   }
 
+  async function reconstructIndexFromIndexedDB(currentUserId: string) {
+    try {
+      const rawLocalKeys = await storage.getKeys('local')
+      const localKeys = rawLocalKeys.map((fullKey) => {
+        if (fullKey.startsWith('local:airi-local:')) {
+          const relative = fullKey.substring('local:airi-local:'.length)
+          return `local:${relative.replace(/:/g, '/')}`
+        }
+        if (fullKey.startsWith('local:')) {
+          const relative = fullKey.substring('local:'.length)
+          return `local:${relative.replace(/:/g, '/')}`
+        }
+        return null
+      }).filter((k): k is string => k !== null)
+
+      const sessionKeys = localKeys.filter(k => k.startsWith('local:chat/sessions/'))
+      if (sessionKeys.length === 0)
+        return
+
+      let changed = false
+      if (!index.value) {
+        index.value = {
+          userId: currentUserId,
+          characters: {},
+        }
+      }
+
+      for (const key of sessionKeys) {
+        const sessionId = key.substring('local:chat/sessions/'.length)
+        if (!sessionId)
+          continue
+
+        // Retrieve the record to get its meta (characterId, createdAt, etc.)
+        const record = await chatSessionsRepo.getSession(sessionId)
+        if (!record || !record.meta)
+          continue
+
+        const charId = record.meta.characterId || 'default'
+        if (!index.value.characters[charId]) {
+          index.value.characters[charId] = {
+            activeSessionId: sessionId,
+            sessions: {},
+          }
+          changed = true
+        }
+
+        const charIndex = index.value.characters[charId]
+        if (!charIndex.sessions[sessionId]) {
+          console.info(`[ChatSessionStore] Reconstructing index entry for orphaned session: ${sessionId}`)
+          charIndex.sessions[sessionId] = {
+            sessionId,
+            userId: currentUserId,
+            characterId: charId,
+            title: record.meta.title,
+            messageCount: record.messages?.length || record.meta.messageCount || 0,
+            createdAt: record.meta.createdAt || Date.now(),
+            updatedAt: record.meta.updatedAt || Date.now(),
+          }
+          changed = true
+        }
+      }
+
+      if (changed) {
+        console.info('[ChatSessionStore] Reconstructed index entries successfully. Saving index...')
+        await persistIndex()
+      }
+    }
+    catch (err) {
+      console.error('[ChatSessionStore] Failed to reconstruct index from IndexedDB:', err)
+    }
+  }
+
   async function loadIndexForUser(currentUserId: string) {
     const stored = await chatSessionsRepo.getIndex(currentUserId)
     index.value = stored ?? {
       userId: currentUserId,
       characters: {},
     }
+    await reconstructIndexFromIndexedDB(currentUserId)
   }
 
   function getCharacterIndex(characterId: string) {
