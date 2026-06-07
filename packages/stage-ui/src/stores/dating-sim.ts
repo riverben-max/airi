@@ -58,7 +58,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     gameMode: useLocalStorage<'open_ended' | 'goal_driven'>('airi:dating-sim:game-mode', 'goal_driven'),
     showChoiceWeights: useLocalStorage<boolean>('airi:dating-sim:show-choice-weights', false),
     maxScore: useLocalStorage<number>('airi:dating-sim:max-score', 15),
-    maxTurns: useLocalStorage<number>('airi:dating-sim:max-turns-temp', 4),
+    maxTurns: useLocalStorage<number>('airi:dating-sim:max-turns-temp', 18),
     sceneryRoute: useLocalStorage<'background' | 'widget' | 'bg_widget' | 'inherit'>('airi:dating-sim:scenery-route', 'inherit'),
   })
 
