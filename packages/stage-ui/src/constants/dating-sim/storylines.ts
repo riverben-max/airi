@@ -20,7 +20,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'loose crop top, tiny pajama short shorts, lingerie, fluffy socks, bare legs, oversized cardigan slipping off shoulder, tousled hair',
     positiveOutcome: 'The tension finally breaks in the right way—whether it\'s an intense gaze held for too long, an innocent touch that lingers, or an unexpected confession. With a knowing smirk, the character invites the user into their room, the door closing behind them for a night that changes everything.',
     negativeOutcome: 'The user\'s attempt completely backfires—whether by being too obvious, too desperate, or mistiming the moment. In an unfortunate twist, the character discovers an embarrassing secret the user never wanted revealed. Horrified and flustered, the character laughs awkwardly, firmly cementing the user in the forever friend category.',
-    coverImage: '/dating-sim-concepts/pastel_roommate_crush_bigrbear_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_roommate_crush_bigrbear_00001_.png',
   },
   {
     id: 'unpaid_rent',
@@ -31,7 +31,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'cropped tank top, bra with cleavage, sweatpants, visible midriff, old band t-shirt thrown over, messy bun, faint coffee stain on top',
     positiveOutcome: 'After much back-and-forth, the character finally caves, agreeing to a rather unique repayment plan—they become the user\'s devoted girlfriend, handling chores and making sure the apartment is always spotless.',
     negativeOutcome: 'The conversation goes horribly wrong. Instead of paying up, they report the user to the authorities, making up a wild story about \'landlord harassment.\' The user is escorted out in handcuffs, while the character continues living rent-free.',
-    coverImage: '/dating-sim-concepts/pastel_final_the_unpaid_rent_bigrbear_run2_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_final_the_unpaid_rent_bigrbear_run2_00001_.png',
   },
   {
     id: 'fitness_coach',
@@ -42,7 +42,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'pink leggings, fitted sports bra, feminine-colored top bra, cleavage, high-waisted gym shorts, shiny tight shorts, sneakers, ponytail, sweat glistening on skin',
     positiveOutcome: 'The heat of the workout evolves into a different kind of intensity. A postural correction becomes something much closer, shifting the lesson from fitness to something far more intimate.',
     negativeOutcome: 'A disastrous misstep ruins everything. The user fumbles a demonstration or splits their shorts wide open, leaving them exposed and humiliated while the character laughs and snaps a photo before walking out.',
-    coverImage: '/dating-sim-concepts/pastel_final_the_fitness_coach_bigrbear_run2_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_final_the_fitness_coach_bigrbear_run2_00001_.png',
   },
   {
     id: 'boss_favor',
@@ -53,7 +53,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'tight pencil skirt, white blouse, unbuttoned top, black stockings, high heels, fitted blazer, wavy hair',
     positiveOutcome: 'The character caves, agreeing to a unique deal—pledging to be the user\'s personal assistant in every way that matters, both in and out of the office.',
     negativeOutcome: 'The user pushes too hard, or the character flips the situation—storming out and reporting the user to HR. The user finds themselves under investigation, their authority crumbling.',
-    coverImage: '/dating-sim-concepts/pastel_final_the_boss_s_favor_bigrbear_run2_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_final_the_boss_s_favor_bigrbear_run2_00001_.png',
   },
   {
     id: 'pros_workshop',
@@ -64,7 +64,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'denim shorts, tight crop top, midriff exposed, sports bra visible, tousled hair, sneakers',
     positiveOutcome: 'After tense back-and-forth, the character caves and agrees to an unconventional deal—repaying her debt by staying at the user\'s beck and call.',
     negativeOutcome: 'The conversation takes a bad turn. Instead of negotiating, she snaps—storming out and filing a complaint, putting your workshop\'s reputation at risk.',
-    coverImage: '/dating-sim-concepts/pastel_fixes_the_pro_s_workshop_bigrbear_run3_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_fixes_the_pro_s_workshop_bigrbear_run3_00001_.png',
   },
   {
     id: 'study_session',
@@ -75,7 +75,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'pleated mini skirt, thigh-high stockings, tight button-up shirt, unbuttoned top, short-sleeved cardigan, glasses, playful smirk, knee-high boots',
     positiveOutcome: 'The session shifts from academics to intimate exploration, proving that private tutoring has unexpected extracurricular benefits.',
     negativeOutcome: 'The user fails to capture the character\'s interest or makes an awkward comment, leading to them packing up their books and leaving early, maintaining the distance.',
-    coverImage: '/dating-sim-concepts/pastel_grind_the_study_session_bigrbear_run7_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_grind_the_study_session_bigrbear_run7_00001_.png',
   },
   {
     id: 'fake_taxi',
@@ -86,7 +86,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'short summer dress, thin straps, deep neckline, bare shoulders, smooth legs, strappy sandals, anklet, messy bun',
     positiveOutcome: 'Desperate for a break, she entertains the idea. The taxi pulls off into a secluded spot, and the ride becomes much more than just a trip.',
     negativeOutcome: 'The character is unconvinced. She scoffs, crosses her arms, and rolls her eyes, telling the user to keep it professional and just drive.',
-    coverImage: '/dating-sim-concepts/pastel_fixes_the_fake_taxi_bigrbear_run2_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_fixes_the_fake_taxi_bigrbear_run2_00001_.png',
   },
   {
     id: 'bad_taxi',
@@ -97,7 +97,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'tailored blazer, lace top, high-waisted trousers, slim belt, minimalist necklace, structured jacket',
     positiveOutcome: 'Enthralled by the idea of a dependable yet passionate rendezvous, she agrees to turn their encounters into a regular, exciting ritual.',
     negativeOutcome: 'Reluctant yet compliant, she agrees to a fleeting tryst that, while charged, leaves both parties aware it won\'t extend into a regular arrangement.',
-    coverImage: '/dating-sim-concepts/pastel_the_bad_taxi_bigrbear_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_the_bad_taxi_bigrbear_00001_.png',
   },
   {
     id: 'obsessed_fan',
@@ -108,7 +108,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'pastel color-blocked hoodie, denim shorts, multi-colored cyan/orange eyes',
     positiveOutcome: 'You transform her obsession into a controlled, secret affair. She learns to respect your terms, relishing hidden moments without risk.',
     negativeOutcome: 'A misstep turns her devotion to fury. Exposing your secrets and blackmailing you, your life unravels under her constant watch.',
-    coverImage: '/dating-sim-concepts/pastel_the_obsessed_fan_bigrbear_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_the_obsessed_fan_bigrbear_00001_.png',
   },
   {
     id: 'therapist',
@@ -119,7 +119,7 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'fitted sweater, pencil skirt, stockings, glasses, neat hair',
     positiveOutcome: 'You channel her impulses into a balanced relationship based on trust. Her obsession transforms into genuine, stable love.',
     negativeOutcome: 'A hard rejection sends her spiraling. The resulting breakdown and fallout revokes your medical license and ruins your reputation.',
-    coverImage: '/dating-sim-concepts/pastel_final_therapist_bigrbear_run7_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_final_therapist_bigrbear_run7_00001_.png',
   },
   {
     id: 'desert_island',
@@ -130,6 +130,6 @@ export const STORYLINE_PRESETS: StorylinePreset[] = [
     appearances: 'Sun-kissed skin, tousled hair, and a deliberately adjusted torn outfit.',
     positiveOutcome: 'She slowly falls for your strength and capability, her survival strategy turning into genuine, balanced love.',
     negativeOutcome: 'You push too hard and she turns vengeful, sabotaging supplies. When rescue arrives, she frames you as a dangerous survivalist.',
-    coverImage: '/dating-sim-concepts/pastel_fixes_the_desert_island_bigrbear_run1_00001_.png',
+    coverImage: 'dating-sim-concepts/pastel_fixes_the_desert_island_bigrbear_run1_00001_.png',
   },
 ]

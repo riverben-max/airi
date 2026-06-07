@@ -36,7 +36,7 @@ const DEFAULT_BUTTONS: ControlStripButton[] = [
 
 export const useSettingsControlStrip = defineStore('settings-control-strip', () => {
   const orientation = useLocalStorageManualReset<'vertical' | 'horizontal'>('settings/control-strip/orientation', 'vertical')
-  const stageMode = useLocalStorageManualReset<'positionMode' | 'dragMode' | 'tactileMode' | 'orbitMode'>('settings/control-strip/stage-mode', 'orbitMode')
+  const stageMode = useLocalStorageManualReset<'positionMode' | 'dragMode' | 'tactileMode' | 'orbitMode'>('settings/control-strip/stage-mode', 'tactileMode')
   const interactionMode = computed({
     get: () => {
       const mode = stageMode.value
