@@ -16,8 +16,6 @@ const emit = defineEmits<{
   (e: 'exportPng'): void
 }>()
 
-const iconCache = new Map<string, string>()
-
 interface Props {
   id: string
   name: string

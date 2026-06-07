@@ -3,6 +3,7 @@ import { useBroadcastChannel } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
 import CaptionPanel from './CaptionPanel.vue'
+import ModeSelectorModal from './ModeSelectorModal.vue'
 import StorySelectorModal from './StorySelectorModal.vue'
 
 import { useChatSessionStore } from '../../stores/chat/session-store'
@@ -180,9 +181,32 @@ function submitCustomPrompt() {
 }
 
 const showSelector = ref(false)
+const showModeSelector = ref(false)
 
-watch(() => [datingSimStore.enabled, datingSimStore.settings.gameMode, datingSimStore.activeStoryline], ([enabled, mode, storyline]) => {
-  if (enabled && mode === 'goal_driven' && !storyline) {
+watch(() => datingSimStore.enabled, (enabled) => {
+  if (enabled) {
+    showModeSelector.value = true
+  }
+  else {
+    showModeSelector.value = false
+  }
+})
+
+function handleModeSelect(mode: 'open_ended' | 'goal_driven') {
+  showModeSelector.value = false
+  datingSimStore.settings.gameMode = mode
+  if (mode === 'open_ended') {
+    datingSimStore.generateLiveChoices()
+  }
+}
+
+function handleModeClose() {
+  showModeSelector.value = false
+  datingSimStore.disable()
+}
+
+watch(() => [datingSimStore.enabled, datingSimStore.settings.gameMode, datingSimStore.activeStoryline, showModeSelector.value], ([enabled, mode, storyline, modeSelectorOpen]) => {
+  if (enabled && mode === 'goal_driven' && !storyline && !modeSelectorOpen) {
     showSelector.value = true
   }
   else {
@@ -437,6 +461,13 @@ function handleStorySelect(story: any, customPromptVal: string) {
       :show="showSelector"
       @close="showSelector = false"
       @select="handleStorySelect"
+    />
+
+    <!-- Mode Select Modal -->
+    <ModeSelectorModal
+      :show="showModeSelector"
+      @close="handleModeClose"
+      @select="handleModeSelect"
     />
   </div>
 </template>

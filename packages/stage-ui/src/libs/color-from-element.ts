@@ -101,8 +101,13 @@ export async function colorFromElement(element: HTMLElement, options: ColorFromE
   }
 
   if (shouldRunHtml2Canvas) {
-    const html2CanvasResult = await extractWithHtml2Canvas(element, options.html2canvas)
-    result.html2canvas = html2CanvasResult
+    try {
+      const html2CanvasResult = await extractWithHtml2Canvas(element, options.html2canvas)
+      result.html2canvas = html2CanvasResult
+    }
+    catch (err) {
+      console.warn('[ColorFromElement] html2canvas color extraction failed (possibly due to unsupported CSS functions like color-mix):', err)
+    }
   }
 
   return result

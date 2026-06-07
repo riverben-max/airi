@@ -337,8 +337,16 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       const relative = fullKey.substring('local:airi-local:'.length)
       return `local:${relative.replace(/:/g, '/')}`
     }
+    if (fullKey.startsWith('local:')) {
+      const relative = fullKey.substring('local:'.length)
+      return `local:${relative.replace(/:/g, '/')}`
+    }
     if (fullKey.startsWith('outbox:airi-sync-queue:')) {
       const relative = fullKey.substring('outbox:airi-sync-queue:'.length)
+      return `outbox:${relative.replace(/:/g, '/')}`
+    }
+    if (fullKey.startsWith('outbox:')) {
+      const relative = fullKey.substring('outbox:'.length)
       return `outbox:${relative.replace(/:/g, '/')}`
     }
     return null
@@ -532,10 +540,12 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
       // 2. Read remote manifest
       let manifest: { models: Record<string, { id: string, format: string, name: string, importedAt: number, previewImage?: string, hasTextures: boolean, hasPreview?: boolean }> } = { models: {} }
+      let manifestExists = false
       try {
         const readRes = await client.readFile('assets/models/manifest.json')
         if (readRes.success && readRes.content) {
           manifest = JSON.parse(readRes.content)
+          manifestExists = true
         }
       }
       catch (e) {
@@ -595,7 +605,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
         if (!manifest.models[id]) {
           // Check if we have sync history for it
           const hasSyncHistory = await storage.getItemRaw<number>(`local:sync-metadata/timestamps/${id}`)
-          if (hasSyncHistory) {
+          if (hasSyncHistory && manifestExists) {
             console.log(`[SyncEngine] Model ${id} (${entry.name}) has sync history but is missing from remote manifest. Deleting locally.`)
             await localforage.removeItem(id)
             await localforage.removeItem(`${id}-textures`)

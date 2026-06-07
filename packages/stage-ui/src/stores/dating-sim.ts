@@ -55,7 +55,7 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
     lightningRounds: false,
     inlineCaption: true,
     contextDepth: useLocalStorage('airi:producer:context-depth', 6),
-    gameMode: useLocalStorage<'open_ended' | 'goal_driven'>('airi:dating-sim:game-mode', 'open_ended'),
+    gameMode: useLocalStorage<'open_ended' | 'goal_driven'>('airi:dating-sim:game-mode', 'goal_driven'),
     showChoiceWeights: useLocalStorage<boolean>('airi:dating-sim:show-choice-weights', false),
     maxScore: useLocalStorage<number>('airi:dating-sim:max-score', 15),
     maxTurns: useLocalStorage<number>('airi:dating-sim:max-turns-temp', 4),
@@ -665,9 +665,6 @@ Generate 4 options for what the User could say next and the subtitle.`
     }
     else {
       syncToggle(true)
-      if (settings.value.gameMode !== 'goal_driven') {
-        generateLiveChoices()
-      }
     }
   }
 
