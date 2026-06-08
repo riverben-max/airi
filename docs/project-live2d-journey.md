@@ -9,6 +9,23 @@ It is written for future contributors (and future us) so we don't repeat the sam
 
 ---
 
+## 🗺️ Document Index — All Related Files
+
+This journal acts as the master index for all documentation related to this feature.
+If you are an AI or a new contributor, read these in order before touching any code.
+
+| File | What it is | When to read it |
+| :--- | :--- | :--- |
+| **[project-live2d-journey.md](./project-live2d-journey.md)** | This file — history, lineage, lessons, current state | Start here |
+| [live2d_special_sauce_insights.md](./live2d_special_sauce_insights.md) | Per-model audit of all 23 Steam models' stripped DSL entries — the ground truth | Before touching any model interaction logic |
+| [live2d_dsl_interpreter_spec.md](./live2d_dsl_interpreter_spec.md) | Full DSL VM architecture: VarFloats engine, Command pipeline, Intimacy gating, Delta Ticking, costume hot-swap | Before implementing or extending the DSL interpreter |
+| [live2d_dsl_test_cases_handoff.md](./live2d_dsl_test_cases_handoff.md) | The 23 test model handoff doc — Steam IDs, packager tooling, step-by-step setup instructions | Before running any test session |
+| [dating_sim_intimacy_spec.md](./dating_sim_intimacy_spec.md) | The refined 2-request game loop, Actor/Director/IC taxonomy, design anti-patterns to avoid | Before touching the dating sim store or LLM orchestration |
+| [dating_sim_gamestate_mechanics.md](./dating_sim_gamestate_mechanics.md) | Mode A (open-ended sandbox) vs Mode B (goal-driven game), scoring schema, session state, choice schema | Before touching game state variables or choice rendering |
+| [PROPOSAL_Director_Led_Regional_Orchestration.md](./PROPOSAL_Director_Led_Regional_Orchestration.md) | Director-as-orchestrator proposal — regional scene management tied to Live2D stage | Context for how the Director/IC integrates with spatial staging |
+
+---
+
 ## 📜 Chapter 1 — Origin & Lineage
 
 ### The Vision (Why We Started)
@@ -119,6 +136,14 @@ Models where interactions are driven by the full special-sauce DSL embedded in t
 - They have intimacy gating, conditional state, and chained motion sequences
 - **Flandre (2262182171)** is a confirmed Class B model — 178 custom DSL entries
 
+### ✅ Gen3 Status by Class
+- **Class A (Expression-Array)**: Gen3 IS confirmed working. Kazi's recommended test case
+  (`3443578669` — referred to as `xxx81` in chat) was verified by Richard on gen3 and
+  expression cycling on click works correctly. Chain Girl's wrist cuff → anger expression
+  is also a confirmed Class A success on gen3.
+- **Class B (DSL Command)**: Gen3 REGRESSES these. Flandre (2262182171) produces a
+  neck-twitch instead of the intended expression change on gen3.
+
 ### The Conflict
 Gen3's three-tier fallback chain works like this:
 1. Try DSL expression triggers
@@ -224,7 +249,7 @@ All other models are unverified as of June 7 2026.
 ### Where We Are
 - **Active branch**: `temp-test-flandre` = `origin/kazzy-feature-dating-sim-demo` (gen2)
 - **Current behavior**: Flandre produces a neck-twitch on click (not the full expression change)
-- **Gen3 status**: Shelved — broke Flandre, unclear what it fixed
+- **Gen3 status**: ✅ Works for Class A (expression-array) models — confirmed by Richard on Kazi's recommended test case. ❌ Regresses Class B (DSL command) models — broke Flandre (2262182171).
 - **Gen2 status**: Needs fresh investigation — may have regressed even on its own branch
 
 ### What We Know Doesn't Work
@@ -232,10 +257,10 @@ All other models are unverified as of June 7 2026.
 - The stray `return` statement that was temporarily added — reverted
 - Attempting Cubism 2.0 support — explicitly blocked, returns version error now
 
-### What We Confirmed Works (At Some Point)
-- Model `2262182171` (Flandre) responding to head clicks with expression changes (gen2, June 5)
-- Chain Girl's wrist cuff click → anger expression (gen3, confirmed by Richard)
-- Model `3599090981` successfully sanitized (invalid entry pruned, loads cleanly now)
+### What We Confirmed Works
+- **Gen2**: Model `2262182171` (Flandre) responding to head clicks with expression changes (June 5, Richard)
+- **Gen3**: Class A expression-array models — Kazi's recommended test case + Chain Girl's wrist cuff click → anger expression (confirmed by Richard)
+- **Both gens**: Model `3599090981` successfully sanitized (invalid entry pruned, loads cleanly now)
 
 ### What Needs To Happen Next
 1. **Root cause Flandre's current neck-twitch** — diff gen2 Model.vue carefully, find the exact
@@ -266,4 +291,4 @@ The models are trying to tell us something. We just need to learn to listen.
 ---
 
 *Last updated: June 7 2026 by Richard Pinedo + Gemini*
-*Branch at time of writing: `temp-test-flandre` (575080a6c)*
+*Branch at time of writing: `temp-test-flandre` (87c0e4b20)*
