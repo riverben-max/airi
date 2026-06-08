@@ -109,7 +109,7 @@ Clean infrastructure contributor focused on the desktop rendering path. Their El
 
 | Fork | Person | Type | Divergence | PRs to Main | Focus |
 |---|---|---|---|---|---|
-| [dasilva333/airi](https://github.com/dasilva333/airi) | Richard | **Independent** | **High** | Selective | Full platform fork — this one |
+| [dasilva333/airi](https://github.com/dasilva333/airi) | Richard | **Independent** | **High** | 3 merged historically, currently blocked on coordination | Full platform fork — this one |
 | [NashChennc/airi](https://github.com/NashChennc/airi) | NaN (LDS@USTC) | Active contributor | Low (staging) | ✅ Yes | Core agent, Alaya memory, LLM alignment research |
 | [YoukiAkito/airi](https://github.com/YoukiAkito/airi) | LiMomo | Active contributor | Low (staging) | ✅ Yes | Alaya memory optimization |
 | [lulu0119/airi](https://github.com/lulu0119/airi) | lulu0119 | Active contributor | Low (staging) | ✅ Yes | Scale UI, Whiteboard MCP, OpenClaw Shion Eria |
@@ -125,6 +125,8 @@ Clean infrastructure contributor focused on the desktop rendering path. Their El
 **The Alaya convergence is notable.** Two separate contributors (NashChennc and YoukiAkito) are actively working on the Alaya memory architecture upstream. This is the same problem space addressed in `PROPOSAL_Dynamic_Memory_RAG_Injection.md`. Their work may be worth evaluating once Alaya stabilizes — either as a foundation to build the RAG injection proposal on top of, or as a design reference to learn from and differentiate against.
 
 **Most "forks" are just PR staging branches.** The real activity to track is not the fork repos themselves but the PRs and issues those contributors open on upstream moeru-ai/airi. The fork list is a contributor map, not a divergent-projects map.
+
+**The dasilva333 ↔ upstream relationship requires pre-coordination for further contributions.** Three PRs were merged historically (smaller fixes). The Live2D engine in this fork is now so substantially ahead of main — and so deeply interconnected — that contributing it upstream isn't a simple PR. It would require: upstream maintainer agreement on scope and approach upfront, a dedicated feature branch from upstream main, and a lengthy review process with no guarantee of acceptance. The model is: upstream maintainers describe what they want and don't want, dasilva333 agrees on scope, then a PR gets submitted. Without that handshake, submitting a large-scope PR cold is a donation of engineering time with no guaranteed return. Upstream has been unresponsive on Discord to coordination attempts; this is the current blocker.
 
 **Two genuinely independent forks:** dasilva333/airi (this one) and btechioi/NOVA (unconfirmed). The rest are upstream contributors using the standard fork-PR workflow.
 
