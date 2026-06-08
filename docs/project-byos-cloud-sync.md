@@ -117,3 +117,37 @@ To prevent accidental deletions or data loss, we run a safety check before apply
 | **Providers Config** | `local:providers/*` | Standard LWW. Excludes the current sync configuration settings to prevent loopbacks. |
 | **Background Images** | `localforage` (`bg-*`) | Reconciled via metadata JSON + raw PNG images under `assets/backgrounds/`. Deletions tracked via `local:sync-metadata/deleted-backgrounds/*`. |
 | **Display Models** | `localforage` (`display-model-*`) | Binary GLB/Zip uploaded under `assets/models/{id}.bin`, with previews and textures saved as sidecar files. Manifested globally via `assets/models/manifest.json`. Deletions tracked via `local:sync-metadata/deleted-models/*`. |
+
+---
+
+## 🎯 Future Milestone: Selective Sync & Onboarding Integration
+
+To improve the UX and control over storage footprint/bandwidth, we are introducing a managed **Selective Sync** option integrated natively into both the onboarding flow and the cloud sync dashboard.
+
+### 1. Onboarding Integration
+Instead of treating onboarding as an annoyance or roadblock, it is positioned as a **safety net / first-class restore vehicle**:
+* **Onboarding Modes:**
+  * **Easy Mode:** Core keys setup.
+  * **Advanced Mode:** Custom provider setup.
+  * **Restore / Cloud Sync Mode:** Users can input their existing adapter details (e.g., S3/Local FS) and load their data immediately.
+* **Warning Bypass:** Because onboarding assumes an empty local database, we bypass all destructive sync warnings and data-loss heuristics since there is no existing local data to corrupt.
+
+### 2. Selective Sync Interface (Nested Checkbox Layout)
+We use a hierarchical installer-style tree representation of the remote backup data to allow fine-grained download selection:
+* **Root Nodes (Store Names):**
+  * `[ ]` Chat Sessions
+  * `[ ]` Character Cards
+  * `[ ]` Background Images
+  * `[ ]` Display Models
+* **Behavior:**
+  * Checking a root node automatically selects all underlying leaf nodes.
+  * Checking/unchecking a leaf node updates the parent root to a "partially selected" state.
+* **Core Requirements / Unchecked Limits:**
+  * Some core configuration/state keys (e.g., core settings/local index) might be mandatory/non-deselectable if sync is active, while bulky assets (models, voice files, backgrounds) are entirely optional.
+
+### 3. "Select by Character" Helper Utility
+A helper search input at the bottom of the sync selection screen simplifies targeting specific character profiles:
+* **Search Input:** User types `asu`
+* **Real-time Results:** Matches characters like `Asuka`, `Asukee`, `Asuhoa`.
+* **"Add / Select All Related" Action:** Clicking next to a search result automatically traverses the sync tree and checks all leaf nodes (chats, custom background files, display models) associated with that character.
+
