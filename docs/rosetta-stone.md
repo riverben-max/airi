@@ -298,6 +298,39 @@ Microphone → VadDetector → AudioBuffer → STTProvider inference → text �
 | **LLM Meta-Tools** | `apps/stage-tamagotchi/src/renderer/stores/tools/builtin/` |
 | **Multi-Step Tool Gating** | `packages/stage-ui/src/stores/llm.ts` — `maxSteps: 10` |
 
+### System Prompt Builder
+
+The "system prompt builder" is the composition layer that templates all the moving parts — character card fields, acting prompts, artistry instructions, memory context, and runtime overlays (like dating sim storyline guidance) — into a single system prompt at runtime.
+
+| Concept | Path |
+| :--- | :--- |
+| **Core builder** | `packages/stage-ui/src/stores/modules/airi-card.ts` — `buildSystemPrompt()` (line 1170). Composes: `card.systemPrompt` + nickname + description + personality + scenario + greetings + acting prompts + artistry widget instruction + dating sim storyline (if active). Exported as computed `systemPrompt` on the store. |
+| **Session enrichment** | `packages/stage-ui/src/stores/chat/session-store.ts` — `refreshActiveSystemMessage()` (line 745). Takes the base system prompt and further injects memory context (short-term summaries, lifetime memory), environmental awareness, and context awareness. Manages persona blocks (head + tail) to prevent prompt pollution across sessions. |
+| **Short-term memory injection** | `packages/stage-ui/src/stores/chat/session-store.ts` — `buildShortTermMemoryContext()` (line 199). Slices daily summaries by `windowSize` and appends as hidden context. |
+| **Dating sim hooks** | `packages/stage-ui/src/stores/modules/airi-card.ts` — `buildSystemPrompt()` checks `datingSimStore.enabled` and `activeStoryline`, then injects: storyline premise, character appearances for the story, scene/setting. Disables the default `card.scenario` when dating sim is active. |
+| **Producer composables** | `packages/stage-ui/src/composables/use-producer.ts` — composes system prompts for interactive roleplay scenarios. |
+| **Artistry autonomous** | `packages/stage-ui/src/stores/modules/artistry-autonomous.ts` — composes system prompts for visual interest grading. |
+| **Memory lifetime** | `packages/stage-ui/src/stores/memory-lifetime.ts` — composes system prompts for the lifetime memory synthesis pipeline. |
+| **Live session** | `packages/stage-ui/src/stores/modules/live-session.ts` — injects `systemPrompt` into Gemini Live WebSocket context. |
+
+### Dating Sim Engine
+
+A game layer on top of the Actor Stage with deep Live2D integration. Implements Amagami-inspired mechanics (intimacy, tension, action points, time-of-day) with branching choices, storyline presets, and mood-driven character reactions.
+
+| Concept | Path |
+| :--- | :--- |
+| **Store** | `packages/stage-ui/src/stores/dating-sim.ts` — game state, variables, choices, settings, mood computation |
+| **Overlay UI** | `packages/stage-ui/src/components/scenes/DatingSimOverlay.vue` — renders choices, subtitles, game HUD on stage |
+| **Story Selector** | `packages/stage-ui/src/components/scenes/StorySelectorModal.vue` — curated storyline presets picker |
+| **Storyline presets** | `packages/stage-ui/src/constants/dating-sim/storylines.ts` — preset definitions |
+| **Settings page** | `packages/stage-pages/src/pages/settings/dating-sim.vue` |
+| **Renderer Stage integration** | `packages/stage-ui/src/components/scenes/RendererStage.vue` — listens for dating-sim events (motion triggers, expression changes, costume swaps) |
+| **Control Strip integration** | `packages/stage-ui/src/components/scenarios/layout/ControlStrip.vue` — adjusts stage size when dating sim is on/off |
+
+**Key types:** `GamePhase` (`'idle' | 'conversation' | 'map' | 'action'`), `MoodState` (`'low' | 'normal' | 'high' | 'max'`), `Choice`
+
+**Settings (localStorage):** `airi:dating-sim:game-mode` (`open_ended`/`goal_driven`), `airi:dating-sim:max-score`, `airi:dating-sim:max-turns-temp`, `airi:dating-sim:scenery-route`, `airi:dating-sim:show-choice-weights`, `airi:producer:context-depth`
+
 ---
 
 ## 11. Discord Integration
@@ -411,6 +444,7 @@ Cross-window communication relies on named `BroadcastChannel` instances. These a
 | **"chat bubble context menu"** | `action-menu/index.vue` |
 | **"bubble layer" / "user bubble layer"** | `user-item.vue` |
 | **"edit mode"** | Inline editing inside `user-item.vue` |
+| **"system prompt builder"** | `buildSystemPrompt()` in `airi-card.ts` (core) + `refreshActiveSystemMessage()` in `session-store.ts` (enrichment). The composition layer that templates character card, acting, artistry, memory, and runtime overlays into the final system prompt. |
 
 ---
 
