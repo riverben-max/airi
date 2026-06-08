@@ -25,8 +25,10 @@ import {
   electronCaptionToggleVisibility,
   electronGetCaptionWindowState,
   electronGetChatWindowState,
+  electronGetCorsBypassUrls,
   electronGetMonitorCount,
   electronResetWindowPositions,
+  electronSetCorsBypassUrls,
   electronSetIgnoreMouseEvents,
   electronShowToast,
   electronShowToastEvent,
@@ -172,35 +174,31 @@ electronApp.setAppUserModelId('ai.moeru.airi')
 initScreenCaptureForMain()
 
 app.whenReady().then(async () => {
-  // NOTICE: Deepgram and Qwen Portal APIs do not send CORS headers for browser-origin requests
-  // authenticated with project API keys or OAuth tokens. Since the renderer is a
-  // Chromium context, we inject permissive CORS response headers at the Electron
-  // session level for these specific domains. This avoids needing a dedicated proxy backend.
-  session.defaultSession.webRequest.onHeadersReceived(
-    {
-      urls: [
-        'https://api.deepgram.com/*',
-        'https://opencode.ai/*',
-        'https://pioneer.ai/*',
-      ],
-    },
-    (details, callback) => {
-      const headers = { ...details.responseHeaders }
-      headers['access-control-allow-origin'] = ['*']
-      headers['access-control-allow-headers'] = ['Authorization, Content-Type, x-request-id']
-      headers['access-control-allow-methods'] = ['GET, POST, OPTIONS']
+  const registerCorsBypass = (urls: string[]) => {
+    if (!urls || urls.length === 0) {
+      session.defaultSession.webRequest.onHeadersReceived(null)
+      return
+    }
 
-      // NOTICE: Deepgram returns 401/405 for preflight OPTIONS requests.
-      // The browser requires a 2xx status on the preflight response in addition
-      // to the CORS headers, so we force 200 OK for OPTIONS.
-      if (details.method === 'OPTIONS') {
-        callback({ responseHeaders: headers, statusLine: 'HTTP/1.1 200 OK' })
-        return
-      }
+    session.defaultSession.webRequest.onHeadersReceived(
+      {
+        urls,
+      },
+      (details, callback) => {
+        const headers = { ...details.responseHeaders }
+        headers['access-control-allow-origin'] = ['*']
+        headers['access-control-allow-headers'] = ['Authorization, Content-Type, x-request-id']
+        headers['access-control-allow-methods'] = ['GET, POST, OPTIONS']
 
-      callback({ responseHeaders: headers })
-    },
-  )
+        if (details.method === 'OPTIONS') {
+          callback({ responseHeaders: headers, statusLine: 'HTTP/1.1 200 OK' })
+          return
+        }
+
+        callback({ responseHeaders: headers })
+      },
+    )
+  }
 
   session.defaultSession.on('will-download', async (_event, item, webContents) => {
     if (webContents.getType() !== 'webview') {
@@ -346,6 +344,25 @@ app.whenReady().then(async () => {
       createVisionService({ context })
       const sensorsServicePromise = createSensorsService({ context })
       setupDiscordService()
+
+      const initialUrls = deps.appConfig.get()?.corsBypassUrls ?? []
+      registerCorsBypass(initialUrls)
+
+      defineInvokeHandler(context, electronGetCorsBypassUrls, async () => {
+        return deps.appConfig.get()?.corsBypassUrls ?? []
+      })
+
+      defineInvokeHandler(context, electronSetCorsBypassUrls, async (urls) => {
+        const currentConfig = deps.appConfig.get()
+        if (currentConfig) {
+          deps.appConfig.update({
+            ...currentConfig,
+            corsBypassUrls: urls,
+          })
+        }
+        registerCorsBypass(urls)
+      })
+
       defineInvokeHandler(context, electronCaptionToggleVisibility, async (enabled?: boolean) => {
         console.log('[@proj-airi/stage-tamagotchi] [Main] Caption visibility toggle triggered via Control Island. enabled:', enabled)
         await deps.captionWindow.toggleVisibility(enabled)

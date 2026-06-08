@@ -299,6 +299,9 @@ export const electronOpenOnboarding = defineInvokeEventa('eventa:invoke:electron
 export const i18nSetLocale = defineInvokeEventa<void, Locale>('eventa:invoke:electron:i18n:set-locale')
 export const i18nGetLocale = defineInvokeEventa<Locale>('eventa:invoke:electron:i18n:get-locale')
 
+export const electronGetCorsBypassUrls = defineInvokeEventa<string[]>('eventa:invoke:electron:cors-bypass:get-urls')
+export const electronSetCorsBypassUrls = defineInvokeEventa<void, string[]>('eventa:invoke:electron:cors-bypass:set-urls')
+
 export { electron } from '@proj-airi/electron-eventa'
 
 export * from '@proj-airi/electron-eventa/electron-updater'
