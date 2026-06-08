@@ -17,7 +17,7 @@ Rather than a simple toggle, the `i-solar:cpu-bold-duotone` button becomes a **p
 Panel header: **Grounding Options**
 Subheader: *Control what contextual data is bundled into each message.*
 
-The panel exposes three independent toggle rows, each persisted in the active card's `extensions.airi` config:
+The panel exposes four independent toggle rows, each persisted in the active card's `extensions.airi` config:
 
 ---
 
@@ -52,7 +52,28 @@ On hover, shows a sample of what a cross-session snippet block looks like.
 
 ---
 
-### Footer: Manage Context Data
+### Toggle 4 — Recent Topics
+> *Attach a weighted list of recently discussed topics*
+
+A lightweight, **embedding-free** context signal. The system maintains a per-card topic frequency map across sessions, with a time-decay weight — topics discussed recently score higher, topics not mentioned in a while fade. Think simple TF-IDF over conversation history with an exponential decay curve on the timestamp.
+
+The injected block is compact and human-readable:
+
+```
+[RECENT TOPICS]
+Topics this user has been talking about lately (by recency & frequency):
+- work stress (high — last 2 days)
+- the park picnic (medium — last session)
+- Charlie the dog (medium — ongoing)
+- productivity & deadlines (fading — last week)
+```
+
+This is different from Toggles 2 and 3 in a critical way: **it doesn't retrieve specific memory snippets**, it surfaces *what the user has been thinking about* as a lightweight orientation signal. The character doesn't need the full journal entry about the park — just knowing the park has been on the user's mind recently is enough context to make her response feel tuned in.
+
+**Key advantage: ships without a semantic search index.** The quality gate that blocks Toggles 2 and 3 does not apply here. Topic tracking is derivable from conversation history that already exists. No embedding pipeline, no vector store, no recall precision problem.
+
+On hover, shows the actual current topic weight table for this card.
+
 
 A link row at the bottom of the popover — styled like the "Visit Image Studio" shortcut in the same component family — that navigates directly to:
 
@@ -64,7 +85,7 @@ This is where the user controls which sensor dimensions are active (e.g. disable
 
 ## Architecture: How the Sources Bundle Together
 
-All three enabled sources feed into the **same `contextContent` string** that the existing orchestrator already composes in `chat.ts` (lines 863–896). Each active source appends a tagged section in order:
+All four enabled sources feed into the **same `contextContent` string** that the existing orchestrator already composes in `chat.ts` (lines 863–896). Each active source appends a tagged section in order:
 
 ```
 [ENVIRONMENTAL AWARENESS]
@@ -72,6 +93,14 @@ Local time: 10:11 PM
 Active window: VS Code — chat.ts
 Idle time: 2 minutes
 ...
+
+---
+
+[RECENT TOPICS]
+Topics this user has been talking about lately:
+- work stress (high — last 2 days)
+- the park picnic (medium — last session)
+- Charlie the dog (medium — ongoing)
 
 ---
 
@@ -106,7 +135,38 @@ This is the honest gate. Shipping these toggles without a first-class, near-zero
 - **Irrelevant surfacing**: the character brings up things the user didn't ask about, breaking immersion
 - **Contradiction injection**: past context that conflicts with the current session's established facts
 
-The feature is designed to gracefully degrade — Toggle 1 (sensor data) works independently and is unaffected. Toggles 2 and 3 light up when the search backend is ready.
+The feature is designed to gracefully degrade — Toggle 1 (sensor data) works independently and is unaffected. Toggle 4 (Recent Topics) also works independently — see the next section. Toggles 2 and 3 light up when the search backend is ready.
+
+---
+
+## Topic Interest Tracking (TF-IDF Decay) — Ships Before Semantic Search
+
+Toggle 4 is deliberately architecturally isolated from the semantic search quality gate. It's the one piece of the context assembly system that can ship in a useful, non-harmful state without a vector store.
+
+### How the Decay Model Works
+
+For each card, maintain a topic frequency map: `Map<topic: string, { count: number, lastSeen: timestamp }>`.
+
+Weight is computed as:
+```
+weight(topic) = count × decay(now - lastSeen)
+decay(Δt) = e^(-λ × Δt)   // exponential decay, λ tunable
+```
+
+A topic discussed heavily last week but not mentioned since will have faded to a low weight. A topic that came up three times today is high. The top-N topics by weight get injected.
+
+The topic extraction itself can be as simple or as sophisticated as the implementation allows:
+- **Simple**: noun phrase extraction from the conversation history using a lightweight NLP pass (e.g. compromise.js, already potentially in the dependency tree)
+- **Better**: LLM-assisted topic tagging as a post-turn background step (cheap, ~1 call per session end)
+- **Obsidian-style**: if the user connects an Obsidian vault, the topic list is enriched with note titles and tags from their vault as additional topic seeds
+
+### Why This Is Safer Than Semantic Snippets
+
+The character receives *topic names*, not *memory content*. She knows the user has been thinking about work stress — she doesn't get injected with a specific quote or snippet that might be tonally jarring, out of context, or contradictory. She naturally weaves it in at her own discretion. The dilution and false-positive risks that gate Toggles 2 and 3 are substantially reduced.
+
+### The Obsidian Angle
+
+Shinobu's Obsidian integration is interesting specifically because Obsidian's graph is already a manually-curated topic interest map — the user's note structure *is* their topic weight table, maintained by hand. An optional Obsidian vault connection could seed or supplement the auto-derived topic map with the user's own knowledge graph. This is a natural integration point, not a core dependency.
 
 ---
 
