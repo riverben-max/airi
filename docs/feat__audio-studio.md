@@ -70,13 +70,14 @@ Each virtual voice profile is persisted within a clean, serializable JSON schema
     "mode": "mute",
     "customStripChars": "*_[]()<>\"'",
     "stripEmojis": true,
-    "tildeReplacement": "nyan"
+    "tildeReplacement": "nyan",
+    "autoLowercaseCapsThreshold": 2
   }
 }
 ```
 
 ### Granular & Extensible UST Options
-Instead of rigid checkboxes, the Universal Speech Transformer (UST) is defined per-profile with five highly flexible options:
+Instead of rigid checkboxes, the Universal Speech Transformer (UST) is defined per-profile with six highly flexible options:
 
 1. **Mute Narrative Mode** (`mode: "mute"`):
    * Completely strips out narrative formatting symbols and the text enclosed inside them (e.g., `*smiles* Hello` $\rightarrow$ `"Hello"`). Best for a pure dialogue, "voice-only" experience.
@@ -88,6 +89,15 @@ Instead of rigid checkboxes, the Universal Speech Transformer (UST) is defined p
    * Strips out standard Unicode pictographs and emoticons so the TTS engine doesn't attempt to speak or make weird vocal pauses for them.
 5. **Tilde (~) Replacement** (`tildeReplacement: "nyan"`):
    * Substitutes tildes with custom vocal phrases (like `"nyan"` or `"humm"`) or strips them completely if left blank.
+6. **Auto-Lowercase Short Caps** (`autoLowercaseCapsThreshold: 2`):
+   * Some TTS engines spell out fully-capitalized words letter by letter (e.g. `AIRI` → "A-I-R-I", `IT` → "EYE-TEE") instead of pronouncing them as words. This option automatically lowercases any fully-capitalized word **at or below** the configured character length threshold before the text reaches the TTS engine.
+   * Default threshold: `2` — so `IT` becomes `it` (spoken as a word), but `AIRI` (4 chars, above threshold) is left as-is.
+   * The user can raise the threshold: set to `3` and `TTS` stays uppercase / spelled out; set to `4` and `AIRI` gets lowercased too.
+   * Effectively a tunable regex: `/\b[A-Z]{1,N}\b/g → toLowerCase()` where `N` is the threshold.
+   * This only fires on **all-caps** tokens — mixed-case words like `McGregor` or `iPhone` are untouched.
+   * Example at threshold `2`: `"AIRI said IT was fine"` → `"AIRI said it was fine"`
+   * Example at threshold `4`: `"AIRI said IT was fine"` → `"airi said it was fine"`
+
 
 ---
 
@@ -102,7 +112,7 @@ The `audio-studio.vue` page serves as a creative console for voice design. It fe
 | **Profile Library** | Card Grid / Sidebar | Saved virtual voice profiles displaying the **User Label** as the active identity. Features quick duplicate, delete, and active toggle actions. |
 | **Base Configuration** | Select Dropdowns | Bind the profile to a base provider (OpenAI, Azure, Kokoro, ElevenLabs) and selected voice ID. |
 | **Xvan's Audio Effects** | Slider Group | Responsive sliders for **Pitch** (e.g. 0.5x to 2.0x), **Rate/Speed** (e.g. 0.5x to 3.0x), **Volume**, and basic Equalizer knobs (Bass/Mid/Treble). |
-| **UST Configuration** | Mode Radio + Input | Toggles for **Mute**, **Flatten**, or **Customize** modes. In Customize mode, displays an input field: *"Target characters to strip (e.g. `*_[]()<>\"'`):"* |
+| **UST Configuration** | Mode Radio + Input + Threshold | Toggles for **Mute**, **Flatten**, or **Customize** modes. In Customize mode, displays an input field: *"Target characters to strip (e.g. `*_[]()<>"'`):"*. Separate numeric input for **Auto-Lowercase Caps Threshold** (default: 2, range: 1–10, label: *"Lowercase all-caps words of N characters or fewer"*). |
 | **Voice Playground** | Textbox + Test Button | A sandbox area to type dummy text and instantly play the processed TTS output with applied FX to verify. |
 
 ---
