@@ -180,8 +180,6 @@ app.whenReady().then(async () => {
     {
       urls: [
         'https://api.deepgram.com/*',
-        'https://chat.qwen.ai/*',
-        'https://portal.qwen.ai/*',
         'https://opencode.ai/*',
         'https://pioneer.ai/*',
       ],
