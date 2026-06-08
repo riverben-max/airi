@@ -26,7 +26,7 @@ Last surveyed: **June 8, 2026**
 **PRs to main:** Yes — multiple, including core agent architecture and Alaya memory design
 
 **Why this matters for dasilva333/airi:**
-The Alaya memory architecture is directly adjacent to the work in `PROPOSAL_Dynamic_Memory_RAG_Injection.md`. His academic background in LLM interpretability and SAE-based safety may inform a more principled approach to memory recall and context injection than the purely engineering-driven design in this fork. Worth engaging with directly — there may be complementary ideas or at minimum a shared vocabulary.
+The Alaya memory architecture is directly adjacent to the work in `proposal-dynamic-memory-rag-injection.md`. His academic background in LLM interpretability and SAE-based safety may inform a more principled approach to memory recall and context injection than the purely engineering-driven design in this fork. Worth engaging with directly — there may be complementary ideas or at minimum a shared vocabulary.
 
 **core-agent scoping verdict (assessed June 8, 2026):**
 Nash's `core-agent` work is **3 commits, 46 files**, all in a new `packages/core-agent/` package. The restructuring extracts logic that already exists in `packages/stage-ui/src/stores/chat.ts` (~1,320 lines) into a framework-agnostic package with typed ports (`AgentContextPort`, `AgentLLMPort`, `AgentSessionPort`). The benefit is a cleaner package boundary, unit-testability without Pinia, and shareability across runtimes (Discord, Telegram, desktop).
@@ -35,7 +35,7 @@ Nash's `core-agent` work is **3 commits, 46 files**, all in a new `packages/core
 - The dasilva333 `chat.ts` `performSend` is a **strict superset** of Nash's runtime: it adds vision/VLM handover, grounding injection, autonomous artistry hooks, bridged marker tool loop (`tryBridgeMarker`, up to 5 steps), multi-window `BroadcastChannel` ingest, and `skipAssistant`/`triggerOnly` — none of which exist in his runtime.
 - Adopting his package boundary would require re-expressing all of those behaviors as DI ports into a thin facade — a large one-time rewrite with no new capabilities gained.
 - The context registry (#1819) is already implemented in this fork as `context-store.ts` with the same `ReplaceSelf`/`AppendSelf` semantics. His version adds `Map` over `Record` (prototype-pollution hardening) and bounded history (400 entries) — marginal improvements.
-- **One file is worth a direct copy:** `packages/core-agent/src/messages/context-prompt.ts` (~30 lines). The `formatContextPromptText()` function produces the `[Context]\n- sourceKey: text` bullet format that is exactly the injection block shape designed in `PROPOSAL_Dynamic_Memory_RAG_Injection.md`. Take this function, not the package.
+- **One file is worth a direct copy:** `packages/core-agent/src/messages/context-prompt.ts` (~30 lines). The `formatContextPromptText()` function produces the `[Context]\n- sourceKey: text` bullet format that is exactly the injection block shape designed in `proposal-dynamic-memory-rag-injection.md`. Take this function, not the package.
 
 Full assessment documented in [`project-selective-upstream-sync-phase-a-buy-in.md`](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/project-selective-upstream-sync-phase-a-buy-in.md).
 
@@ -133,7 +133,7 @@ Clean infrastructure contributor focused on the desktop rendering path. Their El
 
 ## Key Observations
 
-**The Alaya convergence is notable.** Two separate contributors (NashChennc and YoukiAkito) are actively working on the Alaya memory architecture upstream. This is the same problem space addressed in `PROPOSAL_Dynamic_Memory_RAG_Injection.md`. Their work may be worth evaluating once Alaya stabilizes — either as a foundation to build the RAG injection proposal on top of, or as a design reference to learn from and differentiate against.
+**The Alaya convergence is notable.** Two separate contributors (NashChennc and YoukiAkito) are actively working on the Alaya memory architecture upstream. This is the same problem space addressed in `proposal-dynamic-memory-rag-injection.md`. Their work may be worth evaluating once Alaya stabilizes — either as a foundation to build the RAG injection proposal on top of, or as a design reference to learn from and differentiate against.
 
 **Most "forks" are just PR staging branches.** The real activity to track is not the fork repos themselves but the PRs and issues those contributors open on upstream moeru-ai/airi. The fork list is a contributor map, not a divergent-projects map.
 

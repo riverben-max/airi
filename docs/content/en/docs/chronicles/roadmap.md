@@ -167,7 +167,7 @@ This document tracks the current development state of the AIRI project, specific
   - [ ] **Cross-Platform Service Layer**: Transition the messaging/bot integration from platform-specific standalone processes (Discord, Telegram, etc.) into a unified, abstract service layer within AIRI.
   - [ ] **Unified Protocol Handlers**: Implement a standardized interface for common actions (e.g., character switching, manual emotion triggering, proactive heartbeat routing, and inline Artistry) that can be shared across all messaging platforms (Discord, Telegram, etc.).
   - [ ] **Heuristic Routing Engine**: Develop a central engine to determine the last active channel across all connected platforms to intelligently route proactive turns.
-  - [ ] **Full Revamp Spec**: See [docs/feat__discord-revamp.md](docs/feat__discord-revamp.md) for the initial technical roadmap, which serves as the blueprint for the wider multi-platform rollout (including Telegram).
+  - [ ] **Full Revamp Spec**: See [docs/feat-discord-revamp.md](docs/feat-discord-revamp.md) for the initial technical roadmap, which serves as the blueprint for the wider multi-platform rollout (including Telegram).
 
 - **Infrastructure & UI Health**:
     - [ ] **Settings - System Revamp**: Completely overhaul the `settings > system` page to resolve the current "hodge-podge" of disjointed, nested, and potentially duplicated settings:

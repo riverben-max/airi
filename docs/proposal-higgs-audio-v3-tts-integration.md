@@ -77,7 +77,7 @@ This creates a fundamental conflict:
 
 ## Option D — Recommended: Audio Studio UST Extension
 
-The answer was in the existing architecture the whole time. AIRI already has a text transformation layer that sits **between the raw speech text and the TTS provider**: the **Universal Speech Transformer (UST)**, defined per voice profile in the Audio Studio ([feat__audio-studio.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/feat__audio-studio.md)).
+The answer was in the existing architecture the whole time. AIRI already has a text transformation layer that sits **between the raw speech text and the TTS provider**: the **Universal Speech Transformer (UST)**, defined per voice profile in the Audio Studio ([feat-audio-studio.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/feat-audio-studio.md)).
 
 The UST already strips asterisks, mutes narrative brackets, replaces tildes, strips emojis — all before the text reaches the TTS engine. This is exactly the hook we need.
 

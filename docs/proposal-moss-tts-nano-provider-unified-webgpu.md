@@ -214,6 +214,41 @@ Not for the initial integration.
 
 Even if Nano supports decode-step, AIRI already chunks speech at a higher level (partial sentences / slices), so we can return a full WAV per slice without introducing “partial sentence streaming” complexity.
 
+---
+
+### 4) Audio preprocessing & format pipeline (voice cloning reference audio)
+
+This is the least-defined piece of the integration and needs careful scoping.
+
+**Known unknowns:**
+
+- **Target format**: What sample rate, bit depth, and channel count does the MOSS-Audio-Tokenizer-Nano-ONNX expect? Needs validation against the tokenizer graph.
+- **Upload format diversity**: Users will upload mp3, m4a, ogg, webm, wav, etc. Browsers can decode these via `AudioContext.decodeAudioData()`, but:
+  - Does this run on the main thread or in a worker?
+  - Do we need a resampling step if the decoded rate doesn't match the tokenizer's expected rate?
+  - What's the bundle cost of pulling in a resampler (e.g. `libresample`-like WASM) vs. using Web Audio API's built-in resampling?
+- **Duration sweet spot**: Voice cloning reference audio typically works best within a certain range (some models saturate around 15 s, others benefit up to 60 s). Unknown until tested with the actual ONNX model. Follow up with Shinobu for his implementation experience.
+- **Preprocessing**:
+  - Gain normalization (peak or RMS)?
+  - Silence trimming (leading/trailing)?
+  - Duration clamping or padding?
+- **Where conversion lives**: Main thread (Web Audio API → worker postMessage), worker (ORT pre-processing graph), or some hybrid? The tokenizer may accept raw PCM at a fixed rate — if so, decode + resample must happen before the tokenizer receives the buffer.
+
+**Recommendation:** Get Shinobu's notes on what works in practice, then codify the expected input shape and preprocessing steps here before implementation.
+
+### 5) Voice profile store — BYOS compatibility
+
+Voice cloning reference audio blobs are **user-managed assets** — conceptually similar to how Display Models and Background Images are handled in the existing BYOS (Bring Your Own Storage) system (see [`project-byos-cloud-sync.md`](./project-byos-cloud-sync.md)).
+
+**Design constraints adapted from BYOS asset patterns:**
+
+- **Metadata store**: A new IndexedDB key namespace (e.g. `local:voice-profiles/*`) holding per-profile JSON with `id`, `name`, `createdAt`, `durationMs`, `sampleRate`, `sourceFilename`, `sha256`, etc.
+- **Blob store**: Binary audio files stored via `localforage` or as raw blobs keyed by profile ID (follows the existing Display Model pattern: `assets/voice-profiles/{id}.{ext}`).
+- **Sync behavior**: BYOS already handles entity-level sync via its `StorageClient` interface and outbox tracker. Adding `local:voice-profiles/*` to the Data Inventory table would get sync "for free" via the interceptor layer — no new sync engine code needed.
+- **UI surface**: A voice profile manager (list profiles, upload new, record, delete) analogous to the Display Model manager or Background manager. The provider settings page (`moss-nano-local`) would then render a voice picker that resolves profile IDs to stored blobs.
+
+**Key risk**: Audio blobs can be large (multiple MB per profile). BYOS's selective sync (future milestone) would let users opt out of syncing bulky voice assets, keeping the initial sync lightweight. The Data Inventory table should flag `voice-profiles` as a selectively-syncable category.
+
 ## Why MOSS‑TTS‑Nano (ONNX) is interesting in AIRI
 
 Compared to Kokoro:
@@ -305,6 +340,8 @@ De-scope streaming for now. Nano can generate a full WAV per AIRI speech slice; 
 - Reference audio preprocessing:
   - Confirm required sample rate/channels and any normalization.
   - Decide where resampling happens (main thread vs worker vs audio tokenizer graph).
+
+- **Hard requirement — unique labels**: Voice clone labels (the user-facing name for a cloned voice) **must be unique** within the MOSS provider's voice registry. The `VoiceProfile.baseVoice` field stores the label as a plain string, and `AiriCard.extensions.airi.modules.speech.voice_id` → `VoiceProfile.baseVoice` is the chain used by selective sync to resolve a character → its cloned audio blob. If labels are not unique, this lookup becomes ambiguous. Enforce uniqueness at upload time — reject or deduplicate (e.g. append `(2)`) when a user provides a label that already exists.
 
 ### Performance + memory budgeting
 
