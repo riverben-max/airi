@@ -10,9 +10,11 @@ Concept-to-file-path index for rapid context retrieval. Use this to find where a
 | :--- | :--- | :--- |
 | **DI composition root** | `apps/stage-tamagotchi/src/main/index.ts` | Where services are injected via `injeca`. Start here to trace how a service gets wired. |
 | **Eventa IPC contract** | `apps/stage-tamagotchi/src/shared/eventa.ts` | All typed IPC/RPC event definitions between main and renderer. |
-| **Window managers** | `apps/stage-tamagotchi/src/main/windows/` | One dir per window (main, stage, chat, caption, widgets, etc.) |
-| **Renderer bootstrap** | `apps/stage-tamagotchi/src/renderer/` | Vue app entry, router, layouts |
-| **Web app entry** | `apps/stage-web/src/` | Analogous bootstrap for the web target |
+| **Window managers** | `apps/stage-tamagotchi/src/main/windows/` | One dir per window: `main/`, `stage/`, `chat/`, `caption/`, `widgets/`, `settings/` |
+| **Renderer bootstrap** | `apps/stage-tamagotchi/src/renderer/` | `App.vue`, `router.ts`, layouts at `layouts/settings.vue` |
+| **Renderer build config** | `apps/stage-tamagotchi/electron.vite.config.ts` | Vite config + route definitions for the Electron renderer |
+| **Web app entry** | `apps/stage-web/src/App.vue` | `pages/`, `layouts/`; router config via `vite.config.ts` |
+| **Main process services** | `apps/stage-tamagotchi/src/main/services/airi/` | discord, widgets (comfyui, artistry-bridge), mcp-servers |
 
 ---
 
@@ -24,11 +26,12 @@ Concept-to-file-path index for rapid context retrieval. Use this to find where a
 | **Actor Stage (Floating Island)** | `apps/stage-tamagotchi/src/main/windows/stage/index.ts` (Electron) | `packages/stage-ui/src/components/scenes/Stage.vue` (UI) |
 | **Chatbox Window** | `apps/stage-tamagotchi/src/main/windows/chat/index.ts` (Electron) | `apps/stage-tamagotchi/src/renderer/pages/chat.vue` (UI) | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` (Host) |
 | **Control Island (Original)** | `apps/stage-tamagotchi/src/renderer/components/stage-islands/controls-island/index.vue` |
-| **Gemini Control Island** | `.../controls-island/gemini-controls.vue` |
+| **Gemini Control Island** | `apps/stage-tamagotchi/src/renderer/components/stage-islands/controls-island/gemini-controls.vue` |
 | **Whisperbox (Input)** | `packages/stage-ui/src/components/scenarios/chat/WhisperDock.vue` |
 | **Resource Island** | `apps/stage-tamagotchi/src/renderer/components/stage-islands/resource-status-island/index.vue` |
 | **VRM Character** | `packages/stage-ui-three/src/components/Model/VRMModel.vue` |
 | **Live2D Character** | `packages/stage-ui-live2d/src/components/scenes/live2d/Canvas.vue` |
+| **Spine Character** | `packages/stage-ui-three/src/components/Model/SpineModel.vue` |
 | **Gemini Panel** | `apps/stage-tamagotchi/src/renderer/pages/notice/gemini.vue` (UI) | `packages/stage-ui/src/stores/modules/live-session.ts` (Bidi WebSocket) |
 | **System Tray** | `apps/stage-tamagotchi/src/main/tray/index.ts` |
 | **Caption Overlay** | `apps/stage-tamagotchi/src/renderer/pages/caption.vue` (UI) | `apps/stage-tamagotchi/src/main/windows/caption/` (Manager) |
@@ -61,14 +64,16 @@ Concept-to-file-path index for rapid context retrieval. Use this to find where a
 | Concept | Path |
 | :--- | :--- |
 | **Chat History (Host)** | `packages/stage-ui/src/components/scenarios/chat/history.vue` |
-| **Assistant Bubble** | `.../chat/assistant-item.vue` |
+| **Assistant Bubble** | `packages/stage-ui/src/components/scenarios/chat/assistant-item.vue` |
 | **User Bubble** | `packages/stage-ui/src/components/scenarios/chat/user-item.vue` |
 | **Bubble Actions Menu** | `packages/stage-ui/src/components/scenarios/chat/components/action-menu/index.vue` |
-| **Bubble Render Parts** | `.../chat/response-part.vue` (Text) | `.../chat/tool-call-block.vue` (Tools) |
-| **Journal Strip (Chips)** | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` |
-| **Mood / Vibe Indicator** | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` |
-| **Toolbar Strip** | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` |
-| **Bubble Styling (ACT)** | Extracted from performance tokens in `ChatArea.vue` |
+| **Bubble Render Parts** | `packages/stage-ui/src/components/scenarios/chat/response-part.vue` (Text) | `packages/stage-ui/src/components/scenarios/chat/tool-call-block.vue` (Tools) |
+| **Director Note Bubble** | `packages/stage-ui/src/components/scenarios/chat/DirectorNoteBubble.vue` |
+| **Chat Layout (Widget)** | `packages/stage-layouts/src/components/Widgets/ChatArea.vue` — main chat container, ACT bubble styling, image attachment state |
+| **Journal Strip (Chips)** | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` — scrollable image/text/episode previews |
+| **Mood / Vibe Indicator** | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` — emotional baseline display |
+| **Toolbar Strip** | `apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue` — buttons: Grounding, Memory, Trash, Send |
+| **Image Attachments (Drop Zone)** | `packages/ui/src/components/form/textarea/basic-text-area.vue` — file drop handling |
 
 ---
 
@@ -159,53 +164,75 @@ interface ProviderMetadata {
 
 ## 7. Module System
 
-AIRI's "modules" are feature domains stored in `packages/stage-ui/src/stores/modules/`. Each module is a Pinia store exposed as a configurable capability on the AIRI card (`extensions.airi.modules.{name}`).
+AIRI's "modules" are feature domains stored in `packages/stage-ui/src/stores/modules/`. They come in two flavors:
 
-| Module | Store File | Settings Page | Config Key |
+### Card-Embedded Modules
+These are serialized inside the AIRI card (`extensions.airi`) and travel with the character profile.
+
+| Module | Store File | Config Location |
+| :--- | :--- | :--- |
+| **Consciousness (LLM)** | `packages/stage-ui/src/stores/modules/consciousness.ts` | `extensions.airi.modules.consciousness` (provider, model) |
+| **Speech (TTS)** | `packages/stage-ui/src/stores/modules/speech.ts` | `extensions.airi.modules.speech` (provider, model, voice_id, pitch, rate, ssml, language) |
+| **VRM** | (card editor only) | `extensions.airi.modules.vrm` (source: file/url) |
+| **Live2D** | (card editor only) | `extensions.airi.modules.live2d` (source, expressions, model params, motion mappings) |
+| **Artistry (Image Gen)** | `packages/stage-ui/src/stores/modules/artistry.ts` | `extensions.airi.artistry` (provider, model, prompt, spawnMode, autonomous) |
+| **Generation** | (card editor only) | `extensions.airi.generation` (maxTokens, temperature, topP, contextWidth, compaction) |
+| **Acting** | (card editor only) | `extensions.airi.acting` (modelExpressionPrompt, speechExpressionPrompt, idleAnimations) |
+| **Heartbeats / Proactivity** | `packages/stage-ui/src/stores/proactivity.ts` (runtime) | `extensions.airi.heartbeats` (interval, prompt, schedule) |
+| **Short-Term Memory** | `packages/stage-ui/src/stores/memory-short-term.ts` (runtime) | `extensions.airi.shortTermMemory` (windowSize, tokenBudgetPerDay) |
+
+### Standalone Modules
+These use `localStorage` for settings and are **not** serialized inside the AIRI card.
+
+| Module | Store File | Settings Page | Settings Key |
 | :--- | :--- | :--- | :--- |
-| **Consciousness (LLM)** | `stores/modules/consciousness.ts` | Provider selection | `extensions.airi.modules.consciousness` |
-| **Speech (TTS)** | `stores/modules/speech.ts` | `modules/speech.vue` | `extensions.airi.modules.speech` |
-| **Hearing (STT)** | `stores/modules/hearing.ts` | `modules/hearing.vue` | `extensions.airi.modules.hearing` |
-| **Vision (VLM)** | `stores/modules/vision.ts` | `modules/vision.vue` | `extensions.airi.modules.vision` |
-| **Live2D** | — (configured in card editor) | — | `extensions.airi.modules.live2d` |
-| **VRM** | — (configured in card editor) | — | `extensions.airi.modules.vrm` |
-| **Discord** | `stores/modules/discord.ts` | `modules/messaging-discord.vue` | `extensions.airi.modules.discord` |
-| **Twitter** | `stores/modules/twitter.ts` | — | — |
-| **Artistry (Image Gen)** | `stores/modules/artistry.ts` | Provider selection | `extensions.airi.artistry` |
-| **Artistry Autonomous** | `stores/modules/artistry-autonomous.ts` | — | — |
-| **Live Session (Gemini)** | `stores/modules/live-session.ts` | — | — |
-| **Gaming: Minecraft** | `stores/modules/gaming-minecraft.ts` | — | — |
-| **Gaming: Factorio** | `stores/modules/gaming-factorio.ts` | — | — |
+| **Hearing (STT)** | `packages/stage-ui/src/stores/modules/hearing.ts` | `modules/hearing.vue` | `settings/hearing/*` |
+| **Vision (VLM)** | `packages/stage-ui/src/stores/modules/vision.ts` | `modules/vision.vue` | `settings/vision/*` |
+| **Discord** | `packages/stage-ui/src/stores/modules/discord.ts` | `modules/messaging-discord.vue` | `settings/discord/*` |
+| **Twitter** | `packages/stage-ui/src/stores/modules/twitter.ts` | — | `settings/twitter/*` |
+| **Live Session (Gemini)** | `packages/stage-ui/src/stores/modules/live-session.ts` | `notice/gemini.vue` | `settings/gemini/*` |
+| **Artistry Autonomous** | `packages/stage-ui/src/stores/modules/artistry-autonomous.ts` | — | in-memory (director notes in IndexedDB) |
+| **Gaming: Minecraft** | `packages/stage-ui/src/stores/modules/gaming-minecraft.ts` | — | `settings/minecraft/*` |
+| **Gaming: Factorio** | `packages/stage-ui/src/stores/modules/gaming-factorio.ts` | — | `settings/factorio/*` |
 
 ### Module Wiring Pattern
 Each module typically follows:
-1. A **Pinia store** in `stores/modules/` with `useLocalStorage`-backed settings
-2. A **provider adapter** in the provider system
+1. A **Pinia store** in `stores/modules/` with `useLocalStorage`-backed settings (or IndexedDB via `storage`)
+2. A **provider adapter** in the provider system (for LLM/TTS/STT/Vision modules)
 3. A **settings page** in `packages/stage-pages/src/pages/settings/modules/`
-4. A slot in `extensions.airi.modules.{name}` inside the AIRI card type
+4. For card-embedded modules: a slot in `extensions.airi.*` inside `AiriExtension`
 
 ---
 
 ## 8. Audio Pipeline
 
-### TTS Flow
+### TTS Flow (Output)
 ```
 LLM output text → VoiceProfile (effects + UST transforms) → SpeechProvider.speech().fetch() → Worker inference → PCM → WAV → Playback
+```
+
+### STT Flow (Input)
+```
+Microphone → VadDetector → AudioBuffer → STTProvider inference → text → chatOrchestrator.ingest
 ```
 
 ### Key Files
 | Concept | Path |
 | :--- | :--- |
 | **Speech provider selection** | `packages/stage-ui/src/stores/modules/speech.ts` — active provider, model, voice, pitch, rate, SSML, language |
+| **Hearing provider selection** | `packages/stage-ui/src/stores/modules/hearing.ts` — active provider, model, auto-send, detection mode (VAD/manual), device settings |
+| **Speech runtime** | `packages/stage-ui/src/stores/speech-runtime.ts` — wraps `createSpeechPipelineRuntime()` |
+| **Audio context / character speaking** | `packages/stage-ui/src/stores/audio.ts` — `audio-context` and `character-speaking` stores |
+| **Audio input devices** | `packages/stage-ui/src/stores/settings/audio-device.ts` |
 | **Voice profiles** | `settings/speech/voice-profiles` (localStorage) — `VoiceProfile[]` with effects (pitch, rate, volume, equalizer, ASMR, radio, robot, reverb, spatial) and UST (universal speech transformer) config |
 | **UST processing** | Packaged within the provider fetch flow — strips asterisks, mutes narrative brackets, replaces tildes, strips emojis before text reaches TTS |
 | **Audio Studio** | [`feat-audio-studio.md`](./feat-audio-studio.md) — full spec for the voice profile management UI |
 | **Kokoro worker** | `packages/stage-ui/src/workers/kokoro/worker.ts` — reference local TTS implementation |
-| **Speech runtime** | `packages/stage-ui/src/stores/speech-runtime.ts` — wraps `createSpeechPipelineRuntime()` |
-| **Audio context** | `packages/stage-ui/src/stores/audio.ts` — `audio-context` and `character-speaking` stores |
-| **Audio input devices** | `packages/stage-ui/src/stores/settings/audio-device.ts` |
-| **Audio Studio UST proposal** | `docs/proposal-higgs-audio-v3-tts-integration.md` |
-| **MOSS-TTS-Nano proposal** | `docs/proposal-moss-tts-nano-provider-unified-webgpu.md` |
+| **Kokoro adapter** | `packages/stage-ui/src/libs/inference/adapters/kokoro.ts` — load queue, GPU coordinator, device-loss promotion, WAV encoding |
+| **Whisper worker** | `packages/stage-ui/src/workers/whisper/` — reference local STT implementation |
+| **Whisper adapter** | `packages/stage-ui/src/libs/inference/adapters/whisper.ts` |
+| **Audio Studio UST proposal** | [`proposal-higgs-audio-v3-tts-integration.md`](./proposal-higgs-audio-v3-tts-integration.md) |
+| **MOSS-TTS-Nano proposal** | [`proposal-moss-tts-nano-provider-unified-webgpu.md`](./proposal-moss-tts-nano-provider-unified-webgpu.md) |
 
 ---
 
@@ -295,31 +322,58 @@ LLM output text → VoiceProfile (effects + UST transforms) → SpeechProvider.s
 
 ---
 
-## 13. Key Directories
+## 13. BroadcastChannels
+
+Cross-window communication relies on named `BroadcastChannel` instances. These are the channel names used across the app:
+
+| Channel Name | Purpose |
+| :--- | :--- |
+| `airi-chat-input-bridge` | Ingestion pipeline — secondary windows post input to main window |
+| `airi-chat-stream` | Streaming LLM text deltas across windows |
+| `airi-caption-overlay` | Caption text relay to the overlay window |
+| `airi:cards-sync` | AIRI card modifications across windows |
+| `airi:background-sync` | Background image changes |
+| `airi:display-models-sync` | Display model import/deletion |
+| `airi:director-notes-sync` | Director note creation/archival (see §16) |
+| `airi:short-term-memory-sync` | Short-term memory block updates |
+| `airi:lifetime-memory-sync` | Lifetime memory artifact changes |
+| `CHAT_STREAM_CHANNEL_NAME` | Chat stream + journal refresh events (exported constant from session-store) |
+
+---
+
+## 14. Key Directories
 
 | Directory | Role |
 | :--- | :--- |
 | `packages/stage-ui` | Core business logic, components, Pinia stores, database layer, inference |
 | `packages/stage-ui/src/stores/modules/` | All feature modules (consciousness, speech, hearing, vision, discord, artistry, etc.) |
-| `packages/stage-ui/src/stores/providers/` | Provider adapter helpers |
+| `packages/stage-ui/src/stores/chat/` | Chat-specific stores — session, stream, context, orchestrator |
+| `packages/stage-ui/src/stores/providers/` | Provider adapter helpers and converters |
 | `packages/stage-ui/src/database/` | `storage.ts` + `repos/` (persistence layer) |
 | `packages/stage-ui/src/libs/inference/` | Protocol, coordinator, GPU resource tracking, per-model adapters |
-| `packages/stage-ui/src/workers/` | Web Worker implementations (kokoro, whisper, etc.) |
-| `packages/stage-ui-three` | Three.js 3D rendering, VRM, expressions |
+| `packages/stage-ui/src/libs/search/` | Semantic search index (`layered-memory.ts`) |
+| `packages/stage-ui/src/workers/` | Web Worker implementations (kokoro, whisper, moss-nano) |
+| `packages/stage-ui/src/composables/` | Business-oriented Vue composables |
+| `packages/stage-ui/src/components/scenarios/` | Scenario-specific UI components |
+| `packages/stage-ui-three` | Three.js 3D rendering, VRM, Spine, expressions |
 | `packages/stage-ui-live2d` | Live2D rendering |
 | `packages/stage-pages` | Shared settings pages, card editor, module pages |
-| `packages/stage-shared` | Constants (`emotions.ts`, `events.ts`), utilities (`text.ts`) |
+| `packages/stage-shared` | Constants (`emotions.ts`, `events.ts`), utilities (`text.ts` — `healMozibake`) |
 | `packages/stage-layouts` | Layout components shared across apps |
 | `packages/ui` | Primitive components built on reka-ui |
-| `packages/i18n` | Central translations |
+| `packages/i18n` | Central translations (YAML managed via `scripts/yaml-manager.js`) |
 | `apps/stage-tamagotchi` | Electron app (main + renderer) |
 | `apps/stage-web` | Web app |
+| `apps/stage-tamagotchi/src/renderer/stores/tools/builtin/` | LLM tool definitions exposed to the model |
+| `apps/stage-tamagotchi/src/main/services/airi/` | Main process services (discord, widgets, MCP) |
+| `scripts/` | Utility scripts (`yaml-manager.js`, `pr_summary.sh`) |
+| `crates/` | Legacy Tauri desktop app (current desktop is Electron — ignore) |
 | `docs/` | Proposal docs, reference sheets, how-to guides |
 | `docs/content/en/docs/` | In-app manual content (vitepress) |
 
 ---
 
-## 14. Nicknames Index
+## 15. Nicknames Index
 
 | Nickname | Resolves To |
 | :--- | :--- |
@@ -340,7 +394,7 @@ LLM output text → VoiceProfile (effects + UST transforms) → SpeechProvider.s
 
 ---
 
-## 15. Lessons Learned
+## 16. Lessons Learned
 
 ### Ingestion & Input Pipeline
 
