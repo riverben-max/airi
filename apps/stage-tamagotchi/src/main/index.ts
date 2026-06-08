@@ -345,11 +345,16 @@ app.whenReady().then(async () => {
       const sensorsServicePromise = createSensorsService({ context })
       setupDiscordService()
 
-      const initialUrls = deps.appConfig.get()?.corsBypassUrls ?? []
+      const defaultBypassUrls = [
+        'https://api.deepgram.com/*',
+        'https://opencode.ai/*',
+        'https://pioneer.ai/*',
+      ]
+      const initialUrls = deps.appConfig.get()?.corsBypassUrls ?? defaultBypassUrls
       registerCorsBypass(initialUrls)
 
       defineInvokeHandler(context, electronGetCorsBypassUrls, async () => {
-        return deps.appConfig.get()?.corsBypassUrls ?? []
+        return deps.appConfig.get()?.corsBypassUrls ?? defaultBypassUrls
       })
 
       defineInvokeHandler(context, electronSetCorsBypassUrls, async (urls) => {
