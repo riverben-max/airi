@@ -87,6 +87,8 @@ This system is not a universal upgrade to the image pipeline — it is a targete
 
 Ideogram 4 (released June 2026, 9.3B parameters) is the first open-weight text-to-image model that natively understands spatial/regional prompting as a first-class feature — not through conditioning tricks, but through its own structured JSON input format. This is worth evaluating as an alternative or complementary backend to `AIRIRegionalResolver`.
 
+*(For the complete syntax specification, see [Ideogram 4 Schema Guide](file:///C:/Users/h4rdc/Documents/Github/airi-rebase-scratch/docs/ideogram-4-schema.md).)*
+
 ### Why It's Relevant
 
 The `AIRIRegionalResolver` approach is a universal solution that rolls its own regional conditioning on top of any diffusion model using `CLIPTextEncode` + `ConditioningSetArea` chains. Ideogram 4 collapses that entire layer — the model itself understands regions, bounding boxes, per-area prompts, and the distinction between object areas and text areas natively.
