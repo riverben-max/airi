@@ -127,7 +127,18 @@ export async function validateLive2DZip(file: File | Blob): Promise<Live2DValida
             report.errors.push(`CASE SENSITIVITY MISMATCH: "${rel}" expects "${full}" but ZIP contains "${fuzzy}". Browsers are case-sensitive.`)
           }
           else {
-            report.errors.push(`MISSING REFERENCE: ${type} "${rel}" (expected at "${full}") not found in ZIP.`)
+            // Check if the file exists in a subdirectory (common issue with expression/motion files)
+            const basename = rel.split(/[\\/]/).pop()!
+            const subdirMatch = allPaths.find((p) => {
+              const lower = p.toLowerCase()
+              return !p.endsWith('/') && (lower.endsWith(`/${basename.toLowerCase()}`) || lower === basename.toLowerCase())
+            })
+            if (subdirMatch) {
+              report.warnings.push(`SUBDIRECTORY MISMATCH: "${rel}" expected at "${full}" but found at "${subdirMatch}". Import pipeline will self-heal this.`)
+            }
+            else {
+              report.errors.push(`MISSING REFERENCE: ${type} "${rel}" (expected at "${full}") not found in ZIP.`)
+            }
           }
         }
       }

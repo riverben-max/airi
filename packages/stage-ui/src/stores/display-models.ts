@@ -554,7 +554,21 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
                 subZip.file(destPath, assetData)
               }
               else {
-                console.warn(`[DisplayModels] Referenced asset not found in source zip: ${ref} (resolved: ${originalZipPath})`)
+                // Fallback: search subdirectories for file with matching basename.
+                // Many models reference files (expressions, motions) without subdirectory prefix.
+                const basename = ref.split(/[\\/]/).pop()!
+                const subdirKey = Object.keys(zipInstance.files).find(p =>
+                  !zipInstance.files[p].dir && p.toLowerCase().endsWith(`/${basename.toLowerCase()}`),
+                )
+                if (subdirKey) {
+                  const assetData = await zipInstance.file(subdirKey)!.async('uint8array')
+                  const destPath = ref.replace(/\\/g, '/')
+                  subZip.file(destPath, assetData)
+                  console.warn(`[DisplayModels] Self-healed asset ref: "${ref}" (found at "${subdirKey}")`)
+                }
+                else {
+                  console.warn(`[DisplayModels] Referenced asset not found in source zip: ${ref} (resolved: ${originalZipPath})`)
+                }
               }
             }
 
