@@ -832,7 +832,10 @@ export const useChatSessionStore = defineStore('chat-session', () => {
         personaCount: personaIndices.length,
       })
       await setSessionMessages(sessionId, finalMessages)
-      broadcastStreamEvent({ type: 'session-refreshed', sessionId })
+      // NOTICE: Do NOT broadcast session-refreshed here. setSessionMessages() already
+      // broadcasts session-updated for each changed message. An extra session-refreshed
+      // would cause the cross-window handler to force-reload the session, triggering
+      // persistIndex() → index-refreshed → (old) ensureActiveSessionForCharacter loop.
     }
     else {
       console.debug('[ChatSession] No stale persona messages found to refresh', { sessionId })
@@ -1095,9 +1098,12 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       const currentUserId = getCurrentUserId()
       if (event.userId === currentUserId) {
         console.info('[ChatSession] Cross-window index-refreshed, reloading index')
-        loadIndexForUser(currentUserId).then(() => {
-          void ensureActiveSessionForCharacter()
-        })
+        // NOTICE: We intentionally do NOT call ensureActiveSessionForCharacter() here.
+        // That function calls refreshActiveSystemMessage() which broadcasts session-updated →
+        // session-refreshed → index-refreshed, creating an infinite feedback loop on idle.
+        // Index reloads from cross-window broadcasts are purely for data sync — the session
+        // setup lifecycle is only triggered at initialization and explicit card-switches.
+        void loadIndexForUser(currentUserId)
       }
       return
     }

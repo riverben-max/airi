@@ -395,19 +395,30 @@ onMounted(() => {
 }
 
 .markdown-content :deep(pre), .markdown-content :deep(.shiki) {
-  background: rgba(0, 0, 0, 0.05) !important;
+  background-color: var(--shiki-light-bg, rgba(0, 0, 0, 0.05)) !important;
+  color: var(--shiki-light, inherit) !important;
   border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   padding: 1.25rem;
   margin: 1.5rem 0;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-  color: inherit;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .dark .markdown-content :deep(pre), .dark .markdown-content :deep(.shiki) {
-  background: rgba(0, 0, 0, 0.3) !important;
+  background-color: var(--shiki-dark-bg, rgba(0, 0, 0, 0.3)) !important;
+  color: var(--shiki-dark, inherit) !important;
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dark .markdown-content :deep(pre span),
+.dark .markdown-content :deep(.shiki span) {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
 }
 
 .markdown-content :deep(.actor-chip) {
