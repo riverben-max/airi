@@ -166,6 +166,7 @@ const discordStore = useDiscordStore()
 const artistryAutonomousStore = useAutonomousArtistryStore()
 const resizeStateEventName = useElectronWindowResizeStateEvent()
 const isWindowResizing = ref(false)
+const isElectron = computed(() => typeof window !== 'undefined' && !!(window as any).electron)
 function handleResizeStateChange(event: Event) {
   const customEvent = event as CustomEvent<{ active?: boolean }>
   isWindowResizing.value = !!customEvent.detail?.active
@@ -978,7 +979,7 @@ defineExpose({
     <div :class="['relative h-full w-full']" />
 
     <!-- Floating Modular Control Strip Overlay -->
-    <div class="pointer-events-none absolute inset-0 z-50 overflow-hidden">
+    <div v-if="isElectron" class="pointer-events-none absolute inset-0 z-50 overflow-hidden">
       <ControlStrip ref="controlStripRef" />
     </div>
   </div>
