@@ -1686,14 +1686,10 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
   // Pure one-way force restore: clears local IndexedDB, localforage, and localStorage
   // (excluding sync setup keys) and downloads everything directly from the remote backup.
   async function forceRestoreFromRemote(): Promise<boolean> {
-    if (!hasElectron() || !fsBackupPath.value) {
-      toast.error('Cannot restore: File system access is unavailable or path is not set.')
-      return false
-    }
-
-    const pathValidation = await validatePath(fsBackupPath.value)
-    if (!pathValidation.success) {
-      toast.error(`Cannot restore: Invalid backup path: ${pathValidation.error}`)
+    const client = getActiveClient()
+    const connectionValidation = await client.validate()
+    if (!connectionValidation.success) {
+      toast.error(`Cannot restore: Storage connection failed: ${connectionValidation.error}`)
       return false
     }
 
@@ -1743,7 +1739,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       await localforage.clear()
 
       // 5. List and download all files from remote
-      const listRes = await electron.ipcRenderer.invoke('byos-fs:list-files', { dir: fsBackupPath.value })
+      const listRes = await client.listFiles()
       if (!listRes.success) {
         throw new Error(listRes.error || 'Failed to list remote files')
       }
@@ -1758,10 +1754,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
         if (!localKey)
           return
 
-        const readRes = await electron.ipcRenderer.invoke('byos-fs:read-file', {
-          dir: fsBackupPath.value,
-          relPath: remoteFile.relPath,
-        })
+        const readRes = await client.readFile(remoteFile.relPath)
         if (readRes.success && readRes.content) {
           const data = JSON.parse(readRes.content)
           await storage.setItemRaw(localKey, data)

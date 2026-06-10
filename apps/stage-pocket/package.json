@@ -21,6 +21,7 @@
     "dev:ios": "cap-vite -- ios"
   },
   "dependencies": {
+    "@capacitor/android": "catalog:",
     "@capacitor/core": "catalog:",
     "@capacitor/ios": "catalog:",
     "@capacitor/local-notifications": "catalog:",

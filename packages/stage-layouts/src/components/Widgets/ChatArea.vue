@@ -11,7 +11,6 @@ import {
 } from '@proj-airi/stage-ui/components'
 import { useAudioAnalyzer, useChatComposer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
-import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useChatMaintenanceStore } from '@proj-airi/stage-ui/stores/chat/maintenance'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { buildSystemPrompt, useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
@@ -40,13 +39,11 @@ const backgroundDialogOpen = ref(false)
 const stageBackgroundDialogOpen = ref(false)
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
-const providersStore = useProvidersStore()
 const { activeProvider, activeModel } = storeToRefs(useConsciousnessStore())
 const { themeColorsHueDynamic } = storeToRefs(useSettings())
 const settingsChat = useSettingsChat()
 
 const { enabled, selectedAudioInput, stream, audioInputs } = storeToRefs(useSettingsAudioDevice())
-const chatOrchestrator = useChatOrchestratorStore()
 const chatSession = useChatSessionStore()
 const airiCardStore = useAiriCardStore()
 const { cleanupMessages } = useChatMaintenanceStore()
@@ -274,7 +271,6 @@ onUnmounted(() => {
               </div>
 
               <FieldSelect
-                v-slot="{ value: val }"
                 v-model="selectedAudioInput"
                 label="Input device"
                 description="Select the microphone you want to use."

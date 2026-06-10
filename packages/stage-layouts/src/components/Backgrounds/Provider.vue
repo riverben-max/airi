@@ -29,7 +29,7 @@ defineExpose({
       <template v-if="background.kind === BackgroundKind.Wave">
         <DefaultBackground class="h-full w-full" />
       </template>
-      <template v-else-if="background.kind === BackgroundKind.Image">
+      <template v-else-if="background.kind === BackgroundKind.Image && background.src">
         <img
           :src="background.src"
           class="h-full w-full object-cover"
