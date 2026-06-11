@@ -18,9 +18,11 @@ import { sessionMiddleware } from './middlewares/auth'
 import { otelMiddleware } from './middlewares/otel'
 import { createCharacterRoutes } from './routes/characters'
 import { createChatRoutes } from './routes/chats'
+import { createGoogleDriveRoutes } from './routes/gdrive'
 import { createProviderRoutes } from './routes/providers'
 import { createCharacterService } from './services/characters'
 import { createChatService } from './services/chats'
+import { createGoogleDriveService } from './services/gdrive'
 import { createProviderService } from './services/providers'
 import { ApiError, createInternalError } from './utils/error'
 import { getTrustedOrigin } from './utils/origin'
@@ -29,6 +31,7 @@ type AuthService = ReturnType<typeof createAuth>
 type CharacterService = ReturnType<typeof createCharacterService>
 type ChatService = ReturnType<typeof createChatService>
 type ProviderService = ReturnType<typeof createProviderService>
+type GoogleDriveService = ReturnType<typeof createGoogleDriveService>
 
 type OtelMetrics = ReturnType<typeof initOtel>
 
@@ -37,10 +40,11 @@ interface AppDeps {
   characterService: CharacterService
   chatService: ChatService
   providerService: ProviderService
+  gdriveService: GoogleDriveService
   otel: OtelMetrics | null
 }
 
-function buildApp({ auth, characterService, chatService, providerService, otel }: AppDeps) {
+function buildApp({ auth, characterService, chatService, providerService, gdriveService, otel }: AppDeps) {
   const logger = useLogger('app').useGlobalConfig()
 
   const app = new Hono<HonoEnv>()
@@ -104,6 +108,11 @@ function buildApp({ auth, characterService, chatService, providerService, otel }
      * Chat routes are handled by the chat service.
      */
     .route('/api/chats', createChatRoutes(chatService))
+
+    /**
+     * Google Drive AppData routes.
+     */
+    .route('/api/gdrive', createGoogleDriveRoutes(gdriveService))
 }
 
 export type AppType = ReturnType<typeof buildApp>
@@ -159,13 +168,19 @@ async function createApp() {
     build: ({ dependsOn }) => createChatService(dependsOn.db),
   })
 
+  const gdriveService = injeca.provide('services:gdrive', {
+    dependsOn: { db, env: parsedEnv },
+    build: ({ dependsOn }) => createGoogleDriveService(dependsOn.db, dependsOn.env),
+  })
+
   await injeca.start()
-  const resolved = await injeca.resolve({ auth, characterService, chatService, providerService, otel })
+  const resolved = await injeca.resolve({ auth, characterService, chatService, providerService, gdriveService, otel })
   const app = buildApp({
     auth: resolved.auth,
     characterService: resolved.characterService,
     chatService: resolved.chatService,
     providerService: resolved.providerService,
+    gdriveService: resolved.gdriveService,
     otel: resolved.otel,
   })
 

@@ -38,7 +38,7 @@ defineExpose({
         >
       </template>
       <template v-else>
-        <div class="h-full w-full bg-neutral-950" />
+        <div class="h-full w-full" />
       </template>
     </div>
 

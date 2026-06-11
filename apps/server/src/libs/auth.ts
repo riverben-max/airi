@@ -40,6 +40,7 @@ export function createAuth(db: Database, env: Env) {
       google: {
         clientId: env.AUTH_GOOGLE_CLIENT_ID,
         clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET,
+        scope: ['openid', 'profile', 'email', 'https://www.googleapis.com/auth/drive.appdata'],
       },
       github: {
         clientId: env.AUTH_GITHUB_CLIENT_ID,

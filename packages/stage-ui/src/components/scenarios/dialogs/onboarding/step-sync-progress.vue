@@ -4,6 +4,8 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 import { Button } from '@proj-airi/ui'
 import { onMounted, onUnmounted, ref } from 'vue'
 
+import { useSyncEngineStore } from '../../../../stores/sync-engine'
+
 interface Props {
   onNext: OnboardingStepNextHandler
   onPrevious: OnboardingStepPrevHandler
@@ -35,10 +37,10 @@ onMounted(() => {
   logs.value.push(logPool[0])
 
   intervalId = setInterval(() => {
-    if (progress.value < 100) {
+    if (progress.value < 90) {
       progress.value += Math.floor(Math.random() * 8) + 4
-      if (progress.value > 100)
-        progress.value = 100
+      if (progress.value > 90)
+        progress.value = 90
 
       // Add logs at different milestones
       const poolIndex = Math.floor((progress.value / 100) * logPool.length)
@@ -46,11 +48,36 @@ onMounted(() => {
         logs.value.push(logPool[poolIndex])
       }
     }
-    else {
-      clearInterval(intervalId)
+  }, 350)
+
+  // Start real restore process
+  void (async () => {
+    try {
+      const syncStore = useSyncEngineStore()
+      // Enable sync
+      syncStore.syncEnabled = true
+
+      // Perform force restore from remote setup
+      const success = await syncStore.forceRestoreFromRemote({ skipReload: true })
+      if (success) {
+        logs.value.push('Local database and storage updated successfully!')
+      }
+      else {
+        logs.value.push('Warning: Cloud sync completed with warnings.')
+      }
+    }
+    catch (e: any) {
+      console.error('[StepSyncProgress] Failed to restore from cloud:', e)
+      logs.value.push(`Error during restore: ${e.message || String(e)}`)
+    }
+    finally {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+      progress.value = 100
       syncComplete.value = true
     }
-  }, 350)
+  })()
 })
 
 onUnmounted(() => {

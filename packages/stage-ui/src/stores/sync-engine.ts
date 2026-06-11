@@ -8,6 +8,7 @@ import { ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import { storage, storageState } from '../database/storage'
+import { SERVER_URL } from '../libs/auth'
 
 export interface StorageClient {
   validate: () => Promise<{ success: boolean, error?: string }>
@@ -1640,7 +1641,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     await logDebug('dumpLocalStorageToIndexedDb completed.')
   }
 
-  async function restoreLocalStorageFromIndexedDb() {
+  async function restoreLocalStorageFromIndexedDb(opts?: { skipReload?: boolean }) {
     await logDebug('restoreLocalStorageFromIndexedDb starting...')
     let anyChanged = false
     try {
@@ -1676,7 +1677,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           }
         }
       }
-      if (anyChanged) {
+      if (anyChanged && !opts?.skipReload) {
         await logDebug('restoreLocalStorageFromIndexedDb: LocalStorage changed. Reloading window...')
         toast.info('Settings updated, reloading interface...', { duration: 1500 })
         setTimeout(() => {
@@ -1840,7 +1841,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   // Pure one-way force restore: clears local IndexedDB, localforage, and localStorage
   // (excluding sync setup keys) and downloads everything directly from the remote backup.
-  async function forceRestoreFromRemote(): Promise<boolean> {
+  async function forceRestoreFromRemote(opts?: { skipReload?: boolean }): Promise<boolean> {
     const client = getActiveClient()
     const connectionValidation = await client.validate()
     if (!connectionValidation.success) {
@@ -1871,13 +1872,21 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
         await storage.removeItem(k)
       }
 
-      // 3. Wipe localStorage (excluding sync settings)
+      // 3. Wipe localStorage (excluding sync settings and onboarding state)
       const keysToKeep = [
         'settings/sync/enabled',
         'settings/sync/interval',
         'settings/sync/conflict-strategy',
         'settings/sync/active-provider',
         'settings/sync/fs-path',
+        'settings/sync/selective-enabled',
+        'settings/sync/selective-checked-ids',
+        'settings/sync/s3-endpoint',
+        'settings/sync/s3-bucket',
+        'settings/sync/s3-region',
+        'settings/sync/s3-access-key-id',
+        'settings/sync/s3-secret-access-key',
+        'airi-onboarding-state',
       ]
       const lsKeys = []
       for (let i = 0; i < localStorage.length; i++) {
@@ -1922,16 +1931,18 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       await reconcileModels()
 
       // C. Restore synced localStorage keys back to window.localStorage
-      await restoreLocalStorageFromIndexedDb()
+      await restoreLocalStorageFromIndexedDb({ skipReload: opts?.skipReload })
 
       lastSyncTime.value = Date.now()
       localStorage.setItem('settings/sync/last-time', String(lastSyncTime.value))
-      toast.success('Restore completed successfully. Reloading...')
       await logDebug('[Restore] Force restore completed successfully.')
 
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
+      if (!opts?.skipReload) {
+        toast.success('Restore completed successfully. Reloading...')
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      }
 
       return true
     }
@@ -1978,6 +1989,43 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     }
   }, { immediate: true })
 
+  async function fetchGDriveManifest() {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/gdrive/manifest`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        return await res.json()
+      }
+      const data = await res.json()
+      console.error('[SyncEngine] Failed to fetch gdrive manifest:', data.error)
+    }
+    catch (e) {
+      console.error('[SyncEngine] Error fetching gdrive manifest:', e)
+    }
+    return { version: '1.0', providers: [] }
+  }
+
+  async function saveGDriveManifest(manifest: any) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/gdrive/manifest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(manifest),
+        credentials: 'include',
+      })
+      if (res.ok) {
+        return true
+      }
+      const data = await res.json()
+      console.error('[SyncEngine] Failed to save gdrive manifest:', data.error)
+    }
+    catch (e) {
+      console.error('[SyncEngine] Error saving gdrive manifest:', e)
+    }
+    return false
+  }
+
   // Initialize conflicts on store load
   void loadConflicts()
 
@@ -2007,5 +2055,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     forceRestoreFromRemote,
     selectiveSyncEnabled,
     selectiveCheckedIds,
+    fetchGDriveManifest,
+    saveGDriveManifest,
   }
 })

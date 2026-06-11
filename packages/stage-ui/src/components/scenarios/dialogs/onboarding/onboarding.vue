@@ -216,6 +216,7 @@ async function saveProviderConfiguration(data: ProviderConfigData) {
 async function handleSave() {
   localStorage.removeItem('airi-onboarding-state')
   emit('configured')
+  window.location.reload()
 }
 
 // Persist onboarding state to localStorage so redirects do not lose user context
@@ -402,17 +403,29 @@ const allSteps = computed<OnboardingStep[]>(() => {
               return false // cancel default next navigation
             }
 
-            // Set active provider based on selected backup target
+            // Set active provider and restore credentials based on selected backup target
             if (data && data.selectedBackupId) {
               const syncStore = useSyncEngineStore()
-              if (data.selectedBackupId === 's3-backup') {
-                syncStore.activeProvider = 's3'
+              try {
+                const manifest = await syncStore.fetchGDriveManifest()
+                const selected = (manifest.providers || []).find((p: any) => p.id === data.selectedBackupId)
+                if (selected) {
+                  syncStore.activeProvider = selected.type
+                  if (selected.type === 's3') {
+                    syncStore.s3Endpoint = selected.config.endpoint
+                    syncStore.s3Bucket = selected.config.bucket
+                    syncStore.s3Region = selected.config.region
+                    syncStore.s3AccessKeyId = selected.config.accessKeyId
+                    syncStore.s3SecretAccessKey = selected.config.secretAccessKey
+                  }
+                  else if (selected.type === 'local') {
+                    syncStore.fsBackupPath = selected.config.path
+                  }
+                  console.log(`[Onboarding] Successfully resolved and restored cloud credentials for: ${selected.name}`)
+                }
               }
-              else if (data.selectedBackupId === 'gdrive-backup') {
-                syncStore.activeProvider = 'gdrive'
-              }
-              else {
-                syncStore.activeProvider = 'local'
+              catch (err) {
+                console.error('[Onboarding] Failed to restore credentials from Google AppData:', err)
               }
             }
             return true
@@ -453,6 +466,14 @@ const allSteps = computed<OnboardingStep[]>(() => {
           isGoogleAuthenticated: isGoogleAuthenticated.value,
         }),
         beforeNext: async (data: any) => {
+          const syncStore = useSyncEngineStore()
+          if (data && data.checkedIds) {
+            syncStore.selectiveSyncEnabled = true
+            syncStore.selectiveCheckedIds = data.checkedIds
+          }
+          else {
+            syncStore.selectiveSyncEnabled = false
+          }
           if (data && data.saveToGoogle) {
             isGoogleLinking.value = true
           }
@@ -467,6 +488,51 @@ const allSteps = computed<OnboardingStep[]>(() => {
         component: StepGoogleOAuth,
         beforeNext: async () => {
           isGoogleAuthenticated.value = true
+
+          try {
+            const syncStore = useSyncEngineStore()
+            // 1. Fetch current manifest from Google Drive AppData
+            const manifest = await syncStore.fetchGDriveManifest()
+            const providersList = manifest.providers || []
+
+            // 2. Build current active provider configuration
+            const newProvider = {
+              id: syncStore.activeProvider === 's3' ? 's3-backup' : 'local-backup',
+              name: syncStore.activeProvider === 's3' ? syncStore.s3Bucket || 's3-backup' : 'local-fs-archive',
+              type: syncStore.activeProvider,
+              config: syncStore.activeProvider === 's3'
+                ? {
+                    endpoint: syncStore.s3Endpoint,
+                    bucket: syncStore.s3Bucket,
+                    region: syncStore.s3Region,
+                    accessKeyId: syncStore.s3AccessKeyId,
+                    secretAccessKey: syncStore.s3SecretAccessKey,
+                  }
+                : {
+                    path: syncStore.fsBackupPath,
+                  },
+              lastSync: new Date().toISOString(),
+            }
+
+            // 3. Filter out any existing provider with the same ID, append the new one, and save
+            const updatedProviders = providersList.filter((p: any) => p.id !== newProvider.id)
+            updatedProviders.push(newProvider)
+
+            const success = await syncStore.saveGDriveManifest({
+              version: '1.0',
+              providers: updatedProviders,
+            })
+
+            if (success) {
+              console.log('[Onboarding] Successfully saved credentials link to Google AppData.')
+            }
+            else {
+              console.error('[Onboarding] Failed to save credentials link to Google AppData.')
+            }
+          }
+          catch (err) {
+            console.error('[Onboarding] Error during cloud linkage save:', err)
+          }
           return true
         },
       })

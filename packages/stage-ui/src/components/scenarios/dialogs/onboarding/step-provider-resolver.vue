@@ -4,6 +4,8 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref } from 'vue'
 
+import { useSyncEngineStore } from '../../../../stores/sync-engine'
+
 interface Props {
   onNext: OnboardingStepNextHandler
   onPrevious: OnboardingStepPrevHandler
@@ -23,43 +25,101 @@ interface BackupTarget {
   region?: string
 }
 
-const backups = ref<BackupTarget[]>([
-  {
-    id: 's3-backup',
-    name: 'airi-backup-bucket',
-    provider: 'Amazon S3',
-    icon: 'i-solar:database-bold-duotone',
-    lastSync: '2 hours ago',
-    size: '1.2 GB',
-    region: 'us-east-1',
-  },
-  {
-    id: 'gdrive-backup',
-    name: 'airi_sync_folder',
-    provider: 'Google Drive',
-    icon: 'i-solar:folder-with-files-bold-duotone',
-    lastSync: 'Yesterday at 4:30 PM',
-    size: '840 MB',
-  },
-  {
-    id: 'local-backup',
-    name: 'local-fs-archive',
-    provider: 'Local File System',
-    icon: 'i-solar:laptop-bold-duotone',
-    lastSync: 'June 08, 2026',
-    size: '2.4 GB',
-  },
-])
+const backups = ref<BackupTarget[]>([])
+const selectedBackupId = ref('')
 
-const selectedBackupId = ref('s3-backup')
+const syncStore = useSyncEngineStore()
 
-onMounted(() => {
-  setTimeout(() => {
+// Helper to format lastSync ISO string to a human-friendly relative format
+function formatRelativeTime(isoString: string): string {
+  if (!isoString)
+    return 'Never'
+  try {
+    const date = new Date(isoString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.round(diffMs / (1000 * 60))
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffMins < 1)
+      return 'Just now'
+    if (diffMins < 60)
+      return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays === 1)
+      return 'Yesterday'
+    if (diffDays < 7)
+      return `${diffDays} days ago`
+
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+  catch (e) {
+    return isoString
+  }
+}
+
+async function loadBackups() {
+  isSearching.value = true
+  try {
     if (simulateEmpty.value) {
       backups.value = []
+      selectedBackupId.value = ''
+      isSearching.value = false
+      return
     }
+
+    const manifest = await syncStore.fetchGDriveManifest()
+    const providersList = manifest?.providers || []
+
+    backups.value = providersList.map((p: any) => {
+      let icon = 'i-solar:database-bold-duotone'
+      let provider = 'Amazon S3'
+
+      if (p.type === 'local') {
+        icon = 'i-solar:laptop-bold-duotone'
+        provider = 'Local File System'
+      }
+      else if (p.type === 's3') {
+        // If s3 endpoint includes r2.cloudflarestorage.com, call it Cloudflare R2
+        if (p.config?.endpoint?.includes('r2.cloudflarestorage.com')) {
+          provider = 'Cloudflare R2'
+          icon = 'i-solar:cloud-bold-duotone'
+        }
+        else {
+          provider = 'Amazon S3'
+        }
+      }
+
+      return {
+        id: p.id,
+        name: p.type === 's3' ? p.config?.bucket || p.name : p.config?.path || p.name,
+        provider,
+        icon,
+        lastSync: formatRelativeTime(p.lastSync),
+        size: p.type === 's3' ? 'S3 Bucket' : 'Local Directory',
+        region: p.config?.region,
+      }
+    })
+
+    if (backups.value.length > 0) {
+      selectedBackupId.value = backups.value[0].id
+    }
+    else {
+      selectedBackupId.value = ''
+    }
+  }
+  catch (err) {
+    console.error('[StepProviderResolver] Error loading backups from AppData:', err)
+  }
+  finally {
     isSearching.value = false
-  }, 1500)
+  }
+}
+
+onMounted(() => {
+  loadBackups()
 })
 
 function triggerEmptySimulation() {
@@ -67,13 +127,13 @@ function triggerEmptySimulation() {
   isSearching.value = true
   setTimeout(() => {
     backups.value = []
+    selectedBackupId.value = ''
     isSearching.value = false
   }, 1000)
 }
 
 function handleNext() {
   if (backups.value.length === 0) {
-    // Navigate next indicating we want the manual config fallback
     props.onNext({ manualFallback: true })
   }
   else {

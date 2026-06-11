@@ -550,10 +550,10 @@ defineExpose({
 </script>
 
 <template>
-  <div class="h-full flex flex-1 flex-col gap-4 text-white">
+  <div class="h-full flex flex-1 flex-col gap-4 text-neutral-800 dark:text-white">
     <!-- Search Character Helper -->
-    <div class="border border-white/5 rounded-xl bg-neutral-950/40 p-3">
-      <div class="mb-1.5 text-[10px] text-primary-400 font-bold tracking-wider uppercase">
+    <div class="border border-neutral-200 rounded-xl bg-neutral-100/50 p-3 dark:border-white/5 dark:bg-neutral-950/40">
+      <div class="mb-1.5 text-[10px] text-primary-500 font-bold tracking-wider uppercase dark:text-primary-400">
         Select by Character Profile
       </div>
       <div class="flex items-center gap-2">
@@ -562,9 +562,9 @@ defineExpose({
             v-model="searchCharQuery"
             type="text"
             placeholder="Type character name (e.g. Asuka, Kiana, Bronya)..."
-            class="w-full border border-white/10 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-white outline-none transition-colors focus:border-primary-500 placeholder-neutral-500"
+            class="w-full border border-neutral-200 rounded-lg bg-white px-3 py-1.5 text-xs text-neutral-800 outline-none transition-colors dark:border-white/10 focus:border-primary-500 dark:bg-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           >
-          <span v-if="searchMatchesMessage" class="absolute right-3 top-1/2 text-[10px] text-primary-400 font-semibold -translate-y-1/2">
+          <span v-if="searchMatchesMessage" class="absolute right-3 top-1/2 text-[10px] text-primary-500 font-semibold -translate-y-1/2 dark:text-primary-400">
             {{ searchMatchesMessage }}
           </span>
         </div>
@@ -579,24 +579,24 @@ defineExpose({
     </div>
 
     <!-- Tree View Container -->
-    <div class="min-h-[200px] flex flex-1 flex-col gap-4 overflow-y-auto border border-white/5 rounded-xl bg-neutral-950/25 p-4 scrollbar-thin">
-      <div v-if="isLoadingRemote" class="flex flex-col items-center justify-center gap-3 py-12 text-neutral-400">
-        <div class="i-solar:refresh-bold animate-spin text-3xl text-primary-400" />
+    <div class="min-h-[200px] flex flex-1 flex-col gap-4 overflow-y-auto border border-neutral-200 rounded-xl bg-neutral-50/50 p-4 scrollbar-thin dark:border-white/5 dark:bg-neutral-950/25">
+      <div v-if="isLoadingRemote" class="flex flex-col items-center justify-center gap-3 py-12 text-neutral-500 dark:text-neutral-400">
+        <div class="i-solar:refresh-bold animate-spin text-3xl text-primary-500 dark:text-primary-400" />
         <div class="text-xs">
           Fetching remote assets and catalogs...
         </div>
       </div>
 
-      <div v-else-if="remoteLoadError" class="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center text-rose-400">
+      <div v-else-if="remoteLoadError" class="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center text-rose-500 dark:text-rose-400">
         <div class="i-solar:danger-bold text-2xl" />
         <div class="text-xs font-semibold">
           Failed to fetch remote catalog
         </div>
-        <div class="max-w-md break-words text-[10px] text-rose-500/85">
+        <div class="max-w-md break-words text-[10px] text-rose-600 dark:text-rose-500/85">
           {{ remoteLoadError }}
         </div>
         <button
-          class="mt-2 rounded-lg bg-rose-500/20 px-3.5 py-1.5 text-xs text-rose-300 font-bold transition-colors hover:bg-rose-500/30"
+          class="mt-2 rounded-lg bg-rose-500/10 px-3.5 py-1.5 text-xs text-rose-600 font-bold transition-colors dark:bg-rose-500/20 hover:bg-rose-500/25 dark:text-rose-300 dark:hover:bg-rose-500/30"
           @click="fetchRemoteCatalogData"
         >
           Retry Connection
@@ -604,9 +604,9 @@ defineExpose({
       </div>
 
       <template v-else>
-        <div class="mb-2 flex items-center justify-between border-b border-white/5 pb-2 text-xs text-neutral-400">
+        <div class="mb-2 flex items-center justify-between border-b border-neutral-200 pb-2 text-xs text-neutral-500 dark:border-white/5 dark:text-neutral-400">
           <span>Resource Directory</span>
-          <span class="text-primary-400 font-semibold">Est. download size: {{ totalSelectedSize }}</span>
+          <span class="text-primary-500 font-semibold dark:text-primary-400">Est. download size: {{ totalSelectedSize }}</span>
         </div>
 
         <div v-for="(parent, pIdx) in syncTree" :key="parent.id" class="flex flex-col gap-2">
@@ -617,35 +617,35 @@ defineExpose({
                 type="checkbox"
                 :checked="parent.checked"
                 :disabled="parent.required"
-                class="border-white/10 rounded bg-neutral-800 text-primary-500 disabled:opacity-50 focus:ring-0 focus:ring-offset-0"
+                class="border-neutral-300 rounded bg-white text-primary-500 dark:border-white/10 dark:bg-neutral-800 disabled:opacity-50 focus:ring-0 focus:ring-offset-0"
                 @change="toggleParent(pIdx)"
               >
-              <span class="text-xs text-neutral-200 font-bold transition-colors group-hover:text-white" :class="{ 'text-primary-400': parent.required }">
+              <span class="text-xs text-neutral-800 font-bold transition-colors dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white" :class="{ 'text-primary-500 dark:text-primary-400': parent.required }">
                 {{ parent.label }}
-                <span v-if="parent.required" class="ml-1.5 rounded bg-primary-500/25 px-1.5 py-0.5 text-[9px] text-primary-400 tracking-wider uppercase">Required</span>
+                <span v-if="parent.required" class="ml-1.5 rounded bg-primary-500/10 px-1.5 py-0.5 text-[9px] text-primary-500 tracking-wider uppercase dark:bg-primary-500/25 dark:text-primary-400">Required</span>
               </span>
             </label>
           </div>
 
           <!-- Children Nodes -->
-          <div v-if="parent.children" class="ml-1.5 flex flex-col gap-2.5 border-l border-white/5 pl-6">
+          <div v-if="parent.children" class="ml-1.5 flex flex-col gap-2.5 border-l border-neutral-200 pl-6 dark:border-white/5">
             <div v-for="(child, cIdx) in parent.children" :key="child.id" class="group flex items-center justify-between">
               <label class="flex cursor-pointer select-none items-center gap-2.5">
                 <input
                   type="checkbox"
                   :checked="child.checked"
                   :disabled="child.required"
-                  class="border-white/10 rounded bg-neutral-800 text-primary-500 disabled:opacity-50 focus:ring-0 focus:ring-offset-0"
+                  class="border-neutral-300 rounded bg-white text-primary-500 dark:border-white/10 dark:bg-neutral-800 disabled:opacity-50 focus:ring-0 focus:ring-offset-0"
                   @change="toggleChild(pIdx, cIdx)"
                 >
-                <span class="text-xs text-neutral-400 transition-colors group-hover:text-neutral-200" :class="{ 'text-neutral-300 font-medium': child.checked }">
+                <span class="text-xs text-neutral-500 transition-colors dark:text-neutral-400 group-hover:text-neutral-800 dark:group-hover:text-neutral-200" :class="{ 'text-neutral-800 dark:text-neutral-300 font-medium': child.checked }">
                   {{ child.label }}
                 </span>
               </label>
               <div class="flex items-center gap-2">
-                <span v-if="child.size" class="text-[10px] text-neutral-500 font-semibold">{{ child.size }}</span>
-                <span v-if="child.required" class="rounded bg-primary-500/10 px-1.5 py-0.5 text-[9px] text-primary-400">ALWAYS SYNCED</span>
-                <span v-else-if="child.size" class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-400">HEAVY ASSET</span>
+                <span v-if="child.size" class="text-[10px] text-neutral-400 font-semibold dark:text-neutral-500">{{ child.size }}</span>
+                <span v-if="child.required" class="rounded bg-primary-500/10 px-1.5 py-0.5 text-[9px] text-primary-500 dark:text-primary-400">ALWAYS SYNCED</span>
+                <span v-else-if="child.size" class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-500 dark:text-amber-400">HEAVY ASSET</span>
               </div>
             </div>
           </div>
