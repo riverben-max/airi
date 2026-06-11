@@ -15,12 +15,12 @@ import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
-import { useLive2d } from '@proj-airi/stage-ui/stores/live2d'
 import { useLLM } from '@proj-airi/stage-ui/stores/llm'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useHearingSpeechInputPipeline } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
+import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { breakpointsTailwind, useBreakpoints, useMouse } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
@@ -34,8 +34,39 @@ function handleSettingsOpen(open: boolean) {
 }
 
 const positionCursor = useMouse()
-const { scale, position, positionInPercentageString } = storeToRefs(useLive2d())
-const { lastReloadReason } = storeToRefs(useSettings())
+const settingsStore = useSettings()
+const { stageModelSelected, lastReloadReason } = storeToRefs(settingsStore)
+const positioningStore = usePositioningStore()
+
+const scale = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).scale
+})
+
+const xOffset = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).x
+})
+
+const yOffset = computed(() => {
+  return positioningStore.getPosition(stageModelSelected.value).y
+})
+
+function handleScaleChange(val: number) {
+  const current = positioningStore.getPosition(stageModelSelected.value)
+  positioningStore.setPosition(stageModelSelected.value, {
+    ...current,
+    scale: val,
+  })
+}
+
+function handleOffsetChange(val: { x: number, y: number }) {
+  const current = positioningStore.getPosition(stageModelSelected.value)
+  positioningStore.setPosition(stageModelSelected.value, {
+    ...current,
+    x: val.x,
+    y: val.y,
+  })
+}
+
 const breakpoints = useBreakpoints(breakpointsTailwind)
 const isMobile = breakpoints.smaller('md')
 
@@ -191,9 +222,11 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
             x: positionCursor.x.value,
             y: positionCursor.y.value,
           }"
-          :x-offset="`${isMobile ? position.x : position.x - 10}%`"
-          :y-offset="positionInPercentageString.y"
+          :x-offset="xOffset"
+          :y-offset="yOffset"
           :scale="scale"
+          @scale-change="handleScaleChange"
+          @offset-change="handleOffsetChange"
         />
         <div v-if="isLoading" class="pointer-events-none absolute left-0 top-0 z-100 h-full w-full">
           <div class="absolute left-0 top-0 z-99 h-full w-full flex cursor-grab items-center justify-center overflow-hidden">
@@ -224,8 +257,8 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
             </div>
           </div>
         </div>
-        <InteractiveArea v-if="!isMobile" h="85dvh" absolute right-4 flex flex-1 flex-col max-w="500px" min-w="30%" />
-        <MobileInteractiveArea v-if="isMobile" @settings-open="handleSettingsOpen" />
+        <InteractiveArea v-if="!isMobile" h="85dvh" absolute right-4 z-10 flex flex-1 flex-col max-w="500px" min-w="30%" />
+        <MobileInteractiveArea v-if="isMobile" z-10 @settings-open="handleSettingsOpen" />
       </div>
     </div>
   </BackgroundProvider>

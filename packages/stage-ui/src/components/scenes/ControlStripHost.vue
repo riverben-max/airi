@@ -977,7 +977,7 @@ defineExpose({
 <template>
   <div :class="['relative h-full w-full']">
     <!-- Render the model stage directly in the host if we are in the web browser (non-Electron) -->
-    <div v-if="!isElectron" class="absolute inset-0 z-10">
+    <div v-if="!isElectron" class="absolute inset-0 z-0">
       <RendererStage
         v-model:state="state"
         :paused="paused"
