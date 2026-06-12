@@ -230,6 +230,16 @@ watch(
 
 const { isNearAnyBorder: isAroundWindowBorder } = useElectronMouseAroundWindowBorder({ threshold: 30 })
 const isAroundWindowBorderFor250Ms = refDebounced(isAroundWindowBorder, 250)
+
+const stageState = ref<'pending' | 'loading' | 'mounted'>('pending')
+const { post: broadcastModelReady } = useBroadcastChannel<string, string>({ name: 'airi-stage-model-ready' })
+
+watch(stageState, (val) => {
+  console.log('[Actor Window] stageState changed:', val)
+  if (val === 'mounted') {
+    broadcastModelReady('ready')
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -259,6 +269,7 @@ const isAroundWindowBorderFor250Ms = refDebounced(isAroundWindowBorder, 250)
       <!-- Standalone Graphics Model Scene Renderer -->
       <div class="absolute inset-0 z-10">
         <RendererStage
+          v-model:state="stageState"
           :paused="!stageEnabled"
           :focus-at="{ x: live2dLookAtX, y: live2dLookAtY }"
           :x-offset="xOffset"

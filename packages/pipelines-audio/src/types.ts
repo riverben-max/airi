@@ -20,6 +20,7 @@ export interface TextSegment {
   text: string
   special: string | null
   reason: 'boost' | 'limit' | 'hard' | 'flush' | 'special'
+  actorId?: string
   createdAt: number
 }
 
@@ -29,6 +30,7 @@ export interface TtsRequest {
   segmentId: string
   text: string
   special: string | null
+  actorId?: string
   priority: number
   createdAt: number
 }
@@ -39,6 +41,7 @@ export interface TtsResult<TAudio> {
   segmentId: string
   text: string
   special: string | null
+  actorId?: string
   audio: TAudio
   createdAt: number
 }
@@ -52,6 +55,7 @@ export interface PlaybackItem<TAudio> {
   priority: number
   text: string
   special: string | null
+  actorId?: string
   audio: TAudio
   createdAt: number
 }

@@ -32,6 +32,7 @@ import { llmInferenceEndToken } from '../../constants'
 import { EMOTION_EmotionMotionName_value, EmotionThinkMotionName } from '../../constants/emotions'
 import { useAudioContext, useSpeakingStore } from '../../stores/audio'
 import { useChatOrchestratorStore } from '../../stores/chat'
+import { DisplayModelFormat, useDisplayModelsStore } from '../../stores/display-models'
 import { useModsServerChannelStore } from '../../stores/mods/api/channel-server'
 import { useAiriCardStore } from '../../stores/modules'
 import { useAutonomousArtistryStore } from '../../stores/modules/artistry-autonomous'
@@ -165,6 +166,17 @@ const activeCardId = computed(() => activeCard.value?.name ?? 'default')
 const speechRuntimeStore = useSpeechRuntimeStore()
 const discordStore = useDiscordStore()
 const artistryAutonomousStore = useAutonomousArtistryStore()
+const displayModelsStore = useDisplayModelsStore()
+const { data: stageModelReadySignal } = useBroadcastChannel<string, string>({ name: 'airi-stage-model-ready' })
+let stageModelReadyResolver: (() => void) | null = null
+
+watch(stageModelReadySignal, (val) => {
+  if (val === 'ready' && stageModelReadyResolver) {
+    stageModelReadyResolver()
+    stageModelReadyResolver = null
+  }
+})
+
 const resizeStateEventName = useElectronWindowResizeStateEvent()
 const isWindowResizing = ref(false)
 const isElectron = computed(() => typeof window !== 'undefined' && !!(window as any).electron)
@@ -391,7 +403,60 @@ if (typeof window !== 'undefined') {
 }
 
 async function playFunction(item: Parameters<Parameters<typeof createPlaybackManager<AudioBuffer>>[0]['play']>[0], signal: AbortSignal): Promise<void> {
-  if (!audioContext || !item.audio)
+  if (!audioContext)
+    return
+
+  if (item.special) {
+    const actorId = parseActor(item.special)
+    if (actorId) {
+      console.info('[Stage:Playback] Actor swap token reached playback, activating concept:', actorId)
+
+      playbackActorId.value = actorId
+
+      // Trigger concept activation
+      void artistryAutonomousStore.activateConcept(actorId)
+
+      // Wait for airi-stage-model-ready signal with 5s timeout fallback
+      await new Promise<void>((resolve) => {
+        const onAbort = () => {
+          if (stageModelReadyResolver === resolve) {
+            stageModelReadyResolver = null
+          }
+          resolve()
+        }
+        if (signal.aborted) {
+          resolve()
+          return
+        }
+        signal.addEventListener('abort', onAbort, { once: true })
+
+        stageModelReadyResolver = () => {
+          signal.removeEventListener('abort', onAbort)
+          resolve()
+        }
+
+        setTimeout(() => {
+          if (stageModelReadyResolver) {
+            console.warn('[Stage:Playback] Timeout waiting for model ready signal for actor:', actorId)
+            stageModelReadyResolver()
+          }
+        }, 5000)
+      })
+
+      // Update the global speechStore settings so voice indicators, pitch, rate, etc. update precisely on speaking start
+      const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(actorId)
+      if (resolvedSpeech) {
+        if (resolvedSpeech.provider)
+          speechStore.activeSpeechProvider = resolvedSpeech.provider
+        if (resolvedSpeech.model)
+          speechStore.activeSpeechModel = resolvedSpeech.model
+        if (resolvedSpeech.voiceId)
+          speechStore.activeSpeechVoiceId = resolvedSpeech.voiceId
+      }
+    }
+  }
+
+  if (!item.audio)
     return
 
   // Ensure audio context is resumed (browsers suspend it by default until user interaction)
@@ -411,18 +476,45 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
   let lastNode: AudioNode = source
   let effectsCleanup: (() => void) | undefined
 
-  if (activeSpeechProvider.value === 'virtual-audio-studio' && activeSpeechVoice.value) {
-    const profile = speechStore.savedVoiceProfiles.find(p => p.id === activeSpeechVoice.value?.id)
+  let provider = activeSpeechProvider.value
+  let voice = activeSpeechVoice.value
+  const pitchVal = speechStore.pitch
+  const rateVal = speechStore.rate
+
+  if (item.actorId) {
+    const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(item.actorId)
+    if (resolvedSpeech) {
+      provider = resolvedSpeech.provider || provider
+      if (resolvedSpeech.voiceId) {
+        const baseVoices = speechStore.getVoicesForProvider(provider)
+        const found = baseVoices.find(v => v.id === resolvedSpeech.voiceId)
+        if (found) {
+          voice = found
+        }
+        else {
+          voice = {
+            id: resolvedSpeech.voiceId,
+            name: resolvedSpeech.voiceId,
+            provider,
+            languages: [{ code: 'en', title: 'English' }],
+          }
+        }
+      }
+    }
+  }
+
+  if (provider === 'virtual-audio-studio' && voice) {
+    const profile = speechStore.savedVoiceProfiles.find(p => p.id === voice.id)
     if (profile) {
       const effectsResult = applyVoiceProfileEffects(audioContext, source, profile.effects)
       lastNode = effectsResult.lastNode
       effectsCleanup = effectsResult.cleanup
     }
   }
-  else if (activeSpeechProvider.value === 'kokoro-local') {
+  else if (provider === 'kokoro-local') {
     // Apply pitch & rate adjustments via playbackRate for Kokoro Local
-    const pitchFactor = 1 + (speechStore.pitch / 100) * 0.5
-    const speedFactor = speechStore.rate || 1.0
+    const pitchFactor = 1 + (pitchVal / 100) * 0.5
+    const speedFactor = rateVal || 1.0
     source.playbackRate.value = speedFactor * pitchFactor
   }
 
@@ -503,12 +595,16 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
     if (request.special) {
       const actorId = parseActor(request.special)
       if (actorId) {
-        // NOTICE: Only preload the VOICE here (generation-time) so the next audio
-        // segment uses the correct TTS provider/model/voice. The full concept
-        // activation (model swap, background swap, concept stack update) is deferred
-        // to playback-time via the playback manager's onEnd → specialTokenQueue path.
-        console.info('[Stage:TTS] Actor swap detected — preloading voice only (model deferred to playback)', actorId)
-        artistryAutonomousStore.preloadConceptVoice(actorId)
+        console.info('[Stage:TTS] Actor swap detected — prefetching model/voice in background', actorId)
+        const resolved = artistryAutonomousStore.resolveSpeechConfigForActor(actorId)
+        if (resolved && resolved.modelId) {
+          console.info('[Stage:TTS] Warming model cache for displayModelId:', resolved.modelId)
+          void displayModelsStore.getDisplayModel(resolved.modelId).then(async (model) => {
+            if (model && (model.format === DisplayModelFormat.PMXZip || model.format === DisplayModelFormat.PMD)) {
+              void displayModelsStore.getDisplayModelTextures(model.id).catch(() => {})
+            }
+          }).catch(() => {})
+        }
         return null
       }
     }
@@ -522,14 +618,36 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
     let targetProviderId = activeSpeechProvider.value
     let targetModel = activeSpeechModel.value
     let targetVoice = activeSpeechVoice.value
-    let targetProviderConfig = providersStore.getProviderConfig(targetProviderId)
 
-    if (activeSpeechProvider.value === 'virtual-audio-studio' && activeSpeechVoice.value) {
-      const profile = speechStore.savedVoiceProfiles.find(p => p.id === activeSpeechVoice.value?.id)
+    if (request.actorId) {
+      const resolved = artistryAutonomousStore.resolveSpeechConfigForActor(request.actorId)
+      if (resolved) {
+        targetProviderId = resolved.provider || targetProviderId
+        targetModel = resolved.model || targetModel
+
+        if (resolved.voiceId) {
+          const baseVoices = speechStore.getVoicesForProvider(targetProviderId)
+          const resolvedVoice = baseVoices.find(v => v.id === resolved.voiceId)
+          if (resolvedVoice) {
+            targetVoice = resolvedVoice
+          }
+          else {
+            targetVoice = {
+              id: resolved.voiceId,
+              name: resolved.voiceId,
+              provider: targetProviderId,
+              languages: [{ code: 'en', title: 'English' }],
+            }
+          }
+        }
+      }
+    }
+
+    if (targetProviderId === 'virtual-audio-studio' && targetVoice) {
+      const profile = speechStore.savedVoiceProfiles.find(p => p.id === targetVoice?.id)
       if (profile) {
         targetProviderId = profile.baseProvider
         targetModel = profile.baseModel
-        targetProviderConfig = providersStore.getProviderConfig(profile.baseProvider)
 
         const baseVoices = speechStore.getVoicesForProvider(profile.baseProvider)
         const resolvedVoice = baseVoices.find(v => v.id === profile.baseVoice)
@@ -550,6 +668,8 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
         return null
       }
     }
+
+    const targetProviderConfig = providersStore.getProviderConfig(targetProviderId)
 
     const provider = await providersStore.getProviderInstance(targetProviderId) as SpeechProviderWithExtraOptions<string, UnElevenLabsOptions>
     if (!provider) {
@@ -642,11 +762,6 @@ speechPipeline.on('onIntentCancel', () => {
 // keeps the host registration after unmount, chat text can continue rendering while TTS writes
 // into a stale pipeline owned by the dead component.
 void speechRuntimeStore.registerHost(speechPipeline)
-
-speechPipeline.on('onSpecial', (segment) => {
-  if (segment.special)
-    playSpecialToken(segment.special)
-})
 
 playbackManager.onEnd(({ item }) => {
   try {

@@ -508,6 +508,7 @@ onAfterMessageComposed(async () => {
   localStorage.removeItem('airi-chatbox-draft')
   attachments.value.forEach(att => URL.revokeObjectURL(att.url))
   attachments.value = []
+  producerSuggestion.value = null
 })
 
 const historyMessages = computed(() => {

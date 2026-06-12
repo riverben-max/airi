@@ -82,6 +82,33 @@ export async function* chunkTtsInput(
     let afterNext: IteratorResult<string, any> | undefined
 
     if (flush || special || hard || soft) {
+      if (special) {
+        const precedingText = (chunk + buffer).trim()
+        if (precedingText.length > 0) {
+          const words = [...segmenter.segment(precedingText)].filter(w => w.isWordLike)
+          yield {
+            text: precedingText,
+            words: words.length,
+            reason: 'limit',
+          }
+          yieldCount++
+        }
+        chunk = ''
+        chunkWordsCount = 0
+        buffer = ''
+
+        yield {
+          text: '',
+          words: 0,
+          reason: 'special',
+        }
+        yieldCount++
+
+        previousValue = value
+        current = await iterator.next()
+        continue
+      }
+
       switch (value) {
         case '.':
         case ',': {
@@ -109,16 +136,6 @@ export async function* chunkTtsInput(
       }
 
       if (buffer.length === 0) {
-        if (special) {
-          yield {
-            text: '',
-            words: 0,
-            reason: 'special',
-          }
-          yieldCount++
-          chunkWordsCount = 0
-        }
-
         previousValue = value
         current = await iterator.next()
         continue
@@ -142,18 +159,7 @@ export async function* chunkTtsInput(
       chunkWordsCount += words.length
       buffer = ''
 
-      if (special) {
-        const text = chunk.slice(0, -1).trim()
-        yield {
-          text,
-          words: chunkWordsCount,
-          reason: 'special',
-        }
-        yieldCount++
-        chunk = ''
-        chunkWordsCount = 0
-      }
-      else if (flush || hard || chunkWordsCount > maximumWords || yieldCount < boost) {
+      if (flush || hard || chunkWordsCount > maximumWords || yieldCount < boost) {
         const text = chunk.trim()
         yield {
           text,
@@ -302,7 +308,21 @@ export function createTtsSegmentStream(
   void (async () => {
     try {
       const reader = byteStream.getReader()
+      let currentActorId: string | undefined
+
+      const parseActorId = (special: string | null) => {
+        if (!special)
+          return null
+        const match = /<\|ACTOR:\s*([\w-]+)\s*(?:\|>|>)/i.exec(special)
+        return match ? match[1].trim() : null
+      }
+
       await chunkEmitter(reader, pendingSpecials, options, async (chunk) => {
+        const actorId = parseActorId(chunk.special)
+        if (actorId) {
+          currentActorId = actorId
+        }
+
         write({
           streamId: meta.streamId,
           intentId: meta.intentId,
@@ -310,6 +330,7 @@ export function createTtsSegmentStream(
           text: chunk.chunk,
           special: chunk.special,
           reason: chunk.reason,
+          actorId: currentActorId,
           createdAt: Date.now(),
         })
       })

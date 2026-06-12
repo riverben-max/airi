@@ -477,7 +477,9 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     return resolveAiriExtension(card).modules?.displayModelId
   }
 
+  let syncCardStateSequence = 0
   async function syncCardState(card: AiriCard | undefined, force = false) {
+    const seq = ++syncCardStateSequence
     if (!card)
       return
 
@@ -496,19 +498,6 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     if (nextConsciousnessModel && activeConsciousnessModel.value !== nextConsciousnessModel)
       activeConsciousnessModel.value = nextConsciousnessModel
 
-    // 2. Sync Speech with stability guards
-    const nextSpeechProvider = extension.modules?.speech?.provider
-    if (nextSpeechProvider && activeSpeechProvider.value !== nextSpeechProvider)
-      activeSpeechProvider.value = nextSpeechProvider
-
-    const nextSpeechModel = extension.modules?.speech?.model
-    if (nextSpeechModel && activeSpeechModel.value !== nextSpeechModel)
-      activeSpeechModel.value = nextSpeechModel
-
-    const nextSpeechVoiceId = extension.modules?.speech?.voice_id
-    if (nextSpeechVoiceId && activeSpeechVoiceId.value !== nextSpeechVoiceId)
-      activeSpeechVoiceId.value = nextSpeechVoiceId
-
     // 3. Sync Models & Parameters (ONLY if not prevented)
     if (!isModelSyncPrevented.value || force) {
       const newModelId = extension.active_state?.displayModelId ?? extension.modules?.displayModelId
@@ -518,6 +507,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
         stageModelStore.stageModelSelected = newModelId
         // updateStageModel has internal stability guards for blob URL creation
         await stageModelStore.updateStageModel()
+        if (seq !== syncCardStateSequence)
+          return
       }
 
       // 3.5 Sync Manifestation Expressions (Unified for VRM/Live2D)
@@ -536,6 +527,9 @@ export const useAiriCardStore = defineStore('airi-card', () => {
 
       // Surgical sync of Live2D parameters if they belong to the active model
       const selectedModel = await displayModelsStore.getDisplayModel(stageModelStore.stageModelSelected)
+      if (seq !== syncCardStateSequence)
+        return
+
       if (selectedModel?.format === DisplayModelFormat.Live2dZip && (force || modelChanged)) {
         // Only trigger full view update if the model profile itself changed or forced
         live2dStore.shouldUpdateView()

@@ -979,12 +979,7 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
     }
 
     if (folded.speechProvider && folded.speechProvider !== 'inherit') {
-      artistLog(`ActivateConcept: Applying speech override to runtime:`, { provider: folded.speechProvider, voice: folded.speechVoiceId })
-      speechStore.activeSpeechProvider = folded.speechProvider
-      if (folded.speechModel)
-        speechStore.activeSpeechModel = folded.speechModel
-      if (folded.speechVoiceId)
-        speechStore.activeSpeechVoiceId = folded.speechVoiceId
+      artistLog(`ActivateConcept: Applying speech override to card config:`, { provider: folded.speechProvider, voice: folded.speechVoiceId })
 
       moduleUpdates.speech = {
         ...moduleUpdates.speech,
@@ -1017,16 +1012,13 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
   }
 
   /**
-   * Lightweight voice-only preload for TTS generation-time ACTOR swaps.
-   * Updates ONLY the speech store (provider/model/voice) so the next TTS call
-   * generates audio with the correct voice. Does NOT swap the model, background,
-   * or concept stack — those visual changes are deferred to playback-time via
-   * activateConcept() called from the playback manager's onEnd handler.
+   * Resolves the voice/speech config dynamically for a specific actor concept ID.
+   * Runs pure stack resolution and folding without modifying any global stores.
    */
-  function preloadConceptVoice(conceptId: string) {
+  function resolveSpeechConfigForActor(conceptId: string) {
     const { activeCard } = cardStore
     if (!activeCard || !activeCard.extensions?.airi)
-      return
+      return null
 
     const airiExt = activeCard.extensions.airi as any
     const visualAssets = airiExt.visual_assets || {}
@@ -1050,17 +1042,11 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
       },
     )
 
-    // Only update speech runtime — no model/background/card changes
-    if (folded.speechProvider && folded.speechProvider !== 'inherit') {
-      artistLog(`PreloadVoice: Applying speech override for upcoming TTS:`, { provider: folded.speechProvider, voice: folded.speechVoiceId })
-      speechStore.activeSpeechProvider = folded.speechProvider
-      if (folded.speechModel)
-        speechStore.activeSpeechModel = folded.speechModel
-      if (folded.speechVoiceId)
-        speechStore.activeSpeechVoiceId = folded.speechVoiceId
-    }
-    else {
-      artistLog(`PreloadVoice: No speech override for concept "${conceptId}", keeping current voice.`)
+    return {
+      provider: (folded.speechProvider && folded.speechProvider !== 'inherit') ? folded.speechProvider : undefined,
+      model: (folded.speechProvider && folded.speechProvider !== 'inherit') ? folded.speechModel : undefined,
+      voiceId: (folded.speechProvider && folded.speechProvider !== 'inherit') ? folded.speechVoiceId : undefined,
+      modelId: folded.modelId || undefined,
     }
   }
 
@@ -1084,7 +1070,7 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
     loadDirectorNotes,
     archiveSessionNotes,
     activateConcept,
-    preloadConceptVoice,
+    resolveSpeechConfigForActor,
     applyCurrentStackManifestations,
     findNoteForImage,
   }

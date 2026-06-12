@@ -103,88 +103,109 @@ export function createSpeechPipeline<TAudio>(options: SpeechPipelineOptions<TAud
 
         context.emit(speechPipelineEventMap.onSegment, value)
 
-        if (value.text === '' && value.special) {
-          // NOTICE: Call tts() for special segments so it can handle side effects
-          // (e.g., ACTOR voice swaps) before the next text segment is generated.
-          // The tts() function returns null for specials, so no audio is produced.
-          try {
-            await options.tts(
-              { streamId: value.streamId, intentId: value.intentId, segmentId: value.segmentId, text: '', special: value.special, priority: intent.priority, createdAt: Date.now() },
-              intent.controller.signal,
-            )
-          }
-          catch {}
+        // Defensive split: if a segment has BOTH text and special, split them into two virtual segments
+        const segmentsToProcess: { text: string, special: string | null }[] = []
+        if (value.text && value.special) {
+          console.warn('[Speech Pipeline] Received mixed text+special segment, splitting defensively.', value)
+          segmentsToProcess.push({ text: value.text, special: null })
+          segmentsToProcess.push({ text: '', special: value.special })
+        }
+        else {
+          segmentsToProcess.push({ text: value.text, special: value.special })
+        }
 
-          // Schedule a no-audio playback item so the special token
-          // fires in sequence with audio playback (via the onEnd handler).
-          options.playback.schedule({
-            id: createId('playback'),
+        for (const seg of segmentsToProcess) {
+          if (intent.canceled || intent.controller.signal.aborted) {
+            break
+          }
+
+          if (seg.text === '' && seg.special) {
+            // NOTICE: Call tts() for special segments so it can handle side effects
+            // (e.g., ACTOR voice swaps) before the next text segment is generated.
+            // The tts() function returns null for specials, so no audio is produced.
+            try {
+              await options.tts(
+                { streamId: value.streamId, intentId: value.intentId, segmentId: value.segmentId, text: '', special: seg.special, actorId: value.actorId, priority: intent.priority, createdAt: Date.now() },
+                intent.controller.signal,
+              )
+            }
+            catch {}
+
+            // Schedule a no-audio playback item so the special token
+            // fires in sequence with audio playback (via the onEnd handler).
+            options.playback.schedule({
+              id: createId('playback'),
+              streamId: value.streamId,
+              intentId: value.intentId,
+              segmentId: value.segmentId,
+              ownerId: intent.ownerId,
+              priority: intent.priority,
+              text: '',
+              special: seg.special,
+              actorId: value.actorId,
+              audio: null as unknown as TAudio,
+              createdAt: Date.now(),
+            })
+            continue
+          }
+
+          const request: TtsRequest = {
             streamId: value.streamId,
             intentId: value.intentId,
             segmentId: value.segmentId,
-            ownerId: intent.ownerId,
+            text: seg.text,
+            special: seg.special,
+            actorId: value.actorId,
             priority: intent.priority,
-            text: '',
-            special: value.special,
-            audio: null as unknown as TAudio,
             createdAt: Date.now(),
-          })
-          continue
-        }
+          }
 
-        const request: TtsRequest = {
-          streamId: value.streamId,
-          intentId: value.intentId,
-          segmentId: value.segmentId,
-          text: value.text,
-          special: value.special,
-          priority: intent.priority,
-          createdAt: Date.now(),
-        }
+          context.emit(speechPipelineEventMap.onTtsRequest, request)
 
-        context.emit(speechPipelineEventMap.onTtsRequest, request)
+          let audio: TAudio | null = null
+          try {
+            audio = await options.tts(request, intent.controller.signal)
+          }
+          catch (err) {
+            logger.warn('TTS generation failed:', err)
+            if (intent.controller.signal.aborted)
+              break
+            continue
+          }
 
-        let audio: TAudio | null = null
-        try {
-          audio = await options.tts(request, intent.controller.signal)
-        }
-        catch (err) {
-          logger.warn('TTS generation failed:', err)
           if (intent.controller.signal.aborted)
             break
-          continue
+
+          if (!audio)
+            continue
+
+          const ttsResult: TtsResult<TAudio> = {
+            streamId: request.streamId,
+            intentId: request.intentId,
+            segmentId: request.segmentId,
+            text: request.text,
+            special: request.special,
+            actorId: request.actorId,
+            audio,
+            createdAt: Date.now(),
+          }
+
+          context.emit(speechPipelineEventMap.onTtsResult, ttsResult)
+
+          options.playback.schedule({
+            id: createId('playback'),
+            streamId: ttsResult.streamId,
+            intentId: ttsResult.intentId,
+            segmentId: ttsResult.segmentId,
+            ownerId: intent.ownerId,
+            priority: intent.priority,
+            text: ttsResult.text,
+            special: ttsResult.special,
+            actorId: ttsResult.actorId,
+            audio: ttsResult.audio,
+            createdAt: Date.now(),
+          })
         }
-
-        if (intent.controller.signal.aborted)
-          break
-
-        if (!audio)
-          continue
-
-        const ttsResult: TtsResult<TAudio> = {
-          streamId: request.streamId,
-          intentId: request.intentId,
-          segmentId: request.segmentId,
-          text: request.text,
-          special: request.special,
-          audio,
-          createdAt: Date.now(),
-        }
-
-        context.emit(speechPipelineEventMap.onTtsResult, ttsResult)
-
-        options.playback.schedule({
-          id: createId('playback'),
-          streamId: ttsResult.streamId,
-          intentId: ttsResult.intentId,
-          segmentId: ttsResult.segmentId,
-          ownerId: intent.ownerId,
-          priority: intent.priority,
-          text: ttsResult.text,
-          special: ttsResult.special,
-          audio: ttsResult.audio,
-          createdAt: Date.now(),
-        })
       }
 
       reader.releaseLock()

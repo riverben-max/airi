@@ -1,38 +1,73 @@
 import { describe, expect, it } from 'vitest'
 
-import { processNarrative } from './tts-chunker'
+import { chunkTtsInput, TTS_SPECIAL_TOKEN } from './tts-chunker'
 
-describe('processNarrative', () => {
-  it('should not strip narrative if stripNarrative is false', () => {
-    const text = 'Hello [laughs] world'
-    expect(processNarrative(text, { stripNarrative: false })).toBe(text)
-    expect(processNarrative(text, {})).toBe(text)
+describe('tts-chunker', () => {
+  it('should isolate special tokens from preceding text', async () => {
+    const input = `Hello ${TTS_SPECIAL_TOKEN} how are you?`
+    const chunks = []
+    for await (const chunk of chunkTtsInput(input)) {
+      chunks.push(chunk)
+    }
+
+    expect(chunks).toHaveLength(3)
+    // The preceding text is yielded as limit/hard
+    expect(chunks[0]).toEqual({
+      text: 'Hello',
+      words: 1,
+      reason: 'limit',
+    })
+    // The special token is yielded as its own empty chunk
+    expect(chunks[1]).toEqual({
+      text: '',
+      words: 0,
+      reason: 'special',
+    })
+    // The rest of the text is yielded
+    expect(chunks[2]).toEqual({
+      text: 'how are you?',
+      words: 3,
+      reason: 'hard',
+    })
   })
 
-  it('should strip narrative if stripNarrative is true', () => {
-    const text = 'Hello [laughs] world'
-    expect(processNarrative(text, { stripNarrative: true })).toBe('Hello  world')
+  it('should handle special token with no preceding text', async () => {
+    const input = `${TTS_SPECIAL_TOKEN}Hi`
+    const chunks = []
+    for await (const chunk of chunkTtsInput(input)) {
+      chunks.push(chunk)
+    }
+
+    expect(chunks).toHaveLength(2)
+    expect(chunks[0]).toEqual({
+      text: '',
+      words: 0,
+      reason: 'special',
+    })
+    expect(chunks[1]).toEqual({
+      text: 'Hi',
+      words: 1,
+      reason: 'flush',
+    })
   })
 
-  it('should keep narrative text if keepNarrativeText is true', () => {
-    const text = 'Hello [laughs] world'
-    expect(processNarrative(text, { stripNarrative: true, keepNarrativeText: true })).toBe('Hello laughs world')
-  })
+  it('should handle consecutive special tokens cleanly', async () => {
+    const input = `${TTS_SPECIAL_TOKEN}${TTS_SPECIAL_TOKEN}`
+    const chunks = []
+    for await (const chunk of chunkTtsInput(input)) {
+      chunks.push(chunk)
+    }
 
-  it('should handle multiple brackets and types', () => {
-    const text = 'Hi *waves* [smiling] (quietly)'
-    expect(processNarrative(text, { stripNarrative: true, keepNarrativeText: false })).toBe('Hi   ')
-    expect(processNarrative(text, { stripNarrative: true, keepNarrativeText: true })).toBe('Hi waves smiling quietly')
-  })
-
-  it('should handle CJK brackets', () => {
-    const text = 'こんにちは（笑）【重要】'
-    expect(processNarrative(text, { stripNarrative: true, keepNarrativeText: false })).toBe('こんにちは')
-    expect(processNarrative(text, { stripNarrative: true, keepNarrativeText: true })).toBe('こんにちは笑重要')
-  })
-
-  it('should handle mixed bracket types with keepNarrativeText', () => {
-    const text = 'Start <hidden> [box] (round) *star* End'
-    expect(processNarrative(text, { stripNarrative: true, keepNarrativeText: true })).toBe('Start hidden box round star End')
+    expect(chunks).toHaveLength(2)
+    expect(chunks[0]).toEqual({
+      text: '',
+      words: 0,
+      reason: 'special',
+    })
+    expect(chunks[1]).toEqual({
+      text: '',
+      words: 0,
+      reason: 'special',
+    })
   })
 })
