@@ -258,7 +258,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
   // Sync Configuration State
   const syncEnabled = useLocalStorageManualReset<boolean>('settings/sync/enabled', false)
   const syncInterval = useLocalStorageManualReset<number>('settings/sync/interval', 30) // in minutes
-  const conflictStrategy = useLocalStorageManualReset<'lww' | 'remote-wins'>('settings/sync/conflict-strategy', 'lww')
+  const conflictStrategy = useLocalStorageManualReset<'lww' | 'remote-wins' | 'local-wins'>('settings/sync/conflict-strategy', 'lww')
   const activeProvider = useLocalStorageManualReset<string>('settings/sync/active-provider', 'local-fs')
   const fsBackupPath = useLocalStorageManualReset<string>('settings/sync/fs-path', '')
 
@@ -1405,6 +1405,15 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
           const localVal = await storage.getItemRaw(localKey)
           if (localVal !== undefined && localVal !== null) {
+            if (conflictStrategy.value === 'local-wins') {
+              await logDebug(`[SyncEngine] Local wins for ${localKey} (Case A). Overwriting remote...`)
+              const writeRes = await client.writeFile(remoteFile.relPath, JSON.stringify(localVal, null, 2))
+              if (writeRes.success && writeRes.mtime) {
+                await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, writeRes.mtime)
+              }
+              return
+            }
+
             await logDebug(`[Case A] Local key ${localKey} exists but localTime is undefined. Running safety check.`)
             const isConflict = conflictStrategy.value === 'remote-wins' ? false : await checkSyncConflict(localKey, 0, remoteFile, 'remote-newer')
             if (isConflict) {
@@ -1426,6 +1435,18 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
           const hasPendingOutbox = await storage.getItemRaw(queueKey).then(val => val !== null && val !== undefined)
           if (hasPendingOutbox) {
             await logDebug(`[SyncEngine] Skipping overwrite for ${localKey} because it has pending local changes in the outbox.`)
+            return
+          }
+
+          if (conflictStrategy.value === 'local-wins') {
+            await logDebug(`[SyncEngine] Local wins for ${localKey} (Case B). Overwriting remote...`)
+            const localVal = await storage.getItemRaw(localKey)
+            if (localVal) {
+              const writeRes = await client.writeFile(remoteFile.relPath, JSON.stringify(localVal, null, 2))
+              if (writeRes.success && writeRes.mtime) {
+                await storage.setItemRaw(`local:sync-metadata/timestamps/${localKey.replace('local:', '')}`, writeRes.mtime)
+              }
+            }
             return
           }
 

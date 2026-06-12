@@ -174,6 +174,9 @@ async function handleRestoreFromBackup() {
           <option value="remote-wins">
             Remote-Wins (Override Conflicts)
           </option>
+          <option value="local-wins">
+            Local-Wins (Keep Local Copy)
+          </option>
         </select>
       </div>
 
