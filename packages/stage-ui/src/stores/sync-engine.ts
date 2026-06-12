@@ -404,8 +404,12 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     }
   }
 
-  // Normalize keys returned by storage.getKeys to their canonical slash-separated form
   function normalizeStorageKey(fullKey: string): string | null {
+    if (fullKey.startsWith('local:airi-sync-queue:') || fullKey.startsWith('local:airi-sync-queue/'))
+      return null
+    if (fullKey.startsWith('outbox:airi-local:') || fullKey.startsWith('outbox:airi-local/'))
+      return null
+
     if (fullKey.startsWith('local:airi-local:')) {
       const relative = fullKey.substring('local:airi-local:'.length)
       return `local:${relative.replace(/:/g, '/')}`
