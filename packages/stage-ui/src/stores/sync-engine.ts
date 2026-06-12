@@ -1862,6 +1862,13 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     return restored
   }
 
+  function isMainWindow(): boolean {
+    if (typeof window === 'undefined')
+      return false
+    const hash = window.location.hash || ''
+    return hash === '' || hash === '#/' || hash === '#'
+  }
+
   // Called once at app boot. Fills in any missing localStorage keys from IndexedDB
   // (safe, non-destructive), then if sync is enabled and the backup path is reachable,
   // kicks off a background full reconcile to pull any IndexedDB keys that were also lost.
@@ -1888,29 +1895,34 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       const syncIsOn = syncEnabledRaw === 'true'
 
       if (syncIsOn) {
-        await logDebug('initializeFromLocalBackup: sync is enabled, kicking off background reconcile from disk...')
-        // Run non-blocking so we don't block the rest of the App.vue startup pipeline.
-        void (async () => {
-          try {
-            // CRITICAL: dump current localStorage to IDB FIRST so every key gets a fresh
-            // timestamp (= now). This prevents the subsequent reconcile from treating
-            // a slightly-older remote file as "newer" and downloading it on top of the
-            // user's current provider/voice/settings configuration.
-            await dumpLocalStorageToIndexedDb()
-            // Run lightweight startup reconcile — JSON data only, skip models/backgrounds
-            // to prevent OOM from loading large binary assets into the renderer heap.
-            const success = await reconcile({ skipBinaryAssets: true })
-            if (success) {
-              await restoreLocalStorageFromIndexedDb()
-              window.dispatchEvent(new CustomEvent('airi:idb-key-updated', { detail: { key: 'local:airi-cards' } }))
-              await logDebug('initializeFromLocalBackup: background reconcile + restore complete.')
+        if (isMainWindow()) {
+          await logDebug('initializeFromLocalBackup: sync is enabled, kicking off background reconcile from disk...')
+          // Run non-blocking so we don't block the rest of the App.vue startup pipeline.
+          void (async () => {
+            try {
+              // CRITICAL: dump current localStorage to IDB FIRST so every key gets a fresh
+              // timestamp (= now). This prevents the subsequent reconcile from treating
+              // a slightly-older remote file as "newer" and downloading it on top of the
+              // user's current provider/voice/settings configuration.
+              await dumpLocalStorageToIndexedDb()
+              // Run lightweight startup reconcile — JSON data only, skip models/backgrounds
+              // to prevent OOM from loading large binary assets into the renderer heap.
+              const success = await reconcile({ skipBinaryAssets: true })
+              if (success) {
+                await restoreLocalStorageFromIndexedDb()
+                window.dispatchEvent(new CustomEvent('airi:idb-key-updated', { detail: { key: 'local:airi-cards' } }))
+                await logDebug('initializeFromLocalBackup: background reconcile + restore complete.')
+              }
             }
-          }
-          catch (e) {
-            console.error('[SyncEngine] initializeFromLocalBackup background reconcile failed:', e)
-            await logDebug(`initializeFromLocalBackup background reconcile error: ${e}`)
-          }
-        })()
+            catch (e) {
+              console.error('[SyncEngine] initializeFromLocalBackup background reconcile failed:', e)
+              await logDebug(`initializeFromLocalBackup background reconcile error: ${e}`)
+            }
+          })()
+        }
+        else {
+          await logDebug('initializeFromLocalBackup: sync is enabled, but skipping remote reconcile in secondary window.')
+        }
       }
     }
     catch (e) {
@@ -2094,16 +2106,46 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     if (!syncEnabled.value)
       return
 
-    const ms = syncInterval.value * 60 * 1000
-    syncTimer = setInterval(() => {
-      void triggerSync()
-    }, ms)
+    // Only run the auto sync timer in the main window to prevent multiple concurrent intervals
+    // running in secondary windows/overlays.
+    if (!isMainWindow()) {
+      void logDebug('[SyncEngine] Auto sync timer initialization skipped: not in main window.')
+      return
+    }
+
+    const intervalMin = typeof syncInterval.value === 'number' && syncInterval.value > 0 ? syncInterval.value : 30
+    const ms = intervalMin * 60 * 1000
+    void logDebug(`[SyncEngine] Starting auto sync timer with interval ${intervalMin} minutes (${ms} ms)`)
+
+    if (typeof window !== 'undefined') {
+      const g = window as any
+      if (g.__airiSyncTimer) {
+        clearInterval(g.__airiSyncTimer)
+      }
+      g.__airiSyncTimer = setInterval(() => {
+        void logDebug('[SyncEngine] Auto sync timer interval triggered')
+        void triggerSync()
+      }, ms)
+      syncTimer = g.__airiSyncTimer
+    }
+    else {
+      syncTimer = setInterval(() => {
+        void triggerSync()
+      }, ms)
+    }
   }
 
   function stopAutoSyncTimer() {
     if (syncTimer) {
       clearInterval(syncTimer)
       syncTimer = null
+    }
+    if (typeof window !== 'undefined') {
+      const g = window as any
+      if (g.__airiSyncTimer) {
+        clearInterval(g.__airiSyncTimer)
+        g.__airiSyncTimer = null
+      }
     }
   }
 
