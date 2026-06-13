@@ -158,13 +158,27 @@ function handleMobilePick() {
   }
 }
 
-function handleAddVRMModel(file: FileList | null) {
-  if (file === null || file.length === 0)
-    return
-  if (!file[0].name.endsWith('.vrm'))
+async function handleAddVRMModel(files: FileList | null) {
+  if (files === null || files.length === 0)
     return
 
-  displayModelStore.addDisplayModel(DisplayModelFormat.VRM, file[0])
+  let importedCount = 0
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    if (file.name.endsWith('.vrm')) {
+      try {
+        await displayModelStore.addDisplayModel(DisplayModelFormat.VRM, file)
+        importedCount++
+      }
+      catch (error) {
+        console.error('[Model Selector] Failed to add VRM model:', file.name, error)
+        toast.error(`Failed to add VRM model: ${file.name}`)
+      }
+    }
+  }
+  if (importedCount > 0) {
+    toast.success(`Successfully imported ${importedCount} VRM model(s).`)
+  }
 }
 
 async function handleAddSpineModel(file: FileList | null) {
@@ -238,7 +252,7 @@ const mapFormatRenderer: Record<DisplayModelFormat, string> = {
 }
 
 const live2dDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
-const vrmDialog = useFileDialog({ accept: '.vrm', multiple: false, reset: true })
+const vrmDialog = useFileDialog({ accept: '.vrm', multiple: true, reset: true })
 const vrmaDialog = useFileDialog({ accept: '.vrma', multiple: false, reset: true })
 const spineDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
 const mmdDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
