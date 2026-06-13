@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { useLive2d } from '@proj-airi/stage-ui-live2d'
+import { useMmd } from '@proj-airi/stage-ui-mmd/stores/mmd'
+import { useSpine } from '@proj-airi/stage-ui-spine'
 import { useCustomVrmAnimationsStore, useModelStore } from '@proj-airi/stage-ui-three'
 import { onClickOutside, useBroadcastChannel, useColorMode, useLocalStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
@@ -347,6 +349,8 @@ const { activeExpressions } = storeToRefs(modelStore)
 const vrmIdleAnimation = toRef(modelStore as any, 'vrmIdleAnimation')
 
 const live2dStore = useLive2d()
+const mmdStore = useMmd()
+const spineStore = useSpine()
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
 
 // Selfies popover state & actions
@@ -600,21 +604,76 @@ function isOutfitActive(outfitId: string) {
 }
 
 const availableMotions = computed(() => {
+  const list = []
+
+  // Prepend None option
+  list.push({
+    key: '',
+    label: 'None',
+  })
+
   if (settingsStore.stageModelRenderer === 'vrm') {
-    return customVrmAnimationsStore.animationKeys.map(key => ({
+    list.push(...customVrmAnimationsStore.animationKeys.map(key => ({
       key,
       label: customVrmAnimationsStore.animationLabelByKey[key] || key,
-    }))
+    })))
   }
-  if (settingsStore.stageModelRenderer === 'live2d') {
-    return (live2dStore.availableMotions || []).map(motion => ({
+  else if (settingsStore.stageModelRenderer === 'live2d') {
+    list.push(...(live2dStore.availableMotions || []).map(motion => ({
       key: `${motion.motionName}:${motion.motionIndex}`,
       label: `${motion.motionName} (${motion.motionIndex})`,
       raw: motion,
-    }))
+    })))
   }
-  return []
+  else if (settingsStore.stageModelRenderer === 'mmd') {
+    list.push(...(mmdStore.availableMotions || []).map(motion => ({
+      key: motion,
+      label: motion,
+    })))
+  }
+  else if (settingsStore.stageModelRenderer === 'spine') {
+    list.push(...(spineStore.availableAnimations || []).map(animation => ({
+      key: animation.name,
+      label: animation.name,
+    })))
+  }
+
+  return list
 })
+
+function isMotionActive(motion: any) {
+  if (motion.key === '') {
+    if (settingsStore.stageModelRenderer === 'vrm') {
+      return !vrmIdleAnimation.value
+    }
+    if (settingsStore.stageModelRenderer === 'live2d') {
+      const modelId = activeCardId.value || 'global'
+      const savedPath = localStorage.getItem(`live2d-${modelId}-selected-motion`)
+      return !savedPath
+    }
+    if (settingsStore.stageModelRenderer === 'mmd') {
+      return !mmdStore.currentMotion
+    }
+    if (settingsStore.stageModelRenderer === 'spine') {
+      return !spineStore.currentAnimation?.name
+    }
+    return false
+  }
+
+  if (settingsStore.stageModelRenderer === 'vrm') {
+    return vrmIdleAnimation.value === motion.key
+  }
+  if (settingsStore.stageModelRenderer === 'live2d') {
+    return live2dStore.currentMotion?.group === motion.raw?.motionName && live2dStore.currentMotion?.index === motion.raw?.motionIndex
+  }
+  if (settingsStore.stageModelRenderer === 'mmd') {
+    return mmdStore.currentMotion === motion.key
+  }
+  if (settingsStore.stageModelRenderer === 'spine') {
+    return spineStore.currentAnimation?.name === motion.key
+  }
+  return false
+}
 
 const availableAllExpressions = computed(() => {
   if (settingsStore.stageModelRenderer === 'vrm') {
@@ -633,6 +692,75 @@ const availableAllExpressions = computed(() => {
 })
 
 function playMotion(motion: any) {
+  if (motion.key === '') {
+    if (settingsStore.stageModelRenderer === 'vrm') {
+      vrmIdleAnimation.value = ''
+      if (activeCardId.value && activeCard.value) {
+        const current = activeCard.value.extensions.airi.acting?.idleAnimations || []
+        const next = current.filter(key => key.includes(':'))
+        cardStore.updateCard(activeCardId.value, {
+          extensions: {
+            ...activeCard.value.extensions,
+            airi: {
+              ...activeCard.value.extensions.airi,
+              acting: {
+                ...activeCard.value.extensions.airi.acting,
+                idleAnimations: next,
+              },
+            },
+          },
+        })
+      }
+    }
+    else if (settingsStore.stageModelRenderer === 'live2d') {
+      const modelId = activeCardId.value || 'global'
+      localStorage.removeItem(`live2d-${modelId}-selected-motion`)
+      localStorage.removeItem(`live2d-${modelId}-selected-motion-name`)
+      localStorage.removeItem(`live2d-${modelId}-selected-motion-group`)
+      localStorage.removeItem(`live2d-${modelId}-selected-motion-index`)
+      live2dStore.currentMotion = { group: 'Idle', index: 0 }
+    }
+    else if (settingsStore.stageModelRenderer === 'mmd') {
+      mmdStore.currentMotion = ''
+      if (activeCardId.value && activeCard.value) {
+        const current = activeCard.value.extensions.airi.acting?.idleAnimations || []
+        const next = current.filter(key => !key.startsWith('mmd:'))
+        cardStore.updateCard(activeCardId.value, {
+          extensions: {
+            ...activeCard.value.extensions,
+            airi: {
+              ...activeCard.value.extensions.airi,
+              acting: {
+                ...activeCard.value.extensions.airi.acting,
+                idleAnimations: next,
+              },
+            },
+          },
+        })
+      }
+    }
+    else if (settingsStore.stageModelRenderer === 'spine') {
+      spineStore.currentAnimation = { ...spineStore.currentAnimation, name: '' }
+      if (activeCardId.value && activeCard.value) {
+        const current = activeCard.value.extensions.airi.acting?.idleAnimations || []
+        const next = current.filter(key => !key.startsWith('spine:'))
+        cardStore.updateCard(activeCardId.value, {
+          extensions: {
+            ...activeCard.value.extensions,
+            airi: {
+              ...activeCard.value.extensions.airi,
+              acting: {
+                ...activeCard.value.extensions.airi.acting,
+                idleAnimations: next,
+              },
+            },
+          },
+        })
+      }
+    }
+    return
+  }
+
   if (settingsStore.stageModelRenderer === 'vrm') {
     vrmIdleAnimation.value = motion.key
   }
@@ -641,6 +769,17 @@ function playMotion(motion: any) {
       group: motion.raw.motionName,
       index: motion.raw.motionIndex,
     }
+    const modelId = activeCardId.value || 'global'
+    localStorage.setItem(`live2d-${modelId}-selected-motion`, motion.raw.displayPath)
+    localStorage.setItem(`live2d-${modelId}-selected-motion-name`, motion.raw.name)
+    localStorage.setItem(`live2d-${modelId}-selected-motion-group`, motion.raw.group)
+    localStorage.setItem(`live2d-${modelId}-selected-motion-index`, motion.raw.index.toString())
+  }
+  else if (settingsStore.stageModelRenderer === 'mmd') {
+    mmdStore.currentMotion = motion.key
+  }
+  else if (settingsStore.stageModelRenderer === 'spine') {
+    spineStore.currentAnimation = { ...spineStore.currentAnimation, name: motion.key }
   }
 }
 
@@ -2021,44 +2160,35 @@ function getShortLabel(btnId: string): string {
             </button>
           </div>
 
-          <template v-if="settingsStore.stageModelRenderer === 'mmd' || settingsStore.stageModelRenderer === 'spine'">
-            <div class="flex flex-col items-center justify-center py-6 text-center opacity-60">
-              <span class="i-solar:shield-warning-outline animate-pulse text-2xl text-amber-500" />
-              <span class="mt-2 text-xs font-medium">Not supported for {{ settingsStore.stageModelRenderer.toUpperCase() }}</span>
-              <span class="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">Please use the Controls Island.</span>
-            </div>
-          </template>
-          <template v-else>
-            <div class="max-h-48 flex flex-col gap-1.5 overflow-y-auto py-1 scrollbar-thin">
-              <button
-                v-for="motion in availableMotions"
-                :key="motion.key"
-                :class="[
-                  'w-full cursor-pointer border rounded-xl px-3 py-2 text-left text-xs transition-all duration-200',
-                  (settingsStore.stageModelRenderer === 'vrm' && vrmIdleAnimation === motion.key)
-                    ? 'bg-amber-500/20 border-amber-400/50 text-amber-600 dark:text-amber-300 font-semibold'
-                    : 'bg-neutral-50/50 dark:bg-neutral-800/40 border-neutral-200/50 dark:border-neutral-800/20 hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50',
-                ]"
-                @click="playMotion(motion)"
-              >
-                <div class="flex items-center justify-between">
-                  <span class="mr-2 truncate font-medium">{{ motion.label }}</span>
-                  <span
-                    v-if="settingsStore.stageModelRenderer === 'vrm' && vrmIdleAnimation === motion.key"
-                    class="i-solar:check-circle-bold flex-shrink-0 text-sm text-amber-500"
-                  />
-                </div>
-              </button>
-
-              <div
-                v-if="availableMotions.length === 0"
-                class="flex flex-col items-center justify-center py-6 text-center opacity-40"
-              >
-                <span class="i-solar:magic-stick-3-bold-duotone text-2xl" />
-                <span class="mt-1 text-[10px]">No motions available</span>
+          <div class="max-h-48 flex flex-col gap-1.5 overflow-y-auto py-1 scrollbar-thin">
+            <button
+              v-for="motion in availableMotions"
+              :key="motion.key"
+              :class="[
+                'w-full cursor-pointer border rounded-xl px-3 py-2 text-left text-xs transition-all duration-200',
+                isMotionActive(motion)
+                  ? 'bg-amber-500/20 border-amber-400/50 text-amber-600 dark:text-amber-300 font-semibold'
+                  : 'bg-neutral-50/50 dark:bg-neutral-800/40 border-neutral-200/50 dark:border-neutral-800/20 hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50',
+              ]"
+              @click="playMotion(motion)"
+            >
+              <div class="flex items-center justify-between">
+                <span class="mr-2 truncate font-medium">{{ motion.label }}</span>
+                <span
+                  v-if="isMotionActive(motion)"
+                  class="i-solar:check-circle-bold flex-shrink-0 text-sm text-amber-500"
+                />
               </div>
+            </button>
+
+            <div
+              v-if="availableMotions.length <= 1"
+              class="flex flex-col items-center justify-center py-6 text-center opacity-40"
+            >
+              <span class="i-solar:magic-stick-3-bold-duotone text-2xl" />
+              <span class="mt-1 text-[10px]">No motions available</span>
             </div>
-          </template>
+          </div>
         </div>
 
         <!-- ALL EMOTIONS POPOVER -->
