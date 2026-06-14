@@ -163,31 +163,52 @@ export async function setupActorStageWindow(params: {
     if (window.isDestroyed())
       return
 
+    if ((window as any).__is_programmatic_resize)
+      return
+
     const config = getConfig()
     if (!config.windows || !Array.isArray(config.windows)) {
       config.windows = []
     }
 
-    const existingConfigIndex = config.windows.findIndex((w: any) => w.title === 'AIRI' && w.tag === 'actor')
+    const updatedBounds = {
+      x: Math.round(newBounds.x),
+      y: Math.round(newBounds.y),
+      width: Math.round(newBounds.width),
+      height: Math.round(newBounds.height),
+    }
 
+    // Always update 'actor' as it represents the active state
+    const existingConfigIndex = config.windows.findIndex((w: any) => w.title === 'AIRI' && w.tag === 'actor')
     if (existingConfigIndex === -1) {
       config.windows.push({
         title: 'AIRI',
         tag: 'actor',
-        x: Math.round(newBounds.x),
-        y: Math.round(newBounds.y),
-        width: Math.round(newBounds.width),
-        height: Math.round(newBounds.height),
+        ...updatedBounds,
       })
     }
     else {
-      const currentConfig = config.windows[existingConfigIndex]
       config.windows[existingConfigIndex] = {
-        ...currentConfig,
-        x: Math.round(newBounds.x),
-        y: Math.round(newBounds.y),
-        width: Math.round(newBounds.width),
-        height: Math.round(newBounds.height),
+        ...config.windows[existingConfigIndex],
+        ...updatedBounds,
+      }
+    }
+
+    // If dating sim is active, also save to 'actor-dating-sim'
+    if ((window as any).__is_dating_sim_active) {
+      const dsConfigIndex = config.windows.findIndex((w: any) => w.title === 'AIRI' && w.tag === 'actor-dating-sim')
+      if (dsConfigIndex === -1) {
+        config.windows.push({
+          title: 'AIRI',
+          tag: 'actor-dating-sim',
+          ...updatedBounds,
+        })
+      }
+      else {
+        config.windows[dsConfigIndex] = {
+          ...config.windows[dsConfigIndex],
+          ...updatedBounds,
+        }
       }
     }
 

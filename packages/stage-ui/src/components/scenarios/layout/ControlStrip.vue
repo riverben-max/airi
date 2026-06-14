@@ -462,7 +462,6 @@ function applySizePreset(
 
 function toggleDatingSimMode() {
   datingSimStore.toggleDatingSim()
-  applySizePreset('actor', datingSimStore.enabled ? 'dating-sim-on' : 'dating-sim-off')
 }
 
 function selectMonitor(target: 'actor' | 'chat', m: number) {

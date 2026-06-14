@@ -87,11 +87,15 @@ export const useDatingSimStore = defineStore('dating-sim', () => {
   })
 
   let addWidget: any = null
+  let applySizePresetEventa: any = null
   if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
     const win = window as any
     const { context } = createContext(win.electron.ipcRenderer as any)
     const widgetsAdd = defineInvokeEventa<string | undefined, any>('eventa:invoke:electron:windows:widgets:add')
     addWidget = defineInvoke(context, widgetsAdd)
+
+    const applySizePresetContract = defineInvokeEventa<void, { target: 'actor' | 'chat', preset?: string }>('eventa:invoke:electron:windows:apply-size-preset')
+    applySizePresetEventa = defineInvoke(context, applySizePresetContract)
   }
 
   async function spawnSceneryWidget(imageUrl: string, title: string) {
@@ -549,16 +553,16 @@ Generate 4 options for what the User could say next and the subtitle.`
   // Lifecycle
   function enable() {
     enabled.value = true
-    if (typeof window !== 'undefined' && (window as any).electron) {
-      ;(window as any).electron.ipcRenderer.invoke('stage-window-set-bounds', { width: 1200, height: 800, center: true }).catch(console.error)
+    if (applySizePresetEventa) {
+      applySizePresetEventa({ target: 'actor', preset: 'dating-sim-on' }).catch(console.error)
     }
     startGameLoop()
   }
 
   function disable() {
     enabled.value = false
-    if (typeof window !== 'undefined' && (window as any).electron) {
-      ;(window as any).electron.ipcRenderer.invoke('stage-window-set-bounds', { width: 450, height: 600, center: false }).catch(console.error)
+    if (applySizePresetEventa) {
+      applySizePresetEventa({ target: 'actor', preset: 'dating-sim-off' }).catch(console.error)
     }
     choices.value = []
     currentSubtitle.value = ''

@@ -476,8 +476,6 @@ app.whenReady().then(async () => {
         }
       })
 
-      let cachedStageBounds: { x: number, y: number, width: number, height: number } | null = null
-
       defineInvokeHandler(context, electronApplySizePreset, async (payload) => {
         if (!payload)
           return
@@ -494,6 +492,15 @@ app.whenReady().then(async () => {
 
         if (!targetWin || targetWin.isDestroyed())
           return
+
+        if (target === 'actor') {
+          ;(targetWin as any).__is_programmatic_resize = true
+          setTimeout(() => {
+            if (targetWin && !targetWin.isDestroyed()) {
+              ;(targetWin as any).__is_programmatic_resize = false
+            }
+          }, 500)
+        }
 
         const bounds = targetWin.getBounds()
 
@@ -529,7 +536,9 @@ app.whenReady().then(async () => {
 
         const workArea = targetDisplay.workArea || screen.getPrimaryDisplay().workArea
 
-        let isRestoringCache = false
+        let boundsDetermined = false
+        let newX: number | undefined = bounds?.x
+        let newY: number | undefined = bounds?.y
         if (preset && (preset as any) !== 'undefined') {
           if (target === 'actor') {
             switch (preset) {
@@ -549,27 +558,74 @@ app.whenReady().then(async () => {
                 width = workArea.width
                 height = workArea.height
                 break
-              case 'dating-sim-on':
-                cachedStageBounds = {
+              case 'dating-sim-on': {
+                ;(targetWin as any).__is_dating_sim_active = true
+
+                // Save current bounds to 'actor-user' in persistent config
+                const userBounds = {
                   x: bounds.x,
                   y: bounds.y,
                   width: bounds.width,
                   height: bounds.height,
                 }
-                width = 1200
-                height = 800
+                const currentAppConfig = deps.appConfig.get()
+                if (currentAppConfig) {
+                  const windows = currentAppConfig.windows || []
+                  const userIdx = windows.findIndex((w: any) => w.tag === 'actor-user')
+                  if (userIdx !== -1) {
+                    windows[userIdx] = {
+                      ...windows[userIdx],
+                      ...userBounds,
+                    }
+                  }
+                  else {
+                    windows.push({
+                      title: 'AIRI',
+                      tag: 'actor-user',
+                      ...userBounds,
+                    })
+                  }
+                  currentAppConfig.windows = windows
+                  deps.appConfig.update(currentAppConfig)
+                }
+
+                // Load 'actor-dating-sim' bounds
+                const dsConfig = currentAppConfig?.windows?.find((w: any) => w.tag === 'actor-dating-sim')
+                if (dsConfig && dsConfig.x !== undefined && dsConfig.y !== undefined && !isNaN(dsConfig.x) && !isNaN(dsConfig.y)) {
+                  width = dsConfig.width ?? width
+                  height = dsConfig.height ?? height
+                  newX = dsConfig.x
+                  newY = dsConfig.y
+                }
+                else {
+                  width = 1200
+                  height = 800
+                  newX = workArea.x + (workArea.width - width) / 2
+                  newY = workArea.y + (workArea.height - height) / 2
+                }
+                boundsDetermined = true
                 break
-              case 'dating-sim-off':
-                if (cachedStageBounds) {
-                  width = cachedStageBounds.width
-                  height = cachedStageBounds.height
-                  isRestoringCache = true
+              }
+              case 'dating-sim-off': {
+                ;(targetWin as any).__is_dating_sim_active = false
+
+                const currentAppConfig = deps.appConfig.get()
+                const userConfig = currentAppConfig?.windows?.find((w: any) => w.tag === 'actor-user')
+                if (userConfig && userConfig.x !== undefined && userConfig.y !== undefined && !isNaN(userConfig.x) && !isNaN(userConfig.y)) {
+                  width = userConfig.width ?? width
+                  height = userConfig.height ?? height
+                  newX = userConfig.x
+                  newY = userConfig.y
                 }
                 else {
                   width = 450
                   height = 600
+                  newX = workArea.x + (workArea.width - width) / 2
+                  newY = workArea.y + (workArea.height - height) / 2
                 }
+                boundsDetermined = true
                 break
+              }
             }
           }
           else if (target === 'chat') {
@@ -594,18 +650,7 @@ app.whenReady().then(async () => {
           }
         }
 
-        let newX = bounds?.x
-        let newY = bounds?.y
-        if (isRestoringCache && cachedStageBounds) {
-          newX = cachedStageBounds.x
-          newY = cachedStageBounds.y
-          cachedStageBounds = null
-        }
-        else if (preset === 'dating-sim-on') {
-          newX = workArea.x + (workArea.width - width) / 2
-          newY = workArea.y + (workArea.height - height) / 2
-        }
-        else {
+        if (!boundsDetermined) {
           if (newX === undefined || isNaN(newX))
             newX = workArea.x
           if (newY === undefined || isNaN(newY))
