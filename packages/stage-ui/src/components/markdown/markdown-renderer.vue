@@ -434,7 +434,7 @@ onMounted(() => {
   margin-right: 8px;
   vertical-align: middle;
   line-height: 1;
-  user-select: none;
+  user-select: text;
 }
 
 .markdown-content :deep(.active-spoken-line) {
