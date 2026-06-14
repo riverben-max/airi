@@ -53,6 +53,12 @@ function sanitizeRequestOverrides(overrides?: Record<string, unknown>) {
   )
 }
 
+function getChatConfig(model: string, chatProvider: ChatProvider | null | undefined) {
+  if (!chatProvider || typeof (chatProvider as any).chat !== 'function')
+    throw new Error(`AIRI Chat Provider 未初始化，无法发送聊天请求：${model || '未选择模型'}`)
+  return chatProvider.chat(model)
+}
+
 // TODO: proper format for other error messages.
 export function sanitizeMessages(messages: unknown[], options?: { vision?: boolean }): Message[] {
   // Use JSON snapshotting to completely remove Vue reactivity and ensure cloninability.
@@ -148,7 +154,7 @@ function combineSystemMessagesIfNeeded(messages: Message[], chatConfig: any, set
 function streamOptionsToolsCompatibilityOk(model: string, chatProvider: ChatProvider, _: Message[], options?: StreamOptions): boolean {
   if (options?.supportsTools)
     return true
-  const key = `${chatProvider.chat(model).baseURL}-${model}`
+  const key = `${getChatConfig(model, chatProvider).baseURL}-${model}`
   return options?.toolsCompatibility?.[key] !== false
 }
 
@@ -283,7 +289,7 @@ function sanitizeTools(tools?: Tool[]): Tool[] | undefined {
 
 async function streamFrom(model: string, chatProvider: ChatProvider, messages: Message[], options?: StreamOptions) {
   const headers = options?.headers
-  const chatConfig = chatProvider.chat(model)
+  const chatConfig = getChatConfig(model, chatProvider)
 
   const settingsChat = useSettingsChat()
   const processedMessages = combineSystemMessagesIfNeeded(messages, chatConfig, settingsChat)
@@ -392,7 +398,7 @@ async function streamFrom(model: string, chatProvider: ChatProvider, messages: M
 
 async function generateFrom(model: string, chatProvider: ChatProvider, messages: Message[], options?: StreamOptions) {
   const headers = options?.headers
-  const chatConfig = chatProvider.chat(model)
+  const chatConfig = getChatConfig(model, chatProvider)
   const settingsChat = useSettingsChat()
   const processedMessages = combineSystemMessagesIfNeeded(messages, chatConfig, settingsChat)
   const sanitized = sanitizeMessages(processedMessages as unknown[], { vision: options?.vision })
@@ -501,7 +507,7 @@ export const useLLM = defineStore('llm', () => {
   const toolsCompatibility = useLocalStorage<Record<string, boolean>>('settings/llm/tools-compatibility-v3', {})
 
   async function stream(model: string, chatProvider: ChatProvider, messages: Message[], options?: StreamOptions) {
-    const key = `${chatProvider.chat(model).baseURL}-${model}`
+    const key = `${getChatConfig(model, chatProvider).baseURL}-${model}`
     try {
       await streamFrom(model, chatProvider, messages, { ...options, toolsCompatibility: toolsCompatibility.value })
     }
@@ -524,7 +530,7 @@ export const useLLM = defineStore('llm', () => {
     options: Omit<import('@proj-airi/stage-shared').StructuredOutputOptions<T>, 'model' | 'apiKey' | 'baseURL'>,
   ) {
     const { generateObject: sharedGenerateObject } = await import('@proj-airi/stage-shared')
-    const chatConfig = chatProvider.chat(model)
+    const chatConfig = getChatConfig(model, chatProvider)
 
     return await sharedGenerateObject({
       ...options,
@@ -536,7 +542,7 @@ export const useLLM = defineStore('llm', () => {
 
   async function discoverToolsCompatibility(model: string, chatProvider: ChatProvider, _: Message[], options?: Omit<StreamOptions, 'supportsTools'>) {
     // Cached, no need to discover again
-    const key = `${chatProvider.chat(model).baseURL}-${model}`
+    const key = `${getChatConfig(model, chatProvider).baseURL}-${model}`
     if (key in toolsCompatibility.value) {
       return
     }
