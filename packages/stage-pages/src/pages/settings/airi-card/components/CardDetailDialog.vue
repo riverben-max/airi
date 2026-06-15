@@ -108,12 +108,17 @@ const isActive = computed(() => props.cardId === activeCardId.value)
 // Animation control for card activation
 const isActivating = ref(false)
 
-function handleActivate() {
+async function handleActivate() {
   isActivating.value = true
-  setTimeout(() => {
-    activeCardId.value = props.cardId
+  try {
+    await cardStore.activateCard(props.cardId)
+  }
+  catch (err) {
+    console.error('[CardDetailDialog] Failed to activate card:', err)
+  }
+  finally {
     isActivating.value = false
-  }, 300)
+  }
 }
 
 function highlightTagToHtml(text: string) {

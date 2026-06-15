@@ -1054,10 +1054,10 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
     if (!title && !prompt)
       return null
     return directorNotes.value.slice().reverse().find((n) => {
-      // Direct match on title or prompt
+      // Direct match on title or prompt (with fuzzy prompt matching for modifiers)
       if (title && n.title === title)
         return true
-      if (prompt && n.prompt === prompt)
+      if (prompt && n.prompt && (n.prompt === prompt || n.prompt.startsWith(prompt) || prompt.startsWith(n.prompt)))
         return true
       return false
     })

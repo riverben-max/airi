@@ -361,7 +361,7 @@ async function handleRestoreFromBackup() {
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-fadeOut data-[state=open]:animate-fadeIn" />
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-100 max-h-[85vh] max-w-2xl w-[90vw] flex flex-col border border-white/10 rounded-2xl bg-neutral-900/95 p-6 text-white shadow-2xl backdrop-blur-xl -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow focus:outline-none"
+        class="fixed left-1/2 top-1/2 z-100 max-h-[85vh] max-w-2xl w-[90vw] flex flex-col overflow-y-auto border border-white/10 rounded-2xl bg-neutral-900/95 p-6 text-white shadow-2xl backdrop-blur-xl -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow focus:outline-none"
       >
         <DialogTitle class="mb-1 w-full flex items-center gap-2 text-xl font-bold">
           <div class="i-solar:shield-keyhole-bold-duotone text-2xl text-primary-400" />

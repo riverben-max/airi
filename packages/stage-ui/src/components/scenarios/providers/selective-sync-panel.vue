@@ -347,6 +347,18 @@ watch(
   { deep: true, immediate: true },
 )
 
+const allModelsList = computed(() => {
+  const localModels = displayModelsStore.displayModels.filter((m: any) => m.type === 'file')
+  const allModelsMap = new Map<string, any>()
+  for (const m of remoteModels.value as any[]) {
+    allModelsMap.set(m.id, m)
+  }
+  for (const m of localModels as any[]) {
+    allModelsMap.set(m.id, m)
+  }
+  return Array.from(allModelsMap.values())
+})
+
 const searchMatchesMessage = computed(() => {
   const query = searchCharQuery.value.trim().toLowerCase()
   if (!query)
@@ -355,32 +367,41 @@ const searchMatchesMessage = computed(() => {
   const foundEntry = Array.from(allCardsMap.value.entries()).find(([_, card]) =>
     card.name?.toLowerCase().includes(query),
   )
-  if (!foundEntry)
-    return 'No matching characters'
+  if (foundEntry) {
+    const [cardId, matchedCard] = foundEntry
 
-  const [cardId, matchedCard] = foundEntry
+    const localBgs = Array.from(backgroundStore.entries.values()).filter((e: any) => e.type !== 'builtin')
+    const allBgs = [...remoteBgs.value, ...localBgs]
+    const charBgs = allBgs.filter((e: any) => e.characterId === cardId)
 
-  const localBgs = Array.from(backgroundStore.entries.values()).filter((e: any) => e.type !== 'builtin')
-  const allBgs = [...remoteBgs.value, ...localBgs]
-  const charBgs = allBgs.filter((e: any) => e.characterId === cardId)
+    const referencedModelIds = new Set<string>()
+    const defaultModelId = matchedCard.extensions?.airi?.modules?.displayModelId
+    if (defaultModelId)
+      referencedModelIds.add(defaultModelId)
 
-  const referencedModelIds = new Set<string>()
-  const defaultModelId = matchedCard.extensions?.airi?.modules?.displayModelId
-  if (defaultModelId)
-    referencedModelIds.add(defaultModelId)
-
-  const visualAssets = matchedCard.extensions?.airi?.visual_assets || {}
-  for (const asset of Object.values(visualAssets) as any[]) {
-    if (asset.manifestation?.modelId) {
-      referencedModelIds.add(asset.manifestation.modelId)
+    const visualAssets = matchedCard.extensions?.airi?.visual_assets || {}
+    for (const asset of Object.values(visualAssets) as any[]) {
+      if (asset.manifestation?.modelId) {
+        referencedModelIds.add(asset.manifestation.modelId)
+      }
     }
+
+    const localModels = displayModelsStore.displayModels.filter((m: any) => m.type === 'file')
+    const allModels = [...remoteModels.value, ...localModels]
+    const matchedModels = allModels.filter((m: any) => referencedModelIds.has(m.id))
+
+    return `Found: ${matchedCard.name} (${charBgs.length} Backgrounds, ${matchedModels.length} Models)`
   }
 
-  const localModels = displayModelsStore.displayModels.filter((m: any) => m.type === 'file')
-  const allModels = [...remoteModels.value, ...localModels]
-  const matchedModels = allModels.filter((m: any) => referencedModelIds.has(m.id))
+  // Fallback to models
+  const matchedModels = allModelsList.value.filter(m =>
+    m.name?.toLowerCase().includes(query),
+  )
+  if (matchedModels.length > 0) {
+    return `Found: ${matchedModels.length} model${matchedModels.length === 1 ? '' : 's'}`
+  }
 
-  return `Found: ${matchedCard.name} (${charBgs.length} Backgrounds, ${matchedModels.length} Models)`
+  return 'No matches'
 })
 
 function handleSelectRelated() {
@@ -391,61 +412,80 @@ function handleSelectRelated() {
   const foundEntry = Array.from(allCardsMap.value.entries()).find(([_, card]) =>
     card.name?.toLowerCase().includes(query),
   )
-  if (!foundEntry)
-    return
 
-  const [cardId, matchedCard] = foundEntry
-  const targetIds = new Set<string>()
+  if (foundEntry) {
+    const [cardId, matchedCard] = foundEntry
+    const targetIds = new Set<string>()
 
-  targetIds.add(`bg-char-${cardId}`)
+    targetIds.add(`bg-char-${cardId}`)
 
-  const defaultModelId = matchedCard.extensions?.airi?.modules?.displayModelId
-  if (defaultModelId)
-    targetIds.add(`model-${defaultModelId}`)
-  const defaultBgId = matchedCard.extensions?.airi?.modules?.activeBackgroundId
-  if (defaultBgId) {
-    const localBgs = Array.from(backgroundStore.entries.values()).filter((e: any) => e.type !== 'builtin')
-    const allBgs = [...remoteBgs.value, ...localBgs]
-    const bgEntry = allBgs.find((e: any) => e.id === defaultBgId)
-    if (bgEntry) {
-      const charId = bgEntry.characterId || 'shared'
-      targetIds.add(charId === 'shared' ? 'bg-char-shared' : `bg-char-${charId}`)
-    }
-  }
-
-  const visualAssets = matchedCard.extensions?.airi?.visual_assets || {}
-  for (const asset of Object.values(visualAssets) as any[]) {
-    if (asset.manifestation?.modelId) {
-      targetIds.add(`model-${asset.manifestation.modelId}`)
-    }
-    if (asset.manifestation?.backgroundId) {
+    const defaultModelId = matchedCard.extensions?.airi?.modules?.displayModelId
+    if (defaultModelId)
+      targetIds.add(`model-${defaultModelId}`)
+    const defaultBgId = matchedCard.extensions?.airi?.modules?.activeBackgroundId
+    if (defaultBgId) {
       const localBgs = Array.from(backgroundStore.entries.values()).filter((e: any) => e.type !== 'builtin')
       const allBgs = [...remoteBgs.value, ...localBgs]
-      const bgEntry = allBgs.find((e: any) => e.id === asset.manifestation.backgroundId)
+      const bgEntry = allBgs.find((e: any) => e.id === defaultBgId)
       if (bgEntry) {
         const charId = bgEntry.characterId || 'shared'
         targetIds.add(charId === 'shared' ? 'bg-char-shared' : `bg-char-${charId}`)
       }
     }
+
+    const visualAssets = matchedCard.extensions?.airi?.visual_assets || {}
+    for (const asset of Object.values(visualAssets) as any[]) {
+      if (asset.manifestation?.modelId) {
+        targetIds.add(`model-${asset.manifestation.modelId}`)
+      }
+      if (asset.manifestation?.backgroundId) {
+        const localBgs = Array.from(backgroundStore.entries.values()).filter((e: any) => e.type !== 'builtin')
+        const allBgs = [...remoteBgs.value, ...localBgs]
+        const bgEntry = allBgs.find((e: any) => e.id === asset.manifestation.backgroundId)
+        if (bgEntry) {
+          const charId = bgEntry.characterId || 'shared'
+          targetIds.add(charId === 'shared' ? 'bg-char-shared' : `bg-char-${charId}`)
+        }
+      }
+    }
+
+    const cardNameLower = matchedCard.name?.toLowerCase() || ''
+
+    for (const group of syncTree.value) {
+      if (group.children) {
+        for (const child of group.children) {
+          if (child.required)
+            continue
+
+          const isChatMatch = group.id === 'chats' && (
+            child.id.includes(cardId)
+            || (cardNameLower && child.id.includes(cardNameLower))
+            || child.label.toLowerCase().includes(cardNameLower)
+          )
+
+          if (targetIds.has(child.id) || isChatMatch) {
+            child.checked = true
+            group.checked = true
+          }
+        }
+      }
+    }
   }
-
-  const cardNameLower = matchedCard.name?.toLowerCase() || ''
-
-  for (const group of syncTree.value) {
-    if (group.children) {
-      for (const child of group.children) {
-        if (child.required)
-          continue
-
-        const isChatMatch = group.id === 'chats' && (
-          child.id.includes(cardId)
-          || (cardNameLower && child.id.includes(cardNameLower))
-          || child.label.toLowerCase().includes(cardNameLower)
-        )
-
-        if (targetIds.has(child.id) || isChatMatch) {
-          child.checked = true
-          group.checked = true
+  else {
+    // Fallback: search and check matching models directly
+    const matchedModels = allModelsList.value.filter(m =>
+      m.name?.toLowerCase().includes(query),
+    )
+    if (matchedModels.length > 0) {
+      const targetModelIds = new Set(matchedModels.map(m => `model-${m.id}`))
+      for (const group of syncTree.value) {
+        if (group.id === 'models' && group.children) {
+          for (const child of group.children) {
+            if (targetModelIds.has(child.id)) {
+              child.checked = true
+              group.checked = true
+            }
+          }
         }
       }
     }
@@ -563,6 +603,7 @@ defineExpose({
             type="text"
             placeholder="Type character name (e.g. Asuka, Kiana, Bronya)..."
             class="w-full border border-neutral-200 rounded-lg bg-white px-3 py-1.5 text-xs text-neutral-800 outline-none transition-colors dark:border-white/10 focus:border-primary-500 dark:bg-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
+            @keydown.enter="handleSelectRelated"
           >
           <span v-if="searchMatchesMessage" class="absolute right-3 top-1/2 text-[10px] text-primary-500 font-semibold -translate-y-1/2 dark:text-primary-400">
             {{ searchMatchesMessage }}

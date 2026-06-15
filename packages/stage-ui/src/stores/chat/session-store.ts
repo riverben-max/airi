@@ -1103,7 +1103,19 @@ export const useChatSessionStore = defineStore('chat-session', () => {
         // session-refreshed → index-refreshed, creating an infinite feedback loop on idle.
         // Index reloads from cross-window broadcasts are purely for data sync — the session
         // setup lifecycle is only triggered at initialization and explicit card-switches.
-        void loadIndexForUser(currentUserId)
+        void loadIndexForUser(currentUserId).then(() => {
+          if (!isMainWindow) {
+            const characterId = getCurrentCharacterId()
+            const characterIndex = getCharacterIndex(characterId)
+            if (characterIndex && characterIndex.activeSessionId && characterIndex.activeSessionId !== activeSessionId.value) {
+              console.info('[ChatSession] Syncing activeSessionId in secondary window to match index', {
+                from: activeSessionId.value,
+                to: characterIndex.activeSessionId,
+              })
+              activeSessionId.value = characterIndex.activeSessionId
+            }
+          }
+        })
       }
       return
     }
