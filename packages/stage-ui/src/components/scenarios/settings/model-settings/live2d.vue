@@ -142,6 +142,19 @@ watch(activeCard, (card) => {
     hiddenMotions.value = live2dData.hiddenMotions || []
   }
 }, { immediate: true })
+const normalize = (s: string) =>
+  s.split(/[\\/]/).pop()?.replace(/_File_\d+/gi, '').replace(/\.(motion3\.)?json$/i, '').replace(/^(motions?|expressions?)[_-]/i, '').toLowerCase() || s.toLowerCase()
+
+function getMappedName(fullPath: string) {
+  const normPath = normalize(fullPath)
+  for (const [key, val] of Object.entries(motionMappings.value)) {
+    if (normalize(key) === normPath) {
+      return val
+    }
+  }
+  return undefined
+}
+
 const filteredMotions = computed(() => {
   return runtimeMotions.value.filter((motion) => {
     // Filter hidden
@@ -149,7 +162,7 @@ const filteredMotions = computed(() => {
       return false
     }
     // Filter renamed
-    if (filterRenamedOnly.value && !motionMappings.value[motion.fullPath]) {
+    if (filterRenamedOnly.value && !getMappedName(motion.fullPath)) {
       return false
     }
     return true
@@ -157,7 +170,7 @@ const filteredMotions = computed(() => {
 })
 
 function getDisplayName(motion: any) {
-  const name = motionMappings.value[motion.fullPath] || motion.name
+  const name = getMappedName(motion.fullPath) || motion.name
   return name.replace(/\.motion3\.json$/, '').replace(/\.json$/, '')
 }
 
@@ -176,18 +189,26 @@ function toggleVisibility(fullPath: string) {
 
 function startEditing(motion: any) {
   editingMotionKey.value = motion.fullPath
-  editingMotionValue.value = motionMappings.value[motion.fullPath] || ''
+  editingMotionValue.value = getMappedName(motion.fullPath) || ''
 }
 
 function saveMotionName(fullPath: string) {
-  if (editingMotionValue.value.trim() === '') {
-    const updated = { ...motionMappings.value }
-    delete updated[fullPath]
-    motionMappings.value = updated
+  const normPath = normalize(fullPath)
+  const updated = { ...motionMappings.value }
+  
+  let existingKey = fullPath
+  for (const key of Object.keys(updated)) {
+    if (normalize(key) === normPath) {
+      existingKey = key
+      delete updated[key]
+    }
   }
-  else {
-    motionMappings.value = { ...motionMappings.value, [fullPath]: editingMotionValue.value.trim() }
+
+  if (editingMotionValue.value.trim() !== '') {
+    updated[existingKey] = editingMotionValue.value.trim()
   }
+
+  motionMappings.value = updated
   editingMotionKey.value = null
   editingMotionValue.value = ''
 }
