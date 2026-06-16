@@ -121,7 +121,7 @@ async function handleRetry() {
   }
 }
 
-async function handleFork() {
+async function handleFork(universeId?: string) {
   if (!props.message.id)
     return
 
@@ -139,6 +139,7 @@ async function handleFork() {
   const newSessionId = await chatSession.forkSession({
     fromSessionId: activeSessionId,
     atIndex: index + 1,
+    universeId,
   })
 
   if (newSessionId) {
@@ -210,7 +211,7 @@ async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: numbe
   showJournalModal.value = false
 }
 
-async function handleForkAndSwitch() {
+async function handleForkAndSwitch(universeId?: string) {
   if (!props.message.id)
     return
 
@@ -228,6 +229,7 @@ async function handleForkAndSwitch() {
   const newSessionId = await chatSession.forkSession({
     fromSessionId: activeSessionId,
     atIndex: index + 1,
+    universeId,
   })
 
   if (newSessionId) {

@@ -4,6 +4,8 @@ import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { computed, ref } from 'vue'
 
+import UniversePickerModal from '../dialogs/UniversePickerModal.vue'
+
 import { useChatSessionStore } from '../../../stores/chat/session-store'
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 
@@ -25,11 +27,32 @@ const characterSessions = computed(() => {
   return Object.values(characterIndex.sessions).sort((a, b) => b.updatedAt - a.updatedAt)
 })
 
-async function handleCreateSession() {
-  if (!activeCardId.value)
-    return
-  await chatSessionStore.createSession(activeCardId.value)
-  showDialog.value = false
+const showUniversePicker = ref(false)
+const pickerAction = ref<'create' | 'migrate'>('create')
+const sessionToMigrate = ref<string | null>(null)
+
+function handleCreateSessionClick() {
+  pickerAction.value = 'create'
+  showUniversePicker.value = true
+}
+
+function handleOpenUniverseMigration(sessionId: string) {
+  pickerAction.value = 'migrate'
+  sessionToMigrate.value = sessionId
+  showUniversePicker.value = true
+}
+
+async function handleUniverseConfirm(universeId: string) {
+  if (pickerAction.value === 'create') {
+    if (!activeCardId.value)
+      return
+    await chatSessionStore.createSession(activeCardId.value, { universeId })
+    showDialog.value = false
+  }
+  else if (pickerAction.value === 'migrate' && sessionToMigrate.value) {
+    await chatSessionStore.migrateSessionUniverse(sessionToMigrate.value, universeId)
+    sessionToMigrate.value = null
+  }
 }
 
 function handleSelectSession(sessionId: string) {
@@ -95,7 +118,7 @@ function handleSaveTitle(sessionId: string) {
         <div class="px-6 pb-4">
           <button
             class="w-full flex items-center justify-center gap-2 border border-primary-200 rounded-2xl bg-primary-50/50 py-3 text-sm text-primary-700 font-bold transition-all active:scale-[0.98] dark:border-primary-800/30 dark:bg-primary-900/20 hover:bg-primary-100 dark:text-primary-300 dark:hover:bg-primary-800/30"
-            @click="handleCreateSession"
+            @click="handleCreateSessionClick"
           >
             <div class="i-solar:add-circle-bold-duotone text-lg" />
             Start New Timeline
@@ -125,7 +148,7 @@ function handleSaveTitle(sessionId: string) {
                 Active
               </div>
 
-              <div v-if="editingSessionId === session.sessionId" class="flex items-center gap-2 pr-16" @click.stop>
+              <div v-if="editingSessionId === session.sessionId" class="flex items-center gap-2 pr-24" @click.stop>
                 <input
                   v-model="editText"
                   class="w-full border border-primary-500 rounded bg-white px-2 py-0.5 text-sm font-bold dark:bg-neutral-800 focus:outline-none"
@@ -142,7 +165,7 @@ function handleSaveTitle(sessionId: string) {
               <span
                 v-else
                 :class="[
-                  'text-sm font-bold truncate pr-16',
+                  'text-sm font-bold truncate pr-24',
                   session.sessionId === activeSessionId ? 'text-primary-700 dark:text-primary-300' : 'text-neutral-700 dark:text-neutral-200',
                 ]"
               >
@@ -158,6 +181,10 @@ function handleSaveTitle(sessionId: string) {
                   <div class="i-solar:chat-line-bold-duotone opacity-70" />
                   {{ session.messageCount || 0 }} messages
                 </div>
+                <div class="flex items-center gap-1.5 text-[11px] text-primary-600 font-bold dark:text-primary-400">
+                  <div class="i-solar:globus-bold opacity-70" />
+                  {{ session.universeId || 'global' }}
+                </div>
               </div>
 
               <!-- Last Active info -->
@@ -167,6 +194,13 @@ function handleSaveTitle(sessionId: string) {
 
               <!-- Actions -->
               <div class="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                  class="rounded-xl bg-neutral-100 p-2 text-neutral-600 transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                  title="Change Universe"
+                  @click.stop="handleOpenUniverseMigration(session.sessionId)"
+                >
+                  <div class="i-solar:globus-bold text-lg" />
+                </button>
                 <button
                   class="rounded-xl bg-neutral-100 p-2 text-neutral-600 transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
                   title="Edit Title"
@@ -189,6 +223,14 @@ function handleSaveTitle(sessionId: string) {
       </DialogContent>
     </DialogPortal>
   </DialogRoot>
+
+  <UniversePickerModal
+    v-model="showUniversePicker"
+    :character-id="activeCardId"
+    :title="pickerAction === 'create' ? 'Start New Timeline Universe' : 'Change Timeline Universe'"
+    :description="pickerAction === 'create' ? 'Assign a universe or create a new memory pool for this timeline.' : 'Move this session and all its associated memories and images to another universe.'"
+    @confirm="handleUniverseConfirm"
+  />
 </template>
 
 <style scoped>

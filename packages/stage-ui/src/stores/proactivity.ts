@@ -410,11 +410,17 @@ export const useProactivityStore = defineStore('proactivity', () => {
 
     isDreamStateEvaluating.value = true
     try {
+      const activeSessionId = chatSession.activeSessionId
+      const activeSessionMeta = chatSession.sessionMetas[activeSessionId]
+      const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
       await echoesStore.load()
       await echoesStore.synthesizeForCharacter(characterId, {
         fromTimestamp: config.lastProcessedAt ?? null,
         toTimestamp: lastTurnAt,
         force: options?.force,
+        universeId: currentUniverseId,
+        sessionId: activeSessionId,
       })
 
       airiCardStore.updateCard(characterId, {

@@ -310,12 +310,12 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
 
   const artifacts = ref<Map<string, LifetimeMemoryArtifact>>(new Map())
 
-  const { data: lifetimeSyncSignal, post: broadcastLifetimeSync } = useBroadcastChannel<{ characterId: string }, { characterId: string }>({ name: 'airi:lifetime-memory-sync' })
+  const { data: lifetimeSyncSignal, post: broadcastLifetimeSync } = useBroadcastChannel<{ characterId: string, universeId?: string }, { characterId: string, universeId?: string }>({ name: 'airi:lifetime-memory-sync' })
 
   watch(lifetimeSyncSignal, (val) => {
     if (val?.characterId) {
-      console.log(`[MemoryLifetime] Received lifetime sync signal for character: ${val.characterId}, reloading...`)
-      void loadForCharacter(val.characterId)
+      console.log(`[MemoryLifetime] Received lifetime sync signal for character: ${val.characterId} (universe: ${val.universeId}), reloading...`)
+      void loadForCharacter(val.characterId, val.universeId || 'global')
     }
   })
 
@@ -336,15 +336,18 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     return userId.value || 'local'
   }
 
-  async function loadForCharacter(characterId: string) {
+  async function loadForCharacter(characterId: string, universeId = 'global') {
     loading.value = true
     try {
       const [artifact, session] = await Promise.all([
-        lifetimeMemoryRepo.getByCharacter(characterId),
+        lifetimeMemoryRepo.getByCharacter(characterId, universeId),
         provisioningSessionRepo.get(characterId),
       ])
       if (artifact) {
         artifacts.value.set(characterId, artifact)
+      }
+      else {
+        artifacts.value.delete(characterId)
       }
       activeSession.value = session || null
     }
@@ -353,7 +356,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     }
   }
 
-  async function collectSourceDocs(characterId: string): Promise<SourceDoc[]> {
+  async function collectSourceDocs(characterId: string, universeId = 'global'): Promise<SourceDoc[]> {
     const currentUserId = getCurrentUserId()
     const docs: SourceDoc[] = []
 
@@ -362,6 +365,10 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     const characterIndex = index?.characters?.[characterId]
     if (characterIndex) {
       for (const sessionId of Object.keys(characterIndex.sessions)) {
+        const meta = characterIndex.sessions[sessionId]
+        if ((meta.universeId || 'global') !== universeId)
+          continue
+
         const record = await chatSessionsRepo.getSession(sessionId)
         if (!record)
           continue
@@ -397,7 +404,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     // 2. STMM Blocks
     const stmmBlocks = await shortTermMemoryRepo.getAll(currentUserId)
     if (stmmBlocks) {
-      stmmBlocks.filter(b => b.characterId === characterId).forEach((block) => {
+      stmmBlocks.filter(b => b.characterId === characterId && (b.universeId || 'global') === universeId).forEach((block) => {
         docs.push({
           id: `stmm:${block.id}`,
           layer: 'stmm',
@@ -410,7 +417,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     // 3. LTMM Entries
     const ltmmEntries = await textJournalRepo.getAll(currentUserId)
     if (ltmmEntries) {
-      ltmmEntries.filter(e => e.characterId === characterId).forEach((entry) => {
+      ltmmEntries.filter(e => e.characterId === characterId && (e.universeId || 'global') === universeId).forEach((entry) => {
         docs.push({
           id: `ltmm:${entry.id}`,
           layer: 'ltmm',
@@ -534,7 +541,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     throw lastError
   }
 
-  async function provision(characterId: string, resume = false, intervalSeconds = 0, contextLimitTokens = 64, targetTokens = 1000) {
+  async function provision(characterId: string, universeId = 'global', resume = false, intervalSeconds = 0, contextLimitTokens = 64, targetTokens = 1000) {
     const card = cards.value.get(characterId)
     if (!card)
       throw new Error('Character not found')
@@ -570,7 +577,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
         if (session.contextLimitTokens) {
           contextLimitTokens = session.contextLimitTokens
         }
-        docs = await collectSourceDocs(characterId)
+        docs = await collectSourceDocs(characterId, universeId)
       }
       else {
         progress.value = {
@@ -581,7 +588,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
           totalCalls: 0,
           message: 'Collecting relationship history...',
         }
-        docs = await collectSourceDocs(characterId)
+        docs = await collectSourceDocs(characterId, universeId)
       }
 
       const contextLimitChars = contextLimitTokens * 1024 * 4 // ~4 chars per token
@@ -849,14 +856,14 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
           },
         }
 
-        await lifetimeMemoryRepo.save(characterId, artifact)
+        await lifetimeMemoryRepo.save(characterId, universeId, artifact)
         await provisioningSessionRepo.delete(characterId)
         artifacts.value.set(characterId, artifact)
         activeSession.value = null
         progress.value.phase = 'success'
         progress.value.completedCalls = totalCalls
         progress.value.message = 'Lifetime history successfully provisioned.'
-        broadcastLifetimeSync({ characterId })
+        broadcastLifetimeSync({ characterId, universeId })
       }
     }
     catch (err) {
@@ -870,7 +877,7 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
     }
   }
 
-  async function reprovisionFromChunks(characterId: string, intervalSeconds = 0, targetTokens?: number) {
+  async function reprovisionFromChunks(characterId: string, universeId = 'global', intervalSeconds = 0, targetTokens?: number) {
     const artifact = artifacts.value.get(characterId)
     if (!artifact || !artifact.chunkSummaries?.length) {
       throw new Error('No cached chunks found for re-synthesis')
@@ -917,17 +924,17 @@ export const useMemoryLifetimeStore = defineStore('memory-lifetime', () => {
       activeSession.value = session
 
       // Use the existing provision logic but starting from synthesis
-      await provision(characterId, true, intervalSeconds, 64, resolvedTarget)
+      await provision(characterId, universeId, true, intervalSeconds, 64, resolvedTarget)
     }
     finally {
       isProvisioning.value = false
     }
   }
 
-  async function restart(characterId: string, contextLimitTokens = 64, targetTokens = 1000) {
+  async function restart(characterId: string, universeId = 'global', contextLimitTokens = 64, targetTokens = 1000) {
     await provisioningSessionRepo.delete(characterId)
     activeSession.value = null
-    await provision(characterId, false, 0, contextLimitTokens, targetTokens)
+    await provision(characterId, universeId, false, 0, contextLimitTokens, targetTokens)
   }
 
   return {

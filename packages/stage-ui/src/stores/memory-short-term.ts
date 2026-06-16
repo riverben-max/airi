@@ -15,6 +15,7 @@ import { computed, ref, watch } from 'vue'
 import { chatSessionsRepo } from '../database/repos/chat-sessions.repo'
 import { shortTermMemoryRepo } from '../database/repos/short-term-memory.repo'
 import { useAuthStore } from './auth'
+import { useChatSessionStore } from './chat/session-store'
 import { useLLM } from './llm'
 import { useAiriCardStore } from './modules/airi-card'
 import { useConsciousnessStore } from './modules/consciousness'
@@ -49,6 +50,8 @@ function normalizeBlock(block: ShortTermMemoryBlock): ShortTermMemoryBlock {
     sessionCount: Number.isFinite(block.sessionCount) ? Number(block.sessionCount) : 0,
     createdAt: Number.isFinite(block.createdAt) ? Number(block.createdAt) : Date.now(),
     updatedAt: Number.isFinite(block.updatedAt) ? Number(block.updatedAt) : Date.now(),
+    universeId: block.universeId,
+    sessionId: block.sessionId,
   }
 }
 
@@ -145,7 +148,14 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
   const initializedForUserId = ref<string | null>(null)
 
   const sortedBlocks = computed(() => {
-    return [...blocks.value].sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt)
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
+    return [...blocks.value]
+      .filter(b => (b.universeId || 'global') === currentUniverseId)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt)
   })
 
   function getCurrentUserId() {
@@ -247,7 +257,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     }
   }
 
-  async function collectCharacterDayBuckets(characterId: string) {
+  async function collectCharacterDayBuckets(characterId: string, universeId = 'global') {
     const currentUserId = getCurrentUserId()
     const index = await chatSessionsRepo.getIndex(currentUserId) as ChatSessionsIndex | null
     const characterIndex = index?.characters?.[characterId]
@@ -258,6 +268,10 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     const sessionIds = Object.keys(characterIndex.sessions)
 
     for (const sessionId of sessionIds) {
+      const meta = characterIndex.sessions[sessionId]
+      if ((meta.universeId || 'global') !== universeId)
+        continue
+
       const record = await chatSessionsRepo.getSession(sessionId)
       if (!record)
         continue
@@ -297,7 +311,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     modelId: string,
     bucket: DayBucket,
     source: ShortTermMemoryBlock['source'],
-    options?: { tokenBudgetPerDay?: number },
+    options?: { tokenBudgetPerDay?: number, universeId?: string, sessionId?: string },
   ) {
     const transcript = bucket.lines.join('\n').slice(0, MAX_SOURCE_CHARS_PER_DAY)
     if (!transcript.trim())
@@ -316,7 +330,14 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
       return null
 
     const currentUserId = getCurrentUserId()
-    const existingBlock = blocks.value.find(block => block.userId === currentUserId && block.characterId === characterId && block.date === bucket.date)
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+
+    const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
+    const resolvedSessionId = options?.sessionId !== undefined ? options.sessionId : activeSessionId
+
+    const existingBlock = blocks.value.find(block => block.userId === currentUserId && block.characterId === characterId && block.date === bucket.date && (block.universeId || 'global') === resolvedUniverseId)
     const now = Date.now()
 
     return {
@@ -332,10 +353,12 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
       sessionCount: bucket.sessionIds.size,
       createdAt: existingBlock?.createdAt ?? now,
       updatedAt: now,
+      universeId: resolvedUniverseId,
+      sessionId: resolvedSessionId,
     } satisfies ShortTermMemoryBlock
   }
 
-  async function rebuildFromHistory(characterId: string, options?: { tokenBudgetPerDay?: number }) {
+  async function rebuildFromHistory(characterId: string, options?: { tokenBudgetPerDay?: number, universeId?: string }) {
     await load()
 
     const card = cards.value.get(characterId)
@@ -355,9 +378,14 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     error.value = null
     rebuildProgress.value = 'Loading chat history...'
 
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
+
     try {
       const currentUserId = getCurrentUserId()
-      const days = await collectCharacterDayBuckets(characterId)
+      const days = await collectCharacterDayBuckets(characterId, currentUniverseId)
 
       if (days.length === 0)
         return { created: 0, updated: 0, skipped: 0 } satisfies RebuildResult
@@ -372,13 +400,13 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
 
         // NOTICE: rebuild is deliberately capped per day to prevent one pathological chat day
         // from exploding prompt size and stalling the whole recovery pass.
-        const nextBlock = await summarizeBucket(characterId, card, provider, modelId, bucket, 'rebuilt', options)
+        const nextBlock = await summarizeBucket(characterId, card, provider, modelId, bucket, 'rebuilt', { ...options, universeId: currentUniverseId })
         if (!nextBlock) {
           skipped += 1
           continue
         }
 
-        const existingIndex = nextBlocks.findIndex(block => block.userId === currentUserId && block.characterId === characterId && block.date === bucket.date)
+        const existingIndex = nextBlocks.findIndex(block => block.userId === currentUserId && block.characterId === characterId && block.date === bucket.date && (block.universeId || 'global') === currentUniverseId)
 
         if (existingIndex >= 0) {
           nextBlocks.splice(existingIndex, 1, nextBlock)
@@ -405,7 +433,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     }
   }
 
-  async function rebuildToday(characterId: string, options?: { tokenBudgetPerDay?: number }): Promise<boolean> {
+  async function rebuildToday(characterId: string, options?: { tokenBudgetPerDay?: number, universeId?: string }): Promise<boolean> {
     await load()
 
     const card = cards.value.get(characterId)
@@ -426,19 +454,24 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     const targetDate = formatLocalDayKey(Date.now())
     rebuildProgress.value = `Summarizing today (${targetDate})...`
 
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
+
     try {
-      const dayBucket = (await collectCharacterDayBuckets(characterId)).find(bucket => bucket.date === targetDate)
+      const dayBucket = (await collectCharacterDayBuckets(characterId, currentUniverseId)).find(bucket => bucket.date === targetDate)
       if (!dayBucket) {
         throw new Error(`No messages found for today (${targetDate}) to summarize.`)
       }
 
-      const nextBlock = await summarizeBucket(characterId, card, provider, modelId, dayBucket, 'rebuilt', options)
+      const nextBlock = await summarizeBucket(characterId, card, provider, modelId, dayBucket, 'rebuilt', { ...options, universeId: currentUniverseId })
       if (!nextBlock)
         return false
 
       const currentUserId = getCurrentUserId()
       const nextBlocks = [...blocks.value]
-      const existingIndex = nextBlocks.findIndex(block => block.userId === currentUserId && block.characterId === characterId && block.date === targetDate)
+      const existingIndex = nextBlocks.findIndex(block => block.userId === currentUserId && block.characterId === characterId && block.date === targetDate && (block.universeId || 'global') === currentUniverseId)
 
       if (existingIndex >= 0) {
         nextBlocks.splice(existingIndex, 1, nextBlock)
@@ -460,15 +493,20 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     }
   }
 
-  async function ensureYesterdayBlock(characterId: string, options?: { tokenBudgetPerDay?: number }) {
+  async function ensureYesterdayBlock(characterId: string, options?: { tokenBudgetPerDay?: number, universeId?: string }) {
     await load()
 
     const card = cards.value.get(characterId)
     if (!card)
       return false
 
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
+
     const targetDate = getYesterdayLocalDayKey()
-    const existingBlock = blocks.value.find(block => block.characterId === characterId && block.date === targetDate)
+    const existingBlock = blocks.value.find(block => block.characterId === characterId && block.date === targetDate && (block.universeId || 'global') === currentUniverseId)
     if (existingBlock)
       return false
 
@@ -481,11 +519,11 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     if (!provider)
       return false
 
-    const dayBucket = (await collectCharacterDayBuckets(characterId)).find(bucket => bucket.date === targetDate)
+    const dayBucket = (await collectCharacterDayBuckets(characterId, currentUniverseId)).find(bucket => bucket.date === targetDate)
     if (!dayBucket)
       return false
 
-    const nextBlock = await summarizeBucket(characterId, card, provider, modelId, dayBucket, 'automatic', options)
+    const nextBlock = await summarizeBucket(characterId, card, provider, modelId, dayBucket, 'automatic', { ...options, universeId: currentUniverseId })
     if (!nextBlock)
       return false
 

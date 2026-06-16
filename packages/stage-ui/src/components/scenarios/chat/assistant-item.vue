@@ -147,7 +147,7 @@ async function handleRetry() {
   }
 }
 
-async function handleFork() {
+async function handleFork(universeId?: string) {
   const messages = chatSession.getSessionMessages(chatSession.activeSessionId)
   const index = messages.findIndex(m => m.id === props.message.id)
   if (index !== -1) {
@@ -155,6 +155,7 @@ async function handleFork() {
       const newSessionId = await chatSession.forkSession({
         fromSessionId: chatSession.activeSessionId,
         atIndex: index + 1, // Include this message
+        universeId,
       })
       toast.success('Conversation forked successfully!')
       console.log(`[AssistantItem] Forked session created: ${newSessionId}`)
@@ -225,7 +226,7 @@ async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: numbe
   showJournalModal.value = false
 }
 
-async function handleForkAndSwitch() {
+async function handleForkAndSwitch(universeId?: string) {
   const messages = chatSession.getSessionMessages(chatSession.activeSessionId)
   const index = messages.findIndex(m => m.id === props.message.id)
   if (index !== -1) {
@@ -233,6 +234,7 @@ async function handleForkAndSwitch() {
       const newSessionId = await chatSession.forkSession({
         fromSessionId: chatSession.activeSessionId,
         atIndex: index + 1, // Include this message
+        universeId,
       })
 
       // Switch to the new session!
