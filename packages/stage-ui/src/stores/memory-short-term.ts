@@ -149,7 +149,10 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
 
   const sortedBlocks = computed(() => {
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const targetCharacterId = activeCardId.value
+    const activeSessionId = targetCharacterId
+      ? (chatSessionStore.getCharacterIndex(targetCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+      : chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
@@ -331,7 +334,11 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
 
     const currentUserId = getCurrentUserId()
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = options?.sessionId !== undefined
+      ? options.sessionId
+      : (characterId
+          ? (chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId)
+          : chatSessionStore.activeSessionId)
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
 
     const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
@@ -379,7 +386,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     rebuildProgress.value = 'Loading chat history...'
 
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
@@ -455,7 +462,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     rebuildProgress.value = `Summarizing today (${targetDate})...`
 
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
@@ -501,7 +508,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
       return false
 
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 

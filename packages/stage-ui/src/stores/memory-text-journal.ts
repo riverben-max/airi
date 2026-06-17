@@ -71,7 +71,10 @@ export const useTextJournalStore = defineStore('text-journal', () => {
 
   const sortedEntries = computed(() => {
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const targetCharacterId = activeCardId.value
+    const activeSessionId = targetCharacterId
+      ? (chatSessionStore.getCharacterIndex(targetCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+      : chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
@@ -124,7 +127,9 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       return
 
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = cardId
+      ? (chatSessionStore.getCharacterIndex(cardId)?.activeSessionId || chatSessionStore.activeSessionId)
+      : chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
@@ -268,7 +273,12 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     const currentUserId = getCurrentUserId()
     const now = Date.now()
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const targetCharacterId = input.characterId ?? activeCardId.value ?? ''
+    const activeSessionId = input.sessionId !== undefined
+      ? input.sessionId
+      : (targetCharacterId
+          ? (chatSessionStore.getCharacterIndex(targetCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+          : chatSessionStore.activeSessionId)
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
 
     const resolvedUniverseId = input.universeId !== undefined ? input.universeId : (activeSessionMeta?.universeId || 'global')

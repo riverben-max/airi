@@ -249,7 +249,11 @@ export const useBackgroundStore = defineStore('background', () => {
 
   const getCharacterBackgrounds = computed(() => (characterId?: string) => {
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const airiCardStore = useAiriCardStore()
+    const targetCharacterId = characterId || airiCardStore.activeCardId
+    const activeSessionId = targetCharacterId
+      ? (chatSessionStore.getCharacterIndex(targetCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+      : chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
@@ -274,7 +278,11 @@ export const useBackgroundStore = defineStore('background', () => {
 
   const getCharacterJournalEntries = computed(() => (characterId?: string) => {
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const airiCardStore = useAiriCardStore()
+    const targetCharacterId = characterId || airiCardStore.activeCardId
+    const activeSessionId = targetCharacterId
+      ? (chatSessionStore.getCharacterIndex(targetCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+      : chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
@@ -320,7 +328,11 @@ export const useBackgroundStore = defineStore('background', () => {
       ? characterId
       : ((type === 'journal' || type === 'selfie') ? airiCardStore.activeCardId : null)
 
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = sessionId !== undefined
+      ? sessionId
+      : (resolvedCharacterId
+          ? (chatSessionStore.getCharacterIndex(resolvedCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+          : chatSessionStore.activeSessionId)
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
 
     const resolvedUniverseId = universeId !== undefined ? universeId : (activeSessionMeta?.universeId || 'global')

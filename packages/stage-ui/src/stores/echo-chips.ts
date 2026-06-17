@@ -119,7 +119,10 @@ export const useEchoesStore = defineStore('echo-chips', () => {
 
   const sortedChips = computed(() => {
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const targetCharacterId = activeCardId.value
+    const activeSessionId = targetCharacterId
+      ? (chatSessionStore.getCharacterIndex(targetCharacterId)?.activeSessionId || chatSessionStore.activeSessionId)
+      : chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
@@ -185,7 +188,11 @@ export const useEchoesStore = defineStore('echo-chips', () => {
       return [] as WindowMessage[]
 
     const chatSessionStore = useChatSessionStore()
-    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionId = options?.sessionId !== undefined
+      ? options.sessionId
+      : (characterId
+          ? (chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId)
+          : chatSessionStore.activeSessionId)
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
@@ -302,8 +309,11 @@ Output a JSON object with a "pills" array.
       const anchorTimestamp = options?.toTimestamp ?? windowMessages[windowMessages.length - 1]?.createdAt ?? now
       const anchorDate = new Date(anchorTimestamp).toISOString().slice(0, 10)
 
-      const chatSessionStore = useChatSessionStore()
-      const activeSessionId = chatSessionStore.activeSessionId
+      const activeSessionId = options?.sessionId !== undefined
+        ? options.sessionId
+        : (characterId
+            ? (chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId)
+            : chatSessionStore.activeSessionId)
       const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
       const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
       const resolvedSessionId = options?.sessionId !== undefined ? options.sessionId : activeSessionId
