@@ -369,6 +369,23 @@ watch(inputFiles, async (newFiles) => {
     const uniqueName = getUniqueImportedCardName(getImportedCardName(normalizedForValidation))
     const renamedCard = withImportedCardName(normalizedForValidation, uniqueName)
 
+    // Import embedded virtual voice profiles into speech store
+    const embeddedProfiles = normalizedForValidation.extensions?.airi?.voice_profiles
+    if (Array.isArray(embeddedProfiles)) {
+      for (const profile of embeddedProfiles) {
+        if (profile && profile.id) {
+          const exists = speechStore.savedVoiceProfiles.some((p: any) => p.id === profile.id)
+          if (!exists) {
+            console.log(`[index.vue] Importing virtual voice profile: ${profile.name} (${profile.id})`)
+            speechStore.saveVoiceProfile(profile)
+          }
+          else {
+            console.warn(`[index.vue] Skipping voice profile import for existing ID: ${profile.id}`)
+          }
+        }
+      }
+    }
+
     // Add card and select it
     selectedCardId.value = await addCard(renamedCard)
     isCardDialogOpen.value = true

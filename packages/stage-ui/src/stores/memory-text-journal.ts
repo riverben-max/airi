@@ -16,6 +16,7 @@ import { textJournalRepo } from '../database/repos/text-journal.repo'
 import { layeredMemory } from '../libs/search/layered-memory'
 import { useAuthStore } from './auth'
 import { CHAT_STREAM_CHANNEL_NAME } from './chat/constants'
+import { useChatSessionStore } from './chat/session-store'
 import { useLLM } from './llm'
 import { useAiriCardStore } from './modules/airi-card'
 import { useProvidersStore } from './providers'
@@ -45,6 +46,8 @@ function normalizeEntry(entry: TextJournalEntry): TextJournalEntry {
 
     createdAt: Number.isFinite(entry.createdAt) ? Number(entry.createdAt) : Date.now(),
     updatedAt: Number.isFinite(entry.updatedAt) ? Number(entry.updatedAt) : Date.now(),
+    universeId: entry.universeId,
+    sessionId: entry.sessionId,
   }
 }
 
@@ -67,7 +70,14 @@ export const useTextJournalStore = defineStore('text-journal', () => {
   }
 
   const sortedEntries = computed(() => {
-    return [...entries.value].sort((a, b) => b.createdAt - a.createdAt || b.updatedAt - a.updatedAt)
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
+    return [...entries.value]
+      .filter(e => (e.universeId || 'global') === currentUniverseId)
+      .sort((a, b) => b.createdAt - a.createdAt || b.updatedAt - a.updatedAt)
   })
 
   async function load(force = false) {
@@ -113,8 +123,13 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     if (!userId || !cardId)
       return
 
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
     // 1. LTMM
-    const ltmm = entries.value.filter(e => e.characterId === cardId).map(e => ({
+    const ltmm = entries.value.filter(e => e.characterId === cardId && (e.universeId || 'global') === currentUniverseId).map(e => ({
       id: e.id,
       characterId: cardId,
       fact: e.content,
@@ -128,7 +143,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     let stmm: any[] = []
     try {
       const stmmRaw = await shortTermMemoryRepo.getAll(userId) ?? []
-      stmm = stmmRaw.filter(b => b.characterId === cardId).map(b => ({
+      stmm = stmmRaw.filter(b => b.characterId === cardId && (b.universeId || 'global') === currentUniverseId).map(b => ({
         id: b.id,
         characterId: cardId,
         fact: b.summary,
@@ -148,6 +163,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       if (index && index.characters[cardId]) {
         const characterSessions = index.characters[cardId]
         const sessions = Object.values(characterSessions.sessions)
+          .filter(s => (s.universeId || 'global') === currentUniverseId)
           .sort((a, b) => b.updatedAt - a.updatedAt)
           .slice(0, 5) // Last 5 sessions
 
@@ -181,7 +197,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     let echoes: any[] = []
     try {
       const echoRaw = await echoChipsRepo.getAll(userId) ?? []
-      echoes = echoRaw.filter(c => c.characterId === cardId).map(c => ({
+      echoes = echoRaw.filter(c => c.characterId === cardId && (c.universeId || 'global') === currentUniverseId).map(c => ({
         id: c.id,
         characterId: cardId,
         fact: c.content,
@@ -197,7 +213,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     // 5. Lifetime Memory (Eternal Thread)
     const lifetime: any[] = []
     try {
-      const lifetimeRaw = await lifetimeMemoryRepo.getByCharacter(cardId)
+      const lifetimeRaw = await lifetimeMemoryRepo.getByCharacter(cardId, currentUniverseId)
       if (lifetimeRaw) {
         lifetime.push({
           id: lifetimeRaw.id,
@@ -213,7 +229,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       console.error('[TextJournal:Index] Failed to load Lifetime Memory for indexing:', err)
     }
 
-    console.info(`[TextJournal:Index] Indexing counts for ${cardId}: LTMM=${ltmm.length}, STMM=${stmm.length}, Raw=${raw.length}, Echoes=${echoes.length}, Lifetime=${lifetime.length}`)
+    console.info(`[TextJournal:Index] Indexing counts for ${cardId} in universe ${currentUniverseId}: LTMM=${ltmm.length}, STMM=${stmm.length}, Raw=${raw.length}, Echoes=${echoes.length}, Lifetime=${lifetime.length}`)
 
     await layeredMemory.indexDocuments([...ltmm, ...stmm, ...raw, ...echoes, ...lifetime])
   }
@@ -232,6 +248,8 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     content: string
     source?: TextJournalEntrySource
     characterId?: string
+    universeId?: string
+    sessionId?: string
   }) {
     try {
       await load()
@@ -249,6 +267,13 @@ export const useTextJournalStore = defineStore('text-journal', () => {
 
     const currentUserId = getCurrentUserId()
     const now = Date.now()
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+
+    const resolvedUniverseId = input.universeId !== undefined ? input.universeId : (activeSessionMeta?.universeId || 'global')
+    const resolvedSessionId = input.sessionId !== undefined ? input.sessionId : activeSessionId
+
     const nextEntry: TextJournalEntry = {
       id: nanoid(),
       userId: currentUserId,
@@ -257,6 +282,8 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       title: (input.title?.trim() || 'Journal Entry'),
       content: input.content.trim(),
       source: input.source ?? 'tool',
+      universeId: resolvedUniverseId,
+      sessionId: resolvedSessionId,
 
       // FSRS
       stability: 0,

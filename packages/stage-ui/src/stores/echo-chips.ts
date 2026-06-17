@@ -12,6 +12,7 @@ import * as v from 'valibot'
 import { chatSessionsRepo } from '../database/repos/chat-sessions.repo'
 import { echoChipsRepo } from '../database/repos/echo-chips.repo'
 import { useAuthStore } from './auth'
+import { useChatSessionStore } from './chat/session-store'
 import { useLLM } from './llm'
 import { useAiriCardStore } from './modules/airi-card'
 import { useConsciousnessStore } from './modules/consciousness'
@@ -37,6 +38,8 @@ interface SynthesizeEchoOptions {
   maxMessages?: number
   fallbackLookbackMs?: number
   force?: boolean
+  universeId?: string
+  sessionId?: string
 }
 
 interface WindowMessage {
@@ -115,7 +118,14 @@ export const useEchoesStore = defineStore('echo-chips', () => {
   }
 
   const sortedChips = computed(() => {
-    return [...chips.value].sort((a, b) => b.createdAt - a.createdAt)
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
+    return [...chips.value]
+      .filter(c => (c.universeId || 'global') === currentUniverseId)
+      .sort((a, b) => b.createdAt - a.createdAt)
   })
 
   async function load() {
@@ -136,6 +146,8 @@ export const useEchoesStore = defineStore('echo-chips', () => {
         relevanceScore: typeof c.relevanceScore === 'number' ? c.relevanceScore : 0.8,
         evidenceIndices: c.evidenceIndices || [],
         createdAt: c.createdAt || Date.now(),
+        universeId: c.universeId,
+        sessionId: c.sessionId,
       }))
       initializedForUserId.value = currentUserId
     }
@@ -172,11 +184,17 @@ export const useEchoesStore = defineStore('echo-chips', () => {
     if (!characterSessions)
       return [] as WindowMessage[]
 
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
+
     const toTimestamp = options?.toTimestamp ?? Date.now()
     const fromTimestamp = options?.fromTimestamp ?? Math.max(0, toTimestamp - (options?.fallbackLookbackMs ?? DEFAULT_FIRST_DREAM_LOOKBACK_MS))
     const maxMessages = options?.maxMessages ?? DEFAULT_MAX_WINDOW_MESSAGES
 
     const sessionMetas = Object.values(characterSessions.sessions || {})
+      .filter(s => (s.universeId || 'global') === resolvedUniverseId)
     const sessionRecords = await Promise.all(sessionMetas.map(meta => chatSessionsRepo.getSession(meta.sessionId)))
 
     const messages: WindowMessage[] = []
@@ -283,6 +301,13 @@ Output a JSON object with a "pills" array.
       const now = Date.now()
       const anchorTimestamp = options?.toTimestamp ?? windowMessages[windowMessages.length - 1]?.createdAt ?? now
       const anchorDate = new Date(anchorTimestamp).toISOString().slice(0, 10)
+
+      const chatSessionStore = useChatSessionStore()
+      const activeSessionId = chatSessionStore.activeSessionId
+      const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+      const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
+      const resolvedSessionId = options?.sessionId !== undefined ? options.sessionId : activeSessionId
+
       const newChips: EchoChip[] = res.pills.map((p: any) => ({
         id: nanoid(),
         userId: getCurrentUserId(),
@@ -293,6 +318,8 @@ Output a JSON object with a "pills" array.
         relevanceScore: p.relevanceScore,
         evidenceIndices: p.evidence_indices || [],
         createdAt: now,
+        universeId: resolvedUniverseId,
+        sessionId: resolvedSessionId,
       }))
 
       await persist([...newChips, ...chips.value])
@@ -318,5 +345,6 @@ Output a JSON object with a "pills" array.
     load,
     getCharacterChips,
     synthesizeForCharacter,
+    persist,
   }
 })

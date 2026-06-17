@@ -13,4 +13,6 @@ export interface ShortTermMemoryBlock {
   sessionCount: number
   createdAt: number
   updatedAt: number
+  universeId?: string
+  sessionId?: string
 }

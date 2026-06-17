@@ -8,6 +8,7 @@ import { computed, onScopeDispose, reactive, ref, watch } from 'vue'
 import cozyTeaCornerInPastelHuesUrl from '../assets/backgrounds/cozy-tea-corner-in-pastel-hues.avif'
 import cuteStreamingRoomWithPastelDecorUrl from '../assets/backgrounds/cute-streaming-room-with-pastel-decor.avif'
 
+import { useChatSessionStore } from './chat/session-store'
 import { useAiriCardStore } from './modules/airi-card'
 
 export interface BackgroundEntry {
@@ -20,6 +21,8 @@ export interface BackgroundEntry {
   prompt?: string // only for journal
   remixId?: string // only for ComfyUI journal entries
   createdAt: number
+  universeId?: string
+  sessionId?: string
 }
 
 const BUILTIN_BACKGROUNDS = [
@@ -116,6 +119,8 @@ export const useBackgroundStore = defineStore('background', () => {
               blob: val.blob,
               prompt: val.prompt,
               createdAt: val.createdAt || Date.now(),
+              universeId: val.universeId,
+              sessionId: val.sessionId,
             }
             if (migrated.blob instanceof Blob) {
               ensureObjectUrl(newId, migrated.blob)
@@ -148,6 +153,7 @@ export const useBackgroundStore = defineStore('background', () => {
               title: builtin.title,
               blob,
               createdAt: Date.now(),
+              universeId: 'global',
             }
             ensureObjectUrl(entry.id, blob)
             await localforage.setItem(entry.id, entry)
@@ -242,9 +248,17 @@ export const useBackgroundStore = defineStore('background', () => {
   })
 
   const getCharacterBackgrounds = computed(() => (characterId?: string) => {
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
     const list = Array.from(entries.value.values()).filter((e) => {
-      // Shared (builtin/scene) or Journal/Selfie for specific character
-      return e.type === 'scene' || e.type === 'builtin' || ((e.type === 'journal' || e.type === 'selfie') && characterId && e.characterId === characterId)
+      const entryUniverse = e.universeId || 'global'
+      const isShared = e.type === 'scene' || e.type === 'builtin'
+      const isCharMatch = characterId && e.characterId === characterId
+      const isUniverseMatch = entryUniverse === currentUniverseId
+      return isShared || (isCharMatch && isUniverseMatch)
     })
     return list.map(e => ({
       ...e,
@@ -259,8 +273,16 @@ export const useBackgroundStore = defineStore('background', () => {
   })
 
   const getCharacterJournalEntries = computed(() => (characterId?: string) => {
+    const chatSessionStore = useChatSessionStore()
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const currentUniverseId = activeSessionMeta?.universeId || 'global'
+
     return Array.from(entries.value.values()).filter((e) => {
-      return (e.type === 'journal' || e.type === 'selfie') && characterId && e.characterId === characterId
+      const entryUniverse = e.universeId || 'global'
+      const isCharMatch = characterId && e.characterId === characterId
+      const isUniverseMatch = entryUniverse === currentUniverseId
+      return (e.type === 'journal' || e.type === 'selfie') && isCharMatch && isUniverseMatch
     }).map(e => ({
       ...e,
       url: backgroundUrls[e.id] ?? null,
@@ -286,14 +308,23 @@ export const useBackgroundStore = defineStore('background', () => {
     prompt?: string,
     characterId?: string | null,
     remixId?: string,
+    universeId?: string,
+    sessionId?: string,
   ) {
     const airiCardStore = useAiriCardStore()
+    const chatSessionStore = useChatSessionStore()
     const id = `${STORAGE_PREFIX}${nanoid()}`
 
     // Default to active card if journal and no charId provided
     const resolvedCharacterId = characterId !== undefined
       ? characterId
       : ((type === 'journal' || type === 'selfie') ? airiCardStore.activeCardId : null)
+
+    const activeSessionId = chatSessionStore.activeSessionId
+    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+
+    const resolvedUniverseId = universeId !== undefined ? universeId : (activeSessionMeta?.universeId || 'global')
+    const resolvedSessionId = sessionId !== undefined ? sessionId : activeSessionId
 
     const entry: BackgroundEntry = {
       id,
@@ -304,6 +335,8 @@ export const useBackgroundStore = defineStore('background', () => {
       prompt,
       remixId,
       createdAt: Date.now(),
+      universeId: resolvedUniverseId,
+      sessionId: resolvedSessionId,
     }
 
     try {

@@ -23,6 +23,9 @@ export interface TextJournalEntry {
   embedding?: number[]
   version?: string
 
+  universeId?: string
+  sessionId?: string
+
   createdAt: number
   updatedAt: number
 }

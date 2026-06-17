@@ -12,4 +12,6 @@ export interface EchoChip {
   /** Optional indices of the facts/evidence that led to this chip */
   evidenceIndices?: number[]
   createdAt: number
+  universeId?: string
+  sessionId?: string
 }

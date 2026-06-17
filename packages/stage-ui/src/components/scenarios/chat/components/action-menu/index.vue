@@ -23,8 +23,11 @@ import {
 } from 'reka-ui'
 import { computed, inject, reactive, ref, shallowRef, toRef, useTemplateRef, watch } from 'vue'
 
+import UniversePickerModal from '../../../dialogs/UniversePickerModal.vue'
+
 import { createChatActionMenuItems } from '.'
 import { useBreakpoints } from '../../../../../composables/use-breakpoints'
+import { useAiriCardStore } from '../../../../../stores/modules/airi-card'
 import { useElementScroll } from '../../composables/use-element-scroll'
 import { chatScrollContainerKey } from '../../constants'
 
@@ -49,16 +52,32 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'copy'): void
   (e: 'delete'): void
-  (e: 'fork'): void
+  (e: 'fork', universeId: string): void
   (e: 'edit'): void
   (e: 'retry'): void
-  (e: 'fork-switch'): void
+  (e: 'fork-switch', universeId: string): void
   (e: 'delete-following'): void
   (e: 'journal'): void
 }>()
 defineSlots<{
   default: (props: { setMeasuredElement: (element: Element | ComponentPublicInstance | null) => void }) => unknown
 }>()
+
+const airiCardStore = useAiriCardStore()
+const activeCardId = computed(() => airiCardStore.activeCardId)
+
+const showUniversePicker = ref(false)
+const pendingAction = ref<'fork' | 'fork-switch' | null>(null)
+
+function handleUniverseConfirm(universeId: string) {
+  if (pendingAction.value === 'fork') {
+    emit('fork', universeId)
+  }
+  else if (pendingAction.value === 'fork-switch') {
+    emit('fork-switch', universeId)
+  }
+  pendingAction.value = null
+}
 
 const measuredElementRef = shallowRef<HTMLElement | null>(null)
 const contextMenuContainerElementRef = useTemplateRef<HTMLElement>('contextMenuContainer')
@@ -148,12 +167,14 @@ async function handleAction(action: ChatActionMenuAction) {
   }
 
   if (action === 'fork') {
-    emit('fork')
+    pendingAction.value = 'fork'
+    showUniversePicker.value = true
     return
   }
 
   if (action === 'fork-switch') {
-    emit('fork-switch')
+    pendingAction.value = 'fork-switch'
+    showUniversePicker.value = true
     return
   }
 
@@ -482,4 +503,12 @@ watch(isTouching, (val) => {
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
+
+  <UniversePickerModal
+    v-model="showUniversePicker"
+    :character-id="activeCardId"
+    title="Select Universe for Forked Timeline"
+    description="Choose which isolated universe memory context the new branch will start in."
+    @confirm="handleUniverseConfirm"
+  />
 </template>

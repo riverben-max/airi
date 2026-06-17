@@ -11,10 +11,16 @@ import { client } from '../../composables/api'
 import { stripMarkers } from '../../composables/response-categoriser'
 import { useLocalFirstRequest } from '../../composables/use-local-first'
 import { chatSessionsRepo } from '../../database/repos/chat-sessions.repo'
+import { echoChipsRepo } from '../../database/repos/echo-chips.repo'
+import { shortTermMemoryRepo } from '../../database/repos/short-term-memory.repo'
+import { textJournalRepo } from '../../database/repos/text-journal.repo'
 import { storage } from '../../database/storage'
 import { useAuthStore } from '../auth'
+import { useBackgroundStore } from '../background'
+import { useEchoesStore } from '../echo-chips'
 import { useMemoryLifetimeStore } from '../memory-lifetime'
 import { useShortTermMemoryStore } from '../memory-short-term'
+import { useTextJournalStore } from '../memory-text-journal'
 import { useAiriCardStore } from '../modules/airi-card'
 import { useSettingsGeneral } from '../settings'
 import { CHAT_STREAM_CHANNEL_NAME } from './constants'
@@ -496,7 +502,7 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     loadingSessions.delete(sessionId)
   }
 
-  async function createSession(characterId: string, options?: { setActive?: boolean, messages?: ChatHistoryItem[], title?: string }) {
+  async function createSession(characterId: string, options?: { setActive?: boolean, messages?: ChatHistoryItem[], title?: string, universeId?: string }) {
     const currentUserId = getCurrentUserId()
     const sessionId = nanoid()
     const now = Date.now()
@@ -507,6 +513,7 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       characterId,
       title: options?.title,
       messageCount: initialMessages.length,
+      universeId: options?.universeId || 'global',
       createdAt: now,
       updatedAt: now,
     }
@@ -558,7 +565,15 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       if (!index.value || index.value.userId !== currentUserId)
         await loadIndexForUser(currentUserId)
 
-      await lifetimeMemory.loadForCharacter(characterId)
+      // Smart-Heal heuristic trigger
+      if (index.value && index.value.characters[characterId]) {
+        const charSessions = index.value.characters[characterId].sessions
+        const sessionIds = Object.keys(charSessions)
+        if (sessionIds.length === 1) {
+          const singleSessionId = sessionIds[0]
+          void smartHealCharacter(characterId, singleSessionId)
+        }
+      }
 
       const characterIndex = getCharacterIndex(characterId)
       if (!characterIndex) {
@@ -575,6 +590,10 @@ export const useChatSessionStore = defineStore('chat-session', () => {
 
       let activeId = characterIndex.activeSessionId
       await loadSession(activeId)
+
+      const sessionMeta = characterIndex.sessions[activeId]
+      const currentUniverseId = sessionMeta?.universeId || 'global'
+      await lifetimeMemory.loadForCharacter(characterId, currentUniverseId)
 
       // RECOVERY BRIDGE: If active session is unregistered/orphaned, or completely empty/corrupted, switch to the most populated one.
       const isSessionRegistered = !!characterIndex.sessions[activeId]
@@ -897,12 +916,14 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     return getSessionGeneration(target)
   }
 
-  async function forkSession(options: { fromSessionId: string, atIndex?: number, reason?: string, hidden?: boolean }) {
+  async function forkSession(options: { fromSessionId: string, atIndex?: number, reason?: string, hidden?: boolean, universeId?: string }) {
     const characterId = getCurrentCharacterId()
     const parentMessages = getSessionMessages(options.fromSessionId)
     const forkIndex = options.atIndex ?? parentMessages.length
     const nextMessages = JSON.parse(JSON.stringify(parentMessages.slice(0, forkIndex)))
-    return await createSession(characterId, { setActive: false, messages: nextMessages })
+    const parentMeta = sessionMetas.value[options.fromSessionId]
+    const targetUniverseId = options.universeId !== undefined ? options.universeId : (parentMeta?.universeId || 'global')
+    return await createSession(characterId, { setActive: false, messages: nextMessages, universeId: targetUniverseId })
   }
 
   async function deleteSession(sessionId: string) {
@@ -1103,7 +1124,19 @@ export const useChatSessionStore = defineStore('chat-session', () => {
         // session-refreshed → index-refreshed, creating an infinite feedback loop on idle.
         // Index reloads from cross-window broadcasts are purely for data sync — the session
         // setup lifecycle is only triggered at initialization and explicit card-switches.
-        void loadIndexForUser(currentUserId)
+        void loadIndexForUser(currentUserId).then(() => {
+          if (!isMainWindow) {
+            const characterId = getCurrentCharacterId()
+            const characterIndex = getCharacterIndex(characterId)
+            if (characterIndex && characterIndex.activeSessionId && characterIndex.activeSessionId !== activeSessionId.value) {
+              console.info('[ChatSession] Syncing activeSessionId in secondary window to match index', {
+                from: activeSessionId.value,
+                to: characterIndex.activeSessionId,
+              })
+              activeSessionId.value = characterIndex.activeSessionId
+            }
+          }
+        })
       }
       return
     }
@@ -1163,7 +1196,202 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       characterIndex.sessions[sessionId].updatedAt = Date.now()
     }
   })
-  // void initialize()
+  async function smartHealCharacter(characterId: string, sessionId: string) {
+    const currentUserId = getCurrentUserId()
+    console.info(`[SmartHeal] Starting heuristic healing for character: ${characterId} with session: ${sessionId}`)
+
+    // 1. Text Journal (LTMM)
+    try {
+      const ltmmRaw = await textJournalRepo.getAll(currentUserId) ?? []
+      let ltmmChanged = false
+      const nextLtmm = ltmmRaw.map((entry) => {
+        if (entry.characterId === characterId && !entry.sessionId) {
+          ltmmChanged = true
+          return { ...entry, sessionId, universeId: entry.universeId || 'global' }
+        }
+        return entry
+      })
+      if (ltmmChanged) {
+        const textJournalStore = useTextJournalStore()
+        await textJournalStore.persist(nextLtmm)
+        console.info(`[SmartHeal] Updated Text Journal entries for ${characterId}`)
+      }
+    }
+    catch (e) {
+      console.error('[SmartHeal] LTMM healing failed:', e)
+    }
+
+    // 2. STMM Blocks
+    try {
+      const stmmRaw = await shortTermMemoryRepo.getAll(currentUserId) ?? []
+      let stmmChanged = false
+      const nextStmm = stmmRaw.map((block) => {
+        if (block.characterId === characterId && !block.sessionId) {
+          stmmChanged = true
+          return { ...block, sessionId, universeId: block.universeId || 'global' }
+        }
+        return block
+      })
+      if (stmmChanged) {
+        const shortTermMemoryStore = useShortTermMemoryStore()
+        await shortTermMemoryStore.persist(nextStmm)
+        console.info(`[SmartHeal] Updated STMM blocks for ${characterId}`)
+      }
+    }
+    catch (e) {
+      console.error('[SmartHeal] STMM healing failed:', e)
+    }
+
+    // 3. Echo Chips
+    try {
+      const echoesRaw = await echoChipsRepo.getAll(currentUserId) ?? []
+      let echoesChanged = false
+      const nextEchoes = echoesRaw.map((chip) => {
+        if (chip.characterId === characterId && !chip.sessionId) {
+          echoesChanged = true
+          return { ...chip, sessionId, universeId: chip.universeId || 'global' }
+        }
+        return chip
+      })
+      if (echoesChanged) {
+        const echoesStore = useEchoesStore()
+        await echoesStore.persist(nextEchoes)
+        console.info(`[SmartHeal] Updated Echo Chips for ${characterId}`)
+      }
+    }
+    catch (e) {
+      console.error('[SmartHeal] Echo Chips healing failed:', e)
+    }
+
+    // 4. Backgrounds
+    try {
+      const lf = (await import('localforage')).default
+      const STORAGE_PREFIX = 'bg-'
+      await lf.iterate<any, void>(async (val, key) => {
+        if (key.startsWith(STORAGE_PREFIX) && val.characterId === characterId && !val.sessionId) {
+          const updated = { ...val, sessionId, universeId: val.universeId || 'global' }
+          await lf.setItem(key, updated)
+        }
+      })
+      console.info(`[SmartHeal] Finished background check for ${characterId}`)
+      const backgroundStore = useBackgroundStore()
+      await backgroundStore.initializeStore()
+    }
+    catch (e) {
+      console.error('[SmartHeal] Background healing failed:', e)
+    }
+  }
+
+  async function migrateSessionUniverse(sessionId: string, newUniverseId: string) {
+    const currentUserId = getCurrentUserId()
+    console.info(`[MigrationResolver] Migrating sessionId ${sessionId} to universe: ${newUniverseId}`)
+
+    // 1. Update Chat Session Meta
+    const meta = sessionMetas.value[sessionId]
+    if (meta) {
+      meta.universeId = newUniverseId
+      meta.updatedAt = Date.now()
+      const messages = sessionMessages.value[sessionId] ?? []
+      const record: ChatSessionRecord = { meta, messages }
+      await chatSessionsRepo.saveSession(sessionId, record)
+    }
+
+    const characterId = meta?.characterId || getCurrentCharacterId()
+
+    // Update index meta as well
+    const characterIndex = index.value?.characters[characterId]
+    if (characterIndex && characterIndex.sessions[sessionId]) {
+      characterIndex.sessions[sessionId].universeId = newUniverseId
+      characterIndex.sessions[sessionId].updatedAt = Date.now()
+      await persistIndex()
+    }
+
+    // 2. Text Journal (LTMM)
+    try {
+      const ltmmRaw = await textJournalRepo.getAll(currentUserId) ?? []
+      let ltmmChanged = false
+      const nextLtmm = ltmmRaw.map((entry) => {
+        if (entry.sessionId === sessionId) {
+          ltmmChanged = true
+          return { ...entry, universeId: newUniverseId }
+        }
+        return entry
+      })
+      if (ltmmChanged) {
+        const textJournalStore = useTextJournalStore()
+        await textJournalStore.persist(nextLtmm)
+      }
+    }
+    catch (e) {
+      console.error('[MigrationResolver] LTMM migration failed:', e)
+    }
+
+    // 3. STMM Blocks
+    try {
+      const stmmRaw = await shortTermMemoryRepo.getAll(currentUserId) ?? []
+      let stmmChanged = false
+      const nextStmm = stmmRaw.map((block) => {
+        if (block.sessionId === sessionId) {
+          stmmChanged = true
+          return { ...block, universeId: newUniverseId }
+        }
+        return block
+      })
+      if (stmmChanged) {
+        const shortTermMemoryStore = useShortTermMemoryStore()
+        await shortTermMemoryStore.persist(nextStmm)
+      }
+    }
+    catch (e) {
+      console.error('[MigrationResolver] STMM migration failed:', e)
+    }
+
+    // 4. Echo Chips
+    try {
+      const echoesRaw = await echoChipsRepo.getAll(currentUserId) ?? []
+      let echoesChanged = false
+      const nextEchoes = echoesRaw.map((chip) => {
+        if (chip.sessionId === sessionId) {
+          echoesChanged = true
+          return { ...chip, universeId: newUniverseId }
+        }
+        return chip
+      })
+      if (echoesChanged) {
+        const echoesStore = useEchoesStore()
+        await echoesStore.persist(nextEchoes)
+      }
+    }
+    catch (e) {
+      console.error('[MigrationResolver] Echo Chips migration failed:', e)
+    }
+
+    // 5. Backgrounds
+    try {
+      const lf = (await import('localforage')).default
+      const STORAGE_PREFIX = 'bg-'
+      await lf.iterate<any, void>(async (val, key) => {
+        if (key.startsWith(STORAGE_PREFIX) && val.sessionId === sessionId) {
+          const updated = { ...val, universeId: newUniverseId }
+          await lf.setItem(key, updated)
+        }
+      })
+      const backgroundStore = useBackgroundStore()
+      await backgroundStore.initializeStore()
+    }
+    catch (e) {
+      console.error('[MigrationResolver] Background migration failed:', e)
+    }
+
+    // 6. Update lifetime memory store if migrating active session
+    if (activeSessionId.value === sessionId) {
+      await lifetimeMemory.loadForCharacter(characterId, newUniverseId)
+    }
+
+    // Broadcast update so other windows reload
+    broadcastStreamEvent({ type: 'session-refreshed', sessionId })
+    console.info(`[MigrationResolver] Completed migration for sessionId ${sessionId} to ${newUniverseId}`)
+  }
 
   return {
     ready,
@@ -1202,5 +1430,6 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     index,
     persistIndex,
     sessionGenerations,
+    migrateSessionUniverse,
   }
 })
