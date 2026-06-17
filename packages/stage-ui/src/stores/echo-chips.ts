@@ -120,7 +120,7 @@ export const useEchoesStore = defineStore('echo-chips', () => {
   const sortedChips = computed(() => {
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
     return [...chips.value]
@@ -186,7 +186,7 @@ export const useEchoesStore = defineStore('echo-chips', () => {
 
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
     const toTimestamp = options?.toTimestamp ?? Date.now()
@@ -304,7 +304,7 @@ Output a JSON object with a "pills" array.
 
       const chatSessionStore = useChatSessionStore()
       const activeSessionId = chatSessionStore.activeSessionId
-      const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+      const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
       const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
       const resolvedSessionId = options?.sessionId !== undefined ? options.sessionId : activeSessionId
 

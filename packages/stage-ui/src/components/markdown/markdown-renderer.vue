@@ -140,6 +140,8 @@ function handleLinkClick(e: MouseEvent) {
   }
 }
 
+let lastMatchIndex = 0
+
 function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string) {
   if (typeof CSS === 'undefined' || !('highlights' in CSS)) {
     // Fallback if the CSS Highlights API is not supported in the runtime env
@@ -160,8 +162,10 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
     containerRef.value.style.removeProperty('--active-highlight-color')
   }
 
-  if (!activeText || !activeText.trim())
+  if (!activeText || !activeText.trim()) {
+    lastMatchIndex = 0
     return
+  }
 
   const searchText = activeText.trim().replace(/\s+/g, ' ').toLowerCase()
   if (!searchText)
@@ -193,8 +197,12 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
   walk(el)
 
   const normalizedAccumulated = accumulatedText.toLowerCase()
-  let matchIndex = normalizedAccumulated.indexOf(searchText)
+  let matchIndex = normalizedAccumulated.indexOf(searchText, lastMatchIndex > 0 ? lastMatchIndex + 1 : 0)
   let matchedLength = searchText.length
+
+  if (matchIndex === -1) {
+    matchIndex = normalizedAccumulated.indexOf(searchText)
+  }
 
   if (matchIndex === -1) {
     const cleanStr = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase()
@@ -223,6 +231,7 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
   if (matchIndex === -1)
     return
 
+  lastMatchIndex = matchIndex
   const matchEndIndex = matchIndex + matchedLength
 
   let startNode: Text | null = null
@@ -285,6 +294,9 @@ function scrollRangeIntoView(range: Range) {
     return
 
   const rangeRect = range.getBoundingClientRect()
+  if (rangeRect.width === 0 || rangeRect.height === 0)
+    return
+
   const containerRect = container.getBoundingClientRect()
 
   // Safety margins: trigger scroll if range is within 24px of the viewport edges
@@ -360,7 +372,10 @@ function scheduleHighlight() {
 }
 
 // Process content when it changes
-watch(() => props.content, processContent, { immediate: true })
+watch(() => props.content, () => {
+  lastMatchIndex = 0
+  processContent()
+}, { immediate: true })
 
 // FIX: Only watch activeText/activeColor — NOT processedContent.
 // During streaming, processedContent fires on every token. Including it in this watcher

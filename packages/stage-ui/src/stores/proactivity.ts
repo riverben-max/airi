@@ -411,7 +411,7 @@ export const useProactivityStore = defineStore('proactivity', () => {
     isDreamStateEvaluating.value = true
     try {
       const activeSessionId = chatSession.activeSessionId
-      const activeSessionMeta = chatSession.sessionMetas[activeSessionId]
+      const activeSessionMeta = chatSession.getSessionMeta(activeSessionId)
       const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
       await echoesStore.load()

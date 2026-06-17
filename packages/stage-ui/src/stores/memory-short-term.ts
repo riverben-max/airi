@@ -150,7 +150,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
   const sortedBlocks = computed(() => {
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
     return [...blocks.value]
@@ -332,7 +332,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     const currentUserId = getCurrentUserId()
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
 
     const resolvedUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
     const resolvedSessionId = options?.sessionId !== undefined ? options.sessionId : activeSessionId
@@ -380,7 +380,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
 
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
     try {
@@ -456,7 +456,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
 
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
     try {
@@ -502,7 +502,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
 
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
     const targetDate = getYesterdayLocalDayKey()

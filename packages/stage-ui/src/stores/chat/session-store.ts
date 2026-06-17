@@ -382,6 +382,23 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     scheduleSync(sessionId)
   }
 
+  function getSessionMeta(sessionId: string): ChatSessionMeta | null {
+    if (!sessionId)
+      return null
+    if (sessionMetas.value[sessionId]) {
+      return sessionMetas.value[sessionId]
+    }
+    if (index.value?.characters) {
+      for (const charId in index.value.characters) {
+        const charIndex = index.value.characters[charId]
+        if (charIndex?.sessions?.[sessionId]) {
+          return charIndex.sessions[sessionId]
+        }
+      }
+    }
+    return null
+  }
+
   function persistSessionMessages(sessionId: string) {
     void persistSession(sessionId)
   }
@@ -1414,6 +1431,7 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     getSessionMessages,
     sessionMessages,
     sessionMetas,
+    getSessionMeta,
     getSessionGeneration,
     bumpSessionGeneration,
     getSessionGenerationValue,

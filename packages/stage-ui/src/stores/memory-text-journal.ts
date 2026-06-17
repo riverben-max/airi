@@ -72,7 +72,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
   const sortedEntries = computed(() => {
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
     return [...entries.value]
@@ -125,7 +125,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
 
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
     // 1. LTMM
@@ -269,7 +269,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
     const now = Date.now()
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
 
     const resolvedUniverseId = input.universeId !== undefined ? input.universeId : (activeSessionMeta?.universeId || 'global')
     const resolvedSessionId = input.sessionId !== undefined ? input.sessionId : activeSessionId

@@ -250,7 +250,7 @@ export const useBackgroundStore = defineStore('background', () => {
   const getCharacterBackgrounds = computed(() => (characterId?: string) => {
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
     const list = Array.from(entries.value.values()).filter((e) => {
@@ -275,7 +275,7 @@ export const useBackgroundStore = defineStore('background', () => {
   const getCharacterJournalEntries = computed(() => (characterId?: string) => {
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
     return Array.from(entries.value.values()).filter((e) => {
@@ -321,7 +321,7 @@ export const useBackgroundStore = defineStore('background', () => {
       : ((type === 'journal' || type === 'selfie') ? airiCardStore.activeCardId : null)
 
     const activeSessionId = chatSessionStore.activeSessionId
-    const activeSessionMeta = chatSessionStore.sessionMetas[activeSessionId]
+    const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
 
     const resolvedUniverseId = universeId !== undefined ? universeId : (activeSessionMeta?.universeId || 'global')
     const resolvedSessionId = sessionId !== undefined ? sessionId : activeSessionId
