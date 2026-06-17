@@ -48,7 +48,7 @@ function pickCharacterId(members: SyncChatMemberPayload[] | undefined) {
 export function createChatService(db: Database) {
   return {
     async syncChat(userId: string, payload: SyncChatPayload) {
-      return await db.transaction(async (tx) => {
+      return await db.transaction(async (tx: any) => {
         const now = new Date()
         const chatId = payload.chat.id
         const members = payload.members ?? []
@@ -133,7 +133,7 @@ export function createChatService(db: Database) {
             .from(schema.messages)
             .where(inArray(schema.messages.id, messageIds))
 
-          const conflicting = existingMessages.find(m => m.chatId !== chatId)
+          const conflicting = existingMessages.find((m: any) => m.chatId !== chatId)
           if (conflicting)
             throw createConflictError('Message already belongs to another chat')
 

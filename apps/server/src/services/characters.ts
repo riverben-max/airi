@@ -55,7 +55,7 @@ export function createCharacterService(db: Database) {
     },
 
     async like(userId: string, characterId: string) {
-      return await db.transaction(async (tx) => {
+      return await db.transaction(async (tx: any) => {
         const existing = await tx.query.characterLikes.findFirst({
           where: and(
             eq(userCharacterSchema.characterLikes.userId, userId),
@@ -93,7 +93,7 @@ export function createCharacterService(db: Database) {
     },
 
     async bookmark(userId: string, characterId: string) {
-      return await db.transaction(async (tx) => {
+      return await db.transaction(async (tx: any) => {
         const existing = await tx.query.characterBookmarks.findFirst({
           where: and(
             eq(userCharacterSchema.characterBookmarks.userId, userId),
@@ -138,7 +138,7 @@ export function createCharacterService(db: Database) {
       i18n?: Omit<schema.NewCharacterI18n, 'characterId'>[]
       prompts?: Omit<schema.NewCharacterPrompt, 'characterId'>[]
     }) {
-      return await db.transaction(async (tx) => {
+      return await db.transaction(async (tx: any) => {
         const [inserted] = await tx.insert(schema.character).values(data.character).returning()
 
         if (data.cover) {
