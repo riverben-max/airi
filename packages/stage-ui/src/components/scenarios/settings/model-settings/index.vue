@@ -273,8 +273,10 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         :scale="computedScale"
         :position-x="computedXOffset"
         :position-y="computedYOffset"
+        interaction-mode="drag"
         :preview-expression="previewExpression || undefined"
         @scale-change="handleScaleChange"
+        @offset-change="handleOffsetChange"
       />
     </div>
   </template>

@@ -66,10 +66,12 @@ const props = withDefaults(defineProps<{
   positionX?: number
   positionY?: number
   interactionMode?: string
+  draggable?: boolean
 }>(), {
   paused: false,
   enableOrbitControls: false,
   mouthOpenSize: 0,
+  draggable: false,
 })
 
 const emit = defineEmits<{
@@ -245,10 +247,11 @@ function handlePointerMove(event: PointerEvent) {
     return
 
   console.log('[MMD] handlePointerMove dragging')
-  const deltaX = event.clientX - dragStartX
-  const deltaY = event.clientY - dragStartY
+  const SENSITIVITY = 2.0
+  const deltaX = (event.clientX - dragStartX) * SENSITIVITY
+  const deltaY = (event.clientY - dragStartY) * SENSITIVITY
 
-  const newX = initialOffsetX - deltaX
+  const newX = initialOffsetX + deltaX
   const newY = initialOffsetY - deltaY
 
   emit('offsetChange', { x: newX, y: newY })
@@ -768,6 +771,7 @@ defineExpose({
     @pointermove="handlePointerMove"
     @pointerup="handlePointerUp"
     @pointercancel="handlePointerUp"
+    @dragstart.prevent
   >
     <canvas ref="canvasRef" h-full w-full />
   </Screen>
