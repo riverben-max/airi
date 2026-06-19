@@ -1342,6 +1342,7 @@ function handleGeneratorSave(newValue: string) {
     :initial-value="generatorFieldValue"
     :card-context="generatorCardContext"
     :acting-context="generatorActingContext"
+    :model-id="extractorModelId"
     @save="handleGeneratorSave"
   />
 

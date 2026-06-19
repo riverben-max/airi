@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useLLM } from '@proj-airi/stage-ui/stores/llm'
+import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { Button } from '@proj-airi/ui'
@@ -17,6 +19,7 @@ interface Props {
   fieldId: string
   fieldLabel: string
   initialValue: string
+  modelId?: string
   cardContext: {
     name?: string
     nickname?: string
@@ -43,6 +46,8 @@ const emit = defineEmits<{
 const llmStore = useLLM()
 const consciousnessStore = useConsciousnessStore()
 const providersStore = useProvidersStore()
+const displayModelsStore = useDisplayModelsStore()
+const airiCardStore = useAiriCardStore()
 
 // State Management
 const history = ref<string[]>([])
@@ -51,6 +56,11 @@ const customInstructions = ref<string>('')
 const selectedTemplate = ref<string>('default')
 const loading = ref<boolean>(false)
 const errorMessage = ref<string>('')
+
+// Local Visual Extraction State
+const extractedVisualTags = ref('')
+const analyzingImage = ref(false)
+const modelLoadProgress = ref(0)
 
 // Current active value displayed in editor
 const activeValue = computed({
@@ -162,7 +172,7 @@ const guidanceConfig: Record<string, FieldGuidance> = {
   artistryPromptPrefix: {
     title: 'Artistry Prompt Default Prefix',
     prose: 'The physical description tags sent to the Stable Diffusion image generator. These visual prompt weights make sure generated backgrounds and drawings look identical to your companion.',
-    systemInstruction: 'You are an expert prompt crafter. Your task is to extract key physical traits from the companion\'s description and personality, then convert them into high-quality, comma-separated Stable Diffusion prompt tags with weights (e.g. (((short brown bob hair:1.5))), ((amber eyes:1.4))). Follow the style specified by the template prompt strictly.',
+    systemInstruction: 'You are an expert prompt crafter. Your task is to extract key physical traits from the companion\'s description, and merge them with the \'Extracted Visual Tags from Character Model Preview (Ground Truth)\' provided in the context. Convert them into high-quality, comma-separated Stable Diffusion prompt tags with weights (e.g. (((short brown bob hair:1.5))), ((amber eyes:1.4))). Follow the style specified by the template prompt strictly.\n\nCritical Filtering Instructions:\n- No Poses or Composition: Do NOT include tags describing temporary poses, actions, or views (e.g., standing, sitting, t-pose, hand on hip, looking at viewer, full body, upper body, close-up).\n- No Preview Backgrounds: Do NOT include tags describing the preview\'s background (e.g., black background, white background, simple background, transparent background).\n- No Emotion/Personality Lock: Exclude emotional expressions (e.g., smile, happy, sad, open mouth, blush) to allow expressions to change dynamically.',
     templates: [
       { id: 'default', label: 'Style & Look & Outfit', prompt: 'Generates general style tags (medium, lighting, aesthetic) + facial/body description + default attire and clothing accessories, represented as weighted comma-separated tags.' },
       { id: 'style_look_base', label: 'Style & Look (Base Character DNA)', prompt: 'Generates style tags + facial/body description (e.g., hair color/length, eye color, height) as weighted tags. Intentionally excludes clothing and outfits to allow modular outfit swaps.' },
@@ -221,6 +231,53 @@ const currentGuidance = computed<FieldGuidance>(() => {
   return baseGuidance
 })
 
+async function runVisualExtractionAndGenerate() {
+  analyzingImage.value = true
+  extractedVisualTags.value = ''
+  modelLoadProgress.value = 0
+
+  const providerId = 'blip-local'
+  try {
+    const displayModelId = props.modelId || airiCardStore.activeCard?.extensions?.airi?.modules?.displayModelId
+    if (displayModelId) {
+      const model = await displayModelsStore.getDisplayModel(displayModelId)
+      if (model && model.previewImage) {
+        providersStore.initializeProvider(providerId)
+        if (!providersStore.addedProviders[providerId]) {
+          providersStore.markProviderAdded(providerId)
+        }
+        if (providersStore.providerRuntimeState[providerId]) {
+          providersStore.providerRuntimeState[providerId].isConfigured = true
+        }
+
+        const providerInstance = await providersStore.getProviderInstance<any>(providerId)
+        if (providerInstance) {
+          await providerInstance.loadModel({
+            onProgress: (progress: any) => {
+              if (progress?.percent) {
+                modelLoadProgress.value = Math.round(progress.percent * 100)
+              }
+            },
+          })
+          const tags = await providerInstance.captionImage(model.previewImage)
+          extractedVisualTags.value = tags
+        }
+      }
+    }
+  }
+  catch (err) {
+    console.error('[Sparkle AI] Failed to extract tags for context:', err)
+  }
+  finally {
+    analyzingImage.value = false
+    if (props.initialValue) {
+      history.value.push(props.initialValue)
+      historyIndex.value = 0
+    }
+    void generateSuggestion()
+  }
+}
+
 // Auto-trigger generation on modal open
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
@@ -229,15 +286,20 @@ watch(() => props.modelValue, (isOpen) => {
     customInstructions.value = ''
     selectedTemplate.value = 'default'
     errorMessage.value = ''
+    extractedVisualTags.value = ''
+    analyzingImage.value = false
+    modelLoadProgress.value = 0
 
-    // Seed history with initial value if present
-    if (props.initialValue) {
-      history.value.push(props.initialValue)
-      historyIndex.value = 0
+    if (props.fieldId === 'artistryPromptPrefix') {
+      void runVisualExtractionAndGenerate()
     }
-
-    // Automatically trigger initial generation
-    void generateSuggestion()
+    else {
+      if (props.initialValue) {
+        history.value.push(props.initialValue)
+        historyIndex.value = 0
+      }
+      void generateSuggestion()
+    }
   }
 })
 
@@ -266,7 +328,19 @@ async function generateSuggestion(isRefining = false) {
       systemInstruction = 'You are an expert AI prompt engineer. Help the user write a structured system prompt in markdown detailing cognitive boundaries, demeanor, and relationship rules for multiple distinct character concepts. Your key directive is instructing the Actor (the dialogue scriptwriter) to prefix every turn of dialogue or action with the appropriate `<|ACTOR:id|>` tokens to switch identities. You MUST NOT include any Stable Diffusion or image generation prompt formatting instructions.'
     }
 
-    let systemPromptContent = `${systemInstruction}\n\nCore Set Context:\n${JSON.stringify(props.cardContext, null, 2)}`
+    let cardContext: any = props.cardContext
+    if (props.fieldId === 'artistryPromptPrefix') {
+      cardContext = {
+        name: props.cardContext.name,
+        nickname: props.cardContext.nickname,
+        description: props.cardContext.description,
+      }
+    }
+    let systemPromptContent = `${systemInstruction}\n\nCore Set Context:\n${JSON.stringify(cardContext, null, 2)}`
+
+    if (props.fieldId === 'artistryPromptPrefix' && extractedVisualTags.value) {
+      systemPromptContent += `\n\nExtracted Visual Tags from Character Model Preview (Ground Truth):\n${extractedVisualTags.value}`
+    }
 
     if (selectedTemplate.value === 'multi_role') {
       const actorTokens = configuredConcepts.value.map(([id, asset]: [string, any]) => {
@@ -510,6 +584,17 @@ function handleSave() {
                 placeholder="Generation will appear here. You can edit this directly..."
                 :disabled="loading"
               />
+              <!-- Image analysis overlay -->
+              <div v-if="analyzingImage" class="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-white/80 p-4 backdrop-blur-[1px] dark:bg-neutral-900/80">
+                <div class="flex items-center gap-2">
+                  <div class="i-svg-spinners:ring-resize text-xl text-primary-500" />
+                  <span class="text-xs text-neutral-500 font-semibold">Analyzing character model preview image...</span>
+                </div>
+                <div class="mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                  <div class="h-1.5 rounded-full bg-primary-500 transition-all duration-300" :style="`width: ${modelLoadProgress}%`" />
+                </div>
+                <span class="mt-1 block text-[9px] text-neutral-400 font-mono">{{ modelLoadProgress }}% complete</span>
+              </div>
               <!-- Generation spinner overlay -->
               <div v-if="loading" class="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 backdrop-blur-[1px] dark:bg-neutral-900/70">
                 <div class="flex items-center gap-2">
