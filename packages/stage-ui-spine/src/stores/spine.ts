@@ -7,9 +7,16 @@ import { supportedControl, useSpineViewControl } from './view-control'
 
 type BroadcastChannelEvents
   = | BroadcastChannelEventShouldUpdateView
+    | BroadcastChannelEventPlayOneShot
 
 interface BroadcastChannelEventShouldUpdateView {
   type: 'spine-should-update-view'
+}
+
+interface BroadcastChannelEventPlayOneShot {
+  type: 'spine-play-one-shot'
+  name: string
+  loop: boolean
 }
 
 export interface SpineAnimationDescriptor {
@@ -33,6 +40,16 @@ export interface SpineCurrentAnimation {
   loop: boolean
   /** Optional one-shot trigger; bumped to force re-application. */
   nonce?: number
+}
+
+/** Transient request to play a one-shot animation on the emotion track. */
+export interface SpineOneShotAnimation {
+  /** Animation name; resolved against the loaded skeleton by the scene. */
+  name: string
+  /** Whether the one-shot should loop instead of reverting to idle. */
+  loop: boolean
+  /** Bumped on every request so repeat calls with the same name re-trigger. */
+  nonce: number
 }
 
 export const defaultSpineAnimation: SpineCurrentAnimation = {
@@ -61,6 +78,9 @@ export const useSpine = defineStore('spine', () => {
   watch(data, (event) => {
     if (event?.type === 'spine-should-update-view') {
       shouldUpdateViewHooks.value.forEach(hook => hook())
+    }
+    else if (event?.type === 'spine-play-one-shot') {
+      oneShotAnimation.value = { name: event.name, loop: event.loop, nonce: (oneShotAnimation.value?.nonce ?? 0) + 1 }
     }
   })
 
@@ -100,20 +120,26 @@ export const useSpine = defineStore('spine', () => {
   /** Active variant name. Empty string means use the default (first) variant. */
   const currentVariant = useLocalStorageManualReset<string>('settings/spine/current-variant', '')
 
-  /** Premultiplied alpha — most modern Spine atlases ship as PMA. */
-  const premultipliedAlpha = useLocalStorageManualReset<boolean>('settings/spine/premultiplied-alpha', true)
-
-  /** Default mix-in/out duration (s) between track animations. */
-  const defaultMixDuration = useLocalStorageManualReset<number>('settings/spine/default-mix', 0.2)
-
-  /** Auto-play idle animation on load. */
-  const idleAnimationEnabled = useLocalStorageManualReset<boolean>('settings/spine/idle-enabled', true)
-
   /** Animation playback speed multiplier (1.0 = normal). */
   const animationSpeed = useLocalStorageManualReset<number>('settings/spine/animation-speed', 1)
 
-  /** Maximum FPS for the WebGL render loop (0 = uncapped). */
-  const maxFps = useLocalStorageManualReset<number>('settings/spine/max-fps', 0)
+  /**
+   * Premultiplied alpha — auto-detected from the loaded ZIP atlas.
+   * Internal runtime state only, no longer user-configurable.
+   */
+  const premultipliedAlpha = ref(true)
+
+  /** Whether a Spine skeleton is currently loaded in the active scene. */
+  const isModelLoaded = ref(false)
+
+  /** Transient request to play a one-shot animation. */
+  const oneShotAnimation = ref<SpineOneShotAnimation>()
+
+  /** Triggers a one-shot animation on the emotion track and broadcasts to other windows. */
+  function playOneShotAnimation(name: string, loop = false) {
+    oneShotAnimation.value = { name, loop, nonce: (oneShotAnimation.value?.nonce ?? 0) + 1 }
+    post({ type: 'spine-play-one-shot', name, loop })
+  }
 
   const { position, scale, reset: resetViewControl } = useSpineViewControl()
 
@@ -126,11 +152,8 @@ export const useSpine = defineStore('spine', () => {
     currentSkin.reset()
     availableVariants.reset()
     currentVariant.reset()
-    premultipliedAlpha.reset()
-    defaultMixDuration.reset()
-    idleAnimationEnabled.reset()
     animationSpeed.reset()
-    maxFps.reset()
+    premultipliedAlpha.value = true
     shouldUpdateView()
   }
 
@@ -144,12 +167,12 @@ export const useSpine = defineStore('spine', () => {
     currentSkin,
     availableVariants,
     currentVariant,
-    premultipliedAlpha,
-    defaultMixDuration,
-    idleAnimationEnabled,
     animationSpeed,
-    maxFps,
+    premultipliedAlpha,
+    isModelLoaded,
+    oneShotAnimation,
 
+    playOneShotAnimation,
     onShouldUpdateView,
     shouldUpdateView,
     resetState,

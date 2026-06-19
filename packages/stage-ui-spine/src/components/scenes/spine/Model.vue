@@ -67,6 +67,7 @@ const {
   currentVariant,
   animationSpeed,
   premultipliedAlpha: storePremultipliedAlpha,
+  oneShotAnimation,
 } = storeToRefs(spineStore)
 
 let isUnmounted = false
@@ -254,6 +255,7 @@ function disposeSpine() {
   skeleton = undefined
   animationState = undefined
   isTalkActive = false
+  spineStore.isModelLoaded = false
 }
 
 async function loadModel() {
@@ -507,6 +509,7 @@ async function loadModel() {
               canvas.value?.addEventListener('click', onCanvasClick)
               canvas.value?.addEventListener('mousemove', onCanvasMouseMove)
             }
+            spineStore.isModelLoaded = true
             emits('modelLoaded')
             resolve()
           }
@@ -607,7 +610,7 @@ async function loadModel() {
           sc.gl.clearColor(0, 0, 0, 0)
           sc.gl.clear(sc.gl.COLOR_BUFFER_BIT)
           renderer.begin()
-          renderer.drawSkeleton(skeleton, props.premultipliedAlpha)
+          renderer.drawSkeleton(skeleton, storePremultipliedAlpha.value)
           renderer.end()
         },
         error: (_sc, errors: Record<string, string>) => {
@@ -621,7 +624,7 @@ async function loadModel() {
       spineCanvas = new spine.SpineCanvas(canvas.value!, {
         app,
         pathPrefix,
-        webglConfig: { alpha: true, premultipliedAlpha: props.premultipliedAlpha, preserveDrawingBuffer: true },
+        webglConfig: { alpha: true, premultipliedAlpha: storePremultipliedAlpha.value, preserveDrawingBuffer: true },
       })
     })
   }
@@ -1005,6 +1008,11 @@ watch(activeAnimations, (newVal) => {
 
 watch(currentSkin, (skinName) => {
   applySkin(skinName)
+})
+
+watch(oneShotAnimation, (req) => {
+  if (req)
+    animationManager?.playEmotion(req.name, { loop: req.loop })
 })
 
 watch(currentVariant, async () => {

@@ -70,7 +70,6 @@ const {
   live2dShadowEnabled,
   live2dMaxFps,
   mmdTextureMap,
-  spinePremultipliedAlpha,
   spineDefaultMixDuration,
   spineIdleAnimationEnabled,
   spineMaxFps,
@@ -445,7 +444,6 @@ defineExpose({
       :x-offset="xOffset"
       :y-offset="yOffset"
       :scale="scale !== undefined ? Number(scale) : undefined"
-      :premultiplied-alpha="spinePremultipliedAlpha"
       :default-mix-duration="spineDefaultMixDuration"
       :idle-animation-enabled="spineIdleAnimationEnabled"
       :max-fps="spineMaxFps"

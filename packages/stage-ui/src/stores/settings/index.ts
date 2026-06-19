@@ -85,7 +85,6 @@ export const useSettings = defineStore('settings', () => {
     live2dMaxFps: toRef(live2d, 'live2dMaxFps'),
 
     // Spine settings
-    spinePremultipliedAlpha: toRef(spine, 'spinePremultipliedAlpha'),
     spineDefaultMixDuration: toRef(spine, 'spineDefaultMixDuration'),
     spineIdleAnimationEnabled: toRef(spine, 'spineIdleAnimationEnabled'),
     spineMaxFps: toRef(spine, 'spineMaxFps'),

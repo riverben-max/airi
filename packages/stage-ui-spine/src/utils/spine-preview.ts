@@ -106,6 +106,14 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
             const skeleton = new spine.Skeleton(skeletonData)
             skeleton.setToSetupPose()
 
+            // Some rigs ship without a default skin; their slot attachments
+            // only resolve once a skin is active, so setup pose renders empty.
+            // Fall back to the first skin so the preview isn't blank.
+            if (!skeletonData.defaultSkin && skeletonData.skins.length > 0) {
+              skeleton.setSkinByName(skeletonData.skins[0].name)
+              skeleton.setSlotsToSetupPose()
+            }
+
             // Position skeleton at 0,0 first to calculate local bounds
             skeleton.x = 0
             skeleton.y = 0

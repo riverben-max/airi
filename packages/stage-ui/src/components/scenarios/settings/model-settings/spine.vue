@@ -475,26 +475,8 @@ const activeCustomizationTab = ref('expressions')
         </div>
       </div>
 
-      <FieldRange v-model="spineDefaultMixDuration" as="div" :min="0" :max="2" :step="0.05" :label="t('settings.spine.animation.mix-duration')">
-        <template #label>
-          <div flex items-center>
-            <div>{{ t('settings.spine.animation.mix-duration') }}</div>
-            <button px-2 text-xs outline-none title="Reset value to default" @click="() => spineDefaultMixDuration = 0.2">
-              <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
-            </button>
-          </div>
-        </template>
-      </FieldRange>
-      <FieldRange v-model="animationSpeed" as="div" :min="0.1" :max="3" :step="0.05" :label="t('settings.spine.animation.speed')">
-        <template #label>
-          <div flex items-center>
-            <div>{{ t('settings.spine.animation.speed') }}</div>
-            <button px-2 text-xs outline-none title="Reset value to default" @click="() => animationSpeed = 1">
-              <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
-            </button>
-          </div>
-        </template>
-      </FieldRange>
+      <FieldRange v-model="spineDefaultMixDuration" as="div" :min="0" :max="2" :step="0.05" :default-value="0.2" :label="t('settings.spine.animation.mix-duration')" />
+      <FieldRange v-model="animationSpeed" as="div" :min="0.1" :max="3" :step="0.05" :default-value="1" :label="t('settings.spine.animation.speed')" />
     </div>
   </Section>
 
@@ -510,36 +492,9 @@ const activeCustomizationTab = ref('expressions')
     size="sm"
     :expand="true"
   >
-    <FieldRange v-model="scale" as="div" :min="0.1" :max="6" :step="0.01" :label="t('settings.spine.scale-and-position.scale')">
-      <template #label>
-        <div flex items-center>
-          <div>{{ t('settings.spine.scale-and-position.scale') }}</div>
-          <button px-2 text-xs outline-none title="Reset value to default" @click="() => scale = 1">
-            <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
-          </button>
-        </div>
-      </template>
-    </FieldRange>
-    <FieldRange v-model="positionX" as="div" :min="-3000" :max="3000" :step="1" :label="t('settings.spine.scale-and-position.x')">
-      <template #label>
-        <div flex items-center>
-          <div>{{ t('settings.spine.scale-and-position.x') }}</div>
-          <button px-2 text-xs outline-none title="Reset value to default" @click="() => positionX = 0">
-            <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
-          </button>
-        </div>
-      </template>
-    </FieldRange>
-    <FieldRange v-model="positionY" as="div" :min="-3000" :max="3000" :step="1" :label="t('settings.spine.scale-and-position.y')">
-      <template #label>
-        <div flex items-center>
-          <div>{{ t('settings.spine.scale-and-position.y') }}</div>
-          <button px-2 text-xs outline-none title="Reset value to default" @click="() => positionY = 0">
-            <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
-          </button>
-        </div>
-      </template>
-    </FieldRange>
+    <FieldRange v-model="scale" as="div" :min="0.1" :max="6" :step="0.01" :default-value="1" :label="t('settings.spine.scale-and-position.scale')" />
+    <FieldRange v-model="positionX" as="div" :min="-3000" :max="3000" :step="1" :default-value="0" :label="t('settings.spine.scale-and-position.x')" />
+    <FieldRange v-model="positionY" as="div" :min="-3000" :max="3000" :step="1" :default-value="0" :label="t('settings.spine.scale-and-position.y')" />
   </Section>
 
   <!-- Block 3: Advanced -->
@@ -580,16 +535,7 @@ const activeCustomizationTab = ref('expressions')
         <SelectTab v-model="spineMaxFps" :options="fpsOptions" size="sm" :class="['shrink-0']" :disabled="true" />
       </div>
       <div class="mt-2">
-        <FieldRange v-model="spineRenderScale" as="div" :min="0.5" :max="3" :step="0.1" :label="t('settings.spine.rendering.render-scale')">
-          <template #label>
-            <div flex items-center>
-              <div>{{ t('settings.spine.rendering.render-scale') }}</div>
-              <button px-2 text-xs outline-none title="Reset value to default" :disabled="true" @click="() => spineRenderScale = 1">
-                <div i-solar:forward-linear transform-scale-x--100 text="neutral-500 dark:neutral-400" />
-              </button>
-            </div>
-          </template>
-        </FieldRange>
+        <FieldRange v-model="spineRenderScale" as="div" :min="0.5" :max="3" :step="0.1" :default-value="1" :label="t('settings.spine.rendering.render-scale')" />
       </div>
       <p class="px-1 text-[10px] text-neutral-400">
         (Rendering controls disabled for Phase 1)

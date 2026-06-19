@@ -15,6 +15,7 @@ import { wlipsyncProfile } from '@proj-airi/model-driver-lipsync/shared/wlipsync
 import { createPlaybackManager, createSpeechPipeline } from '@proj-airi/pipelines-audio'
 import { useLive2d } from '@proj-airi/stage-ui-live2d'
 import { useMmd } from '@proj-airi/stage-ui-mmd'
+import { useSpine } from '@proj-airi/stage-ui-spine'
 import { useCustomVrmAnimationsStore, useModelStore } from '@proj-airi/stage-ui-three'
 import { createQueue } from '@proj-airi/stream-kit'
 import { useBroadcastChannel, useEventListener } from '@vueuse/core'
@@ -286,7 +287,9 @@ const emotionsQueue = createQueue<EmotionPayload>({
       else if (stageModelRenderer.value === 'spine') {
         const emotionName = ctx.data.name
         const intensity = ctx.data.intensity
-        console.info('[Stage] Spine emotion/motion processing (standalone window active):', { name: emotionName, intensity })
+        console.info('[Stage] Spine emotion/motion processing:', { name: emotionName, intensity })
+        const spineStore = useSpine()
+        spineStore.playOneShotAnimation(emotionName, false)
       }
       else if (stageModelRenderer.value === 'mmd') {
         const emotionName = ctx.data.name
