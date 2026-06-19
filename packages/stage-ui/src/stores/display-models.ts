@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 import localforage from 'localforage'
 
 import { loadLive2DModelPreview as generateLive2DPreview } from '@proj-airi/stage-ui-live2d/utils/live2d-preview'
-import { loadMmdModelPreview as generateMmdPreview } from '@proj-airi/stage-ui-mmd/utils/mmd-preview'
+import { loadMMDModelPreview as generateMmdPreview } from '@proj-airi/stage-ui-mmd/utils/mmd-preview'
 import { loadSpineModelPreview as generateSpinePreview } from '@proj-airi/stage-ui-spine/utils/spine-preview'
 import { loadVrmModelPreview as generateVrmPreview } from '@proj-airi/stage-ui-three/utils/vrm-preview'
 import { until, useBroadcastChannel } from '@vueuse/core'
@@ -609,7 +609,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
           }
 
           // Return early to bypass the parent zip import
-          return
+          return displayModels.value[0]
         }
       }
       catch (err) {
@@ -641,6 +641,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     await localforage.setItem<DisplayModelFile>(newDisplayModel.id, newDisplayModel)
       .catch(err => console.error(err))
     broadcastModelsSync(Date.now())
+    return newDisplayModel
   }
 
   async function addDisplayModelWithTextures(format: DisplayModelFormat, modelFile: File, textureFiles: MmdTextureFile[]) {
@@ -649,7 +650,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
 
     // Generate preview for MMD model
     try {
-      const previewImage = await generateMmdPreview(modelFile, textureFiles)
+      const previewImage = await generateMmdPreview(modelFile)
       newDisplayModel.previewImage = previewImage
     }
     catch (e) {

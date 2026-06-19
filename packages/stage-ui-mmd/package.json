@@ -2,7 +2,7 @@
   "name": "@proj-airi/stage-ui-mmd",
   "type": "module",
   "private": true,
-  "description": "MMD scene components and stores for Project AIRI",
+  "description": "MMD (MikuMikuDance) scene components and stores for Project AIRI",
   "author": {
     "name": "Moeru AI Project AIRI Team",
     "email": "airi@moeru.ai",
@@ -20,28 +20,40 @@
     "./components/scenes": "./src/components/scenes/index.ts",
     "./components/scenes/MMD.vue": "./src/components/scenes/MMD.vue",
     "./composables/mmd": "./src/composables/mmd/index.ts",
+    "./constants/emotions": "./src/constants/emotions.ts",
     "./stores": "./src/stores/index.ts",
     "./stores/mmd": "./src/stores/mmd.ts",
+    "./utils/mmd-loader": "./src/utils/mmd-loader.ts",
     "./utils/mmd-preview": "./src/utils/mmd-preview.ts",
+    "./utils/mmd-validator": "./src/utils/mmd-validator.ts",
+    "./utils/mmd-zip-loader": "./src/utils/mmd-zip-loader.ts",
     "./utils/mmd-zip-extractor": "./src/utils/mmd-zip-extractor.ts"
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@moeru/three-mmd": "^0.1.0-beta.3",
+    "@moeru/std": "catalog:",
     "@proj-airi/stage-shared": "workspace:^",
     "@proj-airi/ui": "workspace:^",
-    "@tresjs/cientos": "^5.7.0",
-    "@tresjs/core": "^5.8.0",
-    "@vueuse/core": "^14.2.1",
+    "@vueuse/core": "catalog:",
+    "@xsai/tool": "catalog:",
+    "ammojs-typed": "catalog:",
+    "culori": "catalog:",
+    "es-toolkit": "catalog:",
     "jszip": "catalog:",
-    "pinia": "^3.0.4",
-    "three": "^0.184.0",
-    "vue": "catalog:"
+    "localforage": "catalog:",
+    "pinia": "catalog:",
+    "three": "catalog:",
+    "three-stdlib": "catalog:",
+    "vue": "catalog:",
+    "wlipsync": "catalog:"
   },
   "devDependencies": {
-    "@types/three": "^0.184.0",
-    "vue-tsc": "^3.2.6"
+    "@types/culori": "catalog:",
+    "@types/three": "catalog:",
+    "@vue-macros/volar": "catalog:",
+    "vitest": "catalog:vitest",
+    "vue-tsc": "^3.1.8"
   }
 }

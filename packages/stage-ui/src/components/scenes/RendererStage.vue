@@ -471,8 +471,8 @@ defineExpose({
       :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
       :draggable="stageViewControlsEnabled"
       @error="console.error"
-      @scale-change="(val) => emits('scaleChange', val)"
-      @offset-change="(val) => emits('offsetChange', val)"
+      @scale-change="(val: any) => emits('scaleChange', val)"
+      @offset-change="(val: any) => emits('offsetChange', val)"
     />
     <DatingSimOverlay />
   </div>

@@ -1,124 +1,246 @@
+import type { Emotion } from '../constants/emotions'
+import type { MorphSlot } from '../constants/morphs'
+
+import localforage from 'localforage'
+
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
+import { useBroadcastChannel, useLocalStorage } from '@vueuse/core'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
+
+import { EMOTION_ACTION_NAME } from '../constants/actions'
+import { supportedControl, useMMDViewControl } from './view-control'
+
+type BroadcastChannelEvents = BroadcastChannelEventShouldUpdateView
+
+interface BroadcastChannelEventShouldUpdateView {
+  type: 'mmd-should-update-view'
+}
+
+/**
+ * A VMD motion imported for use across windows.
+ *
+ * Holds only an id + display name; the VMD file itself lives in IndexedDB
+ * (keyed by `id`) so the list can sync through localStorage and each window
+ * can materialize its own object URL. Blob URLs are window-scoped and cannot
+ * be shared, which is why the URL is never persisted here.
+ */
+export interface MMDMotionDescriptor {
+  id: string
+  name: string
+}
+
+/** IndexedDB record for a persisted VMD file. */
+interface PersistedMMDMotion {
+  id: string
+  name: string
+  file: File
+}
+
+const MOTION_STORAGE_PREFIX = 'mmd-motion-'
+
+/** Transient request to play a one-shot motion, bumped per request. */
+export interface MMDOneShotAction {
+  name: string
+  loop: boolean
+  nonce: number
+}
+
+export const BUILTIN_MOTIONS = [
+  'brushoff_nice_and_tidy.vmd',
+  'crossed_arms_look_around_confident.vmd',
+  'fixing_hair_or_wig.vmd',
+  'getting_item_out_of_bra.vmd',
+  'hat_flip.vmd',
+  'impatient_foot_tapping.vmd',
+  'shy.vmd',
+  'skittish_mermay.vmd',
+  'smelling_something_in_the_air.vmd',
+  'something_in_the_sky.vmd',
+  'stretching.vmd',
+  'swaying_arms_and_hips.vmd',
+  'tracker.vmd',
+]
 
 export const useMmd = defineStore('mmd', () => {
+  const { post, data } = useBroadcastChannel<BroadcastChannelEvents, BroadcastChannelEvents>({
+    name: 'airi-stores-stage-ui-mmd',
+  })
+  const shouldUpdateViewHooks = ref(new Set<() => void>())
+
+  const onShouldUpdateView = (hook: () => void) => {
+    shouldUpdateViewHooks.value.add(hook)
+    return () => {
+      shouldUpdateViewHooks.value.delete(hook)
+    }
+  }
+
+  function shouldUpdateView() {
+    post({ type: 'mmd-should-update-view' })
+    shouldUpdateViewHooks.value.forEach(hook => hook())
+  }
+
+  watch(data, (event) => {
+    if (event?.type === 'mmd-should-update-view')
+      shouldUpdateViewHooks.value.forEach(hook => hook())
+  })
+
+  // === Physics & solver toggles ===
+  /** Master switch for the Ammo/Bullet rigid-body simulation (hair, skirt, etc.). */
+  const physicsEnabled = useLocalStorageManualReset<boolean>('settings/mmd/physics-enabled', true)
+  /** CCD IK solving for limbs/standard rigs. */
+  const ikEnabled = useLocalStorageManualReset<boolean>('settings/mmd/ik-enabled', true)
+  /** Append-bone ("grant") propagation for derived bones. */
+  const grantEnabled = useLocalStorageManualReset<boolean>('settings/mmd/grant-enabled', true)
+
+  // === Gaze ===
+  const gazeTrackingEnabled = useLocalStorageManualReset<boolean>('settings/mmd/gaze-tracking', true)
+
+  // === Animation ===
+  /** Name of the persistent idle motion; empty means none/static. */
+  const idleMotionName = useLocalStorageManualReset<string>('settings/mmd/idle-motion', '')
+
+  /** Custom motions uploaded to IndexedDB by the user. */
+  const customMotions = useLocalStorageManualReset<MMDMotionDescriptor[]>('settings/mmd/motions', () => [])
+
+  /** Combined list of built-in motions and custom uploaded VMD motions. */
+  const availableMotions = computed<string[]>(() => {
+    return [...BUILTIN_MOTIONS, ...customMotions.value.map(m => m.name.endsWith('.vmd') ? m.name : `${m.name}.vmd`)]
+  })
+
+  /**
+   * Persists a VMD file to IndexedDB and adds it to the synced list.
+   *
+   * Re-importing the same name overwrites the stored file (same id) so the
+   * list stays stable.
+   */
+  async function addMotion(file: File): Promise<MMDMotionDescriptor> {
+    const rawName = file.name
+    const name = rawName.replace(/\.vmd$/i, '')
+    const existing = customMotions.value.find(motion => motion.name === name)
+    const id = existing?.id ?? `${MOTION_STORAGE_PREFIX}${crypto.randomUUID()}`
+
+    await localforage.setItem<PersistedMMDMotion>(id, { id, name, file })
+    if (!existing)
+      customMotions.value = [...customMotions.value, { id, name }]
+
+    return { id, name }
+  }
+
+  /** Loads a persisted VMD file by id so a window can build its own object URL. */
+  async function getMotionFile(id: string): Promise<File | undefined> {
+    const persisted = await localforage.getItem<PersistedMMDMotion>(id)
+    return persisted?.file
+  }
+
+  /** Removes every persisted motion file and clears the synced list. */
+  async function clearMotions(): Promise<void> {
+    const motions = customMotions.value
+    customMotions.value = []
+    await Promise.all(motions.map(motion => localforage.removeItem(motion.id)))
+  }
+
+  /** Per-emotion gesture motion overrides; falls back to EMOTION_ACTION_NAME. */
+  const emotionActionMap = useLocalStorageManualReset<Record<Emotion, string>>(
+    'settings/mmd/emotion-action-map',
+    () => ({ ...EMOTION_ACTION_NAME }),
+  )
+
+  // === Morphs ===
+  /** Manual morph-slot → morph-name overrides for non-standard models. */
+  const morphOverrides = useLocalStorageManualReset<Partial<Record<MorphSlot, string>>>(
+    'settings/mmd/morph-overrides',
+    () => ({}),
+  )
+  /** All morph names exposed by the active model (runtime). */
   const availableMorphs = useLocalStorageManualReset<string[]>('settings/mmd/available-morphs', () => [])
   const morphMappings = useLocalStorageManualReset<Record<string, string>>('settings/mmd/morph-mappings', {})
   const hiddenMorphs = useLocalStorageManualReset<string[]>('settings/mmd/hidden-morphs', () => [])
-
-  const currentMotion = ref<string>('swaying_arms_and_hips.vmd')
   const previewExpression = ref<string | null>(null)
-  const availableMotions = ref<string[]>([
-    'brushoff_nice_and_tidy.vmd',
-    'crossed_arms_look_around_confident.vmd',
-    'fixing_hair_or_wig.vmd',
-    'getting_item_out_of_bra.vmd',
-    'hat_flip.vmd',
-    'impatient_foot_tapping.vmd',
-    'shy.vmd',
-    'skittish_mermay.vmd',
-    'smelling_something_in_the_air.vmd',
-    'something_in_the_sky.vmd',
-    'stretching.vmd',
-    'swaying_arms_and_hips.vmd',
-    'tracker.vmd',
-  ])
-
-  // Placement, Camera & Lighting configurations
-  const scale = useLocalStorageManualReset<number>('settings/mmd/scale', 1)
-  const modelOffset = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/modelOffset', { x: 0, y: 0, z: 0 })
-  const modelRotationY = useLocalStorageManualReset<number>('settings/mmd/modelRotationY', 0)
   const modelSize = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/modelSize', { x: 0, y: 0, z: 0 })
-  const modelOrigin = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/modelOrigin', { x: 0, y: 0, z: 0 })
 
-  const cameraFOV = useLocalStorageManualReset<number>('settings/mmd/cameraFOV', 40)
-  const cameraPosition = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/camera-position', { x: 0, y: 0, z: -1 })
-  const cameraDistance = useLocalStorageManualReset<number>('settings/mmd/cameraDistance', 0)
-  const trackingMode = useLocalStorageManualReset<'camera' | 'mouse' | 'none'>('settings/mmd/trackingMode', 'none')
-  const followSpeed = useLocalStorageManualReset<number>('settings/mmd/followSpeed', 0.1)
-  const eyeHeight = useLocalStorageManualReset<number>('settings/mmd/eyeHeight', 0)
-  const lookAtTarget = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/lookAtTarget', { x: 0, y: 0, z: 0 })
+  const currentMotion = computed<string>({
+    get: () => idleMotionName.value,
+    set: (val) => {
+      idleMotionName.value = val
+    },
+  })
 
-  const directionalLightPosition = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/scenes/scene/directional-light/position', { x: 0, y: 0, z: -1 })
-  const directionalLightTarget = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/scenes/scene/directional-light/target', { x: 0, y: 0, z: 0 })
-  const directionalLightRotation = useLocalStorageManualReset<{ x: number, y: number, z: number }>('settings/mmd/scenes/scene/directional-light/rotation', { x: 0, y: 0, z: 0 })
-  const directionalLightIntensity = useLocalStorageManualReset<number>('settings/mmd/scenes/scene/directional-light/intensity', 2.02)
-  const directionalLightColor = useLocalStorageManualReset<string>('settings/mmd/scenes/scene/directional-light/color', '#fffbf5')
+  /**
+   * Whether an MMD mesh is currently mounted. Runtime-only: the persisted
+   * descriptor lists survive reloads and cannot indicate live mount state.
+   */
+  const isModelLoaded = ref(false)
 
-  const hemisphereSkyColor = useLocalStorageManualReset<string>('settings/mmd/scenes/scene/hemisphere-light/sky-color', '#FFFFFF')
-  const hemisphereGroundColor = useLocalStorageManualReset<string>('settings/mmd/scenes/scene/hemisphere-light/ground-color', '#222222')
-  const hemisphereLightIntensity = useLocalStorageManualReset<number>('settings/mmd/scenes/scene/hemisphere-light/intensity', 0.4)
+  /**
+   * Transient one-shot motion request.
+   *
+   * localStorage-backed (not just an in-memory ref) so a "play" click in the
+   * settings window reaches the stage window's scene. The bumped `nonce` makes
+   * repeat requests for the same motion re-trigger the watcher.
+   */
+  const oneShotAction = useLocalStorage<MMDOneShotAction | null>('settings/mmd/one-shot', null)
 
-  const ambientLightColor = useLocalStorageManualReset<string>('settings/mmd/scenes/scene/ambient-light/color', '#FFFFFF')
-  const ambientLightIntensity = useLocalStorageManualReset<number>('settings/mmd/scenes/scene/ambient-light/intensity', 0.6)
+  /** Queue a one-shot motion; bumps the nonce so repeat calls re-trigger. */
+  function playOneShotAction(name: string, loop = false) {
+    oneShotAction.value = { name, loop, nonce: (oneShotAction.value?.nonce ?? 0) + 1 }
+  }
 
-  const envSelect = useLocalStorageManualReset<'hemisphere' | 'skyBox'>('settings/mmd/envEnabled', 'hemisphere')
-  const skyBoxIntensity = useLocalStorageManualReset<number>('settings/mmd/skyBoxIntensity', 0.1)
+  const { position, scale, rotationY, reset: resetViewControl } = useMMDViewControl()
 
   function resetState() {
+    supportedControl.forEach(c => resetViewControl(c))
+    physicsEnabled.reset()
+    ikEnabled.reset()
+    grantEnabled.reset()
+    gazeTrackingEnabled.reset()
+    idleMotionName.reset()
+    void clearMotions()
+    oneShotAction.value = null
+    emotionActionMap.reset()
+    morphOverrides.reset()
     availableMorphs.reset()
     morphMappings.reset()
     hiddenMorphs.reset()
-    scale.reset()
-    modelOffset.reset()
-    modelRotationY.reset()
     modelSize.reset()
-    modelOrigin.reset()
-    cameraFOV.reset()
-    cameraPosition.reset()
-    cameraDistance.reset()
-    trackingMode.reset()
-    followSpeed.reset()
-    eyeHeight.reset()
-    lookAtTarget.reset()
-    directionalLightPosition.reset()
-    directionalLightTarget.reset()
-    directionalLightRotation.reset()
-    directionalLightIntensity.reset()
-    directionalLightColor.reset()
-    hemisphereSkyColor.reset()
-    hemisphereGroundColor.reset()
-    hemisphereLightIntensity.reset()
-    ambientLightColor.reset()
-    ambientLightIntensity.reset()
-    envSelect.reset()
-    skyBoxIntensity.reset()
+    previewExpression.value = null
+    shouldUpdateView()
   }
 
   return {
+    position,
+    scale,
+    rotationY,
+
+    physicsEnabled,
+    ikEnabled,
+    grantEnabled,
+    gazeTrackingEnabled,
+
+    idleMotionName,
+    currentMotion,
+    availableMotions,
+    customMotions,
+    addMotion,
+    getMotionFile,
+    clearMotions,
+    emotionActionMap,
+
+    morphOverrides,
     availableMorphs,
     morphMappings,
     hiddenMorphs,
-    availableMotions,
-    currentMotion,
     previewExpression,
-    resetState,
-
-    // Placement, Camera & Lighting configurations
-    scale,
-    modelOffset,
-    modelRotationY,
     modelSize,
-    modelOrigin,
-    cameraFOV,
-    cameraPosition,
-    cameraDistance,
-    trackingMode,
-    followSpeed,
-    eyeHeight,
-    lookAtTarget,
-    directionalLightPosition,
-    directionalLightTarget,
-    directionalLightRotation,
-    directionalLightIntensity,
-    directionalLightColor,
-    hemisphereSkyColor,
-    hemisphereGroundColor,
-    hemisphereLightIntensity,
-    ambientLightColor,
-    ambientLightIntensity,
-    envSelect,
-    skyBoxIntensity,
+
+    isModelLoaded,
+    oneShotAction,
+    playOneShotAction,
+
+    onShouldUpdateView,
+    shouldUpdateView,
+    resetState,
   }
 })
+
+export { useMMDViewControl }

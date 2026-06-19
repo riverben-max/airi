@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMmd } from '@proj-airi/stage-ui-mmd/stores/mmd'
-import { Button, Checkbox, FieldRange, SelectTab } from '@proj-airi/ui'
+import { Button, Checkbox, SelectTab } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -23,16 +23,20 @@ const props = withDefaults(defineProps<{
 const mmdStore = useMmd()
 const positioningStore = usePositioningStore()
 const settingsStore = useSettings()
-const { t } = useI18n()
+useI18n()
 const { stageModelSelected } = storeToRefs(settingsStore)
-const { availableMorphs, morphMappings, hiddenMorphs, availableMotions, currentMotion, previewExpression, followSpeed } = storeToRefs(mmdStore)
-
-const mouseTrackingEnabled = computed({
-  get: () => mmdStore.trackingMode === 'mouse',
-  set: (val) => {
-    mmdStore.trackingMode = val ? 'mouse' : 'none'
-  },
-})
+const {
+  availableMorphs,
+  morphMappings,
+  hiddenMorphs,
+  availableMotions,
+  idleMotionName: currentMotion,
+  previewExpression,
+  physicsEnabled,
+  ikEnabled,
+  grantEnabled,
+  gazeTrackingEnabled: mouseTrackingEnabled,
+} = storeToRefs(mmdStore)
 
 const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
@@ -371,36 +375,40 @@ function handleMotionSelect(motion: string) {
     :expand="false"
   >
     <div flex="~ col gap-4" p-2>
-      <!-- Mouse Tracking & Follow Speed -->
-      <div flex="~ col gap-4" class="mb-2 border-b border-neutral-100 pb-4 dark:border-neutral-800">
-        <div flex="~ items-center justify-between">
-          <div flex="~ col gap-0.5">
-            <span class="text-sm text-neutral-600 dark:text-neutral-400">{{ t('settings.vrm.scale-and-position.mouse-tracking') }}</span>
-            <span class="text-[10px] text-neutral-400">{{ t('settings.vrm.scale-and-position.mouse-tracking-desc') }}</span>
-          </div>
-          <Checkbox v-model="mouseTrackingEnabled" />
+      <!-- Mouse Tracking -->
+      <div flex="~ items-center justify-between" class="border-b border-neutral-100 pb-3 dark:border-neutral-800">
+        <div flex="~ col gap-0.5">
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">Eye Gaze & Head Tracking</span>
+          <span class="text-[10px] text-neutral-400">Look at the mouse pointer position</span>
         </div>
+        <Checkbox v-model="mouseTrackingEnabled" />
+      </div>
 
-        <div v-if="mouseTrackingEnabled" flex="~ col gap-2">
-          <FieldRange
-            v-model="followSpeed"
-            :min="0.01"
-            :max="1"
-            :step="0.01"
-            :label="t('settings.vrm.scale-and-position.follow-speed')"
-          >
-            <template #label>
-              <div flex="~ items-center justify-between" class="w-full">
-                <div class="text-sm text-neutral-600 dark:text-neutral-400">
-                  {{ t('settings.vrm.scale-and-position.follow-speed') }}
-                </div>
-                <div class="text-xs text-neutral-600 font-bold font-mono dark:text-neutral-400">
-                  {{ followSpeed.toFixed(2) }}
-                </div>
-              </div>
-            </template>
-          </FieldRange>
+      <!-- Physics Solver -->
+      <div flex="~ items-center justify-between">
+        <div flex="~ col gap-0.5">
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">Physics Simulation</span>
+          <span class="text-[10px] text-neutral-400">Enable Ammo.js physics on hair/skirts</span>
         </div>
+        <Checkbox v-model="physicsEnabled" />
+      </div>
+
+      <!-- IK Solver -->
+      <div flex="~ items-center justify-between">
+        <div flex="~ col gap-0.5">
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">IK Solver</span>
+          <span class="text-[10px] text-neutral-400">Inverse Kinematics for limbs and joints</span>
+        </div>
+        <Checkbox v-model="ikEnabled" />
+      </div>
+
+      <!-- Grant Propagation -->
+      <div flex="~ items-center justify-between">
+        <div flex="~ col gap-0.5">
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">Bone Grant Solver</span>
+          <span class="text-[10px] text-neutral-400">Propagate derived bone transformations</span>
+        </div>
+        <Checkbox v-model="grantEnabled" />
       </div>
     </div>
   </Section>

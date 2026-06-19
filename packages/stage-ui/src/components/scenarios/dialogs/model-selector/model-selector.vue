@@ -3,231 +3,47 @@ import type { Live2DValidationReport } from '@proj-airi/stage-ui-live2d'
 
 import type { DisplayModel } from '../../../../stores/display-models'
 
-import { vAutoAnimate } from '@formkit/auto-animate/vue'
 import { validateLive2DZip } from '@proj-airi/stage-ui-live2d'
-import { extractMmdFromZip } from '@proj-airi/stage-ui-mmd/utils/mmd-zip-extractor'
+import { useMmd } from '@proj-airi/stage-ui-mmd'
 import { useCustomVrmAnimationsStore } from '@proj-airi/stage-ui-three'
 import { Button } from '@proj-airi/ui'
 import { useFileDialog } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuRoot, DropdownMenuTrigger, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { computed, ref, watch } from 'vue'
+import { DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuRoot, DropdownMenuTrigger, EditableArea, EditableEditTrigger, EditableInput, EditablePreview, EditableRoot, EditableSubmitTrigger } from 'reka-ui'
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 import Live2DReportModal from './Live2DReportModal.vue'
 
 import { DisplayModelFormat, useDisplayModelsStore } from '../../../../stores/display-models'
 
+const props = defineProps<{
+  selectedModel?: DisplayModel
+}>()
 const emits = defineEmits<{
   (e: 'close', value: void): void
   (e: 'pick', value: DisplayModel | undefined): void
 }>()
-const selectedModel = defineModel<DisplayModel | undefined>({ type: Object, required: false })
 
 const displayModelStore = useDisplayModelsStore()
 const customVrmAnimationsStore = useCustomVrmAnimationsStore()
+const mmdStore = useMmd()
 const { displayModelsFromIndexedDBLoading, displayModels } = storeToRefs(displayModelStore)
-
-// Redesign State
-const viewMode = ref<'grid' | 'compact'>('compact')
-const searchQuery = ref('')
-const formatFilter = ref<'all' | 'live2d' | 'vrm' | 'spine' | 'mmd'>('all')
-const sortBy = ref<'name' | 'date' | 'type'>('date')
-
-// Expandable search state
-const isSearchExpanded = ref(false)
-const searchInputRef = ref<HTMLInputElement | null>(null)
-
-// NSFW filter state
-const nsfwFilter = ref<'sfw' | 'nsfw' | 'all'>('sfw')
-
-// Groups filter state
-const selectedGroups = ref<string[]>([])
-const filterNotSet = ref(false)
-
-// Groups dialog/modal state
-const showGroupsDialog = ref(false)
-const modelToGroup = ref<DisplayModel | null>(null)
-const tempGroupsValue = ref<string[]>([])
-const newGroupName = ref('')
-
-const showRenameDialog = ref(false)
-const modelToRename = ref<DisplayModel | null>(null)
-const tempRenameValue = ref('')
-
-watch(isSearchExpanded, (expanded) => {
-  if (expanded) {
-    setTimeout(() => {
-      searchInputRef.value?.focus()
-    }, 50)
-  }
-})
-
-const highlightDisplayModelCard = ref<string | undefined>(selectedModel.value?.id)
-const showReportModal = ref(false)
-const pendingFile = ref<File | null>(null)
-const validationReport = ref<Live2DValidationReport | null>(null)
-
-const currentTab = ref<'library' | 'explore'>('library')
-
-const marketplaces = [
-  { name: 'Steam Workshop', vrm: false, live2d: true, spine: true, mmd: false, languages: ['us'], origin: 'Steam', url: 'https://steamcommunity.com/workshop/browse/?appid=616720' },
-  { name: 'VChaVCha (Hololive MMD)', vrm: false, live2d: false, spine: false, mmd: true, languages: ['us'], origin: 'VChaVCha', url: 'https://vchavcha.com/en/free-resources/hololive-mmd-download/' },
-  { name: 'NicoNico 3D (MMD)', vrm: false, live2d: false, spine: false, mmd: true, languages: ['jp'], origin: 'Japan', url: 'https://3d.nicovideo.jp/search?category=all&download_filter=all&limit=28&max_pages=100&order=1&page=1&perfect_match=1&sort=view&usable_animation=&word=MMD&word_type=tag&work_type=mmd' },
-  { name: 'Reverse: 1999 (v1.7+)', vrm: false, live2d: true, spine: false, mmd: false, languages: ['cn', 'en'], origin: 'Storm Preservation', url: 'https://dasilva333.github.io/r1999-web-gallery/' },
-  { name: 'Booth', vrm: true, live2d: true, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://booth.pm/en/browse/VTuber' },
-  { name: 'Booth VRMA', vrm: true, live2d: false, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://booth.pm/en/browse/3D%20Motion%20&%20Animation?sort=price_asc&tags%5B%5D=VRMA' },
-  { name: 'VGen', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://vgen.co' },
-  { name: 'itch.io', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://itch.io/game-assets' },
-  { name: 'Gumroad', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://gumroad.com' },
-  { name: 'Ko-fi', vrm: true, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://ko-fi.com/shop' },
-  { name: 'VRoid Hub', vrm: true, live2d: false, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://hub.vroid.com' },
-  { name: 'Sketchfab', vrm: true, live2d: false, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://sketchfab.com' },
-  { name: 'CGTrader', vrm: true, live2d: false, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://cgtrader.com' },
-  { name: 'Nizima', vrm: false, live2d: true, spine: false, mmd: false, languages: ['jp', 'us'], origin: 'Japan', url: 'https://nizima.com' },
-  { name: 'Avatar Atelier', vrm: false, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://avataratelier.com' },
-  { name: 'VTuberAvatars', vrm: false, live2d: true, spine: false, mmd: false, languages: ['us'], origin: 'USA', url: 'https://vtuberavatars.com' },
-]
-
-// Filtering Logic
-const filteredModels = computed(() => {
-  let result = [...displayModels.value]
-
-  // Search
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    result = result.filter(m => m.name.toLowerCase().includes(q))
-  }
-
-  // Format Filter
-  if (formatFilter.value !== 'all') {
-    result = result.filter((m) => {
-      if (formatFilter.value === 'live2d')
-        return m.format === DisplayModelFormat.Live2dZip || m.format === DisplayModelFormat.Live2dDirectory
-      if (formatFilter.value === 'vrm')
-        return m.format === DisplayModelFormat.VRM
-      if (formatFilter.value === 'spine')
-        return m.format === DisplayModelFormat.SpineZip
-      if (formatFilter.value === 'mmd')
-        return m.format === DisplayModelFormat.PMXZip || m.format === DisplayModelFormat.PMXDirectory || m.format === DisplayModelFormat.PMD
-      return true
-    })
-  }
-
-  // NSFW Filter
-  if (nsfwFilter.value === 'sfw') {
-    result = result.filter(m => m.nsfw !== true)
-  }
-  else if (nsfwFilter.value === 'nsfw') {
-    result = result.filter(m => m.nsfw === true)
-  }
-
-  // Groups Filter
-  if (filterNotSet.value) {
-    result = result.filter(m => !m.groups || !Array.isArray(m.groups) || m.groups.length === 0)
-  }
-  else if (selectedGroups.value.length > 0) {
-    result = result.filter((m) => {
-      if (!m.groups || !Array.isArray(m.groups))
-        return false
-      return m.groups.some(g => selectedGroups.value.includes(g))
-    })
-  }
-
-  // Sort
-  result.sort((a, b) => {
-    if (sortBy.value === 'name')
-      return a.name.localeCompare(b.name)
-    if (sortBy.value === 'date')
-      return b.importedAt - a.importedAt
-    if (sortBy.value === 'type') {
-      const typeA = mapFormatRenderer[a.format] || ''
-      const typeB = mapFormatRenderer[b.format] || ''
-      return typeA.localeCompare(typeB)
-    }
-    return 0
-  })
-
-  return result
-})
-
-const allExistingGroups = computed(() => {
-  const groups = new Set<string>()
-  displayModels.value.forEach((m) => {
-    if (m.groups && Array.isArray(m.groups)) {
-      m.groups.forEach((g) => {
-        if (g && g.trim()) {
-          groups.add(g.trim())
-        }
-      })
-    }
-  })
-  return Array.from(groups).sort()
-})
-
-const groupCounts = computed(() => {
-  const counts: Record<string, number> = {}
-  displayModels.value.forEach((m) => {
-    if (m.groups && Array.isArray(m.groups)) {
-      m.groups.forEach((g) => {
-        const trimmed = g.trim()
-        if (trimmed) {
-          counts[trimmed] = (counts[trimmed] || 0) + 1
-        }
-      })
-    }
-  })
-  return counts
-})
-
-const ungroupedCount = computed(() => {
-  return displayModels.value.filter(m => !m.groups || !Array.isArray(m.groups) || m.groups.length === 0).length
-})
-
-function openGroupsDialog(model: DisplayModel) {
-  modelToGroup.value = model
-  tempGroupsValue.value = model.groups ? [...model.groups] : []
-  newGroupName.value = ''
-  showGroupsDialog.value = true
-}
-
-function confirmGroups() {
-  if (modelToGroup.value) {
-    const finalGroups = [...tempGroupsValue.value]
-    const name = newGroupName.value.trim()
-    if (name && !finalGroups.includes(name)) {
-      finalGroups.push(name)
-    }
-    displayModelStore.updateDisplayModelMeta(modelToGroup.value.id, {
-      groups: finalGroups,
-    })
-    newGroupName.value = ''
-    showGroupsDialog.value = false
-  }
-}
-
-function toggleModelNsfw(model: DisplayModel) {
-  displayModelStore.updateDisplayModelMeta(model.id, {
-    nsfw: !model.nsfw,
-  })
-}
+const { t } = useI18n()
 
 function handleRemoveModel(model: DisplayModel) {
   displayModelStore.removeDisplayModel(model.id)
 }
 
-function openRenameDialog(model: DisplayModel) {
-  modelToRename.value = model
-  tempRenameValue.value = model.name
-  showRenameDialog.value = true
-}
+const highlightDisplayModelCard = ref<string | undefined>(props.selectedModel?.id)
+const showReportModal = ref(false)
+const pendingFile = ref<File | null>(null)
+const validationReport = ref<Live2DValidationReport | null>(null)
 
-function confirmRename() {
-  if (modelToRename.value && tempRenameValue.value.trim()) {
-    displayModelStore.renameDisplayModel(modelToRename.value.id, tempRenameValue.value.trim())
-    showRenameDialog.value = false
-  }
-}
+watch(() => props.selectedModel?.id, (modelId) => {
+  highlightDisplayModelCard.value = modelId
+}, { immediate: true })
 
 async function handleAddLive2DModel(file: FileList | null) {
   if (file === null || file.length === 0)
@@ -240,56 +56,58 @@ async function handleAddLive2DModel(file: FileList | null) {
   pendingFile.value = file[0]
 
   if (report.status === 'VALID' && report.errors.length === 0) {
-    confirmImport()
+    await confirmImport()
+    return
   }
-  else {
-    showReportModal.value = true
-  }
+
+  showReportModal.value = true
 }
 
-function confirmImport() {
-  if (pendingFile.value) {
-    displayModelStore.addDisplayModel(DisplayModelFormat.Live2dZip, pendingFile.value)
-    pendingFile.value = null
-  }
+async function confirmImport() {
+  if (pendingFile.value === null)
+    return
+
+  // NOTICE:
+  // Keep this await. Model picking can happen immediately after import from this dialog.
+  // If addDisplayModel is fire-and-forget, updateStageModel may read the new display-model id
+  // before IndexedDB or the in-memory displayModels list is ready and fall back to the default model.
+  // Source/context: model selector import flow -> settings model pick -> settings-stage-model.getDisplayModel().
+  // Removal condition: addDisplayModel becomes a synchronous transaction or pick is blocked by explicit import state.
+  const displayModel = await displayModelStore.addDisplayModel(DisplayModelFormat.Live2dZip, pendingFile.value)
+  if (displayModel)
+    highlightDisplayModelCard.value = displayModel.id
+  pendingFile.value = null
+}
+
+function handleFixError(error: string) {
+  void error
 }
 
 function handlePick(m: DisplayModel) {
-  selectedModel.value = m
+  highlightDisplayModelCard.value = m.id
   emits('pick', m)
   emits('close', undefined)
 }
 
 function handleMobilePick() {
-  const model = displayModels.value.find(model => model.id === highlightDisplayModelCard.value)
-  if (model) {
-    selectedModel.value = model
-    emits('pick', model)
-    emits('close', undefined)
-  }
+  emits('pick', displayModels.value.find(model => model.id === highlightDisplayModelCard.value))
+  emits('close', undefined)
 }
 
-async function handleAddVRMModel(files: FileList | null) {
-  if (files === null || files.length === 0)
+async function handleAddVRMModel(file: FileList | null) {
+  if (file === null || file.length === 0)
+    return
+  if (!file[0].name.endsWith('.vrm'))
     return
 
-  let importedCount = 0
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    if (file.name.endsWith('.vrm')) {
-      try {
-        await displayModelStore.addDisplayModel(DisplayModelFormat.VRM, file)
-        importedCount++
-      }
-      catch (error) {
-        console.error('[Model Selector] Failed to add VRM model:', file.name, error)
-        toast.error(`Failed to add VRM model: ${file.name}`)
-      }
-    }
-  }
-  if (importedCount > 0) {
-    toast.success(`Successfully imported ${importedCount} VRM model(s).`)
-  }
+  // NOTICE:
+  // Keep this await for the same import-then-pick race as Live2D imports above.
+  // The returned model id is only safe to highlight after addDisplayModel has updated the store.
+  // Source/context: model selector import flow -> settings model pick -> settings-stage-model.getDisplayModel().
+  // Removal condition: addDisplayModel becomes a synchronous transaction or pick is blocked by explicit import state.
+  const displayModel = await displayModelStore.addDisplayModel(DisplayModelFormat.VRM, file[0])
+  if (displayModel)
+    highlightDisplayModelCard.value = displayModel.id
 }
 
 async function handleAddSpineModel(file: FileList | null) {
@@ -298,57 +116,78 @@ async function handleAddSpineModel(file: FileList | null) {
   if (!file[0].name.endsWith('.zip'))
     return
 
-  try {
-    await displayModelStore.addDisplayModel(DisplayModelFormat.SpineZip, file[0])
-  }
-  catch (error) {
-    console.error('[Model Selector] Failed to add Spine model:', error)
-    toast.error(error instanceof Error ? error.message : 'Failed to add Spine model.')
-  }
+  // NOTICE:
+  // Keep this await for the same import-then-pick race as Live2D/VRM imports above.
+  // The returned model id is only safe to highlight after addDisplayModel has updated the store.
+  // Source/context: model selector import flow -> settings model pick -> settings-stage-model.getDisplayModel().
+  // Removal condition: addDisplayModel becomes a synchronous transaction or pick is blocked by explicit import state.
+  const displayModel = await displayModelStore.addDisplayModel(DisplayModelFormat.SpineZip, file[0])
+  if (displayModel)
+    highlightDisplayModelCard.value = displayModel.id
 }
 
-async function handleAddMmdModel(file: FileList | null) {
+async function handleAddMMDModel(file: FileList | null) {
   if (file === null || file.length === 0)
     return
 
-  const zipFile = file[0]
-  if (!zipFile.name.toLowerCase().endsWith('.zip'))
+  const picked = file[0]
+  const lower = picked.name.toLowerCase()
+  // MMD distributes models as a zip (model + textures) or, less commonly, as a
+  // bare .pmx/.pmd. The renderer detects zip vs raw by magic bytes at load
+  // time, so the format here is mainly a label; .pmd keeps its own enum value.
+  let format: DisplayModelFormat
+  if (lower.endsWith('.pmd'))
+    format = DisplayModelFormat.PMD
+  else if (lower.endsWith('.pmx') || lower.endsWith('.zip'))
+    format = DisplayModelFormat.PMXZip
+  else
     return
 
+  // NOTICE:
+  // Keep this await for the same import-then-pick race as the other formats.
+  // Source/context: model selector import flow -> settings model pick -> settings-stage-model.getDisplayModel().
+  // Removal condition: addDisplayModel becomes a synchronous transaction or pick is blocked by explicit import state.
   try {
-    const extracted = await extractMmdFromZip(zipFile)
-    if (!extracted) {
-      toast.error('No PMX or PMD model file found in the zip archive.')
-      return
-    }
-
-    const format = extracted.modelFile.name.toLowerCase().endsWith('.pmd')
-      ? DisplayModelFormat.PMD
-      : DisplayModelFormat.PMXZip
-
-    await displayModelStore.addDisplayModelWithTextures(format, extracted.modelFile, extracted.textureFiles)
-    toast.success('MMD model added successfully!')
+    const displayModel = await displayModelStore.addDisplayModel(format, picked)
+    if (displayModel)
+      highlightDisplayModelCard.value = displayModel.id
   }
-  catch (error) {
-    console.error('[Model Selector] Failed to add MMD model:', error)
-    toast.error(error instanceof Error ? error.message : 'Failed to add MMD model.')
+  catch (err) {
+    console.error('[model-selector] failed to import MMD model:', err)
   }
 }
 
 async function handleAddVrmaAnimation(file: FileList | null) {
   if (file === null || file.length === 0)
     return
-  if (!file[0].name.endsWith('.vrma'))
+  if (!file[0].name.toLowerCase().endsWith('.vrma'))
     return
 
   try {
     await customVrmAnimationsStore.addCustomAnimation(file[0])
     emits('close', undefined)
-    toast.success(`${file[0].name} was added. It now appears in the idle loops dropdown. If it does not start immediately, click Refresh on the stage and then select it there.`)
+    toast.success(`${file[0].name} was added.`)
   }
   catch (error) {
-    console.error('[Model Selector] Failed to add VRMA animation', error)
+    console.error('[Model Selector] Failed to add VRMA animation:', error)
     toast.error('Failed to add custom VRMA animation.')
+  }
+}
+
+async function handleAddVmdMotion(file: FileList | null) {
+  if (file === null || file.length === 0)
+    return
+  if (!file[0].name.toLowerCase().endsWith('.vmd'))
+    return
+
+  try {
+    await mmdStore.addMotion(file[0])
+    emits('close', undefined)
+    toast.success(`${file[0].name} was added successfully as a custom MMD motion!`)
+  }
+  catch (error) {
+    console.error('[Model Selector] Failed to add VMD motion:', error)
+    toast.error('Failed to add custom VMD motion.')
   }
 }
 
@@ -363,184 +202,50 @@ const mapFormatRenderer: Record<DisplayModelFormat, string> = {
 }
 
 const live2dDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
-const vrmDialog = useFileDialog({ accept: '.vrm', multiple: true, reset: true })
+const vrmDialog = useFileDialog({ accept: '.vrm', multiple: false, reset: true })
 const vrmaDialog = useFileDialog({ accept: '.vrma', multiple: false, reset: true })
 const spineDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
-const mmdDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
+const mmdDialog = useFileDialog({ accept: '.zip,.pmx,.pmd', multiple: false, reset: true })
+const vmdDialog = useFileDialog({ accept: '.vmd', multiple: false, reset: true })
 
 live2dDialog.onChange(handleAddLive2DModel)
 vrmDialog.onChange(handleAddVRMModel)
 vrmaDialog.onChange(handleAddVrmaAnimation)
 spineDialog.onChange(handleAddSpineModel)
-mmdDialog.onChange(handleAddMmdModel)
-
-function handleFixError(err: string) {
-  // eslint-disable-next-line no-console
-  console.log('[Model Selector] Fixing error:', err)
-  // Logic to fix common errors (e.g. missing preview)
-  // For now, we provide guidance or mark as ignorable in the future
-  if (err.toLowerCase().includes('preview') || err.toLowerCase().includes('thumbnail') || err.toLowerCase().includes('icon')) {
-    // If it's a missing preview, we could generate a placeholder
-    // For this PR feedback, we just acknowledged the "Quick Fix" button existence
-  }
-}
+mmdDialog.onChange(handleAddMMDModel)
+vmdDialog.onChange(handleAddVmdMotion)
 </script>
 
 <template>
-  <div :class="['pt-4 sm:pt-0', 'gap-4 sm:gap-6', 'h-full flex flex-col']">
-    <div class="flex items-center">
-      <Live2DReportModal
-        v-model:open="showReportModal"
-        :report="validationReport"
-        @confirm="confirmImport"
-        @fix-error="handleFixError"
-      />
+  <div pt="4 sm:0" gap="4 sm:6" h-full flex flex-col>
+    <Live2DReportModal
+      v-model:open="showReportModal"
+      :report="validationReport"
+      @confirm="confirmImport"
+      @fix-error="handleFixError"
+    />
 
-      <!-- Rename Dialog -->
-      <DialogRoot v-model:open="showRenameDialog">
-        <DialogPortal>
-          <DialogOverlay class="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm" />
-          <DialogContent class="fixed left-1/2 top-1/2 z-[10001] max-w-md w-[90dvw] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 text-neutral-900 shadow-xl dark:bg-neutral-900 dark:text-neutral-100">
-            <DialogTitle class="text-lg font-bold">
-              Rename Model
-            </DialogTitle>
-            <div :class="['mt-4 flex flex-col gap-4', 'split-button-container']">
-              <input
-                v-model="tempRenameValue"
-                type="text"
-                class="w-full border border-neutral-200 rounded-lg bg-neutral-100 px-3 py-2 outline-none dark:border-neutral-800 dark:bg-neutral-800"
-                placeholder="Model Name"
-                @keyup.enter="confirmRename"
-              >
-              <div class="flex justify-end gap-2">
-                <Button variant="secondary" @click="showRenameDialog = false">
-                  Cancel
-                </Button>
-                <Button @click="confirmRename">
-                  Rename
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </DialogPortal>
-      </DialogRoot>
-
-      <!-- Manage Groups Dialog -->
-      <DialogRoot v-model:open="showGroupsDialog">
-        <DialogPortal>
-          <DialogOverlay class="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm" />
-          <DialogContent class="fixed left-1/2 top-1/2 z-[10001] max-w-md w-[90dvw] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 text-neutral-900 shadow-xl dark:bg-neutral-900 dark:text-neutral-100">
-            <DialogTitle class="text-lg font-bold">
-              Manage Groups
-            </DialogTitle>
-            <div class="mt-4 flex flex-col gap-4">
-              <!-- List of existing groups with checkboxes -->
-              <div v-if="allExistingGroups.length > 0" class="max-h-48 flex flex-col gap-2 overflow-y-auto">
-                <label v-for="group in allExistingGroups" :key="group" class="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    v-model="tempGroupsValue"
-                    type="checkbox"
-                    :value="group"
-                    class="border-neutral-300 rounded text-primary-500 focus:ring-primary-500"
-                  >
-                  <span>{{ group }}</span>
-                </label>
-              </div>
-              <div v-else class="text-xs text-neutral-400">
-                No existing groups. Add a new one below!
-              </div>
-
-              <!-- Add new group input -->
-              <input
-                v-model="newGroupName"
-                type="text"
-                class="w-full border border-neutral-200 rounded-lg bg-neutral-100 px-3 py-1.5 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-800"
-                placeholder="New Group Name"
-                @keyup.enter="confirmGroups"
-              >
-
-              <div class="mt-2 flex justify-end gap-2">
-                <Button variant="secondary" @click="showGroupsDialog = false">
-                  Cancel
-                </Button>
-                <Button @click="confirmGroups">
-                  Save
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </DialogPortal>
-      </DialogRoot>
-    </div>
-
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <div class="text-xl font-bold">
-          Model Selector
-        </div>
-        <!-- Tab Navigation -->
-        <div class="flex rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
-          <button
-            :class="[
-              currentTab === 'library' ? 'bg-white dark:bg-neutral-700 shadow-sm' : 'opacity-50 hover:opacity-100',
-              'px-3 py-1 rounded-md transition-all text-sm font-bold flex items-center gap-1',
-            ]"
-            @click="currentTab = 'library'"
-          >
-            <div class="i-solar:library-bold-duotone" />
-            Library
-          </button>
-          <button
-            :class="[
-              currentTab === 'explore' ? 'bg-white dark:bg-neutral-700 shadow-sm' : 'opacity-50 hover:opacity-100',
-              'px-3 py-1 rounded-md transition-all text-sm font-bold flex items-center gap-1',
-            ]"
-            @click="currentTab = 'explore'"
-          >
-            <div class="i-solar:compass-bold-duotone" />
-            Explore
-          </button>
-        </div>
+    <div flex items-center>
+      <div w-full flex-1 text-xl>
+        {{ t('settings.model-select.select-model.title') }}
       </div>
-
-      <div class="flex items-center gap-2">
-        <!-- View Mode Toggle (Only for Library) -->
-        <div v-if="currentTab === 'library'" class="mr-2 flex rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
-          <button
-            :class="[
-              viewMode === 'grid' ? 'bg-white dark:bg-neutral-700 shadow-sm' : 'hover:bg-black/5 dark:hover:bg-white/5 opacity-50',
-              'p-1.5 rounded-md transition-all',
-            ]"
-            aria-label="Grid View"
-            @click="viewMode = 'grid'"
-          >
-            <div class="i-solar:widget-2-bold-duotone" />
-          </button>
-          <button
-            :class="[
-              viewMode === 'compact' ? 'bg-white dark:bg-neutral-700 shadow-sm' : 'hover:bg-black/5 dark:hover:bg-white/5 opacity-50',
-              'p-1.5 rounded-md transition-all',
-            ]"
-            aria-label="Compact Grid View"
-            @click="viewMode = 'compact'"
-          >
-            <div class="i-solar:list-bold-duotone" />
-          </button>
-        </div>
-
-        <DropdownMenuRoot v-if="currentTab === 'library'">
+      <div>
+        <DropdownMenuRoot>
           <DropdownMenuTrigger
-            class="flex items-center justify-center gap-2 rounded-lg bg-neutral-400/20 px-3 py-1.5 backdrop-blur-sm transition-colors duration-200 ease-in-out active:bg-neutral-400/60 dark:bg-neutral-700/50 hover:bg-neutral-400/45 active:dark:bg-neutral-700/90 hover:dark:bg-neutral-700/65"
+            bg="neutral-400/20 hover:neutral-400/45 active:neutral-400/60 dark:neutral-700/50 hover:dark:neutral-700/65 active:dark:neutral-700/90"
+            flex items-center justify-center gap-1 rounded-lg px-2 py-1 backdrop-blur-sm
+            transition="colors duration-200 ease-in-out"
             aria-label="Options for Display Models"
           >
-            <div class="i-solar:add-circle-bold" />
-            <div class="font-bold">
-              Add Local
-            </div>
+            <div i-solar:add-circle-bold />
+            <div>{{ t('settings.model-select.select-model.import') }}</div>
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuContent
-              class="will-change-[opacity,transform] z-10000 max-w-45 border border-neutral-200 rounded-lg bg-neutral-100 p-0.5 text-neutral-900 shadow-md outline-none backdrop-blur-sm data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              class="will-change-[opacity,transform] z-10000 max-w-45 rounded-lg p-0.5 shadow-md outline-none data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade"
+              bg="neutral-100/50 dark:neutral-950/50"
+              transition="colors duration-200 ease-in-out"
+              backdrop-blur-sm
               align="end"
               side="bottom"
               :side-offset="8"
@@ -575,8 +280,7 @@ function handleFixError(err: string) {
                   'data-[highlighted]:bg-primary-300/20 dark:data-[highlighted]:bg-primary-100/20',
                   'data-[highlighted]:text-primary-400 dark:data-[highlighted]:text-primary-200',
                 ]"
-                transition="colors duration-200 ease-in-out"
-                @click="vrmaDialog.open()"
+                transition="colors duration-200 ease-in-out" @click="vrmaDialog.open()"
               >
                 VRMA (.vrma)
               </DropdownMenuItem>
@@ -587,8 +291,7 @@ function handleFixError(err: string) {
                   'data-[highlighted]:bg-primary-300/20 dark:data-[highlighted]:bg-primary-100/20',
                   'data-[highlighted]:text-primary-400 dark:data-[highlighted]:text-primary-200',
                 ]"
-                transition="colors duration-200 ease-in-out"
-                @click="spineDialog.open()"
+                transition="colors duration-200 ease-in-out" @click="spineDialog.open()"
               >
                 Spine (.zip)
               </DropdownMenuItem>
@@ -599,475 +302,146 @@ function handleFixError(err: string) {
                   'data-[highlighted]:bg-primary-300/20 dark:data-[highlighted]:bg-primary-100/20',
                   'data-[highlighted]:text-primary-400 dark:data-[highlighted]:text-primary-200',
                 ]"
-                transition="colors duration-200 ease-in-out"
-                @click="mmdDialog.open()"
+                transition="colors duration-200 ease-in-out" @click="mmdDialog.open()"
               >
                 MMD (.zip)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                :class="[
+                  'data-[disabled]:text-mauve8 relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 leading-none outline-none data-[disabled]:pointer-events-none',
+                  'text-base sm:text-sm',
+                  'data-[highlighted]:bg-primary-300/20 dark:data-[highlighted]:bg-primary-100/20',
+                  'data-[highlighted]:text-primary-400 dark:data-[highlighted]:text-primary-200',
+                ]"
+                transition="colors duration-200 ease-in-out" @click="vmdDialog.open()"
+              >
+                VMD (.vmd)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenuRoot>
       </div>
     </div>
-
-    <!-- Library Tab Content -->
-    <template v-if="currentTab === 'library'">
-      <!-- Search & Filter Bar -->
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- Expandable Search Input -->
-        <div class="relative flex items-center" :class="isSearchExpanded || searchQuery ? 'flex-1 min-w-40' : ''">
-          <button
-            v-if="!isSearchExpanded && !searchQuery"
-            class="h-[32px] w-[32px] flex items-center justify-center border border-transparent rounded-lg bg-neutral-100 text-neutral-500 transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-700"
-            title="Search Models"
-            @click="isSearchExpanded = true"
-          >
-            <div class="i-solar:magnifer-linear text-sm" />
-          </button>
-          <div v-else class="relative w-full flex items-center">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5">
-              <div class="i-solar:magnifer-linear text-xs text-neutral-500 dark:text-neutral-400" />
-            </div>
-            <input
-              ref="searchInputRef"
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search models..."
-              class="h-[32px] w-full border border-transparent rounded-lg bg-neutral-100 py-1 pl-8 pr-7 text-xs outline-none transition-all focus:border-primary-400 dark:bg-neutral-800"
-              @blur="searchQuery === '' ? isSearchExpanded = false : null"
-            >
-            <button
-              class="absolute right-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-              @click="searchQuery = ''; isSearchExpanded = false"
-            >
-              <div class="i-solar:close-square-bold-duotone text-xs" />
-            </button>
-          </div>
-        </div>
-
-        <!-- Format Filter -->
-        <select
-          v-model="formatFilter"
-          class="h-[32px] cursor-pointer border border-transparent rounded-lg bg-neutral-100 px-3 py-1 text-xs font-semibold outline-none transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-        >
-          <option value="all">
-            All Formats
-          </option>
-          <option value="live2d">
-            Live2D
-          </option>
-          <option value="vrm">
-            VRM
-          </option>
-          <option value="spine">
-            Spine
-          </option>
-          <option value="mmd">
-            MMD
-          </option>
-        </select>
-
-        <!-- Groups Popover -->
-        <PopoverRoot>
-          <PopoverTrigger as-child>
-            <button
-              :class="[
-                'h-[32px] flex items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-1 text-xs font-semibold outline-none transition-all',
-                selectedGroups.length > 0 || filterNotSet
-                  ? 'bg-primary-500/10 text-primary-500 border-primary-500/20 dark:bg-primary-500/20 dark:text-primary-400'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700',
-              ]"
-            >
-              <div class="i-solar:folder-bold-duotone" />
-              <span>Groups</span>
-              <span v-if="selectedGroups.length > 0" class="rounded-full bg-primary-500 px-1 py-0.2 text-[9px] text-white font-bold">
-                {{ selectedGroups.length }}
-              </span>
-              <span v-else-if="filterNotSet" class="rounded-full bg-primary-500 px-1 py-0.2 text-[9px] text-white font-bold">
-                1
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverPortal>
-            <PopoverContent
-              side="bottom"
-              :side-offset="6"
-              align="start"
-              class="animate-in fade-in zoom-in z-10000 w-64 border border-neutral-200/50 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur-xl duration-150 dark:border-neutral-700/50 dark:bg-neutral-900/95"
-            >
-              <div class="mb-2 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-                Filter by Groups
-              </div>
-              <div v-if="allExistingGroups.length === 0" class="py-2 text-center text-xs text-neutral-400">
-                No groups found.
-              </div>
-              <div v-else class="max-h-32 flex flex-wrap gap-1.5 overflow-y-auto pr-1">
-                <button
-                  v-for="group in allExistingGroups"
-                  :key="group"
-                  :class="[
-                    'px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all border',
-                    selectedGroups.includes(group)
-                      ? 'bg-primary-500 text-white border-primary-500'
-                      : 'bg-neutral-100 border-neutral-200 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700',
-                  ]"
-                  @click="selectedGroups.includes(group) ? selectedGroups = selectedGroups.filter(g => g !== group) : (selectedGroups.push(group), filterNotSet = false)"
-                >
-                  {{ group }} ({{ groupCounts[group] || 0 }})
-                </button>
-              </div>
-              <div class="mt-2.5 flex items-center justify-between border-t border-neutral-100 pt-2 dark:border-neutral-800">
-                <button
-                  class="text-[10px] font-bold transition-all"
-                  :class="filterNotSet ? 'text-primary-500 hover:text-primary-600' : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200'"
-                  @click="() => { filterNotSet = !filterNotSet; selectedGroups = [] }"
-                >
-                  Not Set ({{ ungroupedCount }})
-                </button>
-                <button
-                  class="text-[10px] text-neutral-400 font-bold hover:text-neutral-600 dark:hover:text-neutral-200"
-                  :disabled="selectedGroups.length === 0 && !filterNotSet"
-                  :class="selectedGroups.length === 0 && !filterNotSet ? 'opacity-40 cursor-not-allowed' : ''"
-                  @click="selectedGroups = []; filterNotSet = false"
-                >
-                  Reset
-                </button>
-              </div>
-            </PopoverContent>
-          </PopoverPortal>
-        </PopoverRoot>
-
-        <!-- Sort Popover -->
-        <PopoverRoot>
-          <PopoverTrigger as-child>
-            <button
-              class="h-[32px] flex items-center justify-center gap-1.5 rounded-lg bg-neutral-100 px-3 py-1 text-xs text-neutral-600 font-semibold outline-none transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
-            >
-              <div class="i-solar:sort-vertical-line-duotone" />
-              <span>
-                Sort: {{ sortBy === 'name' ? 'Name' : sortBy === 'type' ? 'Type' : 'Last Added' }}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverPortal>
-            <PopoverContent
-              side="bottom"
-              :side-offset="6"
-              align="end"
-              class="animate-in fade-in zoom-in z-10000 w-44 border border-neutral-200/50 rounded-xl bg-white/95 p-1 shadow-xl backdrop-blur-xl duration-150 dark:border-neutral-700/50 dark:bg-neutral-900/95"
-            >
-              <button
-                :class="[
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold rounded-lg transition-colors',
-                  sortBy === 'date' ? 'bg-primary-500/10 text-primary-500 dark:bg-primary-500/20' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300',
-                ]"
-                @click="sortBy = 'date'"
-              >
-                Last Added
-              </button>
-              <button
-                :class="[
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold rounded-lg transition-colors',
-                  sortBy === 'name' ? 'bg-primary-500/10 text-primary-500 dark:bg-primary-500/20' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300',
-                ]"
-                @click="sortBy = 'name'"
-              >
-                Name (A-Z)
-              </button>
-              <button
-                :class="[
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold rounded-lg transition-colors',
-                  sortBy === 'type' ? 'bg-primary-500/10 text-primary-500 dark:bg-primary-500/20' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300',
-                ]"
-                @click="sortBy = 'type'"
-              >
-                Type (Format)
-              </button>
-            </PopoverContent>
-          </PopoverPortal>
-        </PopoverRoot>
-
-        <!-- NSFW Filter Popover -->
-        <PopoverRoot>
-          <PopoverTrigger as-child>
-            <button
-              :class="[
-                'h-[32px] flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-semibold outline-none transition-all active:scale-95',
-                nsfwFilter === 'sfw'
-                  ? 'bg-neutral-100 border-transparent text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                  : nsfwFilter === 'nsfw'
-                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600 shadow-md shadow-red-500/10'
-                    : 'bg-primary-500/10 text-primary-500 border-primary-500/20 dark:bg-primary-500/20 dark:text-primary-400',
-              ]"
-            >
-              <div :class="nsfwFilter === 'nsfw' ? 'i-solar:eye-bold' : nsfwFilter === 'sfw' ? 'i-solar:eye-closed-bold-duotone' : 'i-solar:eye-bold'" />
-              <span>
-                {{ nsfwFilter === 'sfw' ? 'SFW Only' : nsfwFilter === 'nsfw' ? 'NSFW Only' : 'Show All' }}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverPortal>
-            <PopoverContent
-              side="bottom"
-              :side-offset="6"
-              align="end"
-              class="animate-in fade-in zoom-in z-10000 w-36 border border-neutral-200/50 rounded-xl bg-white/95 p-1 shadow-xl backdrop-blur-xl duration-150 dark:border-neutral-700/50 dark:bg-neutral-900/95"
-            >
-              <button
-                :class="[
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold rounded-lg transition-colors',
-                  nsfwFilter === 'sfw' ? 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-100 font-bold' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
-                ]"
-                @click="nsfwFilter = 'sfw'"
-              >
-                SFW Only
-              </button>
-              <button
-                :class="[
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold rounded-lg transition-colors',
-                  nsfwFilter === 'nsfw' ? 'bg-red-500/10 text-red-500 font-bold' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
-                ]"
-                @click="nsfwFilter = 'nsfw'"
-              >
-                NSFW Only
-              </button>
-              <button
-                :class="[
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold rounded-lg transition-colors',
-                  nsfwFilter === 'all' ? 'bg-primary-500/10 text-primary-500 dark:bg-primary-500/20 font-bold' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
-                ]"
-                @click="nsfwFilter = 'all'"
-              >
-                Show All
-              </button>
-            </PopoverContent>
-          </PopoverPortal>
-        </PopoverRoot>
-      </div>
-
-      <div v-if="displayModelsFromIndexedDBLoading">
-        Loading display models...
-      </div>
-
-      <div class="flex-1 overflow-y-auto pr-1">
+    <div v-if="displayModelsFromIndexedDBLoading">
+      Loading display models...
+    </div>
+    <div class="flex-1 overflow-x-auto overflow-y-hidden md:flex-none sm:overflow-x-hidden sm:overflow-y-scroll" h-full w-full>
+      <div class="w-full flex gap-2 md:grid lg:grid-cols-2 md:grid-cols-1 lg:max-h-80dvh">
         <div
-          class="w-full lg:max-h-80dvh"
-          :class="[
-            viewMode === 'grid' ? 'flex flex-col gap-2 md:grid lg:grid-cols-2 md:grid-cols-1' : 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2',
-          ]"
+          v-for="(model) of displayModels"
+          :key="model.id"
+          v-auto-animate
+          relative gap-2
+          class="block h-full w-full md:flex md:flex-row"
+          @click="() => highlightDisplayModelCard = model.id"
         >
-          <!-- (Rest of Library Model Grid) -->
-          <div
-            v-for="(model) of filteredModels"
-            :key="model.id"
-            class="group relative transition-all duration-200"
-            :class="[
-              viewMode === 'grid' ? 'block h-full w-full md:flex md:flex-row gap-2' : 'flex flex-col',
-              highlightDisplayModelCard === model.id ? 'z-10' : 'z-0',
-            ]"
-            @click="() => highlightDisplayModelCard = model.id"
-          >
-            <!-- Options Menu -->
-            <div class="absolute right-2 top-2 z-10">
-              <DropdownMenuRoot>
-                <DropdownMenuTrigger
+          <div absolute left-3 top-4 z-1>
+            <DropdownMenuRoot>
+              <DropdownMenuTrigger
+                :class="[
+                  'bg-neutral-900/20 hover:bg-neutral-900/45 active:bg-neutral-900/60 dark:bg-neutral-950/50 hover:dark:bg-neutral-900/65 active:dark:bg-neutral-900/90',
+                ]"
+                text="white"
+                h-7 w-7 flex items-center justify-center rounded-lg backdrop-blur-sm
+                transition="colors duration-200 ease-in-out"
+                aria-label="Options for Display Models"
+              >
+                <div i-solar:menu-dots-bold />
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent
                   :class="[
-                    'bg-neutral-900/40 group-hover:bg-neutral-900/60 dark:bg-neutral-950/40 group-hover:dark:bg-neutral-900/80',
-                    viewMode === 'compact' ? 'h-5 w-5' : 'h-7 w-7',
-                    'text-white flex items-center justify-center rounded-lg backdrop-blur-md transition-all duration-200 ease-in-out shadow-sm',
+                    'will-change-[opacity,transform] z-10000 max-w-45 rounded-lg p-0.5 text-white shadow-md outline-none data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade dark:text-black',
+                    'bg-neutral-900/30 dark:bg-neutral-950/50',
+                    'backdrop-blur-sm',
                   ]"
-                  aria-label="Options for Display Models"
-                  @click.stop
+                  transition="colors duration-200 ease-in-out"
+                  align="start"
+                  side="bottom"
+                  :side-offset="4"
                 >
-                  <div :class="['i-solar:menu-dots-bold', viewMode === 'compact' ? 'text-xs' : 'text-base']" />
-                </DropdownMenuTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuContent
+                  <DropdownMenuItem
                     :class="[
-                      'will-change-[opacity,transform] z-10000 max-w-45 rounded-xl p-1 text-white shadow-2xl outline-none data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade dark:text-black',
-                      'bg-neutral-900/90 dark:bg-neutral-100/90',
-                      'backdrop-blur-xl border border-white/10 dark:border-black/10',
+                      'relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 text-base leading-none outline-none data-[disabled]:pointer-events-none sm:text-sm',
+                      'data-[highlighted]:bg-red-900/20 dark:data-[highlighted]:bg-red-100/20',
+                      'text-white dark:text-white data-[highlighted]:text-red-200 dark:data-[highlighted]:text-red-200',
                     ]"
                     transition="colors duration-200 ease-in-out"
-                    align="start"
-                    side="bottom"
-                    :side-offset="4"
                   >
-                    <DropdownMenuItem
-                      class="relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2 text-base leading-none outline-none data-[highlighted]:bg-white/10 sm:text-sm dark:data-[highlighted]:bg-black/10"
-                      @click="openRenameDialog(model)"
-                    >
-                      <div class="flex items-center gap-2">
-                        <div class="i-solar:pen-bold" />
-                        <div>Rename</div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2 text-base leading-none outline-none data-[highlighted]:bg-white/10 sm:text-sm dark:data-[highlighted]:bg-black/10"
-                      @click="openGroupsDialog(model)"
-                    >
-                      <div class="flex items-center gap-2">
-                        <div class="i-solar:folder-bold" />
-                        <div>Groups</div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2 text-base leading-none outline-none data-[highlighted]:bg-white/10 sm:text-sm dark:data-[highlighted]:bg-black/10"
-                      @click="toggleModelNsfw(model)"
-                    >
-                      <div class="flex items-center gap-2">
-                        <div :class="model.nsfw ? 'i-solar:eye-closed-bold' : 'i-solar:eye-bold'" />
-                        <div>{{ model.nsfw ? 'Mark as SFW' : 'Mark as NSFW' }}</div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2 text-base text-red-400 font-semibold leading-none outline-none data-[highlighted]:bg-red-500/20 sm:text-sm"
-                      @click="handleRemoveModel(model)"
-                    >
-                      <div class="flex items-center gap-2">
-                        <div class="i-solar:trash-bin-minimalistic-bold-duotone" />
-                        <div>Remove</div>
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenuPortal>
-              </DropdownMenuRoot>
-            </div>
-
-            <!-- Preview Image Area -->
-            <div
-              class="relative cursor-pointer overflow-hidden transition-all duration-300"
-              :class="[
-                viewMode === 'grid' ? 'h-50 md:h-60 w-full md:w-45 lg:w-50 shrink-0' : 'aspect-[3/4] w-full',
-              ]"
-              @click="handlePick(model)"
-            >
-              <img
-                v-if="model.previewImage"
-                :src="model.previewImage"
-                h-full w-full rounded-xl object-cover
-                loading="lazy"
-                :class="[
-                  highlightDisplayModelCard === model.id ? 'ring-3 ring-primary-500 shadow-lg' : 'ring-1 ring-white/10 dark:ring-black/10',
-                  'group-hover:scale-105 transition-transform duration-500',
-                ]"
-              >
-              <div
-                v-else
-                :class="['h-full w-full flex flex-col items-center justify-center gap-2 rounded-xl bg-neutral-200 dark:bg-neutral-800', highlightDisplayModelCard === model.id ? 'ring-3 ring-primary-500 shadow-lg' : 'ring-1 ring-white/10 dark:ring-black/10']"
-              >
-                <div class="i-solar:question-square-bold-duotone text-4xl opacity-30" />
-              </div>
-
-              <!-- Hover Effects Overlay -->
-              <div
-                class="pointer-events-none absolute inset-0 flex items-end justify-center rounded-xl from-black/60 to-transparent bg-gradient-to-t p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              >
-                <div :class="['text-white text-xs font-bold flex items-center gap-1', 'translate-y-2 group-hover:translate-y-0 transition-transform duration-300']">
-                  <div class="i-solar:map-arrow-up-bold" />
-                  Pick Model
-                </div>
-              </div>
-            </div>
-
-            <!-- Labels Area -->
-            <div
-              class="flex flex-1 flex-col"
-              :class="[viewMode === 'grid' ? 'justify-between p-2' : 'p-1.5']"
-            >
-              <div class="w-full">
-                <div class="mb-1 flex flex-wrap items-center gap-1">
-                  <!-- NSFW Badge -->
-                  <span v-if="model.nsfw" class="rounded bg-red-500/10 px-1 py-0.2 text-[8px] text-red-500 font-bold tracking-wider uppercase">NSFW</span>
-                  <!-- Group Badges -->
-                  <span v-for="g in model.groups" :key="g" class="select-none rounded bg-primary-500/10 px-1.5 py-0.2 text-[8px] text-primary-500 font-semibold">{{ g }}</span>
-                </div>
-                <div
-                  class="font-bold transition-colors"
-                  :class="[
-                    viewMode === 'grid' ? 'text-lg line-clamp-2 leading-tight' : 'text-sm line-clamp-1',
-                    highlightDisplayModelCard === model.id ? 'text-primary-500' : '',
-                  ]"
-                >
-                  {{ model.name }}
-                </div>
-                <div
-                  class="mt-1 flex items-center gap-1 opacity-60"
-                  :class="[viewMode === 'grid' ? 'text-sm' : 'text-xs']"
-                >
-                  <div v-if="model.format === DisplayModelFormat.VRM" class="i-solar:box-bold" />
-                  <div v-else class="i-solar:mask-hachi-bold" />
-                  <div>{{ mapFormatRenderer[model.format] }}</div>
-                </div>
-              </div>
-
-              <!-- Pick toggle button for Standard View only -->
-              <Button
-                v-if="viewMode === 'grid'"
-                variant="secondary"
-                class="mt-2 w-full !rounded-lg !py-1.5"
-                @click="handlePick(model)"
-              >
-                Pick
-              </Button>
-            </div>
+                    <button flex items-center gap-1 outline-none @click="handleRemoveModel(model)">
+                      <div i-solar:trash-bin-minimalistic-bold-duotone />
+                      <div>{{ t('settings.model-select.select-model.remove') }}</div>
+                    </button>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenuRoot>
           </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- Explore Tab Content -->
-    <template v-else-if="currentTab === 'explore'">
-      <div class="flex-1 overflow-y-auto pb-4 pr-2">
-        <div v-auto-animate class="grid grid-cols-1 gap-4 lg:grid-cols-3 md:grid-cols-2">
-          <a
-            v-for="site in marketplaces"
-            :key="site.name"
-            :href="site.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="group flex flex-col gap-3 border border-transparent rounded-xl bg-neutral-100 p-4 shadow-sm transition-all duration-300 hover:border-primary-500/50 dark:bg-neutral-800/50 hover:bg-white hover:shadow-md dark:hover:bg-neutral-800"
+          <div
+            class="h-full min-w-80 w-full lg:min-h-60 md:min-w-70 sm:min-w-65"
+            aspect="12/16"
+            px-1 py-2
           >
-            <div class="flex items-start justify-between">
-              <div class="text-lg font-bold transition-colors group-hover:text-primary-500">{{ site.name }}</div>
-              <div class="i-solar:share-circle-bold-duotone text-primary-500 opacity-0 transition-opacity group-hover:opacity-100" />
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <div v-if="site.vrm" class="border border-blue-500/20 rounded bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-500 font-bold">VRM</div>
-              <div v-if="site.live2d" class="border border-green-500/20 rounded bg-green-500/10 px-2 py-0.5 text-[10px] text-green-500 font-bold">LIVE2D</div>
-              <div v-if="site.spine" class="border border-purple-500/20 rounded bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-500 font-bold">SPINE</div>
-              <div v-if="site.mmd" class="border border-pink-500/20 rounded bg-pink-500/10 px-2 py-0.5 text-[10px] text-pink-500 font-bold">MMD</div>
-            </div>
-
-            <div class="mt-auto flex items-center justify-between border-t border-neutral-200 pt-2 dark:border-neutral-700">
-              <div class="flex items-center gap-1 text-xs opacity-50">
-                <div class="i-solar:globus-linear" />
-                {{ site.origin }}
+            <img
+              v-if="model.previewImage"
+              :src="model.previewImage"
+              :class="[
+                'h-full w-full rounded-xl object-cover',
+                'transition-all duration-200 ease-in-out',
+                highlightDisplayModelCard && highlightDisplayModelCard === model.id ? 'ring-3 ring-primary-400' : 'ring-0 ring-transparent',
+              ]"
+            >
+            <div v-else bg="neutral-100 dark:neutral-900" relative h-full w-full flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl :class="[highlightDisplayModelCard && highlightDisplayModelCard === model.id ? 'ring-3 ring-primary-400' : 'ring-0 ring-transparent']" transition="all duration-200 ease-in-out">
+              <div i-solar:question-square-bold-duotone text-4xl opacity-75 />
+              <div translate-y="100%" absolute top-0 flex flex-col translate-x--7 rotate-45 scale-250 gap-0 opacity-5>
+                <div text="sm sm:sm" translate-x-7 translate-y--2 text-nowrap>
+                  unavailable Preview unavailable Preview
+                </div>
+                <div text="sm sm:sm" translate-x-0 translate-y--0 text-nowrap>
+                  Preview unavailable Preview unavailable
+                </div>
+                <div text="sm sm:sm" translate-x--7 translate-y-2 text-nowrap>
+                  unavailable Preview unavailable Preview
+                </div>
               </div>
-              <div class="flex gap-1">
-                <span v-for="lang in site.languages" :key="lang" class="text-xs">
-                  {{ lang === 'jp' ? '日本語' : 'English' }}
-                </span>
+            </div>
+          </div>
+          <div w-full flex flex-col>
+            <div w-full flex-1 px-2 py-4>
+              <EditableRoot
+                v-slot="{ isEditing }"
+                :default-value="model.name"
+                placeholder="Model Name..."
+                class="flex gap-2"
+                auto-resize
+              >
+                <EditableArea class="w-[calc(100%-8px-1rem)] dark:text-white">
+                  <EditablePreview class="line-clamp-1 w-[calc(100%-8px)] overflow-hidden text-ellipsis" />
+                  <EditableInput class="w-[calc(100%-8px)]! placeholder:text-neutral-700 dark:placeholder:text-neutral-600" />
+                </EditableArea>
+                <EditableEditTrigger v-if="!isEditing">
+                  <div i-solar:pen-2-line-duotone opacity-50 />
+                </EditableEditTrigger>
+                <div v-else class="flex gap-2">
+                  <EditableSubmitTrigger>
+                    <div i-solar:check-read-line-duotone opacity-50 />
+                  </EditableSubmitTrigger>
+                </div>
+              </EditableRoot>
+              <div flex items-center gap-1 text="neutral-400 dark:neutral-600">
+                <div i-solar:tag-horizontal-bold />
+                <div>{{ mapFormatRenderer[model.format] }}</div>
               </div>
             </div>
-          </a>
-        </div>
-
-        <div class="mt-8 flex flex-col items-center gap-2 border border-primary-500/10 rounded-2xl bg-primary-500/5 p-6 text-center">
-          <div class="i-solar:info-circle-bold-duotone text-3xl text-primary-500" />
-          <div class="text-lg font-bold">
-            Know more resources?
+            <Button class="hidden md:block" variant="secondary" @click="handlePick(model)">
+              {{ t('settings.model-select.select-model.select') }}
+            </Button>
           </div>
-          <div class="max-w-sm text-sm opacity-70">
-            Help the community by suggesting more marketplaces for VRM and Live2D models!
-          </div>
-          <a href="https://github.com/moeru-ai/airi/issues" target="_blank" class="mt-2 rounded-lg bg-primary-500 px-4 py-2 text-white font-bold transition-colors hover:bg-primary-600">Suggest a Site</a>
         </div>
       </div>
-    </template>
+    </div>
     <Button class="block md:hidden" @click="handleMobilePick()">
-      Confirm
+      {{ t('settings.model-select.select-model.confirm') }}
     </Button>
   </div>
 </template>
