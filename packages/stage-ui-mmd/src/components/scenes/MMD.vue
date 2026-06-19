@@ -223,6 +223,7 @@ function handleWheel(event: WheelEvent) {
 }
 
 function handlePointerDown(event: PointerEvent) {
+  console.log('[MMD] handlePointerDown, mode:', props.interactionMode)
   if (props.interactionMode !== 'drag' && props.interactionMode !== 'positioning')
     return
 
@@ -243,6 +244,7 @@ function handlePointerMove(event: PointerEvent) {
   if (!isDragging.value)
     return
 
+  console.log('[MMD] handlePointerMove dragging')
   const deltaX = event.clientX - dragStartX
   const deltaY = event.clientY - dragStartY
 
@@ -253,6 +255,7 @@ function handlePointerMove(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
+  console.log('[MMD] handlePointerUp')
   if (!isDragging.value)
     return
 

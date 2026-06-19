@@ -1,5 +1,6 @@
 import localforage from 'localforage'
 
+import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -29,6 +30,7 @@ function fileNameToLabel(fileName: string) {
 
 export const useCustomVrmAnimationsStore = defineStore('custom-vrm-animations', () => {
   const customAnimations = ref<Record<string, CustomVrmAnimation>>({})
+  const deletedAnimations = useLocalStorageManualReset<string[]>('settings/vrma/deleted-animations', () => [])
   const customAnimationsLoading = ref(false)
   const customAnimationsLoaded = ref(false)
   const objectUrls = new Map<string, string>()
@@ -106,11 +108,14 @@ export const useCustomVrmAnimationsStore = defineStore('custom-vrm-animations', 
   async function addCustomAnimation(file: File) {
     await loadCustomAnimations()
 
-    const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const name = fileNameToLabel(file.name)
+    const existingEntry = Object.entries(customAnimations.value).find(([_, anim]) => anim.originalFileName === file.name || anim.name === name)
+    const id = existingEntry ? existingEntry[0].replace(CUSTOM_VRMA_KEY_PREFIX, '') : (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+
     const stored: StoredCustomVrmAnimation = {
       file,
       importedAt: Date.now(),
-      name: fileNameToLabel(file.name),
+      name,
       originalFileName: file.name,
     }
 
@@ -122,7 +127,23 @@ export const useCustomVrmAnimationsStore = defineStore('custom-vrm-animations', 
       [animation.key]: animation,
     }
 
+    deletedAnimations.value = deletedAnimations.value.filter(d => d !== id)
+
     return animation.key
+  }
+
+  async function removeCustomAnimation(id: string) {
+    const key = getAnimationKey(id)
+    revokeObjectUrl(key)
+    const nextAnimations = { ...customAnimations.value }
+    delete nextAnimations[key]
+    customAnimations.value = nextAnimations
+
+    await localforage.removeItem(getStorageKey(id))
+
+    if (!deletedAnimations.value.includes(id)) {
+      deletedAnimations.value = [...deletedAnimations.value, id]
+    }
   }
 
   function resolveAnimationUrl(key: string | null | undefined) {
@@ -160,6 +181,8 @@ export const useCustomVrmAnimationsStore = defineStore('custom-vrm-animations', 
     animationLabelByKey,
     loadCustomAnimations,
     addCustomAnimation,
+    removeCustomAnimation,
     resolveAnimationUrl,
+    deletedAnimations,
   }
 })
