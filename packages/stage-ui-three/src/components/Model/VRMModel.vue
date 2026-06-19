@@ -319,7 +319,10 @@ async function playBaseAnimation() {
       clip = loadedClip
     }
 
-    const newAction = vrmAnimationMixer!.clipAction(clip)
+    if (!vrmAnimationMixer)
+      return
+
+    const newAction = vrmAnimationMixer.clipAction(clip)
     const fadeDuration = 0.8
 
     newAction.setLoop(LoopRepeat, Infinity)
@@ -382,7 +385,10 @@ async function playNextIdleCycleAnimation() {
       clip = loadedClip
     }
 
-    const newAction = vrmAnimationMixer!.clipAction(clip)
+    if (!vrmAnimationMixer)
+      return
+
+    const newAction = vrmAnimationMixer.clipAction(clip)
     const fadeDuration = 0.8
 
     if (cycle.length === 1) {
@@ -460,7 +466,10 @@ async function playTransientAnimation(key: string) {
       clip = loadedClip
     }
 
-    const newAction = vrmAnimationMixer!.clipAction(clip)
+    if (!vrmAnimationMixer)
+      return
+
+    const newAction = vrmAnimationMixer.clipAction(clip)
     const fadeDuration = 0.5
 
     newAction.setLoop(LoopOnce, 1)

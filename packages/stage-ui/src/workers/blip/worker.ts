@@ -145,7 +145,7 @@ defineStreamInvokeHandler(context, blipLoadEvent, toStreamHandler<any, any>(asyn
   env.backends.onnx.wasm!.proxy = false
   const hfToken = payload.hfToken
   if (hfToken) {
-    env.customHeaders = {
+    (env as any).customHeaders = {
       Authorization: `Bearer ${hfToken}`,
     }
   }
@@ -249,7 +249,7 @@ defineInvokeHandler(context, blipProcessEvent, async ({ imageUrl, generalThresho
     const paddedImage = new RawImage(paddedData, maxDim, maxDim, 4)
     const resized = await paddedImage.resize(448, 448, { resample: 3 })
     const resizedData = resized.data
-    console.log(`[Vision Worker Debug] resizedData: width=${resized.width}, height=${resized.height}, channels=${resized.channels}, min=${resizedData.reduce((a, b) => Math.min(a, b), 255)}, max=${resizedData.reduce((a, b) => Math.max(a, b), 0)}, sampleData=[${Array.from(resizedData.slice(0, 12)).join(', ')}]`)
+    console.log(`[Vision Worker Debug] resizedData: width=${resized.width}, height=${resized.height}, channels=${resized.channels}, min=${(resizedData as any).reduce((a: number, b: number) => Math.min(a, b), 255)}, max=${(resizedData as any).reduce((a: number, b: number) => Math.max(a, b), 0)}, sampleData=[${Array.from(resizedData.slice(0, 12)).join(', ')}]`)
 
     const data = new Float32Array(448 * 448 * 3)
 
