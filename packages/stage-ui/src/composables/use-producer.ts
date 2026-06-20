@@ -76,7 +76,6 @@ The conversation so far involves the user chatting with {characterName}.
 Rules:
 - Each suggestion must sound like something the user would naturally say, not a formal prompt
 {lengthRule}
-- Vary the emotional register: curious, playful, sincere, bold — don't make all suggestions the same tone
 - No meta-commentary, no "(OOC)" notes, no quotation marks around the message text
 - Output exactly {count} options matching the requested voice style.`
 

@@ -345,7 +345,6 @@ ${isGoalDriven && story
 Rules:
 - Each suggestion must sound like something the user would naturally say, not a formal prompt
 - Keep each message under 2 sentences
-- Vary the emotional register: curious, playful, sincere, bold — don't make all 4 the same tone
 - No meta-commentary, no "(OOC)" notes, no quotation marks around the message text
 - Output exactly 4 options matching the requested voice style.
 ${isGoalDriven
