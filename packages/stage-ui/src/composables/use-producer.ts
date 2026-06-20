@@ -2,13 +2,17 @@ import type { ChatProvider } from '@xsai-ext/providers/utils'
 
 import type { ChatHistoryItem } from '../types/chat'
 
+import { useLocalStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 
 import * as v from 'valibot'
 
+import { useChatContextStore } from '../stores/chat/context-store'
 import { useLLM } from '../stores/llm'
+import { useAiriCardStore } from '../stores/modules/airi-card'
 import { useConsciousnessStore } from '../stores/modules/consciousness'
+import { useProactivityStore } from '../stores/proactivity'
 import { useProvidersStore } from '../stores/providers'
 
 const ChoiceSchema = v.object({
@@ -63,11 +67,50 @@ function extractMessageText(message: ChatHistoryItem): string {
   return ''
 }
 
+export const DEFAULT_SYSTEM_PROMPT_TEMPLATE = `You are a dialogue writing assistant for an interactive roleplay. 
+Your job is to suggest {count} things the USER could say next, written in the user's natural, personal voice, please ensure you follow their style of capitalization and punctuation and the way they say things including action brackets and asterisks to imitate the user as closely as possible.
+
+The conversation so far involves the user chatting with {characterName}.
+{guidance}
+
+Rules:
+- Each suggestion must sound like something the user would naturally say, not a formal prompt
+{lengthRule}
+- Vary the emotional register: curious, playful, sincere, bold — don't make all suggestions the same tone
+- No meta-commentary, no "(OOC)" notes, no quotation marks around the message text
+- Output exactly {count} options matching the requested voice style.`
+
+function compilePrompt(
+  template: string,
+  options: {
+    count: number
+    characterName: string
+    guidance?: string
+    shortReplies: boolean
+  },
+) {
+  const guidanceText = options.guidance
+    ? `The user wants suggestions that feel like: "${options.guidance}"`
+    : ''
+  const lengthRuleText = options.shortReplies
+    ? '- Keep each message under 2 sentences'
+    : '- Match the user\'s typical response length and depth, generating detailed, paragraph-length options (multiple sentences and rich actions) rather than short dialogue snippets'
+
+  return template
+    .replace(/\{count\}/g, String(options.count))
+    .replace(/\{characterName\}/g, options.characterName)
+    .replace(/\{guidance\}/g, guidanceText)
+    .replace(/\{lengthRule\}/g, lengthRuleText)
+}
+
 export function useProducer() {
   const llmStore = useLLM()
   const consciousnessStore = useConsciousnessStore()
   const providersStore = useProvidersStore()
   const { activeProvider, activeModel } = storeToRefs(consciousnessStore)
+
+  const cacheAligned = useLocalStorage('airi:producer:cache-aligned', false)
+  const customPromptTemplate = useLocalStorage('airi:producer:system-prompt-template', DEFAULT_SYSTEM_PROMPT_TEMPLATE)
 
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -96,45 +139,114 @@ export function useProducer() {
         throw new Error(`Failed to resolve provider instance for "${providerId}".`)
       }
 
-      // Slice messages according to context depth
-      const relevantMessages = options.messages
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(-options.contextDepth)
+      const customTemplate = customPromptTemplate.value || DEFAULT_SYSTEM_PROMPT_TEMPLATE
+      const compiledPrompt = compilePrompt(customTemplate, {
+        count: options.count,
+        characterName: options.characterName,
+        guidance: options.guidance,
+        shortReplies: options.shortReplies,
+      })
 
-      const chatHistoryText = relevantMessages
-        .map((m) => {
-          const speaker = m.role === 'user' ? 'User' : options.characterName
-          const content = extractMessageText(m)
-          return `${speaker}: ${content}`
+      let inputMessages: any[] = []
+
+      if (cacheAligned.value) {
+        const chatContext = useChatContextStore()
+        const proactivityStore = useProactivityStore()
+        const cardStore = useAiriCardStore()
+
+        const systemMsg = options.messages.find(m => m.role === 'system')
+        const conversationMsgs = options.messages.filter(
+          m => m.role === 'user' || m.role === 'assistant',
+        )
+
+        const formattedHistory = conversationMsgs.map((m) => {
+          let messageContent: any = ''
+          if (m.role === 'assistant') {
+            messageContent = (m as any).rawContent || m.content
+          }
+          else {
+            messageContent = m.content
+          }
+
+          if (Array.isArray(messageContent)) {
+            messageContent = messageContent.map(extractPartText).join('')
+          }
+
+          return {
+            role: m.role,
+            content: messageContent as string,
+          }
         })
-        .join('\n')
 
-      const systemPrompt = `You are a dialogue writing assistant for an interactive roleplay. 
-Your job is to suggest ${options.count} things the USER could say next, written in the user's natural, personal voice, please ensure you follow their style of capitalization and punctuation and the way they say things including action brackets and asterisks to imitate the user as closely as possible.
+        // Replicate the chat.ts context injections
+        const contextsSnapshot = chatContext.getContextsSnapshot()
+        const groundingEnabled = cardStore.activeCard?.extensions?.airi?.groundingEnabled
+        const sensorPayload = groundingEnabled ? proactivityStore.sensorPayload : ''
 
-The conversation so far involves the user chatting with ${options.characterName}.
-${options.guidance ? `The user wants suggestions that feel like: "${options.guidance}"` : ''}
+        let contextContent = ''
+        if (Object.keys(contextsSnapshot).length > 0) {
+          contextContent += 'These are the contextual information retrieved or on-demand updated from other modules:\n'
+            + `${Object.entries(contextsSnapshot).map(([key, value]) => `Module ${key}: ${JSON.stringify(value)}`).join('\n')}\n`
+        }
 
-Rules:
-- Each suggestion must sound like something the user would naturally say, not a formal prompt
-${options.shortReplies ? '- Keep each message under 2 sentences' : '- Match the user\'s typical response length and depth, generating detailed, paragraph-length options (multiple sentences and rich actions) rather than short dialogue snippets'}
-- Vary the emotional register: curious, playful, sincere, bold — don't make all suggestions the same tone
-- No meta-commentary, no "(OOC)" notes, no quotation marks around the message text
-- Output exactly ${options.count} options matching the requested voice style.`
+        if (sensorPayload) {
+          contextContent += `${contextContent ? '\n---\n' : ''
+          }[ENVIRONMENTAL AWARENESS]\n`
+          + `The following telemetry describes your current environmental context. `
+          + `Use it to stay grounded in the user's reality and inform your response. `
+          + `You may reference specific values (like time or active applications) if relevant `
+          + `to the conversation, but avoid a dry, technical recitation of the data.\n`
+          + `---\n`
+          + `${sensorPayload}\n`
+        }
 
-      const userPrompt = `Here is the conversation history so far:
-${chatHistoryText}
+        const systemMessages: any[] = []
+        if (systemMsg) {
+          let systemContent = systemMsg.content
+          if (Array.isArray(systemContent)) {
+            systemContent = systemContent.map(extractPartText).join('')
+          }
+          systemMessages.push({ role: 'system', content: systemContent })
+        }
 
-Generate ${options.count} options for what the User could say next.`
+        if (contextContent.trim()) {
+          systemMessages.push({ role: 'system', content: contextContent.trim() })
+        }
+
+        const instructionSuffix = `${compiledPrompt}\n\nYou must output the result strictly in this JSON schema format:\n{\n  "options": [\n    { "title": "Option Title/Emotion (e.g. Playful, Bold, Curious)", "message": "The suggested reply text" }\n  ]\n}`
+
+        inputMessages = [
+          ...systemMessages,
+          ...formattedHistory,
+          { role: 'user', content: instructionSuffix },
+        ]
+      }
+      else {
+        const relevantMessages = options.messages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .slice(-options.contextDepth)
+
+        const chatHistoryText = relevantMessages
+          .map((m) => {
+            const speaker = m.role === 'user' ? 'User' : options.characterName
+            const content = extractMessageText(m)
+            return `${speaker}: ${content}`
+          })
+          .join('\n')
+
+        const userPrompt = `Here is the conversation history so far:\n${chatHistoryText}\n\nGenerate ${options.count} options for what the User could say next.`
+
+        inputMessages = [
+          { role: 'system', content: compiledPrompt },
+          { role: 'user', content: userPrompt },
+        ]
+      }
 
       const res = await llmStore.generateObject<{ options: Array<{ title: string, message: string }> }>(
         modelId,
         provider,
         {
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
+          messages: inputMessages,
           schema: ProducerResponseSchema,
           normalize: (parsed: any) => {
             if (parsed && Array.isArray(parsed.options)) {
