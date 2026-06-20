@@ -160,7 +160,8 @@ watch([mouthOpenSize, nowSpeaking], ([mouth, speaking]) => {
   postSpeakingState({ mouthOpenSize: mouth, nowSpeaking: speaking })
 })
 
-const { activeCard } = storeToRefs(useAiriCardStore())
+const cardStore = useAiriCardStore()
+const { activeCard } = storeToRefs(cardStore)
 const speechStore = useSpeechStore()
 const { ssmlEnabled, activeSpeechProvider, activeSpeechModel, activeSpeechVoice, pitch } = storeToRefs(speechStore)
 const { activeProvider: activeChatProvider } = storeToRefs(consciousnessStore)
@@ -831,10 +832,12 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
 })
 
 speechPipeline.on('onIntentEnd', () => {
+  cardStore.isModelSyncPrevented = false
   void discordStore.flushAudioTurn()
 })
 
 speechPipeline.on('onIntentCancel', () => {
+  cardStore.isModelSyncPrevented = false
   discordStore.clearAudioTurn()
 })
 
@@ -994,6 +997,7 @@ chatHookCleanups.push(watch(sessionUpdate, (event) => {
 }))
 
 chatHookCleanups.push(onBeforeMessageComposed(async () => {
+  cardStore.isModelSyncPrevented = true
   // NOTICE: chat and proactivity share the same speech lane. Stopping playback alone is not
   // enough if a previous turn left an active or queued intent inside the speech pipeline.
   // Reset the entire host pipeline on each new assistant turn so later chat TTS cannot inherit
