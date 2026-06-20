@@ -1016,16 +1016,23 @@ LATEST ${target === 'assistant' ? 'COMPANION RESPONSE' : 'USER INPUT'}:
     }
 
     // 4. Perform the update
-    cardStore.updateCard(activeCardId, {
-      extensions: {
-        ...activeCard.extensions,
-        airi: {
-          ...activeCard.extensions.airi,
-          active_concepts: nextConceptStack,
-          modules: moduleUpdates,
+    const prevPrevented = cardStore.isModelSyncPrevented
+    cardStore.isModelSyncPrevented = false
+    try {
+      cardStore.updateCard(activeCardId, {
+        extensions: {
+          ...activeCard.extensions,
+          airi: {
+            ...activeCard.extensions.airi,
+            active_concepts: nextConceptStack,
+            modules: moduleUpdates,
+          },
         },
-      },
-    } as any)
+      } as any)
+    }
+    finally {
+      cardStore.isModelSyncPrevented = prevPrevented
+    }
 
     artistLog('ActivateConcept: Success.', { conceptId, nextConceptStack })
   }
