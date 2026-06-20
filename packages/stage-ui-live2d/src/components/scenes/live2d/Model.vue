@@ -815,6 +815,12 @@ async function loadModel() {
     motionManagerUpdate.register(useMotionUpdatePluginIdleFocus(disableFocusAtRef), 'post')
     motionManagerUpdate.register(useMotionUpdatePluginAutoEyeBlink(), 'post')
 
+    // Real-time lip-sync mouth opening
+    motionManagerUpdate.register((ctx) => {
+      const size = props.mouthOpenSize ?? 0
+      ctx.model.setParameterValueById('ParamMouthOpenY', Math.max(0, Math.min(1.0, size)))
+    }, 'post')
+
     // NOTICE: ArtMesh colors must be applied after coreModel.update(), not in the motion hook.
     // See Cubism4InternalModel.update(): motionManager.update → … → model.update() → draw.
     hookArtMeshColorsAfterModelUpdate(internalModel, artMeshColors)

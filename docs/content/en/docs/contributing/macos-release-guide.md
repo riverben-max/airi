@@ -58,3 +58,25 @@ The project supports both `arm64` (Apple Silicon) and `x64` (Intel).
 
 ### Dynamic Permissions
 Ensure `extendInfo` in `electron-builder.config.ts` includes `NSMicrophoneUsageDescription` and `NSCameraUsageDescription` so macOS prompts the user correctly.
+
+---
+
+## 3. Troubleshooting & Past Roadblocks
+
+If the `build:mac` command fails, check the following common issues:
+
+### Node Version Mismatch
+- **Symptoms**: Installation warnings or runtime errors related to lockfile sync.
+- **Cause**: Strict `engines` requirement in the root `package.json` (previously capped at `<=25.0.0` while the environment had `v25.6.0`).
+- **Resolution**: Ensure the engine requirement in `package.json` allows the current system's Node version (currently updated to support `<26.0.0`).
+
+### Strict TypeScript Errors (TS6133)
+- **Symptoms**: The build typecheck steps crash with code warnings about unused imports or variables.
+- **Cause**: Unused variables/imports in files like `src/renderer/pages/settings/modules/mcp.vue`.
+- **Resolution**: Clean up or comment out unused imports/variables, as typechecking is strictly enforced before build.
+
+### Vue Template Compilation Errors
+- **Symptoms**: `[unplugin-vue-named-template-pre] Element is missing end tag.` or similar template compile issues.
+- **Cause**: Missing matching closing tags in Vue template files (e.g., `index.vue`).
+- **Resolution**: Run `pnpm run typecheck:web` locally to locate and correct any template syntax or tagging issues.
+

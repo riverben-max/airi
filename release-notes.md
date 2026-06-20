@@ -1,24 +1,38 @@
-# Release Notes: AIRI v0.9.9-stable.20260615
+# 🍏 AIRI for macOS — v0.9.9-stable.20260615
 
-Welcome to **AIRI v0.9.9-stable.20260615**! This stable release delivers a major upgrade to the BYOS Cloud Sync & Onboarding engine (featuring Google AppData restore integration, local-wins conflict strategies, and PGlite database support), introduces bundled Audio Studio voice profiles for character cards, adds multi-model stage controls, and addresses key visual bugs in Web Stage layouts.
+Welcome to the **first official macOS release** of AIRI! 🚀
+
+This milestone build brings the full power of AIRI's LLM-powered companion stage, Live2D/VRM/Spine/MMD rendering engine, and desktop integration natively to Apple Silicon and Intel Macs. We've spent significant effort optimizing performance, packaging, and platform compliance to deliver a seamless, premium macOS desktop experience.
 
 ---
 
-## 🚀 Key Highlights
+## ✨ macOS Launch Highlights
 
-### ☁️ Google AppData Sync & Onboarding Upgrades
-* **Google AppData Backup Flow**: Wired up the actual Google AppData cloud backup and restore sequence, complete with onboarding verification, visual progress simulation, and profile avatar population.
-* **PGlite DB Integration**: Integrated embedded **PGlite** database structures to power the backend onboarding auth linkage.
-* **Sync Engine Stabilization**: Restructured conflict resolution to use a **"local-wins"** strategy, prevented multi-window scheduling collisions in Electron, optimized reconciliation via content size pre-checks, and fixed duplicate localStorage keys.
-* **Remote Catalog in Selective Sync**: Populated the selective sync visual tree directly with remote catalog assets and added a manual tree refresh control.
+### 🚀 Native Apple Silicon & Intel support
+* **Universal Architecture**: Natively compiled for Apple Silicon (`arm64` - M1/M2/M3/M4) and Intel (`x64`) architectures.
+* **Apple Codesigned & Packaged**: Signed using Apple Developer certificates to prevent Gatekeeper security blockades. Distributed as a clean, self-contained DMG installer.
+* **Xcode 26+ Optimization**: Compiled utilizing modern Apple Asset Catalogs (`.icon` app icons) for crisp display in the Dock and Launchpad.
 
-### 🎭 Actor Stage & Multi-Model Controls
-* **Bundled Audio Studio Profiles**: Character cards (`.json` or archives) can now bundle and auto-import customized Audio Studio voice profiles.
-* **Batch VRM Importer**: Added support for selecting and batch importing multiple VRM models at once in the model selector.
-* **Motion & 'None' Stage Options**: Unified the Control Strip settings to support motion trigger libraries and a 'None' option for all 4 character stage model types (Live2D, VRM, Spine, MMD).
-* **Actor Sync Barriers**: Implemented a playback barrier, prefetching buffers, dynamic state scoping, and single-flight guards to synchronize actors smoothly across processes.
+### 🎛️ Desktop Magnetism & window Controls
+* **Mac Menu Bar Integration**: A native macOS tray interface, fully customized to resolve double-toggle hide glitches and integrate smoothly with the Menu Bar.
+* **Control Strip Edge Magnetism**: Optimized edge snapping and magnetism when dragging the companion UI across macOS virtual desktops.
+* **Space Contention Guards**: Disabled native window maximization for the Actor Stage to prevent macOS spaces from hijacking the layout or causing window-hiding side effects.
 
-### 🎨 Visual & Layout Improvements
-* **Spine Web Glitch Fix**: Resolved WebGL context locking issues and NaN bone offset layout calculations affecting Spine rendering on the web landing stage.
-* **Selectable Actor Chips**: Allowed text chips inside the chat log to be selected and copied naturally.
-* **Dating Sim Window Persistence**: Fixed positioning and window state restoration bugs when opening or closing the Dating Sim panel.
+### 🔒 Permission Hygiene & Screen capture
+* **macOS Dynamic Permissions**: Implemented native permission prompt requests for camera (`NSCameraUsageDescription`) and microphone (`NSMicrophoneUsageDescription`) access.
+* **Sensors & System Tracking**: Upgraded and patched the native `active-win` wrapper to prevent macOS system diagnostics crashes and keep resource utilization extremely low.
+
+---
+
+## 🛠️ Monorepo & Platform Stabilization
+* **Zero Telemetry**: Fully removed legacy PostHog tracking and analytics scripts for a private, zero-footprint environment.
+* **Clean TypeScript and Vue compiler**: Resolved strict type errors (TS6133) in the settings panel and fixed Vue named-template tag parsing crashes on build.
+* **Node 25.6.0 Compat**: Upgraded package engine requirements to fully support modern development runtimes.
+
+---
+
+## 📥 How to Install on macOS
+1. Download the **`AIRI-0.9.9-stable.20260615-darwin-arm64.dmg`** (or `x64` for Intel).
+2. Open the `.dmg` file.
+3. Drag **AIRI** into your **Applications** folder.
+4. Launch AIRI from your Applications folder or Spotlight search.
