@@ -173,3 +173,13 @@ Rather than forcing commentary on a static interval, in-match dialogue is trigge
   ```
 * **AIRI's Prompt Context Directive:**
   *"Your companion joined a match in progress just before it got mercied, resulting in a swift defeat. Acknowledge that the circumstances were out of their control and offer playful or tactical comments about the situation."*
+
+---
+
+## 5. Prompt Compilation & Cache Alignment
+
+To guarantee high cache hit rates during active match periods (where the loop evaluates game-state data and captured HUD context), the Destiny 2 plugin prompt assembly must align with the global prefix caching standard:
+
+1. **No Dedicated Caching UI**: The Destiny 2 plugin settings page will not introduce local controls for prefix caching or history depth. This prevents UI clutter and keeps plugin settings focused entirely on gameplay mechanics.
+2. **Global Fallbacks**: Prompt generation for the Destiny 2 agent will directly invoke `compileCacheAlignedPrompt` from the unified `useContextBuilder` utility, inheriting the global `useSettingsLlmPerformance` defaults.
+3. **Suffix Payload Formatting**: Telemetry data (such as active weapon loadouts, score differentials, team performance, or time notifications) is structured as a schema-aligned suffix and passed via `instructionSuffix` at the absolute tail of the prompt. This keeps the initial system prompt and historical chat message arrays completely static, maximizing cache hits across evaluations.
