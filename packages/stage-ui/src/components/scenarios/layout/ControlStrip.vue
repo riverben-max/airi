@@ -1125,7 +1125,7 @@ function getShortLabel(btnId: string): string {
         'w-9 h-9 rounded-full',
         'bg-white/10 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15',
         'border border-white/10 dark:border-white/5',
-        'text-neutral-700 dark:text-neutral-300',
+        'text-neutral-200',
         'transition-all duration-200',
         isDragging ? 'cursor-grabbing' : 'cursor-grab',
       ]"
@@ -1155,7 +1155,7 @@ function getShortLabel(btnId: string): string {
         :class="[
           'relative flex items-center justify-center overflow-hidden',
           'w-9 h-9 rounded-full border border-white/15 dark:border-white/5',
-          'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200',
+          'bg-white/15 hover:bg-white/25 dark:bg-white/5 dark:hover:bg-white/15 text-neutral-200',
           'transition-all duration-200 hover:scale-105 cursor-pointer control-strip-btn',
         ]"
         :title="getButtonTitle(btn.id, btn.label)"

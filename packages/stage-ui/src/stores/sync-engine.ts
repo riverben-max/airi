@@ -2792,6 +2792,92 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     }
   }
 
+  // Pure settings-only restore: pulls db/localstorage configuration files, overriding outbox
+  async function restoreSettingsFromRemote(opts?: { skipReload?: boolean }): Promise<boolean> {
+    const client = getActiveClient()
+    const connectionValidation = await client.validate()
+    if (!connectionValidation.success) {
+      toast.error(`Cannot restore: Storage connection failed: ${connectionValidation.error}`)
+      return false
+    }
+
+    isSyncing.value = true
+    syncError.value = ''
+    storageState.isImportingRemoteData = true
+
+    try {
+      await logDebug('[Restore Settings] Starting settings-only restore from remote backup...')
+
+      // 1. List remote backup files
+      const listRes = await client.listFiles()
+      if (!listRes.success) {
+        throw new Error(listRes.error || 'Failed to list remote files')
+      }
+
+      const remoteFiles = (listRes.files || []) as Array<{ relPath: string, mtime: number, size: number }>
+      const configFiles = remoteFiles.filter(f => f.relPath.replace(/\\/g, '/').startsWith('db/localstorage/'))
+      await logDebug(`[Restore Settings] Found ${configFiles.length} remote configuration files. Importing...`)
+
+      // 2. Process in parallel
+      await parallelLimit(configFiles, 15, async (remoteFile) => {
+        const localKey = getKeyForRelPath(remoteFile.relPath)
+        if (!localKey)
+          return
+
+        // A. Clear outbox entry if it exists to prevent safety blocks
+        const keyWithoutPrefix = localKey.replace('local:', '')
+        const outboxKey = `outbox:queue/${keyWithoutPrefix}`
+        await storage.removeItem(outboxKey)
+
+        // B. Read remote file content
+        const readRes = await client.readFile(remoteFile.relPath)
+        if (readRes.success && readRes.content) {
+          try {
+            const data = JSON.parse(readRes.content)
+
+            // C. Save to local IndexedDB unstorage
+            await storage.setItemRaw(localKey, data)
+
+            // D. Save to local localStorage for immediate renderer state
+            if (data && data.value !== undefined) {
+              const lsKey = keyWithoutPrefix.substring('localstorage/'.length)
+              localStorage.setItem(lsKey, data.value)
+            }
+
+            // E. Align local sync metadata timestamp to remote file mtime
+            await storage.setItemRaw(`local:sync-metadata/timestamps/${keyWithoutPrefix}`, remoteFile.mtime)
+          }
+          catch (e) {
+            console.error(`[Restore Settings] Failed to parse content for ${remoteFile.relPath}:`, e)
+          }
+        }
+      })
+
+      lastSyncTime.value = Date.now()
+      localStorage.setItem('settings/sync/last-time', String(lastSyncTime.value))
+      await logDebug('[Restore Settings] Settings restore completed successfully.')
+
+      if (!opts?.skipReload) {
+        toast.success('Settings restored successfully. Reloading...')
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      }
+
+      return true
+    }
+    catch (err: any) {
+      syncError.value = String(err)
+      toast.error(`Restore Settings Failed: ${syncError.value}`)
+      await logDebug(`[Restore Settings] Restore failed: ${syncError.value}`)
+      return false
+    }
+    finally {
+      storageState.isImportingRemoteData = false
+      isSyncing.value = false
+    }
+  }
+
   // Background Auto Sync Interval Trigger
   let syncTimer: any = null
 
@@ -2933,6 +3019,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     loadConflicts,
     initializeFromLocalBackup,
     forceRestoreFromRemote,
+    restoreSettingsFromRemote,
     selectiveSyncEnabled,
     selectiveCheckedIds,
     fetchGDriveManifest,

@@ -89,6 +89,15 @@ async function handleRestoreFromBackup() {
   }
 }
 
+async function handleRestoreSettingsOnly() {
+  const confirmed = confirm(
+    'WARNING: This will overwrite your local settings and configurations with the versions from your remote backup. Your character models and background assets will not be affected.\n\nAre you sure you want to proceed?',
+  )
+  if (confirmed) {
+    await syncStore.restoreSettingsFromRemote()
+  }
+}
+
 function isMergeable(key: string): boolean {
   return (
     key.startsWith('local:chat/sessions/')
@@ -266,6 +275,23 @@ function isMergeable(key: string): boolean {
             {{ isSyncing ? 'Syncing...' : (selectiveSyncEnabled ? 'Sync Selected' : 'Sync Full') }}
           </button>
         </div>
+      </div>
+
+      <div class="flex flex-row items-center border-t border-neutral-200 pt-4 dark:border-neutral-800">
+        <div class="size-10 flex items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
+          <div class="i-solar:shield-up-bold text-xl" />
+        </div>
+        <div class="ml-3 flex flex-col">
+          <span class="text-neutral-700 font-semibold dark:text-neutral-300">Restore Settings Only</span>
+          <span class="text-xs text-neutral-400 dark:text-neutral-500">Restore configurations and UI settings without touching character assets.</span>
+        </div>
+        <button
+          class="ml-auto rounded-xl bg-amber-600 px-5 py-2.5 text-sm text-white font-semibold transition-colors duration-200 hover:bg-amber-700 focus:outline-none"
+          :disabled="isSyncing"
+          @click="handleRestoreSettingsOnly"
+        >
+          Restore Settings...
+        </button>
       </div>
 
       <div class="flex flex-row items-center border-t border-neutral-200 pt-4 dark:border-neutral-800">
