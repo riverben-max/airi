@@ -137,6 +137,22 @@ function installStreamErrorGuards() {
 // manage events within eventa's context system.
 ipcMain.setMaxListeners(100)
 
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+  process.exit(0)
+}
+
+app.on('second-instance', () => {
+  const allWindows = BrowserWindow.getAllWindows()
+  const mainWin = allWindows.find(w => !w.isDestroyed() && (w as any).__is_main_window) || allWindows[0]
+  if (mainWin) {
+    if (mainWin.isMinimized())
+      mainWin.restore()
+    mainWin.focus()
+  }
+})
+
 installStreamErrorGuards()
 setElectronMainDirname(dirname(fileURLToPath(import.meta.url)))
 setGlobalFormat(Format.Pretty)
