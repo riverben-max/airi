@@ -482,6 +482,11 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   async function reconcileBackgrounds(): Promise<void> {
     console.log('[SyncEngine] Reconciling backgrounds...')
+    const quotaCheck = await checkQuotaLimit()
+    if (!quotaCheck.safe) {
+      console.warn('[SyncEngine] reconcileBackgrounds aborted:', quotaCheck.reason)
+      return
+    }
     await logDebug('Starting reconcileBackgrounds()')
     try {
       const client = getActiveClient()
@@ -650,6 +655,11 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   async function reconcileModels(): Promise<void> {
     console.log('[SyncEngine] Reconciling models...')
+    const quotaCheck = await checkQuotaLimit()
+    if (!quotaCheck.safe) {
+      console.warn('[SyncEngine] reconcileModels aborted:', quotaCheck.reason)
+      return
+    }
     let hasLocalMetadataChanges = false
     try {
       const client = getActiveClient()
@@ -1031,6 +1041,11 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   async function reconcileMmdMotions(): Promise<void> {
     console.log('[SyncEngine] Reconciling MMD motions...')
+    const quotaCheck = await checkQuotaLimit()
+    if (!quotaCheck.safe) {
+      console.warn('[SyncEngine] reconcileMmdMotions aborted:', quotaCheck.reason)
+      return
+    }
     try {
       const client = getActiveClient()
 
@@ -1224,6 +1239,11 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
 
   async function reconcileVrmaAnimations(): Promise<void> {
     console.log('[SyncEngine] Reconciling VRMA animations...')
+    const quotaCheck = await checkQuotaLimit()
+    if (!quotaCheck.safe) {
+      console.warn('[SyncEngine] reconcileVrmaAnimations aborted:', quotaCheck.reason)
+      return
+    }
     try {
       const client = getActiveClient()
 
@@ -1874,12 +1894,42 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     }
   }
 
+  // Storage Quota Guard
+  async function checkQuotaLimit(): Promise<{ safe: boolean, reason?: string }> {
+    try {
+      if (navigator.storage && navigator.storage.estimate) {
+        const { quota, usage } = await navigator.storage.estimate()
+        if (quota !== undefined && usage !== undefined) {
+          const ratio = usage / quota
+          const remainingMB = (quota - usage) / (1024 * 1024)
+          if (ratio > 0.90 || remainingMB < 100) {
+            return {
+              safe: false,
+              reason: `Storage quota running low (Usage: ${(ratio * 100).toFixed(1)}%, Remaining: ${remainingMB.toFixed(1)} MB)`,
+            }
+          }
+        }
+      }
+    }
+    catch (e) {
+      console.warn('[SyncEngine] Failed to estimate storage quota:', e)
+    }
+    return { safe: true }
+  }
+
   // Run full two-way reconciliation (LWW)
   async function reconcile(opts?: { skipBinaryAssets?: boolean }): Promise<boolean> {
     const client = getActiveClient()
     const pathValidation = await client.validate()
     if (!pathValidation.success) {
       console.warn('[SyncEngine] Sync storage target is invalid or inaccessible, skipping reconciliation:', pathValidation.error)
+      return false
+    }
+
+    const quotaCheck = await checkQuotaLimit()
+    if (!quotaCheck.safe) {
+      console.error('[SyncEngine] Sync aborted:', quotaCheck.reason)
+      toast.error(`Sync aborted: ${quotaCheck.reason}`)
       return false
     }
 
@@ -1913,6 +1963,12 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       await parallelLimit(remoteEntries, 15, async ([localKey, remoteFile]) => {
         if (!localKey)
           return
+
+        const loopQuotaCheck = await checkQuotaLimit()
+        if (!loopQuotaCheck.safe) {
+          console.warn('[SyncEngine] Quota limit hit mid-sync. Aborting download of key:', localKey)
+          return
+        }
 
         if (selectiveSyncEnabled.value && localKey.startsWith('local:chat/sessions/')) {
           let charId: string | null = null
@@ -2794,6 +2850,22 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     }
     else {
       stopAutoSyncTimer()
+    }
+  }, { immediate: true })
+
+  // Auto-clear outbox items if sync is disabled to reclaim disk space
+  watch(syncEnabled, async (enabled) => {
+    if (!enabled) {
+      try {
+        const rawOutboxKeys = await storage.getKeys('outbox')
+        for (const k of rawOutboxKeys) {
+          await storage.removeItem(k)
+        }
+        console.log('[SyncEngine] Cleared sync outbox because Cloud Sync is disabled.')
+      }
+      catch (e) {
+        console.error('[SyncEngine] Failed to clear sync outbox:', e)
+      }
     }
   }, { immediate: true })
 

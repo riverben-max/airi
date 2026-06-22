@@ -19,6 +19,8 @@ export const storageState = {
 async function enqueueSync(key: string, action: 'upsert' | 'delete') {
   if (storageState.isImportingRemoteData)
     return
+  if (typeof window !== 'undefined' && localStorage.getItem('settings/sync/enabled') !== 'true')
+    return
   if (!key.startsWith('local:'))
     return
   if (key.startsWith('local:sync-metadata'))

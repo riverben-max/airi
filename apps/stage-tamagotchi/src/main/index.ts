@@ -996,7 +996,27 @@ app.whenReady().then(async () => {
           await fs.access(data.path)
           // Try writing a temporary test file to ensure it's writable
           const testFile = path.join(data.path, '.byos-write-test')
-          await fs.writeFile(testFile, 'test')
+
+          let handle
+          try {
+            handle = await fs.open(testFile, 'w')
+            await handle.writeFile('test')
+            try {
+              await handle.close()
+            }
+            catch (closeErr: any) {
+              if (closeErr.code !== 'EINVAL')
+                throw closeErr
+            }
+          }
+          catch (writeErr) {
+            if (handle) {
+              try { await handle.close() }
+              catch {}
+            }
+            throw writeErr
+          }
+
           // Best-effort cleanup — if the file is still locked (e.g. from a prior crashed sync)
           // the write already proved access, so tolerate EBUSY/ENOENT on unlink.
           await fs.unlink(testFile).catch((unlinkErr: any) => {
@@ -1020,7 +1040,28 @@ app.whenReady().then(async () => {
           const buffer = data.encoding === 'base64'
             ? Buffer.from(data.content, 'base64')
             : data.content
-          await fs.writeFile(fullPath, buffer, data.append ? { flag: 'a' } : undefined)
+
+          const flags = data.append ? 'a' : 'w'
+          let handle
+          try {
+            handle = await fs.open(fullPath, flags)
+            await handle.writeFile(buffer)
+            try {
+              await handle.close()
+            }
+            catch (closeErr: any) {
+              if (closeErr.code !== 'EINVAL')
+                throw closeErr
+            }
+          }
+          catch (writeErr) {
+            if (handle) {
+              try { await handle.close() }
+              catch {}
+            }
+            throw writeErr
+          }
+
           const stats = await fs.stat(fullPath)
           return { success: true, mtime: stats.mtimeMs }
         }
@@ -1036,13 +1077,32 @@ app.whenReady().then(async () => {
         const fullPath = path.join(data.dir, data.relPath)
         try {
           const encoding = data.encoding || 'utf-8'
+          let handle
+          let buffer: Buffer
+          try {
+            handle = await fs.open(fullPath, 'r')
+            buffer = await handle.readFile()
+            try {
+              await handle.close()
+            }
+            catch (closeErr: any) {
+              if (closeErr.code !== 'EINVAL')
+                throw closeErr
+            }
+          }
+          catch (readErr) {
+            if (handle) {
+              try { await handle.close() }
+              catch {}
+            }
+            throw readErr
+          }
+
           if (encoding === 'base64') {
-            const buffer = await fs.readFile(fullPath)
             return { success: true, content: buffer.toString('base64') }
           }
           else {
-            const content = await fs.readFile(fullPath, 'utf-8')
-            return { success: true, content }
+            return { success: true, content: buffer.toString('utf-8') }
           }
         }
         catch (error) {
