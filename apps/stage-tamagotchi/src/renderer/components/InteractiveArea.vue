@@ -69,6 +69,9 @@ const isComposing = ref(false)
 const isImagineMode = ref(false)
 const CHAT_WINDOW_TITLE = 'AIRI - Chat Window'
 
+const proactivityStore = (await import('@proj-airi/stage-ui/stores/proactivity')).useProactivityStore()
+const isGroundingPreviewExpanded = ref(false)
+
 const journalPreviewStore = useJournalPreviewStore()
 const visionStore = useVisionStore()
 const { openTextPreview, openImagePreview, closePreview } = journalPreviewStore
@@ -1014,6 +1017,31 @@ function jumpToMessage(messageId: string) {
         </PopoverRoot>
       </div>
     </div>
+    <!-- Ephemeral Grounding Preview Block -->
+    <div
+      v-if="activeCard?.extensions?.airi?.groundingEnabled"
+      class="grounding-preview-panel relative mx-2 flex flex-col border border-amber-500/20 rounded-lg bg-black/40 p-2 text-sm text-amber-200 font-mono shadow-[0_0_15px_rgba(245,158,11,0.05)] backdrop-blur-md transition-colors hover:bg-black/60"
+    >
+      <div class="pointer-events-none absolute inset-0 bg-[length:100%_4px] bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.1)_50%)] opacity-20" />
+      <div class="z-10 flex select-none items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="i-solar:cpu-bolt-bold-duotone animate-pulse text-amber-500" />
+          <span class="text-[10px] text-amber-300 font-bold tracking-widest uppercase">Pre-Flight Grounding Active</span>
+        </div>
+        <button
+          class="flex items-center gap-1 border border-amber-500/25 rounded bg-black/50 px-2 py-0.5 text-xs text-amber-400 transition-colors hover:bg-black/80"
+          @click="isGroundingPreviewExpanded = !isGroundingPreviewExpanded"
+        >
+          <span>Telemetry Preview</span>
+          <span class="text-amber-500 transition-transform" :class="isGroundingPreviewExpanded ? 'i-carbon-chevron-up' : 'i-carbon-chevron-down'" />
+        </button>
+      </div>
+
+      <div v-show="isGroundingPreviewExpanded" class="z-10 mt-2 animate-fade-in animate-duration-200 border-t border-amber-500/10 pt-2">
+        <pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-amber-950/20 p-2 text-[10px] text-amber-300/90 leading-normal font-mono scrollbar-thin">{{ proactivityStore.sensorPayload || 'Polling sensors...' }}</pre>
+      </div>
+    </div>
+
     <BasicTextarea
       v-model="messageInput"
       :send-mode="settingsChat.sendMode"
