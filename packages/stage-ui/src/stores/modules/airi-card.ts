@@ -187,6 +187,7 @@ export interface AiriExtension {
   dreamState?: DreamStateConfig
   shortTermMemory?: ShortTermMemoryConfig
   groundingEnabled?: boolean
+  groundingMemoryEnabled?: boolean
   visual_assets?: Record<string, {
     description: string
     prompt?: string
@@ -463,6 +464,27 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     // Verify persistence
   }
 
+  const toggleGroundingMemory = async (id: string) => {
+    await until(cardsLoading).toBe(false)
+    const card = cards.value.get(id)
+    if (!card) {
+      console.warn('[AiriCard] toggleGroundingMemory: card not found for id', id)
+      return
+    }
+
+    const current = card.extensions?.airi?.groundingMemoryEnabled ?? false
+    console.log('[AiriCard] toggleGroundingMemory:', { id, current, next: !current })
+    updateCard(id, {
+      extensions: {
+        ...card.extensions,
+        airi: {
+          ...card.extensions?.airi,
+          groundingMemoryEnabled: !current,
+        },
+      },
+    } as any)
+  }
+
   const setAutonomousArtistry = async (id: string, enabled: boolean) => {
     await until(cardsLoading).toBe(false)
     const card = cards.value.get(id)
@@ -652,6 +674,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
         artistry: defaultArtistry,
         generation: defaultGeneration,
         groundingEnabled: false,
+        groundingMemoryEnabled: false,
         visual_assets: {},
         active_concepts: [],
         eternal_record: { relational_milestones: [], lore_bits: [] },
@@ -819,6 +842,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
       eternal_record: (existingExtension as any)?.eternal_record || { relational_milestones: [], lore_bits: [] },
       active_concepts: (existingExtension as any)?.active_concepts ?? [],
       groundingEnabled: existingExtension?.groundingEnabled ?? false,
+      groundingMemoryEnabled: existingExtension?.groundingMemoryEnabled ?? false,
       imageJournal: (existingExtension as any)?.imageJournal || { selfie: false },
     }
   }
@@ -1093,6 +1117,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     updateCard,
     getCard,
     toggleGrounding,
+    toggleGroundingMemory,
     setAutonomousArtistry,
     getCardDisplayModelId,
     resetState,

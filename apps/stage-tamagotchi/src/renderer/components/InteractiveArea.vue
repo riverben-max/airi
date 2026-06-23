@@ -5,6 +5,7 @@ import { estimateTokens, formatTokenCount } from '@proj-airi/stage-shared'
 import {
   CharacterContextDialog,
   ChatBrainPopover,
+  ChatGroundingPopover,
   ChatHistory,
   ChatImagesPopover,
   ChatMemoryPopover,
@@ -29,9 +30,12 @@ import { useAutonomousArtistryStore } from '@proj-airi/stage-ui/stores/modules/a
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useVisionStore } from '@proj-airi/stage-ui/stores/modules/vision'
+import { useProactivityStore } from '@proj-airi/stage-ui/stores/proactivity'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
 import { BasicTextarea, Button } from '@proj-airi/ui'
+// Watch messageInput and search universe-scoped memory context
+import { watchDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
@@ -69,8 +73,64 @@ const isComposing = ref(false)
 const isImagineMode = ref(false)
 const CHAT_WINDOW_TITLE = 'AIRI - Chat Window'
 
-const proactivityStore = (await import('@proj-airi/stage-ui/stores/proactivity')).useProactivityStore()
+const proactivityStore = useProactivityStore()
 const isGroundingPreviewExpanded = ref(false)
+
+const groundedMemories = ref<any[]>([])
+
+watchDebounced(
+  messageInput,
+  async (newVal) => {
+    const isMemoryEnabled = activeCard.value?.extensions?.airi?.groundingMemoryEnabled
+    if (!isMemoryEnabled) {
+      groundedMemories.value = []
+      return
+    }
+
+    const query = newVal.trim()
+    if (query.length <= 3) {
+      groundedMemories.value = []
+      return
+    }
+
+    try {
+      const results = await textJournalStore.searchEntries({
+        query,
+        limit: 3,
+        characterId: activeCardId.value,
+      })
+      groundedMemories.value = results
+    }
+    catch (err) {
+      console.error('[InteractiveArea] Failed to search semantic memory context:', err)
+      groundedMemories.value = []
+    }
+  },
+  { debounce: 1000 },
+)
+
+watch(
+  () => activeCard.value?.extensions?.airi?.groundingMemoryEnabled,
+  async (enabled) => {
+    if (!enabled) {
+      groundedMemories.value = []
+    }
+    else if (messageInput.value.trim().length > 3) {
+      try {
+        const results = await textJournalStore.searchEntries({
+          query: messageInput.value.trim(),
+          limit: 3,
+          characterId: activeCardId.value,
+        })
+        groundedMemories.value = results
+      }
+      catch (err) {
+        console.error('[InteractiveArea] Failed to search semantic memory context:', err)
+        groundedMemories.value = []
+      }
+    }
+  },
+)
 
 const journalPreviewStore = useJournalPreviewStore()
 const visionStore = useVisionStore()
@@ -337,6 +397,7 @@ async function handleSend() {
   isOptimisticClearing = true
   messageInput.value = ''
   attachments.value = []
+  groundedMemories.value = []
   isOptimisticClearing = false
 
   if (isImagineMode.value) {
@@ -901,21 +962,8 @@ function jumpToMessage(messageId: string) {
         <span>{{ formattedTokenCount }}</span>
       </div>
 
-      <!-- Grounding Toggle -->
-      <button
-        :class="[
-          'max-h-[10lh] min-h-[1lh]',
-          'flex items-center justify-center rounded-md p-2 outline-none',
-          'transition-colors transition-transform active:scale-95',
-          activeCard?.extensions?.airi?.groundingEnabled
-            ? 'bg-amber-100 text-lg text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-            : 'bg-neutral-100 text-lg text-neutral-500 hover:text-primary-500 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:text-primary-400',
-        ]"
-        :title="activeCard?.extensions?.airi?.groundingEnabled ? 'Grounding Active — sensor data attached to messages' : 'Attach sensor data with each message (Visit Proactivity tab to preview)'"
-        @click="airiCardStore.toggleGrounding(activeCardId)"
-      >
-        <div :class="[activeCard?.extensions?.airi?.groundingEnabled ? 'i-solar:cpu-bolt-bold-duotone' : 'i-solar:cpu-bold-duotone']" />
-      </button>
+      <!-- Grounding Options Popover -->
+      <ChatGroundingPopover />
 
       <!-- Model & Provider Selection -->
       <ChatBrainPopover />
@@ -1019,16 +1067,19 @@ function jumpToMessage(messageId: string) {
     </div>
     <!-- Ephemeral Grounding Preview Block -->
     <div
-      v-if="activeCard?.extensions?.airi?.groundingEnabled"
+      v-if="activeCard?.extensions?.airi?.groundingEnabled || (activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0)"
       class="grounding-preview-panel relative mx-2 flex flex-col border border-amber-500/20 rounded-lg bg-black/40 p-2 text-sm text-amber-200 font-mono shadow-[0_0_15px_rgba(245,158,11,0.05)] backdrop-blur-md transition-colors hover:bg-black/60"
     >
       <div class="pointer-events-none absolute inset-0 bg-[length:100%_4px] bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.1)_50%)] opacity-20" />
+
+      <!-- Header / Control bar -->
       <div class="z-10 flex select-none items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="i-solar:cpu-bolt-bold-duotone animate-pulse text-amber-500" />
           <span class="text-[10px] text-amber-300 font-bold tracking-widest uppercase">Pre-Flight Grounding Active</span>
         </div>
         <button
+          v-if="activeCard?.extensions?.airi?.groundingEnabled"
           class="flex items-center gap-1 border border-amber-500/25 rounded bg-black/50 px-2 py-0.5 text-xs text-amber-400 transition-colors hover:bg-black/80"
           @click="isGroundingPreviewExpanded = !isGroundingPreviewExpanded"
         >
@@ -1037,8 +1088,32 @@ function jumpToMessage(messageId: string) {
         </button>
       </div>
 
-      <div v-show="isGroundingPreviewExpanded" class="z-10 mt-2 animate-fade-in animate-duration-200 border-t border-amber-500/10 pt-2">
+      <!-- Telemetry details -->
+      <div v-if="activeCard?.extensions?.airi?.groundingEnabled" v-show="isGroundingPreviewExpanded" class="z-10 mt-2 animate-fade-in animate-duration-200 border-t border-amber-500/10 pt-2">
         <pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-amber-950/20 p-2 text-[10px] text-amber-300/90 leading-normal font-mono scrollbar-thin">{{ proactivityStore.sensorPayload || 'Polling sensors...' }}</pre>
+      </div>
+
+      <!-- Grounded Memories Section -->
+      <div v-if="activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0" class="z-10 mt-2 flex flex-col gap-1.5 border-t border-amber-500/10 pt-2">
+        <div class="flex select-none items-center gap-1.5 text-[9px] text-amber-400 font-bold tracking-wider uppercase">
+          <span class="i-solar:database-bold-duotone text-xs" />
+          <span>Grounded Memories ({{ groundedMemories.length }})</span>
+        </div>
+        <div class="max-h-36 overflow-y-auto scrollbar-thin space-y-1.5">
+          <div
+            v-for="entry in groundedMemories"
+            :key="entry.id"
+            class="flex flex-col border border-amber-500/10 rounded bg-amber-950/10 p-2 text-[10px] leading-normal"
+          >
+            <div class="mb-0.5 flex items-center justify-between text-amber-300 font-bold">
+              <span class="truncate pr-2">{{ entry.title || 'Untitled Memory' }}</span>
+              <span class="shrink-0 text-[8px] font-normal uppercase opacity-60">{{ entry.kind || 'Journal' }}</span>
+            </div>
+            <p class="line-clamp-2 text-amber-200/80">
+              {{ entry.content }}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 

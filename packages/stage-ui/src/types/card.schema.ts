@@ -102,6 +102,7 @@ const AiriExtensionSchema = looseObject({
   dreamState: optional(AiriDreamStateSchema),
   shortTermMemory: optional(AiriShortTermMemorySchema),
   groundingEnabled: optional(boolean()),
+  groundingMemoryEnabled: optional(boolean()),
   generation: optional(looseObject({
     enabled: boolean(),
     provider: optional(string()),
