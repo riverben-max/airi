@@ -75,6 +75,7 @@ const CHAT_WINDOW_TITLE = 'AIRI - Chat Window'
 
 const proactivityStore = useProactivityStore()
 const isGroundingPreviewExpanded = ref(false)
+const isMemoriesPreviewExpanded = ref(true)
 
 const groundedMemories = ref<any[]>([])
 
@@ -1078,14 +1079,24 @@ function jumpToMessage(messageId: string) {
           <span class="i-solar:cpu-bolt-bold-duotone animate-pulse text-amber-500" />
           <span class="text-[10px] text-amber-300 font-bold tracking-widest uppercase">Pre-Flight Grounding Active</span>
         </div>
-        <button
-          v-if="activeCard?.extensions?.airi?.groundingEnabled"
-          class="flex items-center gap-1 border border-amber-500/25 rounded bg-black/50 px-2 py-0.5 text-xs text-amber-400 transition-colors hover:bg-black/80"
-          @click="isGroundingPreviewExpanded = !isGroundingPreviewExpanded"
-        >
-          <span>Telemetry Preview</span>
-          <span class="text-amber-500 transition-transform" :class="isGroundingPreviewExpanded ? 'i-carbon-chevron-up' : 'i-carbon-chevron-down'" />
-        </button>
+        <div class="flex items-center gap-1.5">
+          <button
+            v-if="activeCard?.extensions?.airi?.groundingEnabled"
+            class="flex items-center gap-1 border border-amber-500/25 rounded bg-black/50 px-2 py-0.5 text-xs text-amber-400 font-bold font-mono transition-colors hover:bg-black/80"
+            @click="isGroundingPreviewExpanded = !isGroundingPreviewExpanded"
+          >
+            <span>Telemetry</span>
+            <span class="text-amber-500 transition-transform" :class="isGroundingPreviewExpanded ? 'i-carbon-chevron-up' : 'i-carbon-chevron-down'" />
+          </button>
+          <button
+            v-if="activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0"
+            class="flex items-center gap-1 border border-amber-500/25 rounded bg-black/50 px-2 py-0.5 text-xs text-amber-400 font-bold font-mono transition-colors hover:bg-black/80"
+            @click="isMemoriesPreviewExpanded = !isMemoriesPreviewExpanded"
+          >
+            <span>Memories</span>
+            <span class="text-amber-500 transition-transform" :class="isMemoriesPreviewExpanded ? 'i-carbon-chevron-up' : 'i-carbon-chevron-down'" />
+          </button>
+        </div>
       </div>
 
       <!-- Telemetry details -->
@@ -1099,7 +1110,7 @@ function jumpToMessage(messageId: string) {
           <span class="i-solar:database-bold-duotone text-xs" />
           <span>Grounded Memories ({{ groundedMemories.length }})</span>
         </div>
-        <div class="max-h-36 overflow-y-auto scrollbar-thin space-y-1.5">
+        <div v-show="isMemoriesPreviewExpanded" class="max-h-36 animate-fade-in animate-duration-200 overflow-y-auto scrollbar-thin space-y-1.5">
           <div
             v-for="entry in groundedMemories"
             :key="entry.id"
