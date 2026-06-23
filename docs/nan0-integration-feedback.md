@@ -1,6 +1,6 @@
 # Nan0-AIRI Integration: Architectural Realignment & Feedback
 
-This document outlines the architectural feedback and design requirements for integrating the Nan0 cognition system into the AIRI ecosystem. It serves as a guide to realign the integration strategy with AIRI's core design principles, specifically addressing the tech stack, Discord revamp specifications, and session isolation.
+This document outlines the architectural feedback and design requirements for integrating the Nan0 cognition system into the AIRI ecosystem. It serves as a guide to realign the integration strategy with AIRI's core design principles, citing established project architecture documents and database schemas.
 
 ---
 
@@ -9,37 +9,53 @@ This document outlines the architectural feedback and design requirements for in
 We reject the proposal to maintain a standalone Python process or sidecar to hoist Nan0's memory and cognition engines. Doing so introduces significant maintenance overhead, installer bloat, and breaks cross-platform desktop/web parity.
 
 ### Why a Python Subprocess is Rejected:
-* **Breaks Web Stage (`web-stage`)**: AIRI supports a pure browser deployment (`web-stage`). A web browser cannot spin up a local Python process. By porting Nan0 to native TypeScript/JavaScript, the exact same memory and cognition features can run seamlessly on both the Electron Desktop client and the web browser.
-* **Installer Bloat**: Bundling a Python runtime, virtual environments, and heavy libraries (like PyTorch or SQLite/Chroma extensions) adds hundreds of megabytes to the Electron application bundle.
-* **Fragile Dependency Management**: Managing Python paths, package compilation, and OS dependencies on end-user machines is notoriously error-prone compared to unified npm/Vite dependency management.
+* **Breaks Web Stage (`web-stage`)**: As indexed in [docs/rosetta-stone.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/rosetta-stone.md#L16), AIRI supports a browser-only deployment (`apps/stage-web`). A web browser cannot spawn a local Python subprocess. To ensure that `web-stage` can leverage the exact same features, the companion's cognition and memory must be written in native TypeScript/JavaScript.
+* **Installer Bloat & Distribution**: Packaging a Python environment, compiler tools, and native extensions inside an Electron app adds hundreds of megabytes to the final installer.
+* **Dependency Hell**: Spawning and managing a python subprocess on end-user machines (handling virtual environments and native library links) is fragile compared to clean, single-process npm dependencies.
 
-### Recommended Strategy for Porting Nan0 Memory & Cognition:
-* **Memory & Vector Search**: Map Nan0's episodic memory and diary systems to **Orama** (browser-native vector database already used in AIRI) and **unstorage** (backed by IndexedDB). All vector indexing and embeddings can run client-side using `transformers.js` or standard cloud LLM embedding endpoints.
-* **Thought Engine & Cognition Router**: Port these modules directly to TypeScript as standard Pinia stores in `packages/stage-ui/src/stores/modules/`. This keeps the thought-first lifecycle (`observation -> interpretation -> thought -> speech`) integrated directly into the chat ingestion pipeline without crossing process boundaries.
-* **Runtime Guard**: Port the safety validation and tag parsing to a TypeScript utility/composable to parse markers (like `<|ACT...|>`) before they reach TTS and UI rendering.
+### Why Porting is Highly Straightforward:
+The audit states that Nan0's memory skill uses Chroma DB for storing diary entries and episodic events. Porting this to AIRI is simple because AIRI **already implements browser-native vector search**:
+* **Vector Indexing & Storage**: As defined in Section 9 of the [Rosetta Stone](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/rosetta-stone.md#L249-L253), AIRI uses [layered-memory.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/libs/search/layered-memory.ts), which manages an in-browser hybrid search index using **Orama** and **Transformers.js** (backed by IndexedDB).
+* **Actor & Relationship Schema**: The audit claims AIRI's memory system lacks actor semantics. However, AIRI’s `SearchDocumentMeta` and storage repositories use open schema payloads. Storing actor metadata is as simple as adding `actorId`, `targetActorId`, and `relationship` properties to the document objects during indexing:
+  ```typescript
+  // Simply feed diaries and episodic events into the existing indexer:
+  await layeredMemory.indexDocuments([
+    {
+      id: 'diary-123',
+      content: 'Episodic event details...',
+      kind: 'journal_entry', // Automatically routes to long-term memory
+      actorId: 'kyo',
+      targetActorId: 'richard',
+      relationship: 'friendly'
+    }
+  ])
+  ```
+  This completely removes the need for Chroma DB or a Python backend.
 
 ---
 
 ## 2. Discord Revamp Realignment
 
-The integration must adhere strictly to the design principles laid out in [feat-discord-revamp.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/feat-discord-revamp.md).
+The integration must adhere strictly to the design principles laid out in the [feat-discord-revamp.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/feat-discord-revamp.md) spec.
 
 ### A. Restore `puppet` Mode (Default Local Playback)
-* **Spec**: `/voicemode mode: puppet | voicenote | none`
-* **Feedback**: The integration proposal omitted `puppet` mode. `puppet` mode is the current default behavior: audio is played locally on the desktop app speaker system while the text interaction is forwarded to Discord.
-* **Importance**: This is crucial for "home base" users who want the high-fidelity desktop TTS to play in their room while controlling the bot remotely. Deleting this option or failing to support it breaks the core desktop loop.
+* **Reference**: [feat-discord-revamp.md: Voice Modes](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/feat-discord-revamp.md#L70-L74)
+* **Feedback**: The other agent's audit omitted the `puppet` mode entirely. `puppet` mode is the current default behavior: audio is played locally on the desktop app speaker system while the text interaction is routed to Discord.
+* **Importance**: For "home base" users who want the high-fidelity desktop speakers to play speech in their room while commanding the companion remotely, deleting this option breaks the core loop. It must remain an active option.
 
-### B. Simplify `/voicecall` (Classic TTS Engine focus)
-* **Spec**: `/voicecall mode: classic | gemini`
-* **Feedback**: The proposal to route Gemini Live raw audio through an intermediate `STT -> thought engine -> TTS` loop is redundant and costly. Gemini Live natively processes raw audio and returns text transcriptions and audio output **simultaneously** with sub-second latency. Forcing a serial text-translation loop defeats the purpose of the Live API's low-latency design.
-* **Gemini Live Cost**: Running persistent Bidirectional WebSockets with Gemini Live is highly expensive.
-* **Realignment**: Since Kyo wants to utilize Deepgram STT, a custom LLM (e.g., local/custom endpoints), and a custom high-fidelity TTS (rather than Gemini's native voice), the integration should **focus entirely on implementing the classic `tts` mode** (Discord Audio -> STT -> LLM -> TTS -> Discord Audio) and leave the Gemini Live WebSocket bridge deferred/unimplemented.
+### B. Real-Time Voice Calls vs. Classic TTS
+* **Reference**: [design-gemini-live-api-integration.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/content/en/docs/advanced/architecture/design-gemini-live-api-integration.md) and [arch-chat-stt-proactivity-pipelines.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/content/en/docs/advanced/architecture/arch-chat-stt-proactivity-pipelines.md)
+* **Feedback on Gemini Live**: The other agent proposed a hybrid voice call where Gemini Live is routed through a manual `STT -> thought engine -> TTS` loop. This is architecturally flawed:
+  1. As documented in [design-gemini-live-api-integration.md: Overview](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/content/en/docs/advanced/architecture/design-gemini-live-api-integration.md#L13-L20), Gemini Live processes raw audio and returns text transcriptions and audio output **simultaneously** with sub-second latency. Wrapping this in a serial STT-to-thought loop destroys the real-time nature of the connection.
+  2. The **Mandatory Audio Rule** ([design-gemini-live-api-integration.md: Line 21](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/content/en/docs/advanced/architecture/design-gemini-live-api-integration.md#L21-L28)) dictates that Gemini Live requires the audio modality to stay active.
+  3. **High Cost**: Continuous WebSocket connections with Gemini Live are extremely expensive.
+* **Realignment**: Since Kyo wants to utilize Deepgram STT, a custom LLM (e.g., local/custom endpoints), and a custom TTS (rather than Gemini's native voice), the integration should **focus entirely on implementing the classic `tts` mode** (Discord Audio -> STT -> LLM -> TTS -> Discord Audio) and leave the Gemini Live option deferred.
 
 ---
 
 ## 3. Session & Character Isolation
 
-AIRI currently lacks channel-level session boundaries, meaning messages from different channels can bleed into a single active session. We welcome the audit's recommendation for per-channel session tracking, with the following implementation design:
+AIRI currently lacks channel-level session boundaries. We welcome the audit's recommendation for per-channel session tracking, with the following implementation design:
 
 ### Character-to-Session Schema:
 1. Discord slash command `/character` allows switching characters per channel.
