@@ -3,6 +3,7 @@ import type { AiriExtension } from '@proj-airi/stage-ui/stores/modules/airi-card
 
 import { DEFAULT_POST_HISTORY_INSTRUCTIONS } from '@proj-airi/stage-ui/constants/prompts/character-defaults'
 import { DisplayModelFormat, useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
+import { useLLM } from '@proj-airi/stage-ui/stores/llm'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 
 const cardStore = useAiriCardStore()
 const consciousnessStore = useConsciousnessStore()
+const llmStore = useLLM()
 
 const speechStore = useSpeechStore()
 const providersStore = useProvidersStore()
@@ -54,6 +56,12 @@ const selectedSpeechProvider = ref('')
 const selectedSpeechModel = ref('')
 const selectedSpeechVoiceId = ref('')
 const userName = ref('')
+const description = ref('')
+const artistryPromptPrefix = ref('')
+
+// Loading states for Sparkle AI generators
+const generatingDescription = ref(false)
+const generatingPrefix = ref(false)
 
 const hasUserPattern = computed(() => {
   if (!props.cardData)
@@ -154,6 +162,8 @@ watch(() => [props.modelValue, props.cardData], () => {
     selectedSpeechProvider.value = speechProvider.value || ''
     selectedSpeechModel.value = defaultSpeechModel.value || ''
     selectedSpeechVoiceId.value = defaultSpeechVoiceId.value || ''
+    description.value = props.cardData.description || ''
+    artistryPromptPrefix.value = props.cardData.extensions?.airi?.artistry?.prompt || ''
 
     // Toggles defaults
     artistryAutonomousEnabled.value = false
@@ -181,6 +191,172 @@ watch(selectedSpeechProvider, async (newProvider) => {
   }
 })
 
+async function generateVisualDescription() {
+  const providerId = selectedConsciousnessProvider.value || consciousnessProvider.value
+  const modelId = selectedConsciousnessModel.value || defaultConsciousnessModel.value
+
+  if (!providerId || !modelId) {
+    toast.error('Please configure the consciousness provider and model in Step 3 first.')
+    return
+  }
+
+  generatingDescription.value = true
+  try {
+    const activeProvider = await providersStore.getProviderInstance(providerId) as any
+    if (!activeProvider) {
+      throw new Error(`Failed to instantiate provider: ${providerId}`)
+    }
+
+    const cardContext = {
+      name: name.value.trim(),
+      description: props.cardData?.description || '',
+      personality: props.cardData?.personality || '',
+      scenario: props.cardData?.scenario || '',
+      systemPrompt: props.cardData?.systemPrompt || '',
+    }
+
+    const systemInstruction = 'You are an expert prompt crafter helping a user write a vivid 2-3 paragraph physical/visual description of a companion character in prose. Focus strictly on their physical features, demeanor, age, clothing default, and outfit motifs.'
+    const systemPromptContent = `${systemInstruction}\n\nCore Set Context:\n${JSON.stringify(cardContext, null, 2)}`
+
+    const messages: { role: 'system' | 'user' | 'assistant', content: string }[] = [
+      { role: 'system', content: systemPromptContent },
+    ]
+
+    const existingText = description.value.trim()
+    if (existingText) {
+      messages.push({
+        role: 'user',
+        content: `Here is the existing text for this field:\n${existingText}`,
+      })
+    }
+
+    let userPrompt = 'Template style to generate: "Write a balanced physical description highlighting age, demeanor, key visual motifs, and default clothing."'
+    if (existingText) {
+      userPrompt += '\n\nMake sure to keep the core of the existing text and build on it by revamping it or adding to it according to the template style, but do not omit key existing details.'
+    }
+    userPrompt += '\n\nPlease output only the optimized raw text content. Do not wrap in markdown code blocks unless it is structured markdown. Do not include introductory or concluding conversational text.'
+
+    messages.push({ role: 'user', content: userPrompt })
+
+    const llmResponse = await llmStore.generate(modelId, activeProvider, messages)
+    const resultText = llmResponse.text?.trim() || ''
+    if (resultText) {
+      description.value = resultText
+      toast.success('Visual description generated successfully!')
+    }
+    else {
+      throw new Error('Empty response received from LLM.')
+    }
+  }
+  catch (err: any) {
+    console.error('[ImportWizard] Description generation failed:', err)
+    toast.error(err.message || 'Failed to generate visual description.')
+  }
+  finally {
+    generatingDescription.value = false
+  }
+}
+
+async function generateImagePrompt() {
+  const providerId = selectedConsciousnessProvider.value || consciousnessProvider.value
+  const modelId = selectedConsciousnessModel.value || defaultConsciousnessModel.value
+
+  if (!providerId || !modelId) {
+    toast.error('Please configure the consciousness provider and model in Step 3 first.')
+    return
+  }
+
+  generatingPrefix.value = true
+  try {
+    const activeProvider = await providersStore.getProviderInstance(providerId) as any
+    if (!activeProvider) {
+      throw new Error(`Failed to instantiate provider: ${providerId}`)
+    }
+
+    const cardContext = {
+      name: name.value.trim(),
+      description: description.value || props.cardData?.description || '',
+    }
+
+    let extractedVisualTags = ''
+    try {
+      const displayModelId = selectedDisplayModelId.value
+      if (displayModelId) {
+        const model = await displayModelsStore.getDisplayModel(displayModelId)
+        if (model && model.previewImage) {
+          const providerIdBlip = 'blip-local'
+          providersStore.initializeProvider(providerIdBlip)
+          if (!providersStore.addedProviders[providerIdBlip]) {
+            providersStore.markProviderAdded(providerIdBlip)
+          }
+          if (providersStore.providerRuntimeState[providerIdBlip]) {
+            providersStore.providerRuntimeState[providerIdBlip].isConfigured = true
+          }
+
+          const providerInstance = await providersStore.getProviderInstance<any>(providerIdBlip)
+          if (providerInstance) {
+            await providerInstance.loadModel()
+            const tags = await providerInstance.captionImage(model.previewImage)
+            extractedVisualTags = tags
+          }
+        }
+      }
+    }
+    catch (err) {
+      console.warn('[ImportWizard] Visual tag extraction skipped or failed:', err)
+    }
+
+    const systemInstruction = `You are an expert prompt crafter. Your task is to extract key physical traits from the companion's description, and merge them with the 'Extracted Visual Tags from Character Model Preview (Ground Truth)' provided in the context. Convert them into high-quality, comma-separated Stable Diffusion prompt tags with weights (e.g. (((short brown bob hair:1.5))), ((amber eyes:1.4))). Follow the style specified by the template prompt strictly.
+
+Critical Filtering Instructions:
+- No Poses or Composition: Do NOT include tags describing temporary poses, actions, or views (e.g., standing, sitting, t-pose, hand on hip, looking at viewer, full body, upper body, close-up).
+- No Preview Backgrounds: Do NOT include tags describing the preview's background (e.g., black background, white background, simple background, transparent background).
+- No Emotion/Personality Lock: Exclude emotional expressions (e.g., smile, happy, sad, open mouth, blush) to allow expressions to change dynamically.`
+
+    let systemPromptContent = `${systemInstruction}\n\nCore Set Context:\n${JSON.stringify(cardContext, null, 2)}`
+    if (extractedVisualTags) {
+      systemPromptContent += `\n\nExtracted Visual Tags from Character Model Preview (Ground Truth):\n${extractedVisualTags}`
+    }
+
+    const messages: { role: 'system' | 'user' | 'assistant', content: string }[] = [
+      { role: 'system', content: systemPromptContent },
+    ]
+
+    const existingText = artistryPromptPrefix.value.trim()
+    if (existingText) {
+      messages.push({
+        role: 'user',
+        content: `Here is the existing text for this field:\n${existingText}`,
+      })
+    }
+
+    let userPrompt = 'Template style to generate: "Generates general style tags (medium, lighting, aesthetic) + facial/body description + default attire and clothing accessories, represented as weighted comma-separated tags."'
+    if (existingText) {
+      userPrompt += '\n\nMake sure to keep the core of the existing text and build on it by revamping it or adding to it according to the template style, but do not omit key existing details.'
+    }
+    userPrompt += '\n\nPlease output only the optimized raw text content. Do not wrap in markdown code blocks unless it is structured markdown. Do not include introductory or concluding conversational text.'
+
+    messages.push({ role: 'user', content: userPrompt })
+
+    const llmResponse = await llmStore.generate(modelId, activeProvider, messages)
+    const resultText = llmResponse.text?.trim() || ''
+    if (resultText) {
+      artistryPromptPrefix.value = resultText
+      toast.success('Artistry prompt prefix generated successfully!')
+    }
+    else {
+      throw new Error('Empty response received from LLM.')
+    }
+  }
+  catch (err: any) {
+    console.error('[ImportWizard] Prefix generation failed:', err)
+    toast.error(err.message || 'Failed to generate image prompt prefix.')
+  }
+  finally {
+    generatingPrefix.value = false
+  }
+}
+
 // Handle wizard navigation
 function nextStep() {
   if (currentStep.value === 1) {
@@ -193,7 +369,7 @@ function nextStep() {
       return
     }
   }
-  if (currentStep.value < 4) {
+  if (currentStep.value < 5) {
     currentStep.value++
   }
 }
@@ -230,7 +406,7 @@ async function finalizeImport() {
     const finalCard = {
       ...props.cardData,
       name: name.value.trim(),
-      description: replacePatterns(props.cardData.description || ''),
+      description: replacePatterns(description.value.trim()),
       personality: replacePatterns(props.cardData.personality || ''),
       scenario: replacePatterns(props.cardData.scenario || ''),
       systemPrompt: replacePatterns(props.cardData.systemPrompt) || '.',
@@ -258,6 +434,7 @@ async function finalizeImport() {
           artistry: {
             ...props.cardData.extensions?.airi?.artistry,
             autonomousEnabled: artistryAutonomousEnabled.value,
+            prompt: artistryPromptPrefix.value.trim(),
           },
           dreamState: {
             ...props.cardData.extensions?.airi?.dreamState,
@@ -318,7 +495,7 @@ async function finalizeImport() {
             </div>
             <div class="flex gap-1">
               <span
-                v-for="s in 4"
+                v-for="s in 5"
                 :key="s"
                 :class="[
                   'h-2 w-8 rounded-full transition-all duration-300',
@@ -513,6 +690,55 @@ async function finalizeImport() {
                 </div>
               </div>
             </div>
+
+            <!-- STEP 5: Visual Description & Artistry -->
+            <div v-if="currentStep === 5" class="flex flex-col gap-4">
+              <p class="text-sm text-neutral-500 dark:text-neutral-400">
+                Finetune your companion's visual description and prompt prefix to keep them self-aware and visually consistent.
+              </p>
+
+              <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Visual Description</label>
+                  <textarea
+                    v-model="description"
+                    placeholder="Enter visual/physical details in prose..."
+                    rows="4"
+                    class="w-full resize-none border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
+                  />
+                  <Button
+                    variant="secondary"
+                    class="w-full flex items-center justify-center gap-2"
+                    :disabled="generatingDescription"
+                    @click="generateVisualDescription"
+                  >
+                    <div v-if="generatingDescription" class="i-solar:refresh-bold animate-spin" />
+                    <div v-else class="i-solar:sparkles-bold-duotone text-violet-500" />
+                    {{ generatingDescription ? 'Generating description...' : 'Generate Visual Description of Model' }}
+                  </Button>
+                </div>
+
+                <div v-if="artistryAutonomousEnabled" class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-700/50">
+                  <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Artistry Prompt Prefix</label>
+                  <textarea
+                    v-model="artistryPromptPrefix"
+                    placeholder="Enter Stable Diffusion prompt tags (e.g. blonde hair, blue eyes)..."
+                    rows="3"
+                    class="w-full resize-none border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
+                  />
+                  <Button
+                    variant="secondary"
+                    class="w-full flex items-center justify-center gap-2"
+                    :disabled="generatingPrefix"
+                    @click="generateImagePrompt"
+                  >
+                    <div v-if="generatingPrefix" class="i-solar:refresh-bold animate-spin" />
+                    <div v-else class="i-solar:sparkles-bold-duotone text-violet-500" />
+                    {{ generatingPrefix ? 'Generating image prompt...' : 'Generate Image Prompt of Model' }}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Wizard Footer Controls -->
@@ -525,7 +751,7 @@ async function finalizeImport() {
               @click="prevStep"
             />
             <Button
-              v-if="currentStep < 4"
+              v-if="currentStep < 5"
               variant="primary"
               icon="i-solar:arrow-right-bold-duotone"
               label="Next"
