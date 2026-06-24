@@ -15,6 +15,7 @@ import { echoChipsRepo } from '../../database/repos/echo-chips.repo'
 import { shortTermMemoryRepo } from '../../database/repos/short-term-memory.repo'
 import { textJournalRepo } from '../../database/repos/text-journal.repo'
 import { storage } from '../../database/storage'
+import { layeredMemory } from '../../libs/search/layered-memory'
 import { useAuthStore } from '../auth'
 import { useBackgroundStore } from '../background'
 import { useEchoesStore } from '../echo-chips'
@@ -993,6 +994,7 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       sessionMessages.value[sessionId] = next
       await persistSession(sessionId)
       broadcastStreamEvent({ type: 'session-refreshed', sessionId })
+      void layeredMemory.removeDocument(messageId)
     }
   }
 
@@ -1002,10 +1004,16 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     const current = sessionMessages.value[sessionId] ?? []
     const index = current.findIndex(msg => msg.id === messageId)
     if (index !== -1) {
+      const deleted = current.slice(index + 1)
       const next = current.slice(0, index + 1)
       sessionMessages.value[sessionId] = next
       await persistSession(sessionId)
       broadcastStreamEvent({ type: 'session-refreshed', sessionId })
+      for (const msg of deleted) {
+        if (msg.id) {
+          void layeredMemory.removeDocument(msg.id)
+        }
+      }
     }
   }
 

@@ -371,6 +371,16 @@ globalThis.addEventListener('message', async (e) => {
         globalThis.postMessage({ id, type: 'snapshot', snapshot })
         break
       }
+
+      case 'remove': {
+        const { id: docId } = payload
+        const existed = documents.delete(docId)
+        if (existed) {
+          rebuildKeywordStats()
+        }
+        globalThis.postMessage({ id, type: 'removed', existed })
+        break
+      }
     }
   }
   catch (err) {

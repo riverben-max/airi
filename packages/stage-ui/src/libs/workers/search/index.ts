@@ -101,5 +101,6 @@ export const searchWorker = {
     await loadEmbeddingModel()
     return callWorker('search', { query, limit, characterId })
   },
+  remove: (id: string) => callWorker('remove', { id }),
   persist: () => callWorker('persist'),
 }

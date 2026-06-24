@@ -91,4 +91,9 @@ export const layeredMemory = {
       isIndexing = false
     }
   },
+
+  async removeDocument(id: string) {
+    await searchWorker.remove(id)
+    await this.persist()
+  },
 }
