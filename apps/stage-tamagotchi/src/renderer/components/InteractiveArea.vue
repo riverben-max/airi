@@ -1114,13 +1114,25 @@ function jumpToMessage(messageId: string) {
       </div>
 
       <!-- Telemetry details -->
-      <div v-if="activeCard?.extensions?.airi?.groundingEnabled" v-show="isGroundingPreviewExpanded" class="z-10 mt-2 animate-fade-in animate-duration-200 border-t border-amber-500/10 pt-2">
-        <pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-amber-950/20 p-2 text-[10px] text-amber-300/90 leading-normal font-mono scrollbar-thin">{{ proactivityStore.sensorPayload || 'Polling sensors...' }}</pre>
+      <div
+        v-if="activeCard?.extensions?.airi?.groundingEnabled"
+        :class="[
+          'z-10 animate-fade-in animate-duration-200',
+          isGroundingPreviewExpanded ? 'mt-2 border-t border-amber-500/10 pt-2' : '',
+        ]"
+      >
+        <pre v-show="isGroundingPreviewExpanded" class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-amber-950/20 p-2 text-[10px] text-amber-300/90 leading-normal font-mono scrollbar-thin">{{ proactivityStore.sensorPayload || 'Polling sensors...' }}</pre>
       </div>
 
       <!-- Grounded Memories Section -->
-      <div v-if="activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0" v-show="isMemoriesPreviewExpanded" class="z-10 mt-2 animate-fade-in animate-duration-200 border-t border-amber-500/10 pt-2">
-        <div class="max-h-36 overflow-y-auto scrollbar-thin space-y-1.5">
+      <div
+        v-if="activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0"
+        :class="[
+          'z-10 animate-fade-in animate-duration-200',
+          isMemoriesPreviewExpanded ? 'mt-2 border-t border-amber-500/10 pt-2' : '',
+        ]"
+      >
+        <div v-show="isMemoriesPreviewExpanded" class="max-h-36 overflow-y-auto scrollbar-thin space-y-1.5">
           <div
             v-for="entry in groundedMemories"
             :key="entry.id"
@@ -1139,8 +1151,14 @@ function jumpToMessage(messageId: string) {
       </div>
 
       <!-- Recent Topics Section -->
-      <div v-if="activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length" v-show="isTopicsPreviewExpanded" class="z-10 mt-2 animate-fade-in animate-duration-200 border-t border-amber-500/10 pt-2">
-        <div class="max-h-24 flex flex-wrap gap-1.5 overflow-y-auto p-1 scrollbar-thin">
+      <div
+        v-if="activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length"
+        :class="[
+          'z-10 animate-fade-in animate-duration-200',
+          isTopicsPreviewExpanded ? 'mt-2 border-t border-amber-500/10 pt-2' : '',
+        ]"
+      >
+        <div v-show="isTopicsPreviewExpanded" class="max-h-24 flex flex-wrap gap-1.5 overflow-y-auto p-1 scrollbar-thin">
           <div
             v-for="item in activeCard.extensions.airi.recentTopics"
             :key="item.topic"
