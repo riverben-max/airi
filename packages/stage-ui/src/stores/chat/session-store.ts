@@ -25,6 +25,7 @@ import { useTextJournalStore } from '../memory-text-journal'
 import { useAiriCardStore } from '../modules/airi-card'
 import { useSettingsGeneral } from '../settings'
 import { CHAT_STREAM_CHANNEL_NAME } from './constants'
+import { updateRecentTopics } from './recent-topics'
 import { mergeLoadedSessionMessages } from './session-message-merge'
 
 export const useChatSessionStore = defineStore('chat-session', () => {
@@ -381,6 +382,23 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     await enqueuePersist(() => chatSessionsRepo.saveSession(sessionId, record))
     await persistIndex()
     scheduleSync(sessionId)
+
+    // Trigger Recent Topics background computation if enabled
+    const cardStore = useAiriCardStore()
+    const card = cardStore.getCard(updatedMeta.characterId)
+    if (card?.extensions?.airi?.groundingTopicsEnabled) {
+      const stmBlocks = shortTermMemory.getCharacterBlocks(updatedMeta.characterId)
+      void updateRecentTopics(
+        updatedMeta.characterId,
+        sessionId,
+        userId.value || 'default_user',
+        messages,
+        stmBlocks,
+        updatedMeta.universeId || 'global',
+      ).catch((err) => {
+        console.error('[ChatSessionStore] Failed to update recent topics:', err)
+      })
+    }
   }
 
   function getSessionMeta(sessionId: string): ChatSessionMeta | null {
@@ -1126,6 +1144,24 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       return
     await loadSession(nextId)
     ensureSession(nextId)
+
+    // Trigger Recent Topics background computation if enabled on load/switch
+    const cardStore = useAiriCardStore()
+    const card = cardStore.getCard(activeCardId.value || '')
+    if (card?.extensions?.airi?.groundingTopicsEnabled) {
+      const messages = getSessionMessages(nextId)
+      const stmBlocks = shortTermMemory.getCharacterBlocks(activeCardId.value || '')
+      void updateRecentTopics(
+        activeCardId.value || '',
+        nextId,
+        userId.value || 'default_user',
+        messages,
+        stmBlocks,
+        sessionMetas.value[nextId]?.universeId || 'global',
+      ).catch((err) => {
+        console.error('[ChatSessionStore] Failed to update recent topics on session load:', err)
+      })
+    }
   })
 
   // NOTICE: Cross-window sync receiver. When another window (e.g. main stage)

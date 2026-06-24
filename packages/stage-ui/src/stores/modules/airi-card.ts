@@ -25,9 +25,12 @@ import {
 } from '../../constants/prompts/character-defaults'
 import { storage } from '../../database/storage'
 import { AiriCardSchema } from '../../types/card.schema'
+import { useAuthStore } from '../auth'
 import { useBackgroundStore } from '../background'
+import { useChatSessionStore } from '../chat/session-store'
 import { useDatingSimStore } from '../dating-sim'
 import { DisplayModelFormat, useDisplayModelsStore } from '../display-models'
+import { useShortTermMemoryStore } from '../memory-short-term'
 import { useSettingsStageModel } from '../settings/stage-model'
 import { useConsciousnessStore } from './consciousness'
 import { useSpeechStore } from './speech'
@@ -188,6 +191,8 @@ export interface AiriExtension {
   shortTermMemory?: ShortTermMemoryConfig
   groundingEnabled?: boolean
   groundingMemoryEnabled?: boolean
+  groundingTopicsEnabled?: boolean
+  recentTopics?: Array<{ topic: string, weight: number }>
   visual_assets?: Record<string, {
     description: string
     prompt?: string
@@ -485,6 +490,49 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     } as any)
   }
 
+  const toggleGroundingTopics = async (id: string) => {
+    // Resolve store instances synchronously before any await to preserve Vue setup context
+    const sessionStore = useChatSessionStore()
+    const stmStore = useShortTermMemoryStore()
+    const authStore = useAuthStore()
+
+    await until(cardsLoading).toBe(false)
+    const card = cards.value.get(id)
+    if (!card) {
+      console.warn('[AiriCard] toggleGroundingTopics: card not found for id', id)
+      return
+    }
+
+    const current = card.extensions?.airi?.groundingTopicsEnabled ?? false
+    const next = !current
+    console.log('[AiriCard] toggleGroundingTopics:', { id, current, next })
+
+    // First update the state so that the engine doesn't return early due to groundingTopicsEnabled being false
+    await updateCard(id, {
+      extensions: {
+        ...card.extensions,
+        airi: {
+          ...card.extensions?.airi,
+          groundingTopicsEnabled: next,
+        },
+      },
+    } as any)
+
+    if (next && sessionStore.activeSessionId) {
+      const activeSessionId = sessionStore.activeSessionId
+      const meta = sessionStore.getSessionMeta(activeSessionId)
+      const universeId = meta?.universeId || 'global'
+      const userId = authStore.userId || 'default_user'
+      const messages = sessionStore.getSessionMessages(activeSessionId)
+      const stmBlocks = stmStore.getCharacterBlocks(id)
+
+      const { updateRecentTopics } = await import('../chat/recent-topics')
+      void updateRecentTopics(id, activeSessionId, userId, messages, stmBlocks, universeId).catch((err) => {
+        console.error('[AiriCard] Failed to compute initial recent topics:', err)
+      })
+    }
+  }
+
   const setAutonomousArtistry = async (id: string, enabled: boolean) => {
     await until(cardsLoading).toBe(false)
     const card = cards.value.get(id)
@@ -675,6 +723,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
         generation: defaultGeneration,
         groundingEnabled: false,
         groundingMemoryEnabled: false,
+        groundingTopicsEnabled: false,
+        recentTopics: [],
         visual_assets: {},
         active_concepts: [],
         eternal_record: { relational_milestones: [], lore_bits: [] },
@@ -843,6 +893,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
       active_concepts: (existingExtension as any)?.active_concepts ?? [],
       groundingEnabled: existingExtension?.groundingEnabled ?? false,
       groundingMemoryEnabled: existingExtension?.groundingMemoryEnabled ?? false,
+      groundingTopicsEnabled: existingExtension?.groundingTopicsEnabled ?? false,
+      recentTopics: existingExtension?.recentTopics ?? [],
       imageJournal: (existingExtension as any)?.imageJournal || { selfie: false },
     }
   }
@@ -1118,6 +1170,7 @@ export const useAiriCardStore = defineStore('airi-card', () => {
     getCard,
     toggleGrounding,
     toggleGroundingMemory,
+    toggleGroundingTopics,
     setAutonomousArtistry,
     getCardDisplayModelId,
     resetState,

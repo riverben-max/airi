@@ -420,6 +420,17 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
         }
       }
 
+      // 3. Grounding Recent Topics Injection
+      if (activeCard.value?.extensions?.airi?.groundingTopicsEnabled && activeCard.value?.extensions?.airi?.recentTopics?.length) {
+        const topicsFormatted = activeCard.value.extensions.airi.recentTopics
+          .map(t => `${t.topic} (weight: ${t.weight.toFixed(2)})`)
+          .join(', ')
+        groundingMessages.push({
+          role: 'system',
+          content: `[RECENT TOPICS]\nYou have the following topics and conceptual threads active in your recent memory. Use them to maintain awareness of what has been discussed lately:\n---\n${topicsFormatted}`,
+        })
+      }
+
       // Splice them into the message list!
       if (groundingMessages.length > 0) {
         if (options.triggerOnly) {

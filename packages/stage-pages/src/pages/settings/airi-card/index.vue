@@ -216,6 +216,11 @@ const cardSourceLinks = [
     description: 'Community character hub tied to the Risu ecosystem, useful for portable card-style prompts.',
     url: 'https://realm.risuai.net',
   },
+  {
+    name: 'DataCat',
+    description: 'A popular database and scraping tool used to search, browse, and export character definitions as SillyTavern JSON.',
+    url: 'https://datacat.run/fresh',
+  },
 ] as const
 
 // Card list data structure

@@ -247,6 +247,7 @@ defineExpose({
               { name: 'JanitorAI', url: 'https://janitorai.com/', icon: 'i-solar-ghost-bold-duotone' },
               { name: 'Chub AI', url: 'https://chub.ai/', icon: 'i-solar-folder-2-bold-duotone' },
               { name: 'Risu Realm', url: 'https://realm.risuai.net/', icon: 'i-solar-planet-bold-duotone' },
+              { name: 'DataCat', url: 'https://datacat.run/fresh', icon: 'i-solar-cat-bold-duotone' },
             ]"
             :key="link.name"
             :href="link.url"

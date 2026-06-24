@@ -76,6 +76,7 @@ const CHAT_WINDOW_TITLE = 'AIRI - Chat Window'
 const proactivityStore = useProactivityStore()
 const isGroundingPreviewExpanded = ref(false)
 const isMemoriesPreviewExpanded = ref(true)
+const isTopicsPreviewExpanded = ref(true)
 
 const groundedMemories = ref<any[]>([])
 
@@ -1068,7 +1069,7 @@ function jumpToMessage(messageId: string) {
     </div>
     <!-- Ephemeral Grounding Preview Block -->
     <div
-      v-if="activeCard?.extensions?.airi?.groundingEnabled || (activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0)"
+      v-if="activeCard?.extensions?.airi?.groundingEnabled || (activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0) || (activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length)"
       class="grounding-preview-panel relative mx-2 flex flex-col border border-amber-500/20 rounded-lg bg-black/40 p-2 text-sm text-amber-200 font-mono shadow-[0_0_15px_rgba(245,158,11,0.05)] backdrop-blur-md transition-colors hover:bg-black/60"
     >
       <div class="pointer-events-none absolute inset-0 bg-[length:100%_4px] bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.1)_50%)] opacity-20" />
@@ -1095,6 +1096,14 @@ function jumpToMessage(messageId: string) {
           >
             <span>Memories</span>
             <span class="text-amber-500 transition-transform" :class="isMemoriesPreviewExpanded ? 'i-carbon-chevron-up' : 'i-carbon-chevron-down'" />
+          </button>
+          <button
+            v-if="activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length"
+            class="flex items-center gap-1 border border-amber-500/25 rounded bg-black/50 px-2 py-0.5 text-xs text-amber-400 font-bold font-mono transition-colors hover:bg-black/80"
+            @click="isTopicsPreviewExpanded = !isTopicsPreviewExpanded"
+          >
+            <span>Topics</span>
+            <span class="text-amber-500 transition-transform" :class="isTopicsPreviewExpanded ? 'i-carbon-chevron-up' : 'i-carbon-chevron-down'" />
           </button>
         </div>
       </div>
@@ -1124,6 +1133,25 @@ function jumpToMessage(messageId: string) {
             <p class="line-clamp-2 text-amber-200/80">
               {{ entry.content }}
             </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Topics Section -->
+      <div v-if="activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length" class="z-10 mt-2 flex flex-col gap-1.5 border-t border-amber-500/10 pt-2">
+        <div class="flex select-none items-center gap-1.5 text-[9px] text-amber-400 font-bold tracking-wider uppercase">
+          <span class="i-solar:hashtag-bold-duotone text-xs" />
+          <span>Recent Topics ({{ activeCard.extensions.airi.recentTopics.length }})</span>
+        </div>
+        <div v-show="isTopicsPreviewExpanded" class="max-h-24 flex flex-wrap animate-fade-in animate-duration-200 gap-1.5 overflow-y-auto p-1 scrollbar-thin">
+          <div
+            v-for="item in activeCard.extensions.airi.recentTopics"
+            :key="item.topic"
+            class="flex items-center gap-1 border border-amber-500/15 rounded bg-amber-950/20 px-2 py-0.5 text-[10px] text-amber-300 font-mono"
+            :title="`weight: ${item.weight.toFixed(2)}`"
+          >
+            <span>#{{ item.topic }}</span>
+            <span class="text-[8px] text-amber-500 font-bold">({{ item.weight.toFixed(1) }})</span>
           </div>
         </div>
       </div>
