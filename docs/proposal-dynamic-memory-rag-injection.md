@@ -59,17 +59,25 @@ When both **Timeline Memory** and **Universe Memory** are enabled, the ingest pi
 ### Toggle 4 — Recent Topics [Placeholder]
 > *Attach a weighted list of recently discussed topics*
 
-A lightweight, **embedding-free** context signal. The system maintains a per-card topic frequency map across sessions, with a time-decay weight — topics discussed recently score higher, topics not mentioned in a while fade. Think simple TF-IDF over conversation history with an exponential decay curve on the timestamp.
+A lightweight, **embedding-free** context signal. The system maintains a per-card topic frequency map across sessions with a configurable decay strategy to determine which topics are "top-of-mind."
+
+#### Topic Decay Strategies
+To support different character use cases (e.g. roleplay vs. real-time assistants), the system supports three decay strategies:
+1. **Turn-Based Decay (Default MVP)**: Topic weights decay based on the number of dialogue turns (messages) that have elapsed since they were last discussed. This ensures that in roleplay scenarios, pausing the chat for days does not cause the character to forget active narrative topics, while spamming messages naturally pushes old topics down.
+2. **Session-Segment / Timeline-Block Decay**: Topic weights decay when crossing narrative boundaries, such as starting a new timeline branch or forking from the timeline modal.
+3. **Temporal Wall-Clock Decay**: Traditional exponential decay based on real-world time elapsed (e.g., hours or days). Ideal for real-time assistants (like Rick Sanchez) that need to be aware of actual time passing in the user's physical world.
+
+Users can choose their preferred decay strategy in the **Proactivity** tab configuration for each character card.
 
 The injected block is compact and human-readable:
 
 ```
 [RECENT TOPICS]
 Topics this user has been talking about lately (by recency & frequency):
-- work stress (high — last 2 days)
+- work stress (high — last 20 turns)
 - the park picnic (medium — last session)
 - Charlie the dog (medium — ongoing)
-- productivity & deadlines (fading — last week)
+- productivity & deadlines (fading — 100 turns ago)
 ```
 
 This is different from Toggles 2 and 3 in a critical way: **it doesn't retrieve specific memory snippets**, it surfaces *what the user has been thinking about* as a lightweight orientation signal. The character doesn't need the full journal entry about the park — just knowing the park has been on the user's mind recently is enough context to make her response feel tuned in.
