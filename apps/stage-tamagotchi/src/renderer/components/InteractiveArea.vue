@@ -1114,7 +1114,8 @@ function jumpToMessage(messageId: string) {
           <div
             v-for="entry in groundedMemories"
             :key="entry.id"
-            class="flex flex-col border border-amber-500/10 rounded bg-amber-950/10 p-2 text-[10px] leading-normal"
+            class="flex flex-col cursor-pointer border border-amber-500/10 rounded bg-amber-950/10 p-2 text-[10px] leading-normal transition-all hover:border-amber-500/20 hover:bg-amber-950/20"
+            @click="openTextPreview({ title: entry.title || 'Untitled Memory', content: entry.content })"
           >
             <div class="mb-0.5 flex items-center justify-between text-amber-300 font-bold">
               <span class="truncate pr-2">{{ entry.title || 'Untitled Memory' }}</span>
