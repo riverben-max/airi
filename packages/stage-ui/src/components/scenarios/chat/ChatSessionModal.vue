@@ -2,10 +2,11 @@
 import { format } from 'date-fns'
 import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import UniversePickerModal from '../dialogs/UniversePickerModal.vue'
 
+import { chatSessionsRepo } from '../../../database/repos/chat-sessions.repo'
 import { useChatSessionStore } from '../../../stores/chat/session-store'
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 
@@ -16,6 +17,62 @@ const airiCardStore = useAiriCardStore()
 
 const { activeCardId } = storeToRefs(airiCardStore)
 const { activeSessionId } = storeToRefs(chatSessionStore)
+
+const rawTurnsCount = ref<number | null>(null)
+const uniqueTurnsCount = ref<number | null>(null)
+const statsLoading = ref(false)
+
+async function loadAnalytics() {
+  if (!activeCardId.value) {
+    rawTurnsCount.value = null
+    uniqueTurnsCount.value = null
+    return
+  }
+  statsLoading.value = true
+  try {
+    const characterIndex = chatSessionStore.getCharacterIndex(activeCardId.value)
+    if (!characterIndex) {
+      rawTurnsCount.value = 0
+      uniqueTurnsCount.value = 0
+      return
+    }
+
+    const sessions = Object.values(characterIndex.sessions)
+    let totalRaw = 0
+    const uniqueContents = new Set<string>()
+
+    const sessionRecords = await Promise.all(
+      sessions.map(s => chatSessionsRepo.getSession(s.sessionId)),
+    )
+
+    for (const record of sessionRecords) {
+      if (!record)
+        continue
+      for (const m of record.messages) {
+        if (m.role === 'user' || m.role === 'assistant') {
+          totalRaw++
+          const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+          uniqueContents.add(text.trim())
+        }
+      }
+    }
+
+    rawTurnsCount.value = totalRaw
+    uniqueTurnsCount.value = uniqueContents.size
+  }
+  catch (err) {
+    console.error('[ChatSessionModal] Failed to load session stats:', err)
+  }
+  finally {
+    statsLoading.value = false
+  }
+}
+
+watch(showDialog, (open) => {
+  if (open) {
+    void loadAnalytics()
+  }
+})
 
 const characterSessions = computed(() => {
   if (!activeCardId.value)
@@ -105,6 +162,17 @@ function handleSaveTitle(sessionId: string) {
             <span class="mt-1 text-xs text-neutral-500 font-medium dark:text-neutral-400">
               Manage different branches of your story
             </span>
+            <div v-if="rawTurnsCount !== null" class="mt-2 flex items-center gap-3 text-[10px] text-primary-600 font-bold tracking-wider uppercase dark:text-primary-400">
+              <span class="flex items-center gap-1">
+                <span class="i-solar:chat-line-bold-duotone text-xs" />
+                {{ rawTurnsCount }} Raw Turns
+              </span>
+              <span class="text-neutral-300 dark:text-neutral-700">|</span>
+              <span class="flex items-center gap-1">
+                <span class="i-solar:magic-stick-3-bold-duotone text-xs" />
+                {{ uniqueTurnsCount }} Unique Turns
+              </span>
+            </div>
           </div>
           <button
             class="group rounded-full p-2 text-neutral-400 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800"

@@ -161,46 +161,40 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       console.error('[TextJournal:Index] Failed to load STMM for indexing:', err)
     }
 
-    // 3. Raw (Sampling recent sessions)
+    // 3. Raw (Deduplicated entire corpus of all sessions)
     const raw: any[] = []
     try {
       const index = await chatSessionsRepo.getIndex(userId)
       if (index && index.characters[cardId]) {
         const characterSessions = index.characters[cardId]
-        const allSessions = Object.values(characterSessions.sessions)
+        const sessions = Object.values(characterSessions.sessions)
           .filter(s => (s.universeId || 'global') === currentUniverseId)
 
-        const sessions = [...allSessions]
-          .sort((a, b) => (b.messageCount ?? 0) - (a.messageCount ?? 0))
-          .slice(0, 10)
-
-        if (activeSessionId && !sessions.some(s => s.sessionId === activeSessionId)) {
-          const activeSes = allSessions.find(s => s.sessionId === activeSessionId)
-          if (activeSes) {
-            sessions.push(activeSes)
-          }
-        }
+        const uniqueRaw = new Map<string, any>()
 
         for (const s of sessions) {
           const session = await chatSessionsRepo.getSession(s.sessionId)
           if (session) {
             for (const m of session.messages) {
               if (m.role === 'user' || m.role === 'assistant') {
-                const text = extractTextContent(m.content)
+                const text = extractTextContent(m.content).trim()
                 if (text.length > 10) {
-                  raw.push({
-                    id: m.id,
-                    characterId: cardId,
-                    fact: text,
-                    kind: 'raw_turn',
-                    timestamp: new Date(m.createdAt || Date.now()).toISOString(),
-                    source: `chat:${s.sessionId}`,
-                  })
+                  if (!uniqueRaw.has(text)) {
+                    uniqueRaw.set(text, {
+                      id: m.id,
+                      characterId: cardId,
+                      fact: text,
+                      kind: 'raw_turn',
+                      timestamp: new Date(m.createdAt || Date.now()).toISOString(),
+                      source: `chat:${s.sessionId}`,
+                    })
+                  }
                 }
               }
             }
           }
         }
+        raw.push(...uniqueRaw.values())
       }
     }
     catch (err) {
