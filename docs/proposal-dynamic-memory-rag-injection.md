@@ -30,29 +30,33 @@ On hover, a live preview panel expands showing the actual current sensor payload
 
 ---
 
-### Toggle 2 — In-Context Semantic History
+### Toggle 2 — Timeline Memory (RAG) [Planned]
 > *Attach relevant snippets from this session*
 
-Runs a semantic search against the **current session's** messages using the user's outgoing message as the query vector. The top-N scored snippets above a confidence threshold are formatted and injected as a `[IN-SESSION CONTEXT]` block.
-
-On hover, shows a sample of what a retrieved snippet block looks like when populated.
+Runs a semantic search against the **current session's** messages and history (including raw chat turns, short-term memory summary blocks, and journal entries) using the user's outgoing message as the query vector. It filters results strictly to the **active session ID**. This reinforces facts, decisions, or dialogue that occurred earlier in the same conversation thread but fell out of the model's sliding context window.
 
 ---
 
-### Toggle 3 — Universe-Scoped Memory Recall (RAG)
+### Toggle 3 — Universe-Scoped Memory Recall (RAG) [Implemented]
 > *Attach relevant snippets from past sessions within this universe*
 
-Runs the same semantic search but across **past sessions** for the active character.
+Runs the same semantic search but across **all other sessions** and memory entries belonging to the active **Universe** (`universeId`), excluding the current active session ID to prevent redundant timeline lookups.
 
 > [!IMPORTANT]
-> **Universe-Based Scoping (Flat Design)**
-> As defined in [timeline-flat-design.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/timeline-flat-design.md), multiple chat sessions can coexist inside a **Universe** (`universeId`). To prevent memory/relationship leaks or timeline contradictions, any cross-session semantic search **MUST** be strictly filtered. It should query only sessions or memory entries belonging to the **active universe** (`activeUniverseId`) associated with the current session.
-
-This toggle is gated behind semantic search quality — see the Quality Gate section below.
+> **Universe-Based Scoping & Flat Design**
+> As defined in [timeline-flat-design.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/timeline-flat-design.md), multiple chat sessions can coexist inside a **Universe** (`universeId`). To prevent memory/relationship leaks or timeline contradictions, any cross-session semantic search **MUST** be strictly filtered. It queries only sessions or memory entries belonging to the **active universe** (`activeUniverseId`) associated with the current session.
 
 ---
 
-### Toggle 4 — Recent Topics
+### Deduplication Rules (When both are active)
+When both **Timeline Memory** and **Universe Memory** are enabled, the ingest pipeline:
+1. Performs both semantic queries.
+2. Merges the results.
+3. **Deduplicates by document ID**: Strips duplicate records to ensure the model never receives identical memories twice.
+
+---
+
+### Toggle 4 — Recent Topics [Placeholder]
 > *Attach a weighted list of recently discussed topics*
 
 A lightweight, **embedding-free** context signal. The system maintains a per-card topic frequency map across sessions, with a time-decay weight — topics discussed recently score higher, topics not mentioned in a while fade. Think simple TF-IDF over conversation history with an exponential decay curve on the timestamp.
