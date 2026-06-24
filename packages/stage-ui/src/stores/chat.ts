@@ -23,6 +23,7 @@ import { createChatHooks } from './chat/hooks'
 import { useChatSessionStore } from './chat/session-store'
 import { useChatStreamStore } from './chat/stream-store'
 import { useLLM } from './llm'
+import { useTextJournalStore } from './memory-text-journal'
 import { useAiriCardStore } from './modules/airi-card'
 import { useAutonomousArtistryStore } from './modules/artistry-autonomous'
 import { useConsciousnessStore } from './modules/consciousness'
@@ -94,7 +95,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   const artistryAutonomousStore = useAutonomousArtistryStore()
   const settingsChat = useSettingsChat()
   const { activeProvider, activeModel } = storeToRefs(consciousnessStore)
-  const { activeCard } = storeToRefs(airiCardStore)
+  const { activeCard, activeCardId } = storeToRefs(airiCardStore)
   const { trackFirstMessage } = useAnalytics()
 
   const chatSession = useChatSessionStore()
@@ -380,29 +381,57 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       let inferenceMessages: any[] = []
 
       // --- Grounding Injection ---
-      // If grounding is enabled, we sync sensors and inject the current environmental payload
-      // as a system message right before the user's latest input.
+      // If grounding/sensors or memory is enabled, we sync and inject context payloads as system messages.
+      const groundingMessages: any[] = []
+
+      // 1. System Sensors Telemetry
       if (activeCard.value?.extensions?.airi?.groundingEnabled) {
         chatLog('Grounding active. Syncing sensors...')
         await proactivityStore.updateSensors()
 
         const sensorPayload = proactivityStore.sensorPayload
-        const groundingMessage: any = {
+        groundingMessages.push({
           role: 'system',
           content: `[ENVIRONMENTAL AWARENESS]\nThe following telemetry describes your current environmental context. Use it to stay grounded in the user's reality and inform your response. You may reference specific values (like time or active applications) if relevant to the conversation, but avoid a dry, technical recitation of the data.\n---\n${sensorPayload}`,
-        }
+        })
+      }
 
+      // 2. RAG Universe Memory Injection
+      if (activeCard.value?.extensions?.airi?.groundingMemoryEnabled && !options.triggerOnly && typeof sendingMessage === 'string' && sendingMessage.trim().length > 3) {
+        chatLog('Grounding Memory active. Fetching semantic query matches...')
+        try {
+          const textJournalStore = useTextJournalStore()
+          const results = await textJournalStore.searchEntries({
+            query: sendingMessage,
+            limit: 3,
+            characterId: activeCardId.value,
+          })
+          if (results && results.length > 0) {
+            const memoriesFormatted = results.map(r => `[${(r.kind || 'Journal').toUpperCase()}] ${r.title || 'Memory'}\n${r.content}`).join('\n\n')
+            groundingMessages.push({
+              role: 'system',
+              content: `[GROUNDED LONG-TERM MEMORIES]\nThe following long-term memory records from your history were retrieved based on the user's latest query. Use these memories to inform your response and maintain context continuity. Keep references to them natural and contextual:\n---\n${memoriesFormatted}`,
+            })
+            chatLog('Grounding Memory payload injected into inference step.')
+          }
+        }
+        catch (err) {
+          console.error('[ChatStore] Failed to query semantic memories during ingest:', err)
+        }
+      }
+
+      // Splice them into the message list!
+      if (groundingMessages.length > 0) {
         if (options.triggerOnly) {
           const nextInferenceMessages = [...sessionMessagesForSend]
-          nextInferenceMessages.splice(sessionMessagesForSend.length - 1, 0, groundingMessage)
+          nextInferenceMessages.splice(sessionMessagesForSend.length - 1, 0, ...groundingMessages)
           inferenceMessages = nextInferenceMessages
         }
         else {
           const nextInferenceMessages = [...sessionMessagesForSend, inferenceUserMessage]
-          nextInferenceMessages.splice(sessionMessagesForSend.length, 0, groundingMessage)
+          nextInferenceMessages.splice(sessionMessagesForSend.length, 0, ...groundingMessages)
           inferenceMessages = nextInferenceMessages
         }
-        chatLog('Grounding payload injected into inference step.')
       }
       else {
         if (options.triggerOnly) {
