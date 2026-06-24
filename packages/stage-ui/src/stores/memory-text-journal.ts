@@ -167,10 +167,19 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       const index = await chatSessionsRepo.getIndex(userId)
       if (index && index.characters[cardId]) {
         const characterSessions = index.characters[cardId]
-        const sessions = Object.values(characterSessions.sessions)
+        const allSessions = Object.values(characterSessions.sessions)
           .filter(s => (s.universeId || 'global') === currentUniverseId)
-          .sort((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, 5) // Last 5 sessions
+
+        const sessions = [...allSessions]
+          .sort((a, b) => (b.messageCount ?? 0) - (a.messageCount ?? 0))
+          .slice(0, 10)
+
+        if (activeSessionId && !sessions.some(s => s.sessionId === activeSessionId)) {
+          const activeSes = allSessions.find(s => s.sessionId === activeSessionId)
+          if (activeSes) {
+            sessions.push(activeSes)
+          }
+        }
 
         for (const s of sessions) {
           const session = await chatSessionsRepo.getSession(s.sessionId)
