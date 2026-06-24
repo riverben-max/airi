@@ -95,7 +95,7 @@ function navigateToMemory() {
         class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md transition-all active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70"
         :title="title"
       >
-        <div class="i-solar:leaf-bold-duotone size-5 text-neutral-500 dark:text-neutral-400" />
+        <div class="i-solar:history-bold-duotone size-5 text-neutral-500 dark:text-neutral-400" />
       </button>
       <button
         v-else
@@ -105,7 +105,7 @@ function navigateToMemory() {
         hover:text="primary-500 dark:primary-400"
         :title="title"
       >
-        <div class="i-solar:leaf-bold-duotone" />
+        <div class="i-solar:history-bold-duotone" />
       </button>
     </PopoverTrigger>
 
@@ -119,7 +119,7 @@ function navigateToMemory() {
         <!-- Header -->
         <div class="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
           <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Memory & Context</span>
-          <div class="i-solar:leaf-bold-duotone text-xs text-primary-500" />
+          <div class="i-solar:history-bold-duotone text-xs text-primary-500" />
         </div>
 
         <!-- System Prompt Quick View -->
