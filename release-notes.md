@@ -1,38 +1,35 @@
-# 🍏 AIRI for macOS — v0.9.9-stable.20260615
+# 🚀 AIRI v0.9.10-stable.20260624 — Release Notes
 
-Welcome to the **first official macOS release** of AIRI! 🚀
-
-This milestone build brings the full power of AIRI's LLM-powered companion stage, Live2D/VRM/Spine/MMD rendering engine, and desktop integration natively to Apple Silicon and Intel Macs. We've spent significant effort optimizing performance, packaging, and platform compliance to deliver a seamless, premium macOS desktop experience.
+This release introduces comprehensive **RAG Semantic Grounding & Timeline Memory Popovers**, optimizes the desktop **Control Strip** interaction workflow, enhances macOS system tracking stability with an AppleScript fallback, adds safety guards like **Single Instance Lock**, and fixes multiple rendering and sync race conditions.
 
 ---
 
-## ✨ macOS Launch Highlights
+## ✨ Key Highlights
 
-### 🚀 Native Apple Silicon & Intel support
-* **Universal Architecture**: Natively compiled for Apple Silicon (`arm64` - M1/M2/M3/M4) and Intel (`x64`) architectures.
-* **Apple Codesigned & Packaged**: Signed using Apple Developer certificates to prevent Gatekeeper security blockades. Distributed as a clean, self-contained DMG installer.
-* **Xcode 26+ Optimization**: Compiled utilizing modern Apple Asset Catalogs (`.icon` app icons) for crisp display in the Dock and Launchpad.
+### 🧠 Semantic Grounding & RAG Memory Popovers
+* **Recent Topics (Grounding Toggle 4)**: Added turn-based decay, Echo Chips priority weighting, pre-flight panel rendering, and lifecycle store context fixes.
+* **Ephemeral Grounding Preview**: Grounded memories in the pre-flight section are now clickable to open a preview modal, backed by dynamic RAG semantic search previews (`ChatGroundingPopover`).
+* **Timeline Indexing & Search**: Indexed top 10 sessions by message count, added raw/unique turn counters in the timeline modal, and pruned deleted raw chat turns from search indexes.
+* **Pre-Flight UI Restructuring**: Re-designed the pre-flight grounding panel to collapse into exactly one row and display status badges in the header, solving `v-if`/`v-show` expansion conflicts.
 
-### 🎛️ Desktop Magnetism & window Controls
-* **Mac Menu Bar Integration**: A native macOS tray interface, fully customized to resolve double-toggle hide glitches and integrate smoothly with the Menu Bar.
-* **Control Strip Edge Magnetism**: Optimized edge snapping and magnetism when dragging the companion UI across macOS virtual desktops.
-* **Space Contention Guards**: Disabled native window maximization for the Actor Stage to prevent macOS spaces from hijacking the layout or causing window-hiding side effects.
+### 🎛️ Refined Desktop Interaction & Safety
+* **Inverted Control Strip Interaction**: You can now single-click to collapse/expand the control strip, and double-click to toggle the layout, complete with dynamic hover label helper text.
+* **Single Instance Lock**: Added a desktop process lock to prevent duplicate parallel running instances of AIRI.
+* **Scoped Settings Cloud Restore**: Allowed restoring only custom settings and improved control strip legibility.
 
-### 🔒 Permission Hygiene & Screen capture
-* **macOS Dynamic Permissions**: Implemented native permission prompt requests for camera (`NSCameraUsageDescription`) and microphone (`NSMicrophoneUsageDescription`) access.
-* **Sensors & System Tracking**: Upgraded and patched the native `active-win` wrapper to prevent macOS system diagnostics crashes and keep resource utilization extremely low.
+### 🍏 macOS & System Sensors Optimization
+* **AppleScript Active Window Fallback**: Bypassed native `active-win` bindings on macOS in favor of AppleScript tracking with performance logs to prevent system diagnostics crashes.
+* **macOS SMB & File Sync Guards**: Resolved close `EINVAL` errors on macOS SMB mounts and introduced IndexedDB Quota Guards with outbox cleanups.
 
----
+### 🎭 Live2D & Model Sync Stabilization
+* **Actor-Swapping Race Condition Fix**: Prevented crashes by awaiting `nextTick` before verifying the mounted state of newly loaded models.
+* **Display Model LRU Cache**: Added a Least Recently Used (LRU) cache for display models to speed up repeat loads.
+* **Lip-Sync & Motion Loop Protection**: Fixed an infinite loop issue on undefined motion playback and ensured lip-sync is correctly applied in the post-update ticker loop.
+* **Speech Playback Lock**: Prevented automatic card model syncing while active speech intent playback is in progress.
 
-## 🛠️ Monorepo & Platform Stabilization
-* **Zero Telemetry**: Fully removed legacy PostHog tracking and analytics scripts for a private, zero-footprint environment.
-* **Clean TypeScript and Vue compiler**: Resolved strict type errors (TS6133) in the settings panel and fixed Vue named-template tag parsing crashes on build.
-* **Node 25.6.0 Compat**: Upgraded package engine requirements to fully support modern development runtimes.
+### 🧙 Sparkle AI & Producer Wizards
+* **Visual Description Step**: Added Step 5 to the `CardImportWizard` for generating visual descriptions and managing artistry prefix definitions.
+* **Producer Prompting Upgrades**: Integrated cache-aligned full-context suggestions and editable prompt templates in the Producer panel to assist with custom prompting.
 
----
-
-## 📥 How to Install on macOS
-1. Download the **`AIRI-0.9.9-stable.20260615-darwin-arm64.dmg`** (or `x64` for Intel).
-2. Open the `.dmg` file.
-3. Drag **AIRI** into your **Applications** folder.
-4. Launch AIRI from your Applications folder or Spotlight search.
+### 🔌 Connection & System Leak Fixes
+* **Auth Loop Leak Fix**: Resolved a WebSocket connection authentication loop leak and patched the local inactivity checker.
