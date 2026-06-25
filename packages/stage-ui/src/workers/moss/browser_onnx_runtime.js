@@ -1306,18 +1306,15 @@ const BrowserOnnxTtsRuntime = class {
     }
   }
 
-  async configure({ modelPath, threadCount = 4, executionProviders = ['wasm'] }) {
+  async configure({ modelPath, threadCount = 4 }) {
     const normalizedPath = normalizeLocalDirectoryPath(modelPath)
     const nextThreadCount = Math.max(1, Number.parseInt(threadCount, 10) || 1)
-    const normalizedProviders = Array.isArray(executionProviders) ? executionProviders : [executionProviders]
-    const preparationKey = `${normalizedPath}::${nextThreadCount}::${normalizedProviders.join(',')}`
+    const preparationKey = `${normalizedPath}::${nextThreadCount}`
     if (this.lastPreparedKey === preparationKey && this.prepared) {
       return
     }
     this.localPathRoot = normalizedPath
     this.threadCount = nextThreadCount
-    this.executionProviders = normalizedProviders
-    this.lastPreparedKey = preparationKey
     this.manifest = null
     this.manifestRelativePath = ''
     this.manifestRelativeDir = ''
@@ -1449,7 +1446,7 @@ const BrowserOnnxTtsRuntime = class {
     this.log(`Loaded model bytes: ${relativePath} (${formatByteCount(modelData.byteLength)})`)
     const sessionOptions = {
       ...ORT_SESSION_OPTIONS,
-      executionProviders: this.executionProviders || [...ORT_SESSION_OPTIONS.executionProviders],
+      executionProviders: [...ORT_SESSION_OPTIONS.executionProviders],
     }
     const fallbackExternalDataInfo = getExternalDataSidecarInfo(relativePath)
     const candidateExternalDataPaths = externalDataRelativePaths.length > 0 ? [...new Set(externalDataRelativePaths.map(pathValue => normalizeRelativePath(pathValue)).filter(Boolean))] : fallbackExternalDataInfo ? [fallbackExternalDataInfo.relativePath] : []

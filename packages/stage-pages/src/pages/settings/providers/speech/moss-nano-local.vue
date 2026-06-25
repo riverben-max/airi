@@ -125,18 +125,6 @@ const voiceCloneMaxTokens = computed({
   },
 })
 
-const executionProvider = computed({
-  get(): string {
-    return (providerConfig.value?.executionProvider as string) ?? 'webgpu'
-  },
-  set(val: string) {
-    const config = providersStore.getProviderConfig(providerId)
-    if (config) {
-      config.executionProvider = val
-    }
-  },
-})
-
 const attentionBackendOptions = [
   { label: 'Scale Dot Product (SDPA)', value: 'sdpa' },
   { label: 'Eager / Manual', value: 'eager' },
@@ -145,11 +133,6 @@ const attentionBackendOptions = [
 const samplingModeOptions = [
   { label: 'Fixed (High Performance)', value: 'fixed' },
   { label: 'Dynamic (High Quality)', value: 'dynamic' },
-]
-
-const executionProviderOptions = [
-  { label: 'WebGPU (Hardware Accelerated)', value: 'webgpu' },
-  { label: 'WASM (CPU Fallback)', value: 'wasm' },
 ]
 
 // Sanitization & unique checking
@@ -342,25 +325,18 @@ onMounted(async () => {
   }
 })
 
-watch([model, executionProvider], async () => {
-  try {
-    voicesLoading.value = true
-    const config = providersStore.getProviderConfig(providerId)
-    const metadata = providersStore.getProviderMetadata(providerId)
-    const validationResult = await metadata.validators.validateProviderConfig(config)
-
-    if (validationResult.valid && metadata.capabilities.loadModel) {
-      await metadata.capabilities.loadModel(config, {
-        onProgress: async (_progress: any) => {},
-      })
+watch(model, async (newValue) => {
+  if (newValue) {
+    try {
+      voicesLoading.value = true
       await speechStore.loadVoicesForProvider(providerId)
     }
-  }
-  catch (error) {
-    console.error('[Moss Settings] Error reloading model/voices:', error)
-  }
-  finally {
-    voicesLoading.value = false
+    catch (error) {
+      console.error('[Moss Settings] Error reloading voices:', error)
+    }
+    finally {
+      voicesLoading.value = false
+    }
   }
 })
 </script>
@@ -438,16 +414,6 @@ watch([model, executionProvider], async () => {
                 v-model="samplingMode"
                 :options="samplingModeOptions"
               />
-            </div>
-
-            <!-- Execution Provider -->
-            <div class="space-y-1">
-              <label class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Execution Provider</label>
-              <Select
-                v-model="executionProvider"
-                :options="executionProviderOptions"
-              />
-              <span class="text-[10px] text-neutral-400">WebGPU for acceleration, WASM for CPU fallback</span>
             </div>
           </div>
         </div>

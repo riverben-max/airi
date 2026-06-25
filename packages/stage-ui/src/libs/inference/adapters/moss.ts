@@ -17,7 +17,6 @@ export interface MossAdapter {
    * Load the MOSS TTS model weights (from OPFS cache or Hugging Face download).
    */
   loadModel: (options?: {
-    executionProvider?: string
     onProgress?: (p: ProgressPayload) => void
     signal?: AbortSignal
   }) => Promise<void>
@@ -127,22 +126,20 @@ export function createMossAdapter(): MossAdapter {
   }
 
   async function loadModel(options?: {
-    executionProvider?: string
     onProgress?: (p: ProgressPayload) => void
     signal?: AbortSignal
   }): Promise<void> {
     return mutex.runExclusive(async () => {
       state = 'loading'
       const modelStatusId = 'moss-tts-nano'
-      const device = options?.executionProvider === 'wasm' ? 'wasm' : 'webgpu'
-      updateInferenceStatus(modelStatusId, { state: 'downloading', device })
+      updateInferenceStatus(modelStatusId, { state: 'downloading', device: 'wasm' })
 
       try {
         const w = ensureWorker()
         const rpc = getRpc(w)
         const hfToken = typeof localStorage !== 'undefined' ? localStorage.getItem('settings/connection/hf-token') || undefined : undefined
         const stream = rpc.load(
-          { device, dtype: 'fp32', hfToken },
+          { device: 'wasm', dtype: 'fp32', hfToken },
           { signal: options?.signal },
         )
 
