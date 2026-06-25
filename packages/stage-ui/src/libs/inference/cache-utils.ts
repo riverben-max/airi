@@ -3,6 +3,74 @@ import { cacheKeyForModel } from '../../workers/web-rwkv/cache'
 // The cache name used by transformers.js / ONNX runtime
 const TRANSFORMERS_CACHE_NAME = 'transformers-cache'
 const OPFS_DIR_NAME = 'web-rwkv'
+const MOSS_OPFS_DIR_NAME = 'nano-reader-browser-model-store'
+
+async function getDirectorySizeRecursive(dirHandle: FileSystemDirectoryHandle): Promise<number> {
+  let size = 0
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file') {
+      const file = await (entry as FileSystemFileHandle).getFile()
+      size += file.size
+    }
+    else if (entry.kind === 'directory') {
+      size += await getDirectorySizeRecursive(entry as FileSystemDirectoryHandle)
+    }
+  }
+  return size
+}
+
+async function getMossOpfsCacheSize(): Promise<number> {
+  if (typeof navigator === 'undefined' || !navigator.storage || !navigator.storage.getDirectory)
+    return 0
+  try {
+    const root = await navigator.storage.getDirectory()
+    let dir: FileSystemDirectoryHandle
+    try {
+      dir = await root.getDirectoryHandle(MOSS_OPFS_DIR_NAME, { create: false })
+    }
+    catch {
+      return 0
+    }
+    return await getDirectorySizeRecursive(dir)
+  }
+  catch (error) {
+    console.warn('[cache-utils] failed to get MOSS cache size', error)
+    return 0
+  }
+}
+
+async function clearMossOpfsCache(): Promise<void> {
+  if (typeof navigator === 'undefined' || !navigator.storage || !navigator.storage.getDirectory)
+    return
+  try {
+    const root = await navigator.storage.getDirectory()
+    try {
+      await root.removeEntry(MOSS_OPFS_DIR_NAME, { recursive: true })
+    }
+    catch {
+      // Ignored if directory doesn't exist
+    }
+  }
+  catch (error) {
+    console.warn('[cache-utils] failed to clear MOSS cache', error)
+  }
+}
+
+async function isMossModelCached(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.storage || !navigator.storage.getDirectory)
+    return false
+  try {
+    const root = await navigator.storage.getDirectory()
+    const dir = await root.getDirectoryHandle(MOSS_OPFS_DIR_NAME, { create: false })
+    for await (const _entry of dir.values()) {
+      return true // directory is not empty
+    }
+    return false
+  }
+  catch {
+    return false
+  }
+}
 
 async function getOpfsCacheSize(): Promise<number> {
   if (typeof navigator === 'undefined' || !navigator.storage || !navigator.storage.getDirectory)
@@ -82,7 +150,8 @@ async function isOpfsModelCached(modelUrl: string): Promise<boolean> {
 export async function getModelCacheSize(): Promise<number> {
   const transformersSize = await getTransformersCacheSize()
   const opfsSize = await getOpfsCacheSize()
-  return transformersSize + opfsSize
+  const mossSize = await getMossOpfsCacheSize()
+  return transformersSize + opfsSize + mossSize
 }
 
 async function getTransformersCacheSize(): Promise<number> {
@@ -123,6 +192,7 @@ async function getTransformersCacheSize(): Promise<number> {
 export async function clearModelCache(): Promise<void> {
   await clearTransformersCache()
   await clearOpfsCache()
+  await clearMossOpfsCache()
 }
 
 async function clearTransformersCache(): Promise<void> {
@@ -142,6 +212,9 @@ async function clearTransformersCache(): Promise<void> {
  * Matches by looking for cache entries whose URL contains the model ID.
  */
 export async function isModelCached(modelId: string): Promise<boolean> {
+  if (modelId === 'moss-tts-nano') {
+    return isMossModelCached()
+  }
   if (modelId.startsWith('http')) {
     return isOpfsModelCached(modelId)
   }

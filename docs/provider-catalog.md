@@ -113,6 +113,11 @@ These run locally with ONNX/WebGPU/WASM:
 | `kokoro-local` | speech | ~2642 | `kokoro-js` (transformers.js) |
 | `whisper-local` | transcription | ~2851 | `whisper.cpp` / ONNX |
 | `web-rwkv` | chat | ~2894 | RWKV WebGPU |
+| `Xenova/modnet` | background-removal | — | ONNX (transformers.js) |
+| `onnx-community/blip-image-captioning-base` | vision | — | ONNX (transformers.js) |
+| `onnx-community/blip2-opt-2.7b` | vision | — | ONNX (transformers.js) |
+| `SmilingWolf/wd-v1-4-swinv2-tagger-v2` | image-tagging | — | ONNX (transformers.js) |
+| `SmilingWolf/wd-v1-4-vit-tagger-v2` | image-tagging | — | ONNX (transformers.js) |
 
 ---
 

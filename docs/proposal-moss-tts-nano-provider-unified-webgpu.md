@@ -238,16 +238,20 @@ This is the least-defined piece of the integration and needs careful scoping.
 
 ### 5) Voice profile store — BYOS compatibility
 
-Voice cloning reference audio blobs are **user-managed assets** — conceptually similar to how Display Models and Background Images are handled in the existing BYOS (Bring Your Own Storage) system (see [`project-byos-cloud-sync.md`](./project-byos-cloud-sync.md)).
+Voice cloning reference audio blobs are **heavy, user-managed assets** — conceptually similar to how Display Models and Background Images are handled in the existing BYOS (Bring Your Own Storage) system (see [`project-byos-cloud-sync.md`](./project-byos-cloud-sync.md)).
 
 **Design constraints adapted from BYOS asset patterns:**
 
-- **Metadata store**: A new IndexedDB key namespace (e.g. `local:voice-profiles/*`) holding per-profile JSON with `id`, `name`, `createdAt`, `durationMs`, `sampleRate`, `sourceFilename`, `sha256`, etc.
-- **Blob store**: Binary audio files stored via `localforage` or as raw blobs keyed by profile ID (follows the existing Display Model pattern: `assets/voice-profiles/{id}.{ext}`).
-- **Sync behavior**: BYOS already handles entity-level sync via its `StorageClient` interface and outbox tracker. Adding `local:voice-profiles/*` to the Data Inventory table would get sync "for free" via the interceptor layer — no new sync engine code needed.
-- **UI surface**: A voice profile manager (list profiles, upload new, record, delete) analogous to the Display Model manager or Background manager. The provider settings page (`moss-nano-local`) would then render a voice picker that resolves profile IDs to stored blobs.
-
-**Key risk**: Audio blobs can be large (multiple MB per profile). BYOS's selective sync (future milestone) would let users opt out of syncing bulky voice assets, keeping the initial sync lightweight. The Data Inventory table should flag `voice-profiles` as a selectively-syncable category.
+- **Metadata Store:** A new IndexedDB key namespace (`local:voice-profiles/*`) holding per-profile JSON metadata containing the `id`, user-associated `name`, `createdAt`, `durationMs`, `sampleRate`, `sourceFilename`, and `sha256` checksum.
+- **Binary Blob Store (Strictly IndexedDB):** Binary audio files must be stored exclusively in **IndexedDB** (using `localforage` for lifecycle management). Storing binary audio blobs in `localStorage` is prohibited due to storage size limits.
+- **Deterministic Sync Naming:** To remain fully compatible with the existing sync engine, binary voice profiles must be uploaded to S3 with a deterministic suffix:
+  `assets/voice-profiles/{id}.bin`
+- **Selective Sync Scope:** Voice Profiles are registered as a heavy-asset category in the sync engine. In the UI onboarding/settings tree, a toggle row `[ ] Voice Profiles` is presented to allow users to exclude voice cloning assets from high-speed database sync to conserve bandwidth.
+- **UI & Uniqueness Validation:**
+  - The voice profile configuration UI allows the user to associate a custom **Display Name** for the upload (falling back to the source filename if left blank).
+  - To prevent downstream resolution issues, the user-defined name is strictly sanitized. Only alphanumeric characters, spaces, hyphens, and underscores are allowed (regex: `^[A-Za-z0-9 _-]+$`). Any special symbols are automatically stripped.
+  - The sanitized name must be unique. If a collision is detected, the UI prompts for a renaming or automatically appends a number suffix (e.g., `(2)`).
+  - The character card's `voice_id` configuration maps directly to this unique display name to resolve the asset at generation time.
 
 ## Why MOSS‑TTS‑Nano (ONNX) is interesting in AIRI
 
@@ -328,7 +332,11 @@ These are the main items to analyze before committing to the integration.
 
 ### Streaming generation UX + API shape
 
-De-scope streaming for now. Nano can generate a full WAV per AIRI speech slice; internal decode-step graphs are an implementation detail.
+- **Decision: Run in Non-Streaming Mode only.**
+- **Reasoning:**
+  - AIRI already splits input text into smaller sentence slices and coordinates sequential generation (pseudo-streaming). This is sufficient for low-latency feedback.
+  - Local validation of the ONNX browser POC showed that the browser runtime's `Realtime Streaming Decode` introduces audio artifacts (stuttering/crackling) and degraded audio quality compared to `Non-Streaming` execution.
+  - Internal multi-graph decode-step KV caching will remain an implementation detail inside the worker, but the outward-facing API will output a complete `audio/wav` buffer per slice.
 
 ### Voice cloning capability definition
 
@@ -353,6 +361,94 @@ De-scope streaming for now. Nano can generate a full WAV per AIRI speech slice; 
 
 - Confirm license compatibility and whether AIRI can ship default model IDs or must require user opt-in download.
 - Check whether any of the linked Hugging Face repos have additional usage restrictions beyond Apache‑2.0 (MOSS family is Apache‑2.0 per README).
+
+### Model Cache & OPFS storage integration
+
+To integrate MOSS-TTS-Nano into the unified client cache dashboard, we must update three distinct layers of the codebase to track the Origin Private File System (OPFS) structure created by the browser model store.
+
+#### 1. OPFS Directory & File Structure
+MOSS downloads files to the root OPFS directory under `nano-reader-browser-model-store/`.
+We must check for the presence and file sizes of the following structure:
+```
+nano-reader-browser-model-store/
+├── MOSS-TTS-Nano-100M-ONNX/
+│   ├── browser_poc_manifest.json
+│   ├── tts_browser_onnx_meta.json
+│   ├── tokenizer.model
+│   ├── moss_tts_prefill.onnx
+│   ├── moss_tts_decode_step.onnx
+│   ├── moss_tts_local_decoder.onnx
+│   ├── moss_tts_local_cached_step.onnx
+│   ├── moss_tts_local_fixed_sampled_frame.onnx
+│   ├── moss_tts_global_shared.data
+│   └── moss_tts_local_shared.data
+└── MOSS-Audio-Tokenizer-Nano-ONNX/
+    ├── codec_browser_onnx_meta.json
+    ├── moss_audio_tokenizer_encode.onnx
+    ├── moss_audio_tokenizer_encode.data
+    ├── moss_audio_tokenizer_decode_full.onnx
+    ├── moss_audio_tokenizer_decode_step.onnx
+    └── moss_audio_tokenizer_decode_shared.data
+```
+
+#### 2. Cache Utilities (`packages/stage-ui/src/libs/inference/cache-utils.ts`)
+We will add utility functions to target this specific OPFS directory:
+* **Directory Name Constant:**
+  `const MOSS_OPFS_DIR_NAME = 'nano-reader-browser-model-store'`
+* **Calculating Cache Size (`getMossOpfsCacheSize`):**
+  Implement a recursive scanner that walks the `MOSS_OPFS_DIR_NAME` directory handles using `dir.values()`. For any file sub-entry, it retrieves the `File` handles to count and sum their `file.size` bytes. Add this size to the return value of `getModelCacheSize()`.
+* **Checking Cache Presence (`isMossModelCached`):**
+  Expose a checker that returns `true` if `MOSS_OPFS_DIR_NAME` directory handle can be opened successfully, and at least one core model file exists (e.g. `MOSS-TTS-Nano-100M-ONNX/moss_tts_prefill.onnx` has a file handle).
+* **Clearing Cache (`clearModelCache`):**
+  Update the main cache clearing task to call:
+  `await root.removeEntry(MOSS_OPFS_DIR_NAME, { recursive: true })`
+  This will delete the 763MB folder from the browser's OPFS instantly.
+
+#### 3. Cache UI Widget (`packages/stage-ui/src/components/scenarios/settings/ModelCacheManager.vue`)
+Register the model in the cache dashboard:
+* Add `moss-tts-nano` to the `knownModels` list:
+  ```typescript
+  const knownModels = [
+    { id: DEFAULT_WEB_RWKV_MODEL, name: 'RWKV LLM' },
+    { id: 'onnx-community/Kokoro-82M-v1.0-ONNX', name: 'Kokoro TTS' },
+    { id: 'onnx-community/whisper-large-v3-turbo', name: 'Whisper ASR' },
+    { id: 'moss-tts-nano', name: 'MOSS TTS (Nano)' }, // Registered MOSS
+    // ...
+  ]
+  ```
+
+#### 4. Provider Registry (`packages/stage-ui/src/stores/providers.ts`)
+Register `moss-nano-local` with tags to let the providers UI detect its capabilities:
+* **Metadata Structure:**
+  ```typescript
+  'moss-nano-local': {
+    id: 'moss-nano-local',
+    category: 'speech',
+    tasks: ['text-to-speech'],
+    name: 'Moss TTS (Nano)',
+    description: 'Native AI - Local text-to-speech with voice cloning (0.1B Nano)',
+    icon: 'i-lobe-icons:speaker',
+    defaultOptions: () => ({
+      model: 'moss-tts-nano-100m',
+      voiceId: '',
+    }),
+    createProvider: async (_config) => {
+      // Create OpenAI-compatible fetch handler
+      // Routes text input & voice files to the background worker
+    },
+    capabilities: {
+      listModels: async () => [
+        { id: 'moss-tts-nano-100m', name: 'MOSS TTS Nano (0.1B)' }
+      ],
+      loadModel: async (config, hooks) => {
+        // Triggers worker model downloading / caching sequence
+      },
+      listVoices: async () => {
+        // Merges default builtin voices (Trump, etc.) with custom IndexedDB voice clones
+      }
+    }
+  }
+  ```
 
 ## Decision summary (current)
 

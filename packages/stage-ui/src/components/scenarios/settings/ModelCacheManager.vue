@@ -18,6 +18,7 @@ const knownModels = [
   { id: 'SmilingWolf/wd-v1-4-swinv2-tagger-v2', name: 'WD14 SwinV2 Tagger' },
   { id: 'SmilingWolf/wd-v1-4-vit-tagger-v2', name: 'WD14 ViT Tagger' },
   { id: 'onnx-community/blip2-opt-2.7b', name: 'BLIP-2 Vision' },
+  { id: 'moss-tts-nano', name: 'MOSS TTS (Nano)' },
 ]
 
 const cachedModels = ref<{ id: string, name: string, cached: boolean }[]>([])
