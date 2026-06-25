@@ -451,6 +451,7 @@ export const useProvidersStore = defineStore('providers', () => {
         attentionBackend: 'sdpa',
         samplingMode: 'fixed',
         voiceCloneMaxTokens: 75,
+        executionProvider: 'webgpu',
       }),
       createProvider: async (_config) => {
         const adapter = await getMossAdapterInstance()
@@ -475,7 +476,9 @@ export const useProvidersStore = defineStore('providers', () => {
 
                   // Load model on demand if not ready
                   if (adapter.state !== 'ready') {
-                    await adapter.loadModel()
+                    await adapter.loadModel({
+                      executionProvider: _config.executionProvider as string,
+                    })
                   }
 
                   // Fetch custom voice from IndexedDB if needed
@@ -533,9 +536,10 @@ export const useProvidersStore = defineStore('providers', () => {
             },
           ]
         },
-        loadModel: async (_config: Record<string, unknown>, _hooks?: { onProgress?: (progress: ProgressInfo) => Promise<void> | void }) => {
+        loadModel: async (config: Record<string, unknown>, _hooks?: { onProgress?: (progress: ProgressInfo) => Promise<void> | void }) => {
           const adapter = await getMossAdapterInstance()
           await adapter.loadModel({
+            executionProvider: config.executionProvider as string,
             onProgress: (p: any) => {
               if (_hooks?.onProgress) {
                 _hooks.onProgress({

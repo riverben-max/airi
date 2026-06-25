@@ -3,7 +3,7 @@
  * Speaks the Eventa inference contract for MOSS.
  */
 
-import type { LoadModelRequest, LoadStreamItem, MossGenerateChunk, MossGenerateRequest } from '../../libs/inference/contract'
+import type { InferenceDevice, LoadModelRequest, LoadStreamItem, MossGenerateChunk, MossGenerateRequest } from '../../libs/inference/contract'
 
 import { defineInvokeHandler, defineStreamInvokeHandler, toStreamHandler } from '@moeru/eventa'
 import { createContext } from '@moeru/eventa/adapters/webworkers/worker'
@@ -21,7 +21,7 @@ let runtime: any = null
 
 defineStreamInvokeHandler(context, mossLoadEvent, toStreamHandler<LoadModelRequest, LoadStreamItem>(async ({ payload, emit, options }) => {
   const signal = options?.abortController?.signal
-  const { hfToken } = payload
+  const { hfToken, device } = payload
 
   const onProgress = (p: any) => {
     emit({
@@ -60,9 +60,12 @@ defineStreamInvokeHandler(context, mossLoadEvent, toStreamHandler<LoadModelReque
     })
   }
 
+  const executionProviders = device === 'webgpu' ? ['webgpu', 'wasm'] : ['wasm']
+
   await runtime.configure({
     modelPath: modelSpec.managedPath,
     threadCount: 4, // default
+    executionProviders,
   })
 
   await runtime.ensureManifestLoaded()
@@ -71,7 +74,7 @@ defineStreamInvokeHandler(context, mossLoadEvent, toStreamHandler<LoadModelReque
   emit({
     kind: 'ready',
     info: {
-      device: 'wasm',
+      device: (runtime.executionProviders?.includes('webgpu') ? 'webgpu' : 'wasm') as InferenceDevice,
       metadata: {},
     },
   })
@@ -92,9 +95,11 @@ defineStreamInvokeHandler(context, mossGenerateEvent, toStreamHandler<MossGenera
 
   // Configure threads dynamically
   if (cpuThreads) {
+    const executionProviders = runtime.executionProviders || ['wasm']
     await runtime.configure({
       modelPath: runtime.localPathRoot || '',
       threadCount: cpuThreads,
+      executionProviders,
     })
   }
 
