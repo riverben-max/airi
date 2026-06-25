@@ -474,9 +474,7 @@ const allSteps = computed<OnboardingStep[]>(() => {
           else {
             syncStore.selectiveSyncEnabled = false
           }
-          if (data && data.saveToGoogle) {
-            isGoogleLinking.value = true
-          }
+          isGoogleLinking.value = !!(data && data.saveToGoogle)
           return true
         },
       },

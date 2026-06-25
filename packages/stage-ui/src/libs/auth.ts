@@ -60,6 +60,32 @@ export async function signOut() {
 }
 
 export async function signIn(provider: OAuthProvider) {
+  const isElectron = typeof window !== 'undefined' && !!(window as any).electron
+
+  if (isElectron) {
+    const authUrl = `${SERVER_URL}/api/auth/login/social?provider=${provider}&callbackURL=${SERVER_URL}/health`
+    const popup = window.open(authUrl, 'oauth-signin', 'width=580,height=650')
+    if (popup) {
+      return new Promise<void>((resolve) => {
+        const pollTimer = setInterval(async () => {
+          if (popup.closed) {
+            clearInterval(pollTimer)
+            await fetchSession()
+            resolve()
+          }
+          else {
+            const success = await fetchSession()
+            if (success) {
+              clearInterval(pollTimer)
+              popup.close()
+              resolve()
+            }
+          }
+        }, 1000)
+      })
+    }
+  }
+
   return await authClient.signIn.social({
     provider,
     callbackURL: window.location.origin,

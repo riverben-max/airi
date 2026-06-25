@@ -48,6 +48,9 @@ async function startOAuth() {
 
   try {
     await signIn('google')
+    if (!authStore.isAuthenticated) {
+      authState.value = 'idle'
+    }
   }
   catch (err) {
     console.error('OAuth sign in error', err)
