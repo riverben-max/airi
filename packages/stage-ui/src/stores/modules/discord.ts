@@ -819,6 +819,11 @@ export const useDiscordStore = defineStore('discord', () => {
             artModelName = wf.name
         }
 
+        const sessionId = chatSession.activeSessionId
+        const sessionMeta = chatSession.getSessionMeta(sessionId)
+        const timelineName = sessionMeta?.title || 'Default Timeline'
+        const universeId = sessionMeta?.universeId || 'global'
+
         const vlmProvider = visionStore.activeProvider || 'None'
         const vlmModel = visionStore.activeModel || 'None'
 
@@ -829,7 +834,7 @@ export const useDiscordStore = defineStore('discord', () => {
         const content = `**AIRI System Status**
 -------------------------
 **Active Character:** ${activeCardName}
-**Conversation:** ${turns} turns in current session
+**Conversation:** ${turns} turns (Timeline: "${timelineName}" | Universe: "${universeId}")
 **Chat Mode:** ${chatMode.value === 'followup' ? 'Follow-up' : chatMode.value.charAt(0).toUpperCase() + chatMode.value.slice(1)}
 
 **🧠 Brains (LLM):** ${llmProvider} / ${llmModel}
