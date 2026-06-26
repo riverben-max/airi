@@ -389,23 +389,35 @@ onUnmounted(() => {
             <div v-if="isLoadingVoices" class="animate-pulse text-xs text-neutral-400">
               Loading voices...
             </div>
-            <select
-              v-else
-              v-model="form.baseVoice"
-              class="w-full border border-neutral-300 rounded-xl bg-white px-3 py-2 text-sm outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-900"
-              @change="saveProfile"
-            >
-              <option value="">
-                Select a voice
-              </option>
-              <option
-                v-for="voice in availableVoices"
-                :key="voice.id"
-                :value="voice.id"
+            <template v-else>
+              <!-- Dropdown when the provider can list voices -->
+              <select
+                v-if="availableVoices.length > 0"
+                v-model="form.baseVoice"
+                class="w-full border border-neutral-300 rounded-xl bg-white px-3 py-2 text-sm outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-900"
+                @change="saveProfile"
               >
-                {{ voice.name || voice.id }}
-              </option>
-            </select>
+                <option value="">
+                  Select a voice
+                </option>
+                <option
+                  v-for="voice in availableVoices"
+                  :key="voice.id"
+                  :value="voice.id"
+                >
+                  {{ voice.name || voice.id }}
+                </option>
+              </select>
+              <!-- Free-text fallback when voice list couldn't be fetched -->
+              <input
+                v-else
+                v-model="form.baseVoice"
+                type="text"
+                placeholder="Enter voice name manually (e.g. Abigail)"
+                class="w-full border border-neutral-300 rounded-xl bg-white px-3 py-2 text-sm outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-900"
+                @change="saveProfile"
+              >
+            </template>
           </div>
         </div>
       </div>

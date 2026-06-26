@@ -53,6 +53,16 @@ const voice = computed({
   },
 })
 
+// Optional user-pinned voices endpoint path — bypasses auto-probe when set
+const voicesPath = computed({
+  get: () => (providers.value[providerId] as any)?.voicesPath || '',
+  set: (value: string) => {
+    if (!providers.value[providerId])
+      providers.value[providerId] = {}
+    ;(providers.value[providerId] as any).voicesPath = value
+  },
+})
+
 // TODO: use `useRefHistory` for this
 // Watch provider config changes to sync local refs (for reset functionality)
 watch(
@@ -72,6 +82,11 @@ watch(
       // Sync voice if it was reset
       if (!config.voice && voice.value !== 'alloy')
         voice.value = 'alloy'
+
+      // Sync voicesPath if it was reset
+      const newVoicesPath = config.voicesPath || ''
+      if (voicesPath.value !== newVoicesPath)
+        voicesPath.value = newVoicesPath
     }
     else {
       // Provider config was reset, reset our local refs to defaults
@@ -97,6 +112,10 @@ onMounted(() => {
   }
   if (!providers.value[providerId].voice) {
     providers.value[providerId].voice = 'alloy'
+  }
+  // voicesPath defaults to empty string (auto-detect)
+  if (!(providers.value[providerId] as any).voicesPath) {
+    ;(providers.value[providerId] as any).voicesPath = ''
   }
 })
 
@@ -180,6 +199,13 @@ const {
         :description="t('settings.pages.providers.provider.common.fields.field.speed.description')"
         :min="0.5"
         :max="2.0" :step="0.01"
+      />
+      <!-- Advanced: optional voices path override -->
+      <FieldInput
+        v-model="voicesPath"
+        label="Voices Endpoint Path (optional)"
+        description="Leave blank to auto-detect. Set if auto-detect fails, e.g. 'audio/voices' or 'v1/audio/voices'."
+        placeholder="auto-detect (e.g. audio/voices)"
       />
     </template>
 

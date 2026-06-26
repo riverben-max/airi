@@ -850,22 +850,58 @@ export const useProvidersStore = defineStore('providers', () => {
       pricing: 'paid',
       deployment: 'cloud',
       tasks: ['text-to-speech'],
+      // Override builder defaultOptions to include voicesPath for user-configurable path override
+      defaultOptions: () => ({
+        baseUrl: '',
+        voicesPath: '',
+      }),
       capabilities: {
         supportsSSML: false,
         supportsPitch: false,
         listVoices: async (config: Record<string, unknown>) => {
           const apiKey = typeof config.apiKey === 'string' ? config.apiKey.trim() : ''
           let baseUrl = typeof config.baseUrl === 'string' ? config.baseUrl.trim() : ''
+          // User-pinned voices endpoint path — skips waterfall probing when set
+          const voicesPath = typeof config.voicesPath === 'string' ? config.voicesPath.trim() : ''
+
+          if (!baseUrl)
+            return []
 
           if (!baseUrl.endsWith('/'))
             baseUrl += '/'
 
-          if (!baseUrl) {
-            return []
-          }
+          /**
+           * Normalize a raw voices payload into VoiceInfo[]-compatible objects.
+           *
+           * NOTICE: There is no canonical spec for a /voices endpoint in the OpenAI TTS
+           * API (OpenAI itself uses a static list). Third-party self-hosted servers invented
+           * this endpoint independently and use incompatible shapes:
+           *   - Object array: [{ id, name, voice_id, ... }]  (unspeech, ElevenLabs-compat)
+           *   - String array: ["Abigail.wav", "Adrian.wav"]  (devnen/Chatterbox-TTS-Server)
+           * We handle both shapes here with a clean conscience since no spec exists.
+           */
+          const normalizeVoices = (voices: unknown[]) =>
+            voices.map((v: any) =>
+              typeof v === 'string'
+                ? {
+                    // Strip common audio file extensions for a cleaner display name
+                    id: v,
+                    name: v.replace(/\.(wav|mp3|ogg|flac|m4a)$/i, ''),
+                    provider: 'openai-compatible-audio-speech',
+                    previewURL: undefined,
+                    languages: [],
+                    gender: undefined,
+                  }
+                : {
+                    id: v.id || v.voice_id || v.name,
+                    name: v.name || v.id,
+                    provider: 'openai-compatible-audio-speech',
+                    previewURL: v.preview_url || v.preview_audio_url,
+                    languages: v.languages || [],
+                    gender: v.gender || v.labels?.gender,
+                  },
+            )
 
-          // Attempt to fetch voices from /v1/voices or /voices
-          // Try /v1/voices first
           const tryFetchVoices = async (url: string) => {
             try {
               const response = await fetch(url, {
@@ -873,18 +909,10 @@ export const useProvidersStore = defineStore('providers', () => {
               })
               if (response.ok) {
                 const data = await response.json()
-                // Standard un-speech / openai-like voices response
+                // Standard openai-like / unspeech voices response shapes
                 const voices = data.voices || data.data || (Array.isArray(data) ? data : null)
-                if (Array.isArray(voices)) {
-                  return voices.map((v: any) => ({
-                    id: v.id || v.voice_id || v.name,
-                    name: v.name || v.id,
-                    provider: 'openai-compatible-audio-speech',
-                    previewURL: v.preview_url || v.preview_audio_url,
-                    languages: v.languages || [],
-                    gender: v.gender || v.labels?.gender,
-                  }))
-                }
+                if (Array.isArray(voices) && voices.length > 0)
+                  return normalizeVoices(voices)
               }
             }
             catch (e) {
@@ -893,7 +921,24 @@ export const useProvidersStore = defineStore('providers', () => {
             return null
           }
 
-          const voices = await tryFetchVoices(`${baseUrl}voices`) || await tryFetchVoices(`${baseUrl.replace(/\/v1\/$/, '/')}/voices`)
+          // If the user has pinned a specific path, use it directly — no probing
+          if (voicesPath) {
+            const pinnedPath = voicesPath.startsWith('/') ? voicesPath.slice(1) : voicesPath
+            return await tryFetchVoices(`${baseUrl}${pinnedPath}`) || []
+          }
+
+          // NOTICE: No canonical spec exists for a /voices endpoint in OpenAI-compatible TTS
+          // servers. We probe multiple common paths in order and use the first successful one.
+          // Probe order rationale:
+          //   1. audio/voices — mirrors the /audio/speech sibling naming used by some servers
+          //      (e.g. devnen/Chatterbox-TTS-Server at GET /v1/audio/voices)
+          //   2. voices       — most common convention in unspeech and similar wrappers
+          //   3. root /voices — fallback for servers that don't use a /v1/ prefix
+          const rootUrl = baseUrl.replace(/v1\/$/, '')
+          const voices
+            = await tryFetchVoices(`${baseUrl}audio/voices`)
+              || await tryFetchVoices(`${baseUrl}voices`)
+              || await tryFetchVoices(`${rootUrl}voices`)
 
           return voices || []
         },

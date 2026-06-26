@@ -107,12 +107,21 @@ const { t } = useI18n()
           {{ t('settings.pages.card.speech.voice') }}
         </label>
         <Select
+          v-if="speechVoiceOptions && speechVoiceOptions.length > 0"
           v-model="selectedSpeechVoiceId"
           :options="speechVoiceOptions"
           :placeholder="defaultSpeechVoiceIdPlaceholder"
           :disabled="!selectedSpeechProvider && !speechProviderActive"
           class="w-full"
         />
+        <input
+          v-else
+          v-model="selectedSpeechVoiceId"
+          type="text"
+          :disabled="!selectedSpeechProvider && !speechProviderActive"
+          class="w-full border border-neutral-200 rounded-lg border-solid bg-neutral-50 px-2.5 py-1.5 text-sm text-neutral-800 shadow-sm outline-none dark:border-neutral-800 focus:border-primary-300 dark:bg-neutral-950 focus:bg-neutral-50 dark:text-neutral-200 dark:focus:border-primary-400/50 dark:focus:bg-neutral-900"
+          :placeholder="t('settings.pages.modules.speech.sections.section.provider-voice-selection.custom_voice_placeholder')"
+        >
       </div>
 
       <div :class="['flex', 'flex-col', 'gap-2', 'sm:col-span-2']">
