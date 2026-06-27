@@ -585,7 +585,64 @@ export const useDiscordStore = defineStore('discord', () => {
       // NOTICE: Strip orchestration tokens (<|ACTOR:|>, <|ACT:|>, etc.) before sending
       // to Discord. The raw tokens are preserved in the DB for LLM context, but external
       // consumers should never see them.
-      const cleanedText = stripMarkers(typeof ttsText === 'string' ? ttsText : String(ttsText))
+      let cleanedText = stripMarkers(typeof ttsText === 'string' ? ttsText : String(ttsText))
+
+      const currentToolSlices = chat.output?.slices?.filter((s: any) => s.type === 'tool-call') || []
+      if (currentToolSlices.length > 0) {
+        const formattedCalls = currentToolSlices.map((slice: any) => {
+          const name = slice.toolCall?.toolName || slice.toolCall?.function?.name || 'unknown'
+          const rawArgs = slice.toolCall?.args || slice.toolCall?.function?.arguments
+
+          let parsedArgs: any = null
+          if (rawArgs) {
+            try {
+              parsedArgs = JSON.parse(rawArgs)
+            }
+            catch {}
+          }
+
+          if (name === 'text_journal') {
+            const action = parsedArgs?.action
+            if (action === 'create') {
+              const title = parsedArgs?.title || 'Untitled Entry'
+              const content = parsedArgs?.content || ''
+              return `\n\n### New Journal Entry: ${title}\n> ${content}`
+            }
+            if (action === 'search') {
+              const query = parsedArgs?.query || ''
+              const limit = parsedArgs?.limit || 3
+              return `\n\n🔍 Searching Journal: "${query}" (limit: ${limit})`
+            }
+          }
+          else if (name === 'image_journal') {
+            const action = parsedArgs?.action
+            if (action === 'create') {
+              const prompt = parsedArgs?.prompt || ''
+              const titleStr = parsedArgs?.title ? ` (title: "${parsedArgs.title}")` : ''
+              const modeStr = parsedArgs?.mode ? ` (mode: "${parsedArgs.mode}")` : ''
+              return `\n\n🎨 Generating Image: "${prompt}"${titleStr}${modeStr}`
+            }
+            if (action === 'apply' || action === 'set_as_background') {
+              const query = parsedArgs?.query || ''
+              return `\n\n🖼️ Applying Background: "${query}"`
+            }
+          }
+
+          // Fallback to raw JSON style
+          let argsStr = ''
+          if (rawArgs) {
+            try {
+              argsStr = JSON.stringify(parsedArgs || JSON.parse(rawArgs))
+            }
+            catch {
+              argsStr = rawArgs
+            }
+          }
+          return `\n🔧 \`${name}\` | \`${argsStr}\``
+        }).join('')
+        cleanedText += formattedCalls
+      }
+
       await sendMessageToDiscord(source.channelId, cleanedText)
     }
 
