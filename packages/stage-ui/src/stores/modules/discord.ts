@@ -40,7 +40,7 @@ const MAX_EVENT_LOG_ENTRIES = 200
 
 // ── Slash Command Definitions ──────────────────────────────────────────────────
 
-const COMMANDS_VERSION = 6
+const COMMANDS_VERSION = 7
 const CORE_COMMANDS: DiscordCommandDefinition[] = [
   {
     name: 'status',
@@ -146,6 +146,18 @@ const CORE_COMMANDS: DiscordCommandDefinition[] = [
         type: 3, // String
         required: false,
         autocomplete: true,
+      },
+    ],
+  },
+  {
+    name: 'journalmoment',
+    description: 'Trigger a background journal entry for the active character based on recent chat turns',
+    options: [
+      {
+        name: 'prompt',
+        description: 'Optional guidance/instructions on what to emphasize in this journal entry',
+        type: 3, // String
+        required: false,
       },
     ],
   },
@@ -943,6 +955,51 @@ export const useDiscordStore = defineStore('discord', () => {
 
         // Fire autonomous task with assistant target to force display
         await artistryAutonomousStore.runArtistTask(prompt, chatSession.messages as any, 'assistant')
+      }
+      else if (payload.commandName === 'journalmoment') {
+        const prompt = payload.options.prompt?.toString().trim()
+        const llmProvider = consciousnessStore.activeProvider
+        const llmModel = consciousnessStore.activeModel
+
+        if (!llmProvider || !llmModel) {
+          await invokeReplyInteraction?.({
+            interactionId: payload.interactionId,
+            content: '❌ Cannot generate journal entry: active LLM brain/provider not selected.',
+          })
+          return
+        }
+
+        const messages = chatSession.messages || []
+        if (messages.length === 0) {
+          await invokeReplyInteraction?.({
+            interactionId: payload.interactionId,
+            content: '❌ Cannot generate journal entry: there is no conversation history in the active session.',
+          })
+          return
+        }
+
+        try {
+          console.log('[DiscordStore] Generating background journal moment via /journalmoment...')
+          const textJournalStore = (await import('../stores/memory-text-journal')).useTextJournalStore()
+          const entry = await textJournalStore.createJournalMoment({
+            messages,
+            instructions: prompt || undefined,
+            modelId: llmModel,
+            providerId: llmProvider,
+          })
+
+          await invokeReplyInteraction?.({
+            interactionId: payload.interactionId,
+            content: `📖 **Journal Moment Created!**\n**Title**: ${entry.title}\n> ${entry.content}`,
+          })
+        }
+        catch (err: any) {
+          console.error('[DiscordStore] Failed to generate journal moment:', err)
+          await invokeReplyInteraction?.({
+            interactionId: payload.interactionId,
+            content: `❌ Failed to generate journal entry: ${err.message || String(err)}`,
+          })
+        }
       }
       else {
         // Fallback for other commands not yet implemented
