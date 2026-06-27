@@ -1206,7 +1206,8 @@ function getDisplayModelId(id: string) {
         />
       </div>
       <div class="flex-1 bg-white dark:bg-neutral-950">
-        <webview
+        <component
+          is="webview"
           v-if="activeBrowserSource"
           :src="activeBrowserSource.url"
           class="h-full w-full"
