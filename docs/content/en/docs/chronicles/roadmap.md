@@ -135,6 +135,13 @@ This document tracks all active pending items, architectural roadmaps, and featu
 *   **"Add Character as Concept" Creator**: Implement a QoL button to query active model, voice, and artistry parameters to dynamically output a decoupled `actor_{name}` concept.
 *   **Director Dynamic Mood/Expression Pipeline**: Introduce an emotional output field to the Director to emit 1 of 6 possible core emotions, dynamically mapping it to VRM blendshapes or Live2D parameters in a zero-awareness actor environment.
 
+### Dynamic Item Manifestation (TRELLIS)
+*Reference: [proposal-trellis-dynamic-item-manifestation.md](../../../../../proposal-trellis-dynamic-item-manifestation.md)*
+*   **Actor Item Tool Calling**: Implement LLM tool calls for `create_stage_item`, `list_stage_items`, and `equip_stage_item` to allow characters to dynamically generate, catalog, and wear items.
+*   **ComfyUI TRELLIS 3D Pipeline**: Establish a ComfyUI websocket pipeline that processes natural language prompts via TRELLIS 3D generators, compiling the output as a `.glb` mesh stored in IndexedDB.
+*   **Skeletal Bone Socket Mounting**: Build a dynamic mesh injector that Normalizes and attaches the GLB mesh to humanoid skeletal bones (head, wrists, waist, ankles) across VRM, MMD, and Spine runtimes.
+
+
 
 ### Director-Led Regional Orchestration (Spatial Vision)
 *Reference: [proposal-director-led-regional-orchestration.md](../../../../../proposal-director-led-regional-orchestration.md)*
