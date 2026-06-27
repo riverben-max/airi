@@ -11,31 +11,41 @@ Transitioning the Discord integration from a disconnected "second process" bot i
 
 ---
 
-## 1. Planned Slash Commands
+## 1. Supported Slash Commands
 
-### Core Priority
-Commands essential for the baseline Discord integration.
+These commands are registered with Discord and processed natively.
+
+### Implemented Commands
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `/character` | `[id: string]` | Switches the active AIRI card/profile directly from Discord. | [x] |
-| `/new` | `[msg: string]` | Creates a new session/reset. | [x] |
-| `/status` | none | Reports active character, model, and module telemetry. | [x] |
-| `/history` | `[turns: numeric]` | Dumps the last 5 messages from the current conversation. The optional `turns` parameter overrides the default of 5. |
+| `/status` | none | Reports active character, model, and module telemetry. |
+| `/imagine` | `prompt: string` | Forces a visual generation using the Artistry pipeline. |
+| `/director` | `mode: on \| off` | Toggles Autonomous Artistry (on/off). |
+| `/character` | `[id: string]` | Switches the active AIRI card/profile directly from Discord. |
+| `/new` | `[message: string]` | Creates a new session/reset, optionally sending an initial message. |
+| `/history` | `[turns: numeric]` | Dumps the last 5 messages from the current conversation. Optional `turns` overrides default. |
+| `/chatmode` | `mode: followup \| steer \| collect` | Changes the message intake queue mode. |
+| `/timelines` | `[id: string]` | Lists or switches the active character's chat sessions/timelines. |
 | `/summon` | none | Joins the user's current Voice Channel. |
 | `/leave` | none | Leaves the Voice Channel. |
 
-### Deferred / Extended Features
-Advanced toggles and routing capabilities scheduled for post-MVP.
+### Tool Calls Support (Active)
+The Discord integration fully supports LLM-driven tool calls (e.g., creating/searching text journal entries, generating/applying images).
+- When the bot triggers a tool, it executes natively in the AIRI core context.
+- Completed tool executions are appended directly to the bot's Discord responses using a custom, premium visual layout (e.g., showing a neat journal block rather than raw JSON code block dumps).
+
+### Planned / Extended Commands
+Advanced toggles and routing capabilities scheduled for future updates.
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
 | `/voicemode` | `mode: puppet \| voicenote \| none` | Controls TTS audio playback location (Desktop speakers, Discord voice notes, or muted). |
 | `/voicecall` | `mode: classic \| gemini` | Selects the underlying technology for real-time VC sessions (Standard TTS vs Native Gemini Live). |
-| `/director` | `mode: on \| off` | Toggles Autonomous Artistry (stops generation requests). | [ ] |
-| `/vision` | `mode: on \| off` | Toggles VLM processing for image attachments. | [plumbing done] |
-| `/imagine` | `prompt: string` | Forces a visual generation using the Artistry pipeline. | [x] |
-| `/selfie` | `[emotion: string]` | Captures a stage screenshot as is. Optional `emotion` argument overrides expression (1 of 6 core emotions). |
+| `/vision` | `mode: on \| off` | Toggles VLM processing for image attachments. |
+| `/selfie` | `[emotion: string]` | Captures a stage screenshot as is. Optional `emotion` argument overrides expression. |
+| `/journalmoment` | `prompt: string` | Triggers a background text journal summary entry using the specified guidance/instructions (equivalent to the UI "Journal Moment" popup). |
+
 
 ---
 
