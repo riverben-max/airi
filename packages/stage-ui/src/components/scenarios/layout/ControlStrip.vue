@@ -52,10 +52,14 @@ const characterFavorites = computed(() => {
 const filteredAvatars = computed(() => {
   let list = displayModelsStore.displayModels
 
-  // Search filter
+  // Search filter (matches name or tags partially)
   if (avatarSearch.value.trim()) {
-    const query = avatarSearch.value.toLowerCase()
-    list = list.filter(m => m.name.toLowerCase().includes(query))
+    const query = avatarSearch.value.trim().toLowerCase()
+    list = list.filter((m) => {
+      const nameMatches = m.name.toLowerCase().includes(query)
+      const tagMatches = m.tags && Array.isArray(m.tags) && m.tags.some(t => t.toLowerCase().includes(query))
+      return nameMatches || tagMatches
+    })
   }
 
   // Format filter
