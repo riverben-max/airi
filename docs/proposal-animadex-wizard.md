@@ -10,7 +10,9 @@ We present two alternative integration paths for searching and querying the Anim
 
 ### Route A: Native Offline Integration (No Images)
 *   **Database**: The 46MB SQLite metadata database (`animadex.db`) is bundled directly with the AIRI desktop distribution.
-*   **Search**: A native Vue search modal is built inside the settings or card manager. Queries are run offline via Electron IPC to the local SQLite database (latency < 15ms).
+*   **Search**: A native Vue search modal is built inside the settings or card manager.
+    *   *Note on Storage*: While AIRI uses **IndexedDB** (via `unstorage` and `localforage`) for all its runtime and user state persistence, the Electron main process can open a read-only connection to the bundled SQLite file via Node/Electron APIs (or we can run a one-time migration to ingest search indexing tables directly into a dedicated IndexedDB namespace like `local:animadex-metadata`).
+    *   Queries are run offline via Electron IPC to the database (latency < 15ms).
 *   **Visuals**: No images are displayed (except generic placeholders) to keep the base installer size compact.
 *   **Action**: Selecting a character immediately packages their metadata to bootstrap the card wizard.
 
