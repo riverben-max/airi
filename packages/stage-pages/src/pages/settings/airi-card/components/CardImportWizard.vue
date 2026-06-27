@@ -81,9 +81,22 @@ const artistryAutonomousEnabled = ref(false)
 const dreamStateEnabled = ref(true)
 const proactivityEnabled = ref(false)
 
+const importModelSearch = ref('')
+
 // Options computed properties
 const displayModelOptions = computed(() => {
-  return displayModelsStore.displayModels.map((model) => {
+  let list = displayModelsStore.displayModels
+
+  if (importModelSearch.value.trim()) {
+    const q = importModelSearch.value.trim().toLowerCase()
+    list = list.filter((model) => {
+      const nameMatches = model.name.toLowerCase().includes(q)
+      const tagMatches = model.tags && Array.isArray(model.tags) && model.tags.some(t => t.toLowerCase().includes(q))
+      return nameMatches || tagMatches
+    })
+  }
+
+  return list.map((model) => {
     const isLive2D = model.format === DisplayModelFormat.Live2dZip || model.format === DisplayModelFormat.Live2dDirectory
     const isSpine = model.format === DisplayModelFormat.SpineZip
     const isMmd = model.format === DisplayModelFormat.PMXZip || model.format === DisplayModelFormat.PMXDirectory || model.format === DisplayModelFormat.PMD
@@ -557,6 +570,16 @@ async function finalizeImport() {
               <p class="text-sm text-neutral-500 dark:text-neutral-400">
                 Choose the visual model to represent this companion on stage.
               </p>
+              <!-- Search Input -->
+              <div class="relative">
+                <span class="i-solar:magnifer-linear absolute left-2.5 top-2 text-xs text-neutral-400" />
+                <input
+                  v-model="importModelSearch"
+                  type="text"
+                  placeholder="Search avatars..."
+                  class="w-full border border-neutral-200/10 rounded-xl bg-neutral-200/40 py-1 pl-7 pr-2.5 text-[11px] text-neutral-700 dark:border-neutral-800/10 dark:bg-neutral-800/40 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-sky-500/50"
+                >
+              </div>
               <div class="grid grid-cols-2 max-h-[300px] gap-4 overflow-y-auto p-1 sm:grid-cols-3">
                 <div
                   v-for="model in displayModelOptions"
