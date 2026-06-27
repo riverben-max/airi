@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import type { DisplayModel } from '@proj-airi/stage-ui/stores/display-models'
+
+import { ModelSelectorDialog } from '@proj-airi/stage-ui/components/scenarios/dialogs/model-selector'
+import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { Select } from '@proj-airi/ui/components/form'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 defineProps<{
@@ -28,6 +33,27 @@ const selectedDisplayModelId = defineModel<string>('selectedDisplayModelId', { r
 const selectedActiveBackgroundId = defineModel<string>('selectedActiveBackgroundId', { required: true })
 
 const { t } = useI18n()
+const displayModelsStore = useDisplayModelsStore()
+const modelSelectorOpen = ref(false)
+
+const selectedModel = computed<DisplayModel | undefined>(() => {
+  return displayModelsStore.displayModels.find(m => m.id === selectedDisplayModelId.value)
+})
+
+const formatLabel = computed(() => {
+  if (!selectedModel.value)
+    return ''
+  const fmt = selectedModel.value.format.toLowerCase()
+  if (fmt.includes('live2d'))
+    return 'Live2D'
+  if (fmt === 'vrm')
+    return 'VRM'
+  if (fmt.includes('spine'))
+    return 'Spine'
+  if (fmt.includes('pmx') || fmt === 'pmd')
+    return 'MMD'
+  return selectedModel.value.format.toUpperCase()
+})
 </script>
 
 <template>
@@ -129,11 +155,57 @@ const { t } = useI18n()
           <div i-solar:user-circle-bold-duotone />
           Models / Avatar
         </label>
-        <Select
-          v-model="selectedDisplayModelId"
-          :options="displayModelOptions"
-          :placeholder="defaultDisplayModelIdPlaceholder"
-          class="w-full"
+
+        <div
+          class="flex items-center justify-between border border-neutral-200 rounded-xl bg-neutral-50/50 p-2.5 dark:border-neutral-800 dark:bg-neutral-900/30"
+        >
+          <div class="flex items-center gap-3 overflow-hidden">
+            <!-- Preview Image -->
+            <div class="h-12 w-12 flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-950">
+              <img
+                v-if="selectedModel?.previewImage"
+                :src="selectedModel.previewImage"
+                class="h-full w-full object-cover"
+              >
+              <div v-else class="i-solar:gallery-bold text-xl text-neutral-300 dark:text-neutral-700" />
+            </div>
+
+            <!-- Model Info -->
+            <div class="min-w-0 flex flex-col">
+              <span class="truncate text-xs text-neutral-700 font-bold dark:text-neutral-200">
+                {{ selectedModel?.name || 'Inherit Default' }}
+              </span>
+              <span
+                v-if="selectedModel"
+                class="mt-0.5 self-start rounded bg-primary-500/10 px-1.5 py-0.2 text-[8px] text-primary-500 font-bold uppercase"
+              >
+                {{ formatLabel }}
+              </span>
+              <span
+                v-else
+                class="mt-0.5 self-start rounded bg-neutral-200/50 px-1.5 py-0.2 text-[8px] text-neutral-500 font-bold uppercase dark:bg-neutral-800"
+              >
+                Default
+              </span>
+            </div>
+          </div>
+
+          <!-- Select Trigger Button -->
+          <button
+            type="button"
+            class="h-8 flex items-center justify-center gap-1.5 border border-neutral-200 rounded-lg bg-white px-3 text-xs text-neutral-700 font-semibold shadow-sm transition-all dark:border-neutral-800 dark:bg-neutral-900 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            @click="modelSelectorOpen = true"
+          >
+            <div class="i-solar:gallery-send-bold-duotone text-xs" />
+            <span>Select Avatar</span>
+          </button>
+        </div>
+
+        <!-- Model Selector Dialog Component -->
+        <ModelSelectorDialog
+          v-model:show="modelSelectorOpen"
+          :selected-model="selectedModel"
+          @pick="(model) => selectedDisplayModelId = model?.id || ''"
         />
       </div>
 
