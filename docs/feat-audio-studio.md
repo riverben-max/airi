@@ -72,13 +72,28 @@ Each virtual voice profile is persisted within a clean, serializable JSON schema
     "stripEmojis": true,
     "tildeReplacement": "nyan",
     "autoLowercaseCapsThreshold": 2,
-    "autoLowercaseCapsExclude": ["AIRI", "NASA"]
+    "autoLowercaseCapsExclude": ["AIRI", "NASA"],
+    "convertBracketsToTokenFormat": true,
+    "customReplacements": [
+      {
+        "type": "regex",
+        "pattern": "/nya/i",
+        "replacement": "meow"
+      },
+      {
+        "type": "text",
+        "pattern": "nya",
+        "caseSensitive": false,
+        "wholeWord": true,
+        "replacement": "meow"
+      }
+    ]
   }
 }
 ```
 
 ### Granular & Extensible UST Options
-Instead of rigid checkboxes, the Universal Speech Transformer (UST) is defined per-profile with six highly flexible options:
+Instead of rigid checkboxes, the Universal Speech Transformer (UST) is defined per-profile with eight highly flexible options:
 
 1. **Mute Narrative Mode** (`mode: "mute"`):
    * Completely strips out narrative formatting symbols and the text enclosed inside them (e.g., `*smiles* Hello` $\rightarrow$ `"Hello"`). Best for a pure dialogue, "voice-only" experience.
@@ -93,16 +108,19 @@ Instead of rigid checkboxes, the Universal Speech Transformer (UST) is defined p
 6. **Auto-Lowercase Short Caps** (`autoLowercaseCapsThreshold: 2`, `autoLowercaseCapsExclude: []`):
    * Some TTS engines spell out fully-capitalized words letter by letter (e.g. `AIRI` → "A-I-R-I", `IT` → "EYE-TEE") instead of pronouncing them as words. This option automatically lowercases any fully-capitalized word **at or below** the configured character length threshold before the text reaches the TTS engine.
    * Default threshold: `2` — so `IT` becomes `it` (spoken as a word), but `AIRI` (4 chars, above threshold) is left as-is.
-   * The user can raise the threshold: set to `3` and `TTS` stays uppercase / spelled out; set to `4` and `AIRI` gets lowercased too.
-   * **Exclude list** (`autoLowercaseCapsExclude`): a user-defined list of all-caps words that are **always skipped**, regardless of threshold. If a word is in the exclude list it is passed through to TTS untouched — the engine will spell it out.
-     * Use case: threshold is set to `4` to lowercase most short caps, but `AIRI` should still be spelled out because it has special meaning in this roleplay. Add `AIRI` to the exclude list.
-     * Use case: `NYAAAAA` would be caught by a high threshold and lowercased to `nyaaaaa` (spoken naturally). No exclude list needed here — lowercasing is exactly what you want. But if you specifically needed it spelled, add it to the list.
-   * Effectively a tunable regex with a guard: `/\b[A-Z]{1,N}\b/g → toLowerCase()` applied only to tokens **not** in the exclude set.
-   * This only fires on **all-caps** tokens — mixed-case words like `McGregor` or `iPhone` are untouched.
    * Example at threshold `2`, no excludes: `"AIRI said IT was fine"` → `"AIRI said it was fine"`
    * Example at threshold `4`, no excludes: `"AIRI said IT was fine"` → `"airi said it was fine"`
    * Example at threshold `4`, exclude `["AIRI"]`: `"AIRI said IT was fine"` → `"AIRI said it was fine"`
-
+7. **Convert Brackets to Token Format** (`convertBracketsToTokenFormat: true`):
+   * Converts square bracket paralinguistic directions (e.g., `[emotion:sadness]`) into Higgs-compatible token tagging syntax (e.g., `<|emotion:sadness|>`) right before transmitting the text payload to the TTS engine.
+8. **Custom Replacement Rules** (`customReplacements: []`):
+   * An arbitrary list of user-defined string replacement rules executed sequentially to fix pronunciation issues, apply custom translations, or inject phoneme tags (e.g., changing `"Nya"` to `"meow"` or phoneme tags to correct a voice model's regional accent).
+   * **Rule Configuration**:
+     * **Regex Type**: A raw JavaScript regular expression (e.g., `/nya/i`).
+     * **Text Type**: A plain string target matching with configurable toggles:
+       * **Case Sensitive** check: Bypasses case insensitivity.
+       * **Whole Word Only** check: Wraps the string match in word boundaries (`\b`).
+     * **Replacement String**: The substitution payload (supporting plain text or provider-specific phoneme markup).
 
 ---
 
@@ -117,7 +135,7 @@ The `audio-studio.vue` page serves as a creative console for voice design. It fe
 | **Profile Library** | Card Grid / Sidebar | Saved virtual voice profiles displaying the **User Label** as the active identity. Features quick duplicate, delete, and active toggle actions. |
 | **Base Configuration** | Select Dropdowns | Bind the profile to a base provider (OpenAI, Azure, Kokoro, ElevenLabs) and selected voice ID. |
 | **Xvan's Audio Effects** | Slider Group | Responsive sliders for **Pitch** (e.g. 0.5x to 2.0x), **Rate/Speed** (e.g. 0.5x to 3.0x), **Volume**, and basic Equalizer knobs (Bass/Mid/Treble). |
-| **UST Configuration** | Mode Radio + Input + Threshold + Exclude List | Toggles for **Mute**, **Flatten**, or **Customize** modes. In Customize mode, displays an input field: *"Target characters to strip (e.g. `*_[]()<>"'`):"*. Separate numeric input for **Auto-Lowercase Caps Threshold** (default: 2, range: 1–10, label: *"Lowercase all-caps words of N characters or fewer"*). Tag/chip input for **Exclude list** (label: *"Always spell out (e.g. AIRI, NASA)"*). |
+| **UST Configuration** | Mode Radio + Input + Threshold + Exclude List + Replacement Builder | Toggles for **Mute**, **Flatten**, or **Customize** modes. In Customize mode, displays target characters to strip. Includes lowercasing threshold inputs, exclude list tag inputs, a toggle for bracket-to-token conversion, and an interactive **Replacement Rules Builder** (add rule, select type [text/regex], toggles for case sensitivity and whole-word boundaries, and input fields for search/replace patterns). |
 | **Voice Playground** | Textbox + Test Button | A sandbox area to type dummy text and instantly play the processed TTS output with applied FX to verify. |
 
 ---
