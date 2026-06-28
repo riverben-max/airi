@@ -51,15 +51,14 @@ The LLM returns a structured JSON containing modular card metadata. Visual asset
 
 1.  **name**: Slug-like or thematic name of the synthesized world or character card.
 2.  **scenario**: The active circumstance, starting conflict, and narrative premise of the roleplay (excluding static physical location details).
-3.  **first_mes**: Greeting message (multi-actor script format using asterisks for actions, prefixing speaker turns with their corresponding `<|ACTOR:key|>` tokens).
-4.  **alternate_greetings**: String array of alternative starting scenarios.
-5.  **places**: A dictionary of 2 or 3 distinct sets representing the main story settings (e.g. `place_main`, `place_alt_1`):
+3.  **places**: A dictionary of 2 or 3 distinct sets representing the main story settings (e.g. `place_main`, `place_alt_1`):
     *   `name`: Readable name of the location.
     *   `description`: High-fidelity visual description of the setting.
-6.  **actors**: A dictionary mapped to the deterministic keys provided in the ingestion instructions (e.g. `actor_{name}` or `actress_{name}`):
+4.  **actors**: A dictionary mapped to the deterministic keys provided in the ingestion instructions (e.g. `actor_{name}` or `actress_{name}`):
     *   `short_description`: A super brief, low-resolution visual prose description of the character's baseline appearance and current attire (used directly in `visual_assets[actor_key].description`).
     *   `long_prose`: A high-fidelity visual description of the character's detailed physical appearance and default outfit (concatenated into the card's root `description` field).
     *   `personality_prompt`: The character's specific personality traits, behavior blueprints, speech style, and rules (concatenated into the card's root `system_prompt`).
+    *   `greeting`: A single-actor in-character starting greeting prefixing dialogue with their respective `<|ACTOR:key|>` token. (During card assembly, the first character's greeting becomes the card's default `first_mes`, while other characters' greetings populate `alternate_greetings`).
 
 ---
 
