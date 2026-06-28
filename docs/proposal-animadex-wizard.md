@@ -31,8 +31,15 @@ A visual two-column layout mapped for each character in the selected cast list:
     *   **Manifest Harvesting**: If bound, the system extracts the model's available expressions and motions lists (e.g. `relax`, `happy`, `idle`, `speak`) to build an acting capabilities whitelist.
 *   **Right Column (Audio Voice Selector)**:
     *   Allows the user to bind a TTS voice to the character.
-    *   Provides a dropdown of existing voices, plus a quick **"Create Voice Clone / Preset"** button to quickly spawn a new Audio Studio entry on the fly.
+    *   **Existing Voices**: Dropdown of active virtual voice profiles saved in the system.
+    *   **Quick Audio Studio Creator Modal**: A button to quickly spawn a new Audio Studio entry on the fly:
+        *   *Default Provider*: Focuses automatically on **Kokoro** (built-in, local, zero-config).
+        *   *Smart Descriptive Selector*: For Kokoro, displays a card grid of voices auto-filtered by the character's gender (e.g. female voices like `af_heart` [warm/smiling], `af_bella` [polished/clear], `af_nicole` [intimate/ASMR/whisper]) with descriptive traits, plus a toggle to show all genders/accents.
+        *   *Dual Sliders*: Adjusts **Pitch Tuning** and **Speech Speed**.
+        *   *Default UST Rules*: Pre-configures `mode: "mute"` (mute asterisks `*` and brackets `[ ]` to strip actions during speech, but render them on screen).
+        *   *Sandbox Playground*: A small sandbox text box and **Play/Preview** button to instantly synthesize and test the current voice settings.
     *   **Skipping**: Users can skip bindings entirely, in which case characters remain "LLM-only" (no ACT tokens or voice configs are bound).
+
 
 ### Step 3: Context & Story Prompts
 After selecting the cast and setting up roster alignments, the user outlines the scenario:
