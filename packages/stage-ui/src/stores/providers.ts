@@ -3709,7 +3709,7 @@ export const useProvidersStore = defineStore('providers', () => {
   }
 
   function isProviderConfigured(providerId: string) {
-    if (providerId === 'virtual-audio-studio' || providerId === 'speech-noop')
+    if (providerId === 'virtual-audio-studio' || providerId === 'speech-noop' || providerId === 'kokoro-local' || providerId === 'moss-nano-local')
       return true
 
     const config = providerCredentials.value[providerId]
