@@ -785,7 +785,7 @@ JSON Schema format:
                   title="Configure Voice"
                   @click="voiceCreatorOpen = true; voiceTargetCharacterId = char.id"
                 >
-                  <div i-solar:settings-bold-duotone class="text-sm text-neutral-400" />
+                  <div i-solar:user-speak-linear class="text-sm text-neutral-400" />
                 </Button>
               </div>
             </div>
