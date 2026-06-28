@@ -1053,8 +1053,8 @@ JSON Schema format:
 
             <!-- Standard Providers Options (Searchable Dropdowns) -->
             <div v-else class="flex flex-col gap-4">
-              <!-- Speech Model Select -->
-              <div class="flex flex-col gap-1.5">
+              <!-- Speech Model Select (Hidden for Audio Studio) -->
+              <div v-if="voiceForm.baseProvider !== 'virtual-audio-studio'" class="flex flex-col gap-1.5">
                 <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Speech Model</label>
                 <Select
                   v-if="selectedProviderModels.length > 0"
@@ -1074,11 +1074,11 @@ JSON Schema format:
 
               <!-- Speech Voice ID Select -->
               <div class="flex flex-col gap-1.5">
-                <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Speech Voice ID</label>
+                <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Speech Voice ID / Profile</label>
                 <Select
                   v-if="selectedProviderVoices.length > 0"
                   v-model="voiceForm.baseVoice"
-                  :options="selectedProviderVoices.map(v => ({ value: v.id, label: `${v.name} (${v.gender})` }))"
+                  :options="selectedProviderVoices.map(v => ({ value: v.id, label: v.gender === 'saved profile' ? v.name : `${v.name} (${v.gender})` }))"
                   placeholder="Select voice"
                   class="w-full"
                 />
