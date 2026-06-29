@@ -33,8 +33,18 @@ This document tracks all active pending items, architectural roadmaps, and featu
 
 ### AnimaDex Character Creator Wizard
 *Reference: [proposal-animadex-wizard.md](../../../../proposal-animadex-wizard.md)*
-*   **AnimaDex Dataset Integration**: Evaluate Route A (offline bundling of the 46MB metadata SQLite database with direct native search) vs Route B (web-hosted directory with CDN-hosted thumbnails that triggers a custom JSON download/postMessage event to bootstrap the card creator wizard).
-*   **Metadata Parser Mapping**: Define parsing/mapping rules to translate AnimaDex character tags and trigger words into AIRI card attributes.
+*   **AnimaDex Dataset Integration**: Evaluate Route A (offline bundling of the 46MB database) vs Route B (CDN web-hosted directory).
+*   **Metadata Parser Mapping**: Map tags and triggers into card properties.
+*   **Speech & UST Integration Pipeline**:
+    *   Include `voiceConfig.ust` in the LLM synthesis payload (`handleGenerate()` cast builder).
+    *   Add `modelPromptSpeech` to the LLM output schema definition (`systemMsg`).
+    *   Write the parsed `speechExpressionPrompt` dynamically on card assembly (`confirmCreateCard()`).
+*   **Per-Character Idle Animations**:
+    *   Add `idleAnimations?: string[]` to the `visual_assets.[actor_key]` schema.
+    *   Update runtime model selector to read per-actor `idleAnimations` on actor switch.
+    *   Instruct synthesis LLM to populate `idleAnimations[]` from available motions.
+    *   Add per-actor idle selector in Wizard Step 2.
+    *   Expose per-actor idle selectors in the Card Edit UI's Acting tab.
 
 ---
 
@@ -138,6 +148,9 @@ This document tracks all active pending items, architectural roadmaps, and featu
 *   **Preset Expression Configuration**: Map active manifestations to VRM blendshapes or Live2D parameters, binding the outfit to the visual state setting.
 *   **"Bases for Places" Concept Packs**: Preload location sets (bedroom, kitchen, etc.) as Base concepts to cleanly reset/wipe the active modifier stack on room changes, with actors and moods layered as Additive layers.
 *   **"Add Character as Concept" Creator**: Implement a QoL button to query active model, voice, and artistry parameters to dynamically output a decoupled `actor_{name}` concept.
+*   **Quick Add Action Buttons in Image Studio**:
+    *   Expose quick-add buttons in the prompt crafting panel to dynamically inject bound `visual_assets` character actor concepts (e.g. `actor_gura`, `actor_lain`) into the generative prompt.
+    *   Add a **`+ Add User`** prompt button that resolves and injects the global user visual concept tags.
 *   **Director Dynamic Mood/Expression Pipeline**: Introduce an emotional output field to the Director to emit 1 of 6 possible core emotions, dynamically mapping it to VRM blendshapes or Live2D parameters in a zero-awareness actor environment.
 
 ### Dynamic Item Manifestation (TRELLIS)

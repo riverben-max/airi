@@ -80,3 +80,9 @@ This teaches users how to decouple their characters' visual/audio configurations
 A new output field will be added to the Director to automatically track the scene's emotional tone:
 *   **Dynamic Expression Mapping**: The Director will output 1 of 6 possible core emotions.
 *   **Zero-Awareness Actor**: The main character actor LLM does not need to know its visual status. The stage reads the Director's emotion payload and dynamically maps it to VRM blendshapes or Live2D parameters (affecting the active display model ID), syncing the avatar's expression to the conversation automatically.
+
+### Quick Add Action Buttons in Image Studio
+To reduce prompt editing friction:
+*   Add action shortcut buttons inside the Image Studio prompt panel.
+*   Tapping these injects the corresponding active concept's tags (`actor_gura`, `actor_lain`) directly into the final ComfyUI prompt line.
+*   Includes a **`+ Add User`** shortcut that resolves and injects the global user visual concept tags.
