@@ -204,12 +204,31 @@ const filteredVoicePresets = computed(() => {
   })
 })
 
+function writeBackVoiceBinding(characterId: string, voiceId: string) {
+  const char = selectedCharacters.value.find(c => c.id === characterId)
+  if (char) {
+    try {
+      const map = getBindingsMap()
+      if (!map[char.trigger]) {
+        map[char.trigger] = { trigger: char.trigger }
+      }
+      map[char.trigger].voiceProfileId = voiceId || undefined
+      localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
+    }
+    catch (e) {
+      console.error('Failed to write back voice-binding:', e)
+    }
+  }
+}
+
 function saveCustomVoiceProfile() {
   if (!voiceTargetCharacterId.value)
     return
 
   if (voiceForm.value.baseProvider === 'virtual-audio-studio') {
-    wizardStore.bindVoiceToCharacter(voiceTargetCharacterId.value, voiceForm.value.baseVoice)
+    const voiceId = voiceForm.value.baseVoice
+    wizardStore.bindVoiceToCharacter(voiceTargetCharacterId.value, voiceId)
+    writeBackVoiceBinding(voiceTargetCharacterId.value, voiceId)
     toast.success('Voice profile bound successfully!')
     voiceCreatorOpen.value = false
     return
@@ -247,6 +266,7 @@ function saveCustomVoiceProfile() {
 
   speechStore.saveVoiceProfile(newProfile as any)
   wizardStore.bindVoiceToCharacter(voiceTargetCharacterId.value, profileId)
+  writeBackVoiceBinding(voiceTargetCharacterId.value, profileId)
   toast.success(`Voice profile "${voiceForm.value.name}" saved!`)
   voiceCreatorOpen.value = false
 }
@@ -440,8 +460,24 @@ function handleBack() {
   }
 }
 
+function prefillRosterBindings() {
+  const map = getBindingsMap()
+  selectedCharacters.value.forEach((c) => {
+    const binding = map[c.trigger]
+    if (binding) {
+      if (binding.displayModelId) {
+        wizardStore.bindModelToCharacter(c.id, binding.displayModelId)
+      }
+      if (binding.voiceProfileId) {
+        wizardStore.bindVoiceToCharacter(c.id, binding.voiceProfileId)
+      }
+    }
+  })
+}
+
 function handleNext() {
   if (currentStep.value === 1 && selectedCharacters.value.length > 0) {
+    prefillRosterBindings()
     currentStep.value = 2
   }
   else if (currentStep.value === 2) {
@@ -456,7 +492,25 @@ function openModelSelector(characterId: string) {
 
 function handlePickModel(model: any) {
   if (activeBindingCharacterId.value) {
-    wizardStore.bindModelToCharacter(activeBindingCharacterId.value, model?.id || '')
+    const charId = activeBindingCharacterId.value
+    const modelId = model?.id || ''
+    wizardStore.bindModelToCharacter(charId, modelId)
+
+    // Write back to persistent character bindings map in local storage
+    const char = selectedCharacters.value.find(c => c.id === charId)
+    if (char) {
+      try {
+        const map = getBindingsMap()
+        if (!map[char.trigger]) {
+          map[char.trigger] = { trigger: char.trigger }
+        }
+        map[char.trigger].displayModelId = modelId || undefined
+        localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
+      }
+      catch (e) {
+        console.error('Failed to write back character model binding:', e)
+      }
+    }
   }
 }
 
