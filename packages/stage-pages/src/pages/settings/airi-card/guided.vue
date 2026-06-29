@@ -657,7 +657,26 @@ async function confirmCreateCard() {
     // Build a cast index at the top so the LLM always knows all ACTOR token keys
     const actorKeys = Object.keys(proposal.actors)
     const castIndex = actorKeys.map(k => `- <|ACTOR:${k}|>`).join('\n')
-    let systemPrompt = `# System Prompt: ${proposal.name}\n\n## Cast Roster\nThe following characters are active. Always prefix their dialogue with their ACTOR token.\n${castIndex}\n\n## World Premise\n${proposal.system_prompt || ''}\n\n## Character Instructions\n`
+
+    let systemPrompt = `# System Prompt: ${proposal.name}\n\n`
+    systemPrompt += `## Cast Roster\n`
+    systemPrompt += `The following characters are active. You must act as all of them. Always prefix their dialogue blocks with their exact ACTOR token.\n`
+    systemPrompt += `${castIndex}\n\n`
+
+    systemPrompt += `## Strict Response Format\n`
+    systemPrompt += `You must format your responses using paragraphs prefixed by the active character's ACTOR token. Do NOT use bold markdown names (like **Name**:) or normal text names. Always format like this:\n`
+    if (actorKeys.length > 0) {
+      const exampleKey = actorKeys[0]
+      systemPrompt += `<|ACTOR:${exampleKey}|> *describes actions or expressions* "Dialogue speech goes here."\n`
+      if (actorKeys.length > 1) {
+        const exampleKey2 = actorKeys[1]
+        systemPrompt += `<|ACTOR:${exampleKey2}|> *describes actions or expressions* "Dialogue speech goes here."\n`
+      }
+    }
+    systemPrompt += `\n`
+
+    systemPrompt += `## World Premise\n${proposal.system_prompt || ''}\n\n## Character Instructions\n`
+
     actorKeys.forEach((actorKey) => {
       const actor = proposal.actors[actorKey]
       systemPrompt += `### ${actorKey}\nInvoke this character with <|ACTOR:${actorKey}|> and apply this personality:\n${actor.acting_instructions || ''}\n\n`
