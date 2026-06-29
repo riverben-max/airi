@@ -550,7 +550,7 @@ Follow these rules for generating the scenarios:
    - Mix up the approach across the 3 options.
    - For one option, treat them as a clone paradox, parallel-timeline variants, or twins who can talk to each other.
    - For another option, treat them as a single character who changes their outfits, roles, or personas contextually in the story.
-3. STORY ROLEPLAY STRUCTURE: Make the lore rules describe a fun dynamic (e.g. they represent elemental forces, rival cafe teams, or digital network nodes) and explain the user's role (nickname) in relation to them.
+3. STORY ROLEPLAY STRUCTURE: Make the lore rules describe a fun dynamic based on the characters' archetypes, series canon, or contrasting personalities, and explain the user's role (nickname) in relation to them.
 
 Return ONLY a raw JSON array (no markdown, no wrapping text). Each element must match:
 { 
