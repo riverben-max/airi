@@ -580,14 +580,16 @@ async function runAutoLinkCatalog() {
     const blacklist = new Set<string>(rawBlacklist ? JSON.parse(rawBlacklist) : [])
 
     let linkCount = 0
+    let groupUpdateCount = 0
 
-    displayModels.value.forEach((model) => {
+    for (const model of displayModels.value) {
       const mTags = new Set(model.tags?.map(t => t.trim().toLowerCase()) || [])
       if (mTags.size === 0)
-        return
+        continue
 
       let bestScore = 0.0
       let bestCharTrigger = null
+      let bestCharCopyrightIdx = -1
 
       data.characters.forEach((char: any) => {
         const triggerStr = char[3] // trigger is field index 3
@@ -603,22 +605,34 @@ async function runAutoLinkCatalog() {
         if (score > bestScore) {
           bestScore = score
           bestCharTrigger = triggerStr
+          bestCharCopyrightIdx = char[1] // copyrightIndex is field index 1
         }
       })
 
-      // If matched with >= 0.3 Jaccard score, save the link
+      // If matched with >= 0.3 Jaccard score, save the link and upsert groups
       if (bestCharTrigger && bestScore >= 0.3) {
         bindings[bestCharTrigger] = {
           trigger: bestCharTrigger,
           displayModelId: model.id,
         }
         linkCount++
+
+        // Extract series/copyright name from catalog index
+        const seriesName = data.copyrights?.[bestCharCopyrightIdx]
+        if (seriesName) {
+          const currentGroups = model.groups || []
+          if (!currentGroups.includes(seriesName)) {
+            const updatedGroups = [...currentGroups, seriesName]
+            await displayModelStore.updateDisplayModelMeta(model.id, { groups: updatedGroups })
+            groupUpdateCount++
+          }
+        }
       }
-    })
+    }
 
     localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(bindings))
     // eslint-disable-next-line no-console
-    console.log(`[Model Selector] Auto-linked ${linkCount} models to catalog triggers.`)
+    console.log(`[Model Selector] Auto-linked ${linkCount} models, upserted ${groupUpdateCount} model groups.`)
   }
   catch (err) {
     console.error('[Model Selector] Auto-link catalog mapping failed:', err)
