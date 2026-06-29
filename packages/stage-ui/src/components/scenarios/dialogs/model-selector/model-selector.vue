@@ -530,8 +530,8 @@ async function testTagModel(mode: 'reindex' | 'fill-in' = 'reindex') {
 
         const tagsArray = tagsResult
           .split(',')
-          .map(t => t.trim().toLowerCase())
-          .filter(t => t && !TAG_BLOCKLIST.has(t))
+          .map((t: string) => t.trim().toLowerCase())
+          .filter((t: string) => t && !TAG_BLOCKLIST.has(t))
 
         await displayModelStore.updateDisplayModelTags(model.id, tagsArray)
 
@@ -554,11 +554,74 @@ async function testTagModel(mode: 'reindex' | 'fill-in' = 'reindex') {
     // eslint-disable-next-line no-console
     console.log('[Model Selector] ALL MODELS TAGGED! Exported Dataset:', exportedDataset)
 
-    toast.success('All Models Tagged!', { id: toastId })
+    // Trigger Auto-linking logic on completed catalog matching
+    toast('Auto-linking models to AnimaDex catalog...', { id: toastId })
+    await runAutoLinkCatalog()
+
+    toast.success('All Models Tagged & Auto-Linked!', { id: toastId })
   }
   catch (error) {
     console.error('[Model Selector] Auto-tagging batch failed:', error)
     toast.error(`Tagging failed: ${error instanceof Error ? error.message : String(error)}`, { id: toastId })
+  }
+}
+
+async function runAutoLinkCatalog() {
+  try {
+    const res = await fetch('/assets/animadex-catalog.json')
+    const data = await res.json()
+    if (!data || !data.characters)
+      return
+
+    const rawBindings = localStorage.getItem('settings/airi-card/character-bindings')
+    const bindings = rawBindings ? JSON.parse(rawBindings) : {}
+
+    const rawBlacklist = localStorage.getItem('settings/airi-card/character-bindings-blacklist')
+    const blacklist = new Set<string>(rawBlacklist ? JSON.parse(rawBlacklist) : [])
+
+    let linkCount = 0
+
+    displayModels.value.forEach((model) => {
+      const mTags = new Set(model.tags?.map(t => t.trim().toLowerCase()) || [])
+      if (mTags.size === 0)
+        return
+
+      let bestScore = 0.0
+      let bestCharTrigger = null
+
+      data.characters.forEach((char: any) => {
+        const triggerStr = char[3] // trigger is field index 3
+        const tagsStr = char[4] // tags is field index 4
+        if (!triggerStr || blacklist.has(triggerStr))
+          return
+
+        const cTags = new Set(tagsStr.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean))
+        const intersection = [...mTags].filter(t => cTags.has(t)).length
+        const union = mTags.size + cTags.size - intersection
+        const score = union > 0 ? intersection / union : 0.0
+
+        if (score > bestScore) {
+          bestScore = score
+          bestCharTrigger = triggerStr
+        }
+      })
+
+      // If matched with >= 0.3 Jaccard score, save the link
+      if (bestCharTrigger && bestScore >= 0.3) {
+        bindings[bestCharTrigger] = {
+          trigger: bestCharTrigger,
+          displayModelId: model.id,
+        }
+        linkCount++
+      }
+    })
+
+    localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(bindings))
+    // eslint-disable-next-line no-console
+    console.log(`[Model Selector] Auto-linked ${linkCount} models to catalog triggers.`)
+  }
+  catch (err) {
+    console.error('[Model Selector] Auto-link catalog mapping failed:', err)
   }
 }
 </script>

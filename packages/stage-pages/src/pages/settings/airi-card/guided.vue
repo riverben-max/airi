@@ -214,6 +214,13 @@ function writeBackVoiceBinding(characterId: string, voiceId: string) {
       }
       map[char.trigger].voiceProfileId = voiceId || undefined
       localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
+
+      // Remove from blacklist if manually bound
+      const blacklistRaw = localStorage.getItem('settings/airi-card/character-bindings-blacklist')
+      if (blacklistRaw) {
+        const blacklist = JSON.parse(blacklistRaw).filter((t: string) => t !== char.trigger)
+        localStorage.setItem('settings/airi-card/character-bindings-blacklist', JSON.stringify(blacklist))
+      }
     }
     catch (e) {
       console.error('Failed to write back voice-binding:', e)
@@ -422,6 +429,20 @@ function unbindModel(trigger: string) {
     if (map[trigger]) {
       delete map[trigger]
       localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
+
+      // Save unbind to blacklist so auto-linker does not re-add this false positive
+      try {
+        const blacklistRaw = localStorage.getItem('settings/airi-card/character-bindings-blacklist')
+        const blacklist = blacklistRaw ? JSON.parse(blacklistRaw) : []
+        if (!blacklist.includes(trigger)) {
+          blacklist.push(trigger)
+          localStorage.setItem('settings/airi-card/character-bindings-blacklist', JSON.stringify(blacklist))
+        }
+      }
+      catch (e) {
+        console.error('Failed to update blacklist:', e)
+      }
+
       toast.success('Model association removed.')
       // Force trigger reactivity update on wizardStore's filteredCharacters computed
       showOnlyModels.value = !showOnlyModels.value
@@ -506,6 +527,13 @@ function handlePickModel(model: any) {
         }
         map[char.trigger].displayModelId = modelId || undefined
         localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
+
+        // Remove from blacklist if manually bound
+        const blacklistRaw = localStorage.getItem('settings/airi-card/character-bindings-blacklist')
+        if (blacklistRaw) {
+          const blacklist = JSON.parse(blacklistRaw).filter((t: string) => t !== char.trigger)
+          localStorage.setItem('settings/airi-card/character-bindings-blacklist', JSON.stringify(blacklist))
+        }
       }
       catch (e) {
         console.error('Failed to write back character model binding:', e)
