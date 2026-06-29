@@ -202,13 +202,23 @@ export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () 
     let accumulatedPrompt = ''
 
     for (const conceptId of stack) {
-      const asset = visualAssets[conceptId]
+      let asset = visualAssets[conceptId]
+      const cardModules = (cardStore.activeCard?.extensions?.airi?.modules || {}) as Record<string, any>
+      if (!asset) {
+        asset = cardModules[conceptId]
+      }
+
       if (!asset)
         continue
 
-      // Prompt: concatenate all snippets
-      if (asset.prompt) {
-        accumulatedPrompt += asset.prompt
+      // Prompt: resolve with fallback to modules block if blank in visual_assets
+      let resolvedPrompt = asset.prompt || ''
+      if (!resolvedPrompt && cardModules[conceptId]?.prompt) {
+        resolvedPrompt = cardModules[conceptId].prompt
+      }
+
+      if (resolvedPrompt) {
+        accumulatedPrompt += resolvedPrompt
       }
 
       // Artistry: last override wins

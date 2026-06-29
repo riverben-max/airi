@@ -17,6 +17,7 @@ import {
 import { computed, ref, watch } from 'vue'
 
 import ImageTagExtractorModal from './ImageTagExtractorModal.vue'
+import VoiceCreatorModal from './VoiceCreatorModal.vue'
 
 interface ConceptData {
   description: string
@@ -150,6 +151,7 @@ const selectedMood = ref<string>('')
 const selectedSpeechProvider = ref<string>('inherit')
 const selectedSpeechModel = ref<string>('')
 const selectedSpeechVoiceId = ref<string>('')
+const showVoiceCreator = ref(false)
 
 // Scene Overrides
 const selectedBackgroundId = ref<string>('inherit')
@@ -660,7 +662,19 @@ function handleSave() {
 
               <div class="flex flex-col gap-2">
                 <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Persona Voice</label>
-                <Select v-model="selectedSpeechVoiceId" :options="speechVoiceOptions" />
+                <div class="flex items-center gap-2">
+                  <Select v-model="selectedSpeechVoiceId" :options="speechVoiceOptions" class="flex-1" />
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    class="h-[38px] flex items-center gap-1.5 border border-neutral-200 px-3 text-xs font-bold dark:border-neutral-800"
+                    title="Create custom voice profile"
+                    @click.prevent="showVoiceCreator = true"
+                  >
+                    <span class="i-solar:music-notes-bold-duotone text-sm" />
+                    Create Custom Voice
+                  </Button>
+                </div>
                 <p class="text-[10px] text-neutral-500 italic">
                   The unique voice assigned to this concept/actress.
                 </p>
@@ -753,5 +767,19 @@ function handleSave() {
     v-model="showTagExtractorModal"
     :model-id="extractorModelId"
     @apply="handleTagExtractorApply"
+  />
+
+  <!-- Voice Creator Modal -->
+  <VoiceCreatorModal
+    v-model="showVoiceCreator"
+    :character-name="conceptId ? conceptId : undefined"
+    @save="(voiceId) => {
+      selectedSpeechVoiceId = voiceId
+      const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceId)
+      if (profile) {
+        selectedSpeechProvider = profile.baseProvider
+        selectedSpeechModel = profile.baseModel || ''
+      }
+    }"
   />
 </template>
