@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useLive2d } from '@proj-airi/stage-ui-live2d'
-import { useModelStore } from '@proj-airi/stage-ui-three'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
@@ -60,19 +58,32 @@ const providersStore = useProvidersStore()
 const speechStore = useSpeechStore()
 const backgroundStore = useBackgroundStore()
 const airiCardStore = useAiriCardStore()
-const live2dStore = useLive2d()
-const modelStore = useModelStore()
+const selectedModelId = ref<string>('inherit')
+const selectedExpressions = ref<Record<string, number>>({})
 
-const availableExpressions = computed(() => {
-  const list: { key: string, name: string, type: 'live2d' | 'vrm' }[] = []
-  for (const exp of live2dStore.availableExpressions) {
-    list.push({ key: exp.fileName, name: exp.name, type: 'live2d' })
+const availableExpressions = ref<{ key: string, name: string, type: 'live2d' | 'vrm' | 'spine' | 'mmd' }[]>([])
+
+watch(selectedModelId, async (newId) => {
+  if (!newId || newId === 'inherit') {
+    availableExpressions.value = []
+    return
   }
-  for (const exp of modelStore.availableExpressions) {
-    list.push({ key: exp, name: exp, type: 'vrm' })
+  const model = displayModelsStore.displayModels.find(m => m.id === newId)
+  if (!model) {
+    availableExpressions.value = []
+    return
   }
-  return list
-})
+  const caps = await displayModelsStore.getOrLoadModelCapabilities(newId)
+  const list: { key: string, name: string, type: 'live2d' | 'vrm' | 'spine' | 'mmd' }[] = []
+
+  const modelType = model.format.toLowerCase()
+  const displayType = modelType.includes('live2d') ? 'live2d' : (modelType === 'vrm' ? 'vrm' : (modelType.includes('spine') ? 'spine' : 'mmd'))
+
+  caps.expressions.forEach((name) => {
+    list.push({ key: name, name, type: displayType })
+  })
+  availableExpressions.value = list
+}, { immediate: true })
 
 function toggleExpression(key: string) {
   if (selectedExpressions.value[key] !== undefined) {
@@ -133,9 +144,7 @@ const selectedModel = ref<string>('')
 const selectedOptionsStr = ref<string>('{\n  \n}')
 
 // Manifestation Overrides
-const selectedModelId = ref<string>('inherit')
 const selectedMood = ref<string>('')
-const selectedExpressions = ref<Record<string, number>>({})
 
 // Speech Overrides
 const selectedSpeechProvider = ref<string>('inherit')

@@ -10,7 +10,7 @@ import { loadVrmModelPreview as generateVrmPreview } from '@proj-airi/stage-ui-t
 import { until, useBroadcastChannel } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref, toRaw, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import { storage } from '../database/storage'
@@ -51,6 +51,8 @@ export interface DisplayModelFile {
   nsfw?: boolean
   groups?: string[]
   tags?: string[]
+  expressions?: string[]
+  motions?: string[]
 }
 
 export interface DisplayModelURL {
@@ -64,6 +66,8 @@ export interface DisplayModelURL {
   nsfw?: boolean
   groups?: string[]
   tags?: string[]
+  expressions?: string[]
+  motions?: string[]
 }
 
 const displayModelsPresets: DisplayModel[] = [
@@ -814,7 +818,157 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     broadcastModelsSync(Date.now())
   }
 
+  async function getOrLoadModelCapabilities(id: string): Promise<{ expressions: string[], motions: string[] }> {
+    const model = displayModels.value.find(m => m.id === id)
+    if (!model) {
+      return { expressions: [], motions: [] }
+    }
+
+    if (model.expressions && model.motions) {
+      return { expressions: model.expressions, motions: model.motions }
+    }
+
+    let file: File | Blob | null = null
+    if (model.type === 'file') {
+      const modelFromFile = await getDisplayModel(id)
+      if (modelFromFile && 'file' in modelFromFile) {
+        file = modelFromFile.file
+      }
+    }
+    else {
+      try {
+        const res = await fetch(model.url)
+        file = await res.blob()
+      }
+      catch (e) {
+        console.error('[DisplayModels] Failed to fetch URL model:', e)
+      }
+    }
+
+    if (!file) {
+      return { expressions: [], motions: [] }
+    }
+
+    const expressions: string[] = []
+    const motions: string[] = []
+
+    try {
+      const format = model.format.toLowerCase()
+      const arrayBuffer = await file.arrayBuffer()
+
+      if (format.includes('live2d')) {
+        const zipInstance = await JSZip.loadAsync(arrayBuffer)
+        let modelJsonPath = ''
+        for (const filename of Object.keys(zipInstance.files)) {
+          if (filename.toLowerCase().endsWith('.model3.json')) {
+            modelJsonPath = filename
+            break
+          }
+        }
+
+        if (modelJsonPath) {
+          const content = await zipInstance.files[modelJsonPath].async('text')
+          const data = JSON.parse(content)
+          if (data && data.FileReferences) {
+            if (Array.isArray(data.FileReferences.Expressions)) {
+              data.FileReferences.Expressions.forEach((exp: any) => {
+                const name = exp.Name || exp.File?.split('/').pop()?.replace('.exp3.json', '')
+                if (name)
+                  expressions.push(name)
+              })
+            }
+            if (data.FileReferences.Motions) {
+              Object.keys(data.FileReferences.Motions).forEach((groupName) => {
+                const group = data.FileReferences.Motions[groupName]
+                if (Array.isArray(group)) {
+                  group.forEach((m: any) => {
+                    const name = m.File?.split('/').pop()?.replace('.motion3.json', '')
+                    if (name)
+                      motions.push(name)
+                  })
+                }
+              })
+            }
+          }
+        }
+      }
+      else if (format === 'vrm') {
+        const dataView = new DataView(arrayBuffer)
+        const magic = dataView.getUint32(0, true)
+        if (magic === 0x46546C67) { // 'glTF' binary
+          const length = dataView.getUint32(8, true)
+          let chunkOffset = 12
+          while (chunkOffset < length) {
+            const chunkLength = dataView.getUint32(chunkOffset, true)
+            const chunkType = dataView.getUint32(chunkOffset + 4, true)
+            if (chunkType === 0x4E4F534A) { // 'JSON' chunk
+              const jsonSlice = new Uint8Array(arrayBuffer, chunkOffset + 8, chunkLength)
+              const decoder = new TextDecoder()
+              const gltf = JSON.parse(decoder.decode(jsonSlice))
+
+              // Standard VRM blendshape extraction
+              const blendShapes = gltf.extensions?.VRM?.blendShapeMaster?.blendShapeGroups
+              if (Array.isArray(blendShapes)) {
+                blendShapes.forEach((group: any) => {
+                  if (group.name)
+                    expressions.push(group.name.toLowerCase())
+                })
+              }
+              break
+            }
+            chunkOffset += 8 + chunkLength
+          }
+        }
+      }
+      else if (format.includes('spine')) {
+        const zipInstance = await JSZip.loadAsync(arrayBuffer)
+        for (const filename of Object.keys(zipInstance.files)) {
+          if (filename.toLowerCase().endsWith('.json')) {
+            const content = await zipInstance.files[filename].async('text')
+            const spineData = JSON.parse(content)
+            if (spineData && spineData.animations) {
+              Object.keys(spineData.animations).forEach(name => expressions.push(name))
+            }
+            break
+          }
+        }
+      }
+      else if (format.includes('pmx') || format.includes('pmd')) {
+        // Simple PMX/PMD binary morph parser
+        const dataView = new DataView(arrayBuffer)
+        const signature = String.fromCharCode(
+          dataView.getUint8(0),
+          dataView.getUint8(1),
+          dataView.getUint8(2),
+          dataView.getUint8(3),
+        )
+        if (signature === 'PMX ') {
+          // PMX format header parsing - scan for morph names using a text decoder
+          const decoder = new TextDecoder('utf-16le')
+          const text = decoder.decode(new Uint8Array(arrayBuffer))
+          const morphs = text.match(/[\u4E00-\u9FA5\w-]{2,10}/g) || []
+          const uniqueMorphs = [...new Set(morphs)].filter(m => m.length > 1)
+          expressions.push(...uniqueMorphs.slice(0, 30)) // Cap list for sanity
+        }
+      }
+    }
+    catch (e) {
+      console.error('[DisplayModels] Error extracting capabilities:', e)
+    }
+
+    model.expressions = [...new Set(expressions)].sort((a, b) => a.localeCompare(b))
+    model.motions = [...new Set(motions)].sort((a, b) => a.localeCompare(b))
+
+    // Save to IndexedDB
+    if (model.type === 'file') {
+      await localforage.setItem(id, toRaw(model))
+    }
+
+    return { expressions: model.expressions, motions: model.motions }
+  }
+
   return {
+    getOrLoadModelCapabilities,
     displayModels,
     displayModelsFromIndexedDBLoading,
 

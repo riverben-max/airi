@@ -114,6 +114,28 @@ interface AiriExtension {
     activeBackgroundId?: string | null
     active_expressions?: Record<string, number>
   }
+
+```
+
+### 1.1.2 Base Card properties (Character Card Spec V2/V3)
+
+The root properties of the character card structure extend the base specification:
+
+```typescript
+// File: packages/ccc/src/define/card.ts
+
+interface Card {
+  name: string // Display/character name
+  nickname?: string // Custom user-defined display nickname
+  version: string // Character version (e.g. "1.0.0")
+  greetings?: string[] // greetings[0] is first_mes, greetings.slice(1) is alternate_greetings
+  notes?: string // Creator notes
+  description?: string // Short summary descriptions
+  personality?: string // Character traits and tags
+  scenario?: string // Current circumstance and setting
+  systemPrompt?: string // Core LLM system instructions / prompts
+  tags?: string[] // Filter tags (anime, video-game, etc)
+  messageExample?: Message[][] // Array of sample chat messages
 }
 ```
 
