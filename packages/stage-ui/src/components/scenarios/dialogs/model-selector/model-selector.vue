@@ -491,7 +491,14 @@ async function testTagModel(mode: 'reindex' | 'fill-in' = 'reindex') {
   }
 
   if (modelsToTag.length === 0) {
-    toast.info(mode === 'fill-in' ? 'All models with preview images already have tags.' : 'No models with a preview image found to process.')
+    if (mode === 'fill-in') {
+      const toastId = toast.loading('All models already tagged. Re-evaluating model-to-character bindings...')
+      await runAutoLinkCatalog()
+      toast.success('Model-to-character bindings successfully re-evaluated!', { id: toastId })
+    }
+    else {
+      toast.info('No models with a preview image found to process.')
+    }
     return
   }
 
