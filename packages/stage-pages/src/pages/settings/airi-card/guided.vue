@@ -369,6 +369,50 @@ function getThumbUrl(trigger: string) {
   return `https://blobs.animadex.net/Outputs/thumbs/${encodeURIComponent(clean)}.webp`
 }
 
+// Model Preview & Unbind Helpers
+const showModelPreviews = ref<Record<string, boolean>>({})
+
+function getBindingsMap() {
+  try {
+    const raw = localStorage.getItem('settings/airi-card/character-bindings')
+    return raw ? JSON.parse(raw) : {}
+  }
+  catch {
+    return {}
+  }
+}
+
+function hasBoundModel(trigger: string) {
+  const map = getBindingsMap()
+  return !!(map[trigger] && map[trigger].displayModelId)
+}
+
+function getModelPreviewUrl(trigger: string) {
+  const map = getBindingsMap()
+  const modelId = map[trigger]?.displayModelId
+  if (!modelId)
+    return null
+  const model = displayModelsStore.displayModels.find(m => m.id === modelId)
+  return model?.previewImage || null
+}
+
+function unbindModel(trigger: string) {
+  try {
+    const map = getBindingsMap()
+    if (map[trigger]) {
+      delete map[trigger]
+      localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
+      toast.success('Model association removed.')
+      // Force trigger reactivity update on wizardStore's filteredCharacters computed
+      showOnlyModels.value = !showOnlyModels.value
+      showOnlyModels.value = !showOnlyModels.value
+    }
+  }
+  catch (e: any) {
+    toast.error(`Failed to unbind model: ${e.message}`)
+  }
+}
+
 function getActorThumbUrl(actorKey: string) {
   const slug = actorKey.replace('actor_', '')
   const char = selectedCharacters.value.find((c) => {
@@ -988,7 +1032,7 @@ async function confirmCreateCard() {
               <!-- Card Portrait Image -->
               <div class="relative aspect-[3/4] overflow-hidden bg-neutral-900">
                 <img
-                  :src="getThumbUrl(char.trigger)"
+                  :src="showModelPreviews[char.id] ? (getModelPreviewUrl(char.trigger) || getThumbUrl(char.trigger)) : getThumbUrl(char.trigger)"
                   alt=""
                   loading="lazy"
                   class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -1003,25 +1047,49 @@ async function confirmCreateCard() {
                 </div>
 
                 <!-- Hover action overlay -->
-                <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                  <Button
-                    v-if="!selectedCharacters.some(c => c.id === char.id)"
-                    variant="primary"
-                    class="h-[36px] flex items-center gap-1 border border-primary-500/20 rounded-xl text-xs font-bold"
-                    @click="wizardStore.addCharacterToBasket(char)"
-                  >
-                    <div i-solar:add-square-line-duotone class="text-base" />
-                    Add to World
-                  </Button>
-                  <Button
-                    v-else
-                    variant="danger"
-                    class="h-[36px] flex items-center gap-1 border border-red-500/20 rounded-xl text-xs font-bold"
-                    @click="wizardStore.removeCharacterFromBasket(char.id)"
-                  >
-                    <div i-solar:trash-bin-trash-outline class="text-base" />
-                    Remove
-                  </Button>
+                <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                  <div class="w-full flex flex-col items-center gap-1.5 px-3">
+                    <!-- Primary Add/Remove Button -->
+                    <Button
+                      v-if="!selectedCharacters.some(c => c.id === char.id)"
+                      variant="primary"
+                      class="h-[32px] w-full flex items-center justify-center gap-1 border border-primary-500/20 rounded-lg text-[10px] font-bold"
+                      @click="wizardStore.addCharacterToBasket(char)"
+                    >
+                      <div i-solar:add-square-line-duotone class="text-sm" />
+                      Add to World
+                    </Button>
+                    <Button
+                      v-else
+                      variant="danger"
+                      class="h-[32px] w-full flex items-center justify-center gap-1 border border-red-500/20 rounded-lg text-[10px] font-bold"
+                      @click="wizardStore.removeCharacterFromBasket(char.id)"
+                    >
+                      <div i-solar:trash-bin-trash-outline class="text-sm" />
+                      Remove
+                    </Button>
+
+                    <!-- Secondary Model Actions (Visible if a model is bound) -->
+                    <div v-if="hasBoundModel(char.trigger)" class="mt-1 w-full flex gap-1.5">
+                      <Button
+                        variant="secondary"
+                        class="h-[28px] flex flex-1 items-center justify-center gap-0.5 border border-neutral-800 rounded-lg text-[9px] font-semibold"
+                        :class="[showModelPreviews[char.id] ? 'bg-primary-500/20 border-primary-500/40 text-primary-400' : '']"
+                        @click="showModelPreviews[char.id] = !showModelPreviews[char.id]"
+                      >
+                        <div i-solar:eye-bold-duotone class="text-xs" />
+                        Preview
+                      </Button>
+                      <Button
+                        variant="danger"
+                        class="h-[28px] flex flex-1 items-center justify-center gap-0.5 border border-red-900/30 rounded-lg bg-red-950/20 text-[9px] text-red-400 font-semibold hover:bg-red-900/40"
+                        @click="unbindModel(char.trigger)"
+                      >
+                        <div i-solar:broken-link-outline class="text-xs" />
+                        Unbind
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
