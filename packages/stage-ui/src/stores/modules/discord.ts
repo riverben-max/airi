@@ -749,17 +749,81 @@ export const useDiscordStore = defineStore('discord', () => {
         }
       }
       else if (payload.commandName === 'character') {
+        const renderCharactersWidget = async (interactionId: string, page: number) => {
+          const allCards = Array.from(airiCard.cards.entries())
+          const activeCardId = airiCard.activeCardId
+          const activeCard = airiCard.activeCard
+
+          const totalCards = allCards.length
+          const pageSize = 12
+          const totalPages = Math.ceil(totalCards / pageSize) || 1
+          const currentPage = Math.min(Math.max(page, 0), totalPages - 1)
+
+          const startIdx = currentPage * pageSize
+          const pageCards = allCards.slice(startIdx, startIdx + pageSize)
+
+          let replyContent = `**🎭 Character Selector (Page ${currentPage + 1}/${totalPages})**\n`
+          replyContent += `--------------------------------------------------\n`
+          replyContent += `🟢 **Active:** **${activeCard?.name || 'None'}**\n`
+          replyContent += `--------------------------------------------------\n`
+
+          const components: any[] = []
+          const buttonsPerRow = 3
+
+          for (let i = 0; i < pageCards.length; i += buttonsPerRow) {
+            const rowCards = pageCards.slice(i, i + buttonsPerRow)
+            const rowComponents = rowCards.map(([id, card]) => {
+              const isActive = id === activeCardId
+              return {
+                type: 2, // Button
+                style: isActive ? 2 : 1, // Grey if active, Blurple if not
+                label: isActive ? `🟢 ${card.name}` : card.name,
+                customId: `characters:switch:${id}`,
+                disabled: isActive,
+              }
+            })
+
+            components.push({
+              type: 1, // ActionRow
+              components: rowComponents,
+            })
+          }
+
+          if (totalCards === 0) {
+            replyContent += `*No character cards found.*\n`
+          }
+
+          components.push({
+            type: 1, // ActionRow
+            components: [
+              {
+                type: 2, // Button
+                style: 2, // Secondary (Grey)
+                label: '◀️ Previous',
+                customId: `characters:page:${currentPage - 1}`,
+                disabled: currentPage === 0,
+              },
+              {
+                type: 2, // Button
+                style: 2, // Secondary (Grey)
+                label: '▶️ Next',
+                customId: `characters:page:${currentPage + 1}`,
+                disabled: currentPage >= totalPages - 1,
+              },
+            ],
+          })
+
+          await invokeReplyInteraction?.({
+            interactionId,
+            content: replyContent.trim(),
+            components,
+          })
+        }
+
         const query = (payload.options.id || payload.options.name || '').toString().trim()
 
         if (!query) {
-          const charList = Array.from(airiCard.cards.values())
-            .map(c => `- **${c.name}**`)
-            .join('\n')
-
-          await invokeReplyInteraction?.({
-            interactionId: payload.interactionId,
-            content: `Active: **${airiCard.activeCard?.name || 'None'}**\n\nAvailable Characters:\n${charList}`,
-          })
+          await renderCharactersWidget(payload.interactionId, 0)
           return
         }
 
@@ -782,6 +846,95 @@ export const useDiscordStore = defineStore('discord', () => {
             interactionId: payload.interactionId,
             content: `Could not find a character matching "**${query}**".`,
           })
+        }
+      }
+      else if (payload.commandName === 'button:characters') {
+        const action = payload.options.action
+        const targetId = payload.options.id
+
+        const allCards = Array.from(airiCard.cards.entries())
+
+        const renderCharactersWidget = async (interactionId: string, page: number) => {
+          const activeCardId = airiCard.activeCardId
+          const activeCard = airiCard.activeCard
+
+          const totalCards = allCards.length
+          const pageSize = 12
+          const totalPages = Math.ceil(totalCards / pageSize) || 1
+          const currentPage = Math.min(Math.max(page, 0), totalPages - 1)
+
+          const startIdx = currentPage * pageSize
+          const pageCards = allCards.slice(startIdx, startIdx + pageSize)
+
+          let replyContent = `**🎭 Character Selector (Page ${currentPage + 1}/${totalPages})**\n`
+          replyContent += `--------------------------------------------------\n`
+          replyContent += `🟢 **Active:** **${activeCard?.name || 'None'}**\n`
+          replyContent += `--------------------------------------------------\n`
+
+          const components: any[] = []
+          const buttonsPerRow = 3
+
+          for (let i = 0; i < pageCards.length; i += buttonsPerRow) {
+            const rowCards = pageCards.slice(i, i + buttonsPerRow)
+            const rowComponents = rowCards.map(([id, card]) => {
+              const isActive = id === activeCardId
+              return {
+                type: 2,
+                style: isActive ? 2 : 1,
+                label: isActive ? `🟢 ${card.name}` : card.name,
+                customId: `characters:switch:${id}`,
+                disabled: isActive,
+              }
+            })
+
+            components.push({
+              type: 1,
+              components: rowComponents,
+            })
+          }
+
+          if (totalCards === 0) {
+            replyContent += `*No character cards found.*\n`
+          }
+
+          components.push({
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 2,
+                label: '◀️ Previous',
+                customId: `characters:page:${currentPage - 1}`,
+                disabled: currentPage === 0,
+              },
+              {
+                type: 2,
+                style: 2,
+                label: '▶️ Next',
+                customId: `characters:page:${currentPage + 1}`,
+                disabled: currentPage >= totalPages - 1,
+              },
+            ],
+          })
+
+          await invokeReplyInteraction?.({
+            interactionId,
+            content: replyContent.trim(),
+            components,
+          })
+        }
+
+        if (action === 'switch' && targetId) {
+          await airiCard.activateCard(targetId)
+
+          // Re-render widget on page containing the newly active card
+          const idx = allCards.findIndex(([id]) => id === targetId)
+          const page = idx >= 0 ? Math.floor(idx / 12) : 0
+          await renderCharactersWidget(payload.interactionId, page)
+        }
+        else if (action === 'page' && targetId) {
+          const page = Number.parseInt(targetId) || 0
+          await renderCharactersWidget(payload.interactionId, page)
         }
       }
       else if (payload.commandName === 'new') {
