@@ -140,28 +140,50 @@ export function setupDiscordService() {
   // ── Interaction Logic ──────────────────────────────────────────────────
 
   const handleInteraction = async (interaction: any) => {
-    if (!interaction.isChatInputCommand())
+    const isButton = interaction.isButton()
+    if (!interaction.isChatInputCommand() && !isButton)
       return
 
     try {
-      pushLog('INTERACTION', `Received /${interaction.commandName} from ${interaction.user.tag}`)
-
-      // 1. Defer the reply immediately to satisfy the 3s timeout
-      await interaction.deferReply()
+      if (isButton) {
+        pushLog('INTERACTION', `Received button click "${interaction.customId}" from ${interaction.user.tag}`)
+        // Defer update so we don't block and can edit the message components dynamically
+        await interaction.deferUpdate()
+      }
+      else {
+        pushLog('INTERACTION', `Received /${interaction.commandName} from ${interaction.user.tag}`)
+        // Defer reply for slash commands to prevent the 3s timeout
+        await interaction.deferReply()
+      }
 
       // 2. Cache the interaction so the renderer can reply to it later
       activeInteractions.set(interaction.id, interaction)
 
-      // 3. Extract options into a simple key-value map
+      let commandName = ''
       const options: Record<string, any> = {}
-      interaction.options.data.forEach((opt: any) => {
-        options[opt.name] = opt.value
-      })
+
+      if (isButton) {
+        // customId format: namespace:action:args
+        const parts = interaction.customId.split(':')
+        const namespace = parts[0] || 'unknown'
+        const action = parts[1] || ''
+        commandName = `button:${namespace}`
+        options.action = action
+        if (parts.length > 2) {
+          options.id = parts.slice(2).join(':')
+        }
+      }
+      else {
+        commandName = interaction.commandName
+        interaction.options.data.forEach((opt: any) => {
+          options[opt.name] = opt.value
+        })
+      }
 
       // 4. Forward to Renderer
       pushInteraction({
         interactionId: interaction.id,
-        commandName: interaction.commandName,
+        commandName,
         options,
         channelId: interaction.channelId,
         userId: interaction.user.id,
@@ -553,10 +575,17 @@ export function setupDiscordService() {
 
     try {
       if (payload.followUp) {
-        await interaction.followUp({ content: payload.content, ephemeral: payload.ephemeral })
+        await interaction.followUp({
+          content: payload.content,
+          ephemeral: payload.ephemeral,
+          components: payload.components,
+        })
       }
       else {
-        await interaction.editReply({ content: payload.content })
+        await interaction.editReply({
+          content: payload.content,
+          components: payload.components,
+        })
       }
     }
     catch (err: any) {

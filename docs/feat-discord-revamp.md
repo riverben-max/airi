@@ -174,3 +174,52 @@ The "Holy Grail" of voice interaction on Discord.
 ### [Project Cleanup]
 - **[DELETE]** `services/discord-bot/` (Deprecated legacy process)
 - **[MODIFY]** `package.json` (Adding `@discordjs/voice`, `libsodium-wrappers`, and `@discordjs/opus` to core dependencies)
+
+---
+
+## 6. Interactive Message Widgets (Discord Components)
+
+To replace repetitive text-based commands, the integration features native, click-driven widgets leveraging Discord's Action Rows and Message Components (Buttons).
+
+### A. Timeline Management: `/timelines`
+Displays the active character's chat timelines, allowing pagination, switching, and quick branching actions.
+*   **Rows 1-4 (Timeline Entries):**
+    *   `Button` (Style: Success/Green): **Select** (Triggers `/timelines <id>` for that entry)
+    *   `Button` (Style: Primary/Blurple): **Fork** (Creates a new branch/timeline from this point)
+    *   *Visual Helper:* Text displays the timeline name and last active timestamp (e.g., `Timeline A (10 mins ago)`).
+*   **Row 5 (Navigation & Control):**
+    *   `Button` (Style: Secondary/Grey): **◀️ Previous Page**
+    *   `Button` (Style: Secondary/Grey): **▶️ Next Page**
+    *   `Button` (Style: Primary/Blurple): **➕ New Timeline**
+
+### B. Character Selector: `/characters`
+Enables users to browse through installed character cards, view details, and switch the active companion.
+*   **Rows 1-4 (Character Entries):**
+    *   `Button` (Style: Success/Green): **Switch** (Triggers `/character <id>`)
+    *   `Button` (Style: Secondary/Grey): **Details** (Prints a transient/ephemeral summary of bio and status)
+    *   *Visual Helper:* Text displays the character's name.
+*   **Row 5 (Navigation Control):**
+    *   `Button` (Style: Secondary/Grey): **◀️ Previous Page**
+    *   `Button` (Style: Secondary/Grey): **▶️ Next Page**
+
+### C. Session & Modality Control: `/manage`
+The `/manage` dashboard. The message body itself is the existing `/status` text readout. Clicking any button updates the corresponding state and automatically refreshes the `/status` body text.
+*   **Row 1: Voice Mode (`/voicemode`)**
+    *   `Button` (Style: Success/Green if active, else Grey): **🔊 Puppet** (Local desktop speakers)
+    *   `Button` (Style: Success/Green if active, else Grey): **📝 Voice Note** (Uploads spoken lines as audio attachments)
+    *   `Button` (Style: Danger/Red if active, else Grey): **🔇 Mute** (Text-only responses)
+*   **Row 2: Voice Call (`/voicecall`)**
+    *   `Button` (Style: Primary/Blurple if active, else Grey): **📞 Gemini** (Real-time live WebSocket stream)
+    *   `Button` (Style: Primary/Blurple if active, else Grey): **⚙️ Classic TTS** (STT -> LLM -> TTS pipeline)
+*   **Row 3: Chat Mode (`/chatmode`)**
+    *   `Button` (Style: Success/Green if active, else Grey): **📥 Follow-up**
+    *   `Button` (Style: Success/Green if active, else Grey): **🎯 Steer**
+    *   `Button` (Style: Success/Green if active, else Grey): **🔋 Collect**
+*   **Row 4: Modules (Toggles)**
+    *   `Button` (Style: Success/Green if active, else Grey): **🎬 Director** (Toggles `/director mode:on|off`)
+    *   `Button` (Style: Success/Green if active, else Grey): **👁️ Vision** (Toggles `/vision mode:on|off`)
+*   **Row 5: Utilities & Refresh**
+    *   `Button` (Style: Primary/Blurple): **📸 Selfie** (Triggers `/selfie`)
+    *   `Button` (Style: Primary/Blurple): **✍️ Journal Moment** (Triggers `/journalmoment`)
+    *   `Button` (Style: Secondary/Grey): **🔄 Refresh Status** (Manually updates the `/status` text body)
+

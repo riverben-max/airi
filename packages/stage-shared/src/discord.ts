@@ -84,6 +84,8 @@ export interface DiscordInteractionReplyPayload {
   followUp?: boolean
   /** If true, only visible to the user who triggered it */
   ephemeral?: boolean
+  /** Optional Discord message components (buttons, select menus, action rows) */
+  components?: any[]
 }
 
 // ── Invoke Contracts (Renderer → Main) ─────────────────────────────────────────

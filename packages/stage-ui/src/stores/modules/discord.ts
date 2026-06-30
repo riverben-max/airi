@@ -806,6 +806,98 @@ export const useDiscordStore = defineStore('discord', () => {
         })
       }
       else if (payload.commandName === 'timelines') {
+        const renderTimelinesWidget = async (interactionId: string, page: number) => {
+          const characterId = airiCard.activeCardId || 'default'
+          const characterName = airiCard.activeCard?.name || 'Active Character'
+          const characterIndex = chatSession.index?.characters?.[characterId]
+          const sessions = characterIndex?.sessions || {}
+          const activeId = chatSession.activeSessionId
+
+          const sessionList = Object.values(sessions)
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+
+          const totalSessions = sessionList.length
+          const pageSize = 4
+          const totalPages = Math.ceil(totalSessions / pageSize) || 1
+          const currentPage = Math.min(Math.max(page, 0), totalPages - 1)
+
+          const startIdx = currentPage * pageSize
+          const pageSessions = sessionList.slice(startIdx, startIdx + pageSize)
+
+          const activeMeta = sessions[activeId]
+          const activeTitle = activeMeta?.title || 'Untitled Session'
+
+          let replyContent = `**⏳ Chat Timelines for ${characterName} (Page ${currentPage + 1}/${totalPages})**\n`
+          replyContent += `--------------------------------------------------\n`
+          replyContent += `🟢 **Active:** **${activeTitle}** (id: \`${activeId}\`)\n`
+          replyContent += `--------------------------------------------------\n`
+
+          const components: any[] = []
+
+          pageSessions.forEach((s, idx) => {
+            const num = startIdx + idx + 1
+            const title = s.title || 'Untitled Session'
+            const count = s.messageCount || 0
+            const activeIndicator = s.sessionId === activeId ? '🟢 ' : ''
+            replyContent += `${num}. ${activeIndicator}**${title}** (id: \`${s.sessionId}\`, ${count} messages)\n`
+
+            components.push({
+              type: 1, // ActionRow
+              components: [
+                {
+                  type: 2, // Button
+                  style: s.sessionId === activeId ? 2 : 3, // Grey if active, Success/Green if not
+                  label: s.sessionId === activeId ? `Active #${num}` : `Select #${num}`,
+                  customId: `timelines:select:${s.sessionId}`,
+                  disabled: s.sessionId === activeId,
+                },
+                {
+                  type: 2, // Button
+                  style: 1, // Primary (Blurple)
+                  label: `Fork #${num}`,
+                  customId: `timelines:fork:${s.sessionId}`,
+                },
+              ],
+            })
+          })
+
+          if (pageSessions.length === 0) {
+            replyContent += `*No timelines found.*\n`
+          }
+
+          components.push({
+            type: 1, // ActionRow
+            components: [
+              {
+                type: 2, // Button
+                style: 2, // Secondary (Grey)
+                label: '◀️ Previous',
+                customId: `timelines:page:${currentPage - 1}`,
+                disabled: currentPage === 0,
+              },
+              {
+                type: 2, // Button
+                style: 2, // Secondary (Grey)
+                label: '▶️ Next',
+                customId: `timelines:page:${currentPage + 1}`,
+                disabled: currentPage >= totalPages - 1,
+              },
+              {
+                type: 2, // Button
+                style: 1, // Primary (Blurple)
+                label: '➕ New Timeline',
+                customId: 'timelines:new',
+              },
+            ],
+          })
+
+          await invokeReplyInteraction?.({
+            interactionId,
+            content: replyContent.trim(),
+            components,
+          })
+        }
+
         const characterId = airiCard.activeCardId || 'default'
         const characterName = airiCard.activeCard?.name || 'Active Character'
         const targetId = payload.options.id?.toString().trim()
@@ -832,39 +924,133 @@ export const useDiscordStore = defineStore('discord', () => {
           }
         }
         else {
-          const sessionList = Object.values(sessions)
-            .sort((a, b) => b.updatedAt - a.updatedAt)
+          await renderTimelinesWidget(payload.interactionId, 0)
+        }
+      }
+      else if (payload.commandName === 'button:timelines') {
+        const action = payload.options.action
+        const targetId = payload.options.id
+        const characterId = airiCard.activeCardId || 'default'
+
+        const characterIndex = chatSession.index?.characters?.[characterId]
+        const sessions = characterIndex?.sessions || {}
+        const sessionList = Object.values(sessions).sort((a, b) => b.updatedAt - a.updatedAt)
+
+        // Helper function declared inline to match /timelines scope
+        const renderTimelinesWidget = async (interactionId: string, page: number) => {
+          const characterName = airiCard.activeCard?.name || 'Active Character'
+          const activeId = chatSession.activeSessionId
+
+          const totalSessions = sessionList.length
+          const pageSize = 4
+          const totalPages = Math.ceil(totalSessions / pageSize) || 1
+          const currentPage = Math.min(Math.max(page, 0), totalPages - 1)
+
+          const startIdx = currentPage * pageSize
+          const pageSessions = sessionList.slice(startIdx, startIdx + pageSize)
 
           const activeMeta = sessions[activeId]
           const activeTitle = activeMeta?.title || 'Untitled Session'
-          const activeCount = activeMeta?.messageCount || 0
-          const activeTime = activeMeta ? new Date(activeMeta.updatedAt).toLocaleString() : 'N/A'
 
-          let replyContent = `**⏳ Chat Timelines for ${characterName}**\n`
+          let replyContent = `**⏳ Chat Timelines for ${characterName} (Page ${currentPage + 1}/${totalPages})**\n`
           replyContent += `--------------------------------------------------\n`
-          replyContent += `🟢 **Active:** **${activeTitle}** (id: \`${activeId}\`, ${activeCount} messages, updated ${activeTime})\n`
+          replyContent += `🟢 **Active:** **${activeTitle}** (id: \`${activeId}\`)\n`
           replyContent += `--------------------------------------------------\n`
 
-          const otherSessions = sessionList.filter(s => s.sessionId !== activeId)
-          if (otherSessions.length > 0) {
-            replyContent += `**Other Timelines:**\n`
-            for (const s of otherSessions) {
-              const title = s.title || 'Untitled Session'
-              const count = s.messageCount || 0
-              const time = new Date(s.updatedAt).toLocaleString()
-              replyContent += `• **${title}** (id: \`${s.sessionId}\`, ${count} messages, updated ${time})\n`
-            }
-          }
-          else {
-            replyContent += `*No other timelines found.*\n`
+          const components: any[] = []
+
+          pageSessions.forEach((s, idx) => {
+            const num = startIdx + idx + 1
+            const title = s.title || 'Untitled Session'
+            const count = s.messageCount || 0
+            const activeIndicator = s.sessionId === activeId ? '🟢 ' : ''
+            replyContent += `${num}. ${activeIndicator}**${title}** (id: \`${s.sessionId}\`, ${count} messages)\n`
+
+            components.push({
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: s.sessionId === activeId ? 2 : 3,
+                  label: s.sessionId === activeId ? `Active #${num}` : `Select #${num}`,
+                  customId: `timelines:select:${s.sessionId}`,
+                  disabled: s.sessionId === activeId,
+                },
+                {
+                  type: 2,
+                  style: 1,
+                  label: `Fork #${num}`,
+                  customId: `timelines:fork:${s.sessionId}`,
+                },
+              ],
+            })
+          })
+
+          if (pageSessions.length === 0) {
+            replyContent += `*No timelines found.*\n`
           }
 
-          replyContent += `\n*Use \`/timelines id:[session-id]\` to switch to a different timeline.*`
+          components.push({
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 2,
+                label: '◀️ Previous',
+                customId: `timelines:page:${currentPage - 1}`,
+                disabled: currentPage === 0,
+              },
+              {
+                type: 2,
+                style: 2,
+                label: '▶️ Next',
+                customId: `timelines:page:${currentPage + 1}`,
+                disabled: currentPage >= totalPages - 1,
+              },
+              {
+                type: 2,
+                style: 1,
+                label: '➕ New Timeline',
+                customId: 'timelines:new',
+              },
+            ],
+          })
 
           await invokeReplyInteraction?.({
-            interactionId: payload.interactionId,
-            content: replyContent,
+            interactionId,
+            content: replyContent.trim(),
+            components,
           })
+        }
+
+        if (action === 'select' && targetId) {
+          if (sessions[targetId]) {
+            chatSession.setActiveSession(targetId)
+            const idx = sessionList.findIndex(s => s.sessionId === targetId)
+            const page = idx >= 0 ? Math.floor(idx / 4) : 0
+            await renderTimelinesWidget(payload.interactionId, page)
+          }
+        }
+        else if (action === 'fork' && targetId) {
+          const forkSessionId = await chatSession.forkSession({ fromSessionId: targetId })
+          if (forkSessionId) {
+            chatSession.setActiveSession(forkSessionId)
+            const characterIndexUpdated = chatSession.index?.characters?.[characterId]
+            const sessionsUpdated = characterIndexUpdated?.sessions || {}
+            const activeMeta = sessionsUpdated[forkSessionId]
+            if (activeMeta) {
+              activeMeta.title = `Fork of ${sessions[targetId]?.title || 'Untitled'}`
+            }
+            await renderTimelinesWidget(payload.interactionId, 0)
+          }
+        }
+        else if (action === 'new') {
+          await chatSession.createSession(characterId)
+          await renderTimelinesWidget(payload.interactionId, 0)
+        }
+        else if (action === 'page' && targetId) {
+          const page = Number.parseInt(targetId) || 0
+          await renderTimelinesWidget(payload.interactionId, page)
         }
       }
       else if (payload.commandName === 'status') {
