@@ -6,7 +6,14 @@ import type {
   DiscordServiceStatus,
 } from '@proj-airi/stage-shared'
 
-import { getVoiceConnection, joinVoiceChannel } from '@discordjs/voice'
+import { PassThrough } from 'node:stream'
+
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+
+import prism from 'prism-media'
+
+import { AudioPlayer, AudioPlayerStatus, createAudioResource, EndBehaviorType, getVoiceConnection, joinVoiceChannel, StreamType } from '@discordjs/voice'
 import { useLogg } from '@guiiai/logg'
 import { defineInvokeHandler } from '@moeru/eventa'
 import { createContext } from '@moeru/eventa/adapters/electron/main'
@@ -42,6 +49,10 @@ let discordClient: Client | null = null
 let activeChannelId: string | null = null
 const activeInteractions = new Map<string, any>()
 let lastError: string | null = null
+
+// Audio player for piping Gemini responses back into Discord voice
+let activeAudioPlayer: AudioPlayer | null = null
+let activeAudioPassthrough: PassThrough | null = null
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -647,6 +658,137 @@ export function setupDiscordService() {
 
       console.log('[DiscordService/Native] joinVoiceChannel connection instance created:', !!connection)
 
+      // Create an AudioPlayer for piping Gemini responses back into the voice channel
+      activeAudioPlayer = new AudioPlayer()
+      connection.subscribe(activeAudioPlayer)
+      console.log('[DiscordService/Voice] AudioPlayer created and subscribed to voice connection.')
+
+      activeAudioPlayer.on('error', (err) => {
+        console.error('[DiscordService/Voice] AudioPlayer error:', err)
+      })
+      activeAudioPlayer.on(AudioPlayerStatus.Idle, () => {
+        console.log('[DiscordService/Voice] AudioPlayer is idle (finished playing).')
+      })
+
+      // Set up speaking listeners on connection.receiver
+      connection.receiver.speaking.on('start', (targetUserId) => {
+        console.log(`[DiscordService/Voice] User speaking START: ${targetUserId}`)
+
+        let username = targetUserId
+        for (const guild of discordClient!.guilds.cache.values()) {
+          const member = guild.members.cache.get(targetUserId)
+          if (member) {
+            username = member.user.tag
+            break
+          }
+        }
+
+        pushLog('VOICE_SPEAKING_START', `User ${username} started speaking`)
+
+        try {
+          const audioStream = connection.receiver.subscribe(targetUserId, {
+            end: {
+              behavior: EndBehaviorType.AfterSilence,
+              duration: 100,
+            },
+          })
+
+          console.log(`[DiscordService/Voice] ▶ Subscribed to Opus audio stream for ${username}.`)
+
+          // Decode Opus → raw PCM (48kHz stereo 16-bit)
+          const decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 })
+          audioStream.pipe(decoder)
+
+          // Diagnostic: track decoder output
+          let decoderChunkCount = 0
+          let decoderTotalBytes = 0
+          decoder.on('data', (chunk: Buffer) => {
+            decoderChunkCount++
+            decoderTotalBytes += chunk.length
+            if (decoderChunkCount === 1) {
+              console.log(`[DiscordService/Voice] 🎙️ Decoder first output chunk for ${username}: ${chunk.length} bytes`)
+            }
+          })
+
+          // Path A: Write raw PCM to disk for debugging
+          const timestamp = Date.now()
+          const dir = '/tmp/airi-discord-voice'
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true })
+          }
+          const filePath = path.join(dir, `speaking_${targetUserId}_${timestamp}.pcm`)
+          const writeStream = fs.createWriteStream(filePath)
+          decoder.pipe(writeStream)
+          console.log(`[DiscordService/Voice] 📄 Path A: Writing PCM to ${filePath}`)
+
+          // Path B: Resample 48kHz stereo → 16kHz mono and forward to renderer via IPC (Pure JS)
+          console.log(`[DiscordService/Voice] 🔀 Path B: Setting up pure JS 48kHz stereo → 16kHz mono downsampler...`)
+
+          let ipcChunkCount = 0
+
+          decoder.on('data', (chunk: Buffer) => {
+            try {
+              // 48kHz stereo 16-bit PCM to 16kHz mono 16-bit PCM.
+              // 16-bit = 2 bytes. Stereo = 2 channels (4 bytes per frame).
+              // Downsample factor = 3 (48kHz / 16kHz).
+              const numFrames = Math.floor(chunk.length / 4)
+              const outFrames = Math.floor(numFrames / 3)
+              if (outFrames <= 0)
+                return
+
+              const resampledBuffer = Buffer.alloc(outFrames * 2) // 2 bytes per mono 16-bit sample
+
+              for (let i = 0; i < outFrames; i++) {
+                const byteOffset = i * 3 * 4 // Frame index i * 3 * 4 bytes per stereo frame
+                const left = chunk.readInt16LE(byteOffset)
+                const right = chunk.readInt16LE(byteOffset + 2)
+                const monoValue = Math.round((left + right) / 2)
+                resampledBuffer.writeInt16LE(monoValue, i * 2)
+              }
+
+              ipcChunkCount++
+              const base64 = resampledBuffer.toString('base64')
+              if (ipcChunkCount === 1) {
+                console.log(`[DiscordService/Voice] 📡 First resampled chunk for ${username}. Input: ${chunk.length} bytes -> Output: ${resampledBuffer.length} bytes. Sending to renderer...`)
+              }
+              broadcastToAllWindows('discord-audio-chunk', base64)
+            }
+            catch (err: any) {
+              console.error(`[DiscordService/Voice] ❌ JS Downsampler error for ${username}:`, err.message)
+            }
+          })
+
+          decoder.on('end', () => {
+            console.log(`[DiscordService/Voice] ✅ Decoder ended for ${username}. Total decoder output: ${decoderChunkCount} chunks (${decoderTotalBytes} bytes). Total IPC chunks sent: ${ipcChunkCount}.`)
+            pushLog('VOICE_RECORD_END', `Speech segment complete. Decoder: ${decoderChunkCount} chunks, IPC: ${ipcChunkCount} chunks`)
+            broadcastToAllWindows('discord-audio-end', { userId: targetUserId })
+          })
+
+          audioStream.on('end', () => {
+            console.log(`[DiscordService/Voice] 📭 Opus stream ended for ${username}. Waiting for decoder to drain...`)
+          })
+
+          audioStream.on('error', (err) => {
+            console.error(`[DiscordService/Voice] ❌ Audio stream error for ${username}:`, err)
+          })
+        }
+        catch (err: any) {
+          console.error(`[DiscordService/Voice] ❌ Failed to set up pipeline for ${username}:`, err)
+        }
+      })
+
+      connection.receiver.speaking.on('end', (targetUserId) => {
+        let username = targetUserId
+        for (const guild of discordClient!.guilds.cache.values()) {
+          const member = guild.members.cache.get(targetUserId)
+          if (member) {
+            username = member.user.tag
+            break
+          }
+        }
+        console.log(`[DiscordService/Voice] User speaking END: ${username}`)
+      })
+
       pushLog('VOICE', `Successfully joined voice channel: ${voiceChannel.name}`)
       return { success: true, channelName: voiceChannel.name }
     }
@@ -689,6 +831,63 @@ export function setupDiscordService() {
     catch (err: any) {
       pushLog('ERROR', `Failed to disconnect from voice channel: ${err.message || err}`)
       return { success: false, error: err.message || String(err) }
+    }
+  })
+
+  // ── Gemini Audio Bridge: Renderer → Discord Voice ────────────────────────
+  // Receives 24kHz mono PCM16 base64 chunks from the renderer (Gemini Live output),
+  // upsamples them to 48kHz stereo in pure JS, and plays them via the AudioPlayer.
+
+  ipcMain.on('gemini-audio-chunk', (_event, base64Pcm: string) => {
+    if (!activeAudioPlayer) {
+      console.warn('[DiscordService/Voice] Received gemini-audio-chunk but no active AudioPlayer.')
+      return
+    }
+
+    try {
+      const pcmBuffer = Buffer.from(base64Pcm, 'base64')
+
+      // If there's no active passthrough stream, create one and start playing
+      if (!activeAudioPassthrough) {
+        activeAudioPassthrough = new PassThrough()
+        console.log('[DiscordService/Voice] 🔊 Created new PassThrough for Gemini audio playback.')
+
+        const resource = createAudioResource(activeAudioPassthrough, {
+          inputType: StreamType.Raw,
+        })
+
+        activeAudioPlayer.play(resource)
+        console.log('[DiscordService/Voice] 🎵 AudioPlayer playing raw stream.')
+      }
+
+      // Upsample: 24kHz mono (1 sample = 2 bytes) → 48kHz stereo (4 samples = 8 bytes)
+      const numSamples = Math.floor(pcmBuffer.length / 2)
+      const upsampledBuffer = Buffer.alloc(numSamples * 8)
+
+      for (let i = 0; i < numSamples; i++) {
+        const val = pcmBuffer.readInt16LE(i * 2)
+        const offset = i * 8
+        // Sample 1 (Left and Right)
+        upsampledBuffer.writeInt16LE(val, offset)
+        upsampledBuffer.writeInt16LE(val, offset + 2)
+        // Sample 2 (Left and Right) - repeat to double rate from 24kHz to 48kHz
+        upsampledBuffer.writeInt16LE(val, offset + 4)
+        upsampledBuffer.writeInt16LE(val, offset + 6)
+      }
+
+      // Write upsampled 48kHz stereo buffer directly to the player's input stream
+      activeAudioPassthrough.write(upsampledBuffer)
+    }
+    catch (err: any) {
+      console.error('[DiscordService/Voice] ❌ Error handling gemini-audio-chunk:', err.message)
+    }
+  })
+
+  ipcMain.on('gemini-audio-end', () => {
+    console.log('[DiscordService/Voice] Received gemini-audio-end. Finalizing audio stream.')
+    if (activeAudioPassthrough) {
+      activeAudioPassthrough.end()
+      activeAudioPassthrough = null
     }
   })
 

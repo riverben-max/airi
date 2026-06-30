@@ -98,6 +98,7 @@
     "opusscript": "^0.1.1",
     "pinia": "catalog:",
     "popmotion": "^11.0.5",
+    "prism-media": "^1.3.5",
     "rehype-stringify": "^10.0.1",
     "reka-ui": "^2.8.2",
     "remark-parse": "^11.0.0",

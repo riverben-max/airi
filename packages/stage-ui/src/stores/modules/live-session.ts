@@ -163,6 +163,14 @@ export const useLiveSessionStore = defineStore('live-session', () => {
   const outputMode = useLocalStorage<'gemini' | 'custom'>('settings/gemini/output-mode', 'gemini')
   const error = ref<string | null>(null)
 
+  // Tracks whether the current conversation turn was initiated from the local
+  // desktop microphone or from a Discord voice channel. This determines where
+  // Gemini's audio response should be routed (local speakers vs Discord AudioPlayer).
+  const activeInputSource = ref<'local' | 'discord'>('local')
+
+  // Cleanup function for the Discord audio IPC listener
+  let cleanupDiscordAudioIpc: (() => void) | null = null
+
   // Audio playback queue for Gemini native PCM audio
   // NOTICE: Gemini sends PCM16 at 24kHz in small chunks via inlineData.
   // We queue AudioBuffers and schedule them sequentially to prevent
@@ -726,6 +734,18 @@ export const useLiveSessionStore = defineStore('live-session', () => {
               }
               // ---------------------------------------------------
 
+              // If the turn was initiated from Discord, notify the main process
+              // that the Gemini response is complete so it can finalize the AudioPlayer stream.
+              if (activeInputSource.value === 'discord') {
+                const ipcRenderer = (window as any).electron?.ipcRenderer
+                if (ipcRenderer) {
+                  ipcRenderer.send('gemini-audio-end')
+                  console.log('[LiveSession] Sent gemini-audio-end to main process (turn complete).')
+                }
+                // Reset source back to local after the Discord turn finishes
+                activeInputSource.value = 'local'
+              }
+
               currentStreamingMessage = null
               currentStreamContext = null
               currentCategoriser = null
@@ -832,10 +852,58 @@ export const useLiveSessionStore = defineStore('live-session', () => {
       error.value = 'WebSocket connection failed.'
       isConnecting.value = false
     }
+
+    // ── Discord Voice → Gemini Live IPC Bridge ──────────────────────────────
+    // Listen for audio chunks forwarded from the main process (Discord voice)
+    // and route them into the active Gemini Bidi session.
+    const ipcRenderer = (window as any).electron?.ipcRenderer
+    if (ipcRenderer) {
+      // Remove any previous listener to prevent duplication on reconnect
+      if (cleanupDiscordAudioIpc) {
+        cleanupDiscordAudioIpc()
+        cleanupDiscordAudioIpc = null
+      }
+
+      const onDiscordAudioChunk = (_event: any, base64Pcm: string) => {
+        // Log every chunk received (first one per segment) so we can confirm IPC is working
+        const sessionState = `isActive=${isActive.value}, socketState=${socket.value?.readyState ?? 'null'}`
+        if (!isActive.value || !socket.value || socket.value.readyState !== WebSocket.OPEN) {
+          console.warn(`[LiveSession] ⚠️ Dropping Discord audio chunk — session not ready. State: ${sessionState}. You must have Gemini Live active on the desktop first.`)
+          return
+        }
+        console.log(`[LiveSession] 📥 Discord audio chunk received (${base64Pcm.length} base64 chars). Forwarding to Gemini Bidi...`)
+        sendRealtimeAudio(base64Pcm, 'discord')
+      }
+
+      const onDiscordAudioEnd = (_event: any, _payload: any) => {
+        const sessionState = `isActive=${isActive.value}, socketState=${socket.value?.readyState ?? 'null'}`
+        if (!isActive.value || !socket.value || socket.value.readyState !== WebSocket.OPEN) {
+          console.warn(`[LiveSession] ⚠️ Dropping Discord audio-end signal — session not ready. State: ${sessionState}`)
+          return
+        }
+        console.log('[LiveSession] 🔚 Discord speaking segment ended. Sending audioStreamEnd to Gemini.')
+        sendAudioStreamEnd()
+      }
+
+      ipcRenderer.on('discord-audio-chunk', onDiscordAudioChunk)
+      ipcRenderer.on('discord-audio-end', onDiscordAudioEnd)
+
+      cleanupDiscordAudioIpc = () => {
+        ipcRenderer.removeListener('discord-audio-chunk', onDiscordAudioChunk)
+        ipcRenderer.removeListener('discord-audio-end', onDiscordAudioEnd)
+        console.log('[LiveSession] Discord audio IPC listeners cleaned up.')
+      }
+
+      console.log('[LiveSession] ✅ Discord audio IPC bridge established.')
+    }
   }
 
   function stop() {
     console.log('[LiveSession] Stopping session...')
+    if (cleanupDiscordAudioIpc) {
+      cleanupDiscordAudioIpc()
+      cleanupDiscordAudioIpc = null
+    }
     socket.value?.close()
     reset()
   }
@@ -886,9 +954,12 @@ export const useLiveSessionStore = defineStore('live-session', () => {
     // --------------------------------
   }
 
-  function sendRealtimeAudio(base64Pcm: string) {
+  function sendRealtimeAudio(base64Pcm: string, source: 'local' | 'discord' = 'local') {
     if (!socket.value || socket.value.readyState !== WebSocket.OPEN)
       return
+
+    // Track the source so playPcmChunk knows where to route the response
+    activeInputSource.value = source
 
     try {
       socket.value.send(JSON.stringify({
@@ -962,6 +1033,24 @@ export const useLiveSessionStore = defineStore('live-session', () => {
    * right after the previous chunk to prevent gaps/clicks.
    */
   function playPcmChunk(base64Data: string) {
+    // If the current turn was initiated from Discord, route audio back to
+    // the main process for Discord voice playback instead of local speakers.
+    if (activeInputSource.value === 'discord') {
+      try {
+        const ipcRenderer = (window as any).electron?.ipcRenderer
+        if (ipcRenderer) {
+          ipcRenderer.send('gemini-audio-chunk', base64Data)
+          return
+        }
+        else {
+          console.warn('[LiveSession] activeInputSource is discord but no ipcRenderer available. Falling back to local playback.')
+        }
+      }
+      catch (err) {
+        console.error('[LiveSession] Failed to route PCM to Discord IPC, falling back to local:', err)
+      }
+    }
+
     try {
       const ctx = audioCtxStore.audioContext
       if (ctx.state === 'suspended') {
@@ -1032,6 +1121,7 @@ export const useLiveSessionStore = defineStore('live-session', () => {
     resolvedToolRegistry = []
     sessionTokenHighWaterMark = 0
     audioPlaybackTime = 0
+    activeInputSource.value = 'local'
     activeAudioSources.forEach((src) => {
       src.stop()
       src.disconnect()
@@ -1071,6 +1161,7 @@ export const useLiveSessionStore = defineStore('live-session', () => {
     voiceName,
     isGroundingEnabled,
     outputMode,
+    activeInputSource,
     estimatedCost,
     error,
     powerState,

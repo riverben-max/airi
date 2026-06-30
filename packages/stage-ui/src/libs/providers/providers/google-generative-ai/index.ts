@@ -22,6 +22,19 @@ type GoogleGenerativeConfig = z.infer<typeof googleGenerativeConfigSchema>
  * injects the missing index and type properties.
  */
 const googleFetch: typeof fetch = async (input, init) => {
+  if (init?.body && typeof init.body === 'string') {
+    try {
+      const payload = JSON.parse(init.body)
+      if (payload && typeof payload === 'object' && 'reasoning' in payload) {
+        delete payload.reasoning
+        init.body = JSON.stringify(payload)
+      }
+    }
+    catch {
+      // Ignore
+    }
+  }
+
   const response = await fetch(input, init)
 
   // Only intercept chat completion streams
