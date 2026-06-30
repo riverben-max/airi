@@ -361,7 +361,7 @@ async function streamFrom(model: string, chatProvider: ChatProvider, messages: M
         max_tokens: options?.max_tokens,
         ...(options?.contextWidth ? { num_ctx: options.contextWidth } : {}),
         // TODO: we need Automatic tools discovery
-        tools,
+        ...(tools && tools.length > 0 ? { tools } : {}),
         onEvent,
         model,
         abortSignal: options?.abortSignal,
@@ -433,7 +433,7 @@ async function generateFrom(model: string, chatProvider: ChatProvider, messages:
     max_tokens: options?.max_tokens,
     ...(options?.contextWidth ? { num_ctx: options.contextWidth } : {}),
     model,
-    tools,
+    ...(tools && tools.length > 0 ? { tools } : {}),
   })
 }
 

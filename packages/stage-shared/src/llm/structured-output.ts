@@ -25,7 +25,7 @@ export interface StructuredOutputOptions<T> extends Partial<CommonRequestOptions
  * Strips markdown code fences (backticks) from LLM responses.
  */
 export function stripMarkdown(content: string): string {
-  return content.replace(/^```[a-z]*\n|```$/gi, '').trim()
+  return content.replace(/```[a-z]*\n?|```$/gi, '').trim()
 }
 
 /**
