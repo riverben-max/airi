@@ -589,6 +589,8 @@ export const useDiscordStore = defineStore('discord', () => {
       }
 
       console.log(`[DiscordStore] Outbound response ready for ${source.username} in channel ${source.channelId.slice(-4)}`)
+      console.log('[DiscordStore] onChatTurnComplete - FULL chat object:', chat)
+      console.log('[DiscordStore] onChatTurnComplete - FULL context object:', context)
 
       // Leadership Election: Only the "Stage" window handles the Outbound reply
       const hash = window.location.hash || '#/'
@@ -599,7 +601,7 @@ export const useDiscordStore = defineStore('discord', () => {
         return
       }
 
-      const ttsText = chat.outputText || chat.output.content
+      const ttsText = chat.output.rawContent || chat.outputText || chat.output.content
       const error = chat.output.error
 
       console.log('[DiscordStore] onChatTurnComplete - raw ttsText:', JSON.stringify(ttsText))
@@ -647,8 +649,17 @@ export const useDiscordStore = defineStore('discord', () => {
       let rawText = typeof ttsText === 'string' ? ttsText : String(ttsText)
       console.log('[DiscordStore] text before ACTOR replacement:', JSON.stringify(rawText))
 
-      // Convert ACTOR tokens to bold bracketed format (e.g. <|ACTOR:Baelz|> -> **[Baelz]**:)
-      rawText = rawText.replace(/<\|ACTOR:([^|>]+)(?:\|>|>)/gi, '**[$1]**:')
+      // Convert ACTOR tokens to bold bracketed format (e.g. <|ACTOR:actor_oshino_shinobu|> -> **[oshino_shinobu]**:)
+      rawText = rawText.replace(/<\|ACTOR:([^|>]+)(?:\|>|>)/gi, (_, captured) => {
+        let cleanName = captured.trim()
+        if (cleanName.toLowerCase().startsWith('actor_')) {
+          cleanName = cleanName.substring(6)
+        }
+        else if (cleanName.toLowerCase().startsWith('actress_')) {
+          cleanName = cleanName.substring(8)
+        }
+        return `**[${cleanName}]**: `
+      })
       console.log('[DiscordStore] text after ACTOR replacement:', JSON.stringify(rawText))
 
       let cleanedText = stripMarkers(rawText)
