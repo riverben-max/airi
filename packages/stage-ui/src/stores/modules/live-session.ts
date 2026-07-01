@@ -1127,67 +1127,72 @@ export const useLiveSessionStore = defineStore('live-session', () => {
   // ── Discord Voice → Gemini Live IPC Bridge (Always Active) ──────────────
   const ipcRenderer = (window as any).electron?.ipcRenderer
   if (ipcRenderer) {
-    const onDiscordAudioChunk = (_event: any, base64Pcm: string) => {
-      const discordStore = useDiscordStore()
+    const hash = window.location.hash || '#/'
+    const isStage = hash === '#/' || hash.startsWith('#/stage')
 
-      console.log(`[LiveSession] 📥 IPC Received discord-audio-chunk (${base64Pcm.length} chars). voiceCall setting: "${discordStore.voiceCall}"`)
+    if (isStage) {
+      const onDiscordAudioChunk = (_event: any, base64Pcm: string) => {
+        const discordStore = useDiscordStore()
 
-      // Only handle if voiceCall is set to 'gemini'
-      if (discordStore.voiceCall !== 'gemini') {
-        return
+        console.log(`[LiveSession] 📥 IPC Received discord-audio-chunk (${base64Pcm.length} chars). voiceCall setting: "${discordStore.voiceCall}"`)
+
+        // Only handle if voiceCall is set to 'gemini'
+        if (discordStore.voiceCall !== 'gemini') {
+          return
+        }
+
+        // Auto-start: if session is not active and not connecting, spin it up
+        if (!isActive.value && !isConnecting.value) {
+          console.log('[LiveSession] 🚀 Auto-starting Gemini Live session from Discord speech...')
+          start()
+        }
+
+        // Buffer chunks while the socket connection is establishing (cold start)
+        if (isConnecting.value) {
+          console.log('[LiveSession] 📥 Buffering Discord audio chunk during cold start...')
+          connectionQueue.push(base64Pcm)
+          return
+        }
+
+        if (isActive.value && socket.value && socket.value.readyState === WebSocket.OPEN) {
+          sendRealtimeAudio(base64Pcm, 'discord')
+        }
       }
 
-      // Auto-start: if session is not active and not connecting, spin it up
-      if (!isActive.value && !isConnecting.value) {
-        console.log('[LiveSession] 🚀 Auto-starting Gemini Live session from Discord speech...')
-        start()
+      const onDiscordAudioEnd = (_event: any, _payload: any) => {
+        const discordStore = useDiscordStore()
+        console.log(`[LiveSession] 📥 IPC Received discord-audio-end. voiceCall setting: "${discordStore.voiceCall}"`)
+
+        if (discordStore.voiceCall !== 'gemini') {
+          return
+        }
+
+        if (isConnecting.value) {
+          console.log('[LiveSession] Discord speaking ended during cold start. StreamEnd will be inferred on flush.')
+          return
+        }
+
+        if (isActive.value && socket.value && socket.value.readyState === WebSocket.OPEN) {
+          console.log('[LiveSession] 🔚 Discord speaking segment ended. Sending audioStreamEnd to Gemini.')
+          sendAudioStreamEnd()
+        }
       }
 
-      // Buffer chunks while the socket connection is establishing (cold start)
-      if (isConnecting.value) {
-        console.log('[LiveSession] 📥 Buffering Discord audio chunk during cold start...')
-        connectionQueue.push(base64Pcm)
-        return
-      }
-
-      if (isActive.value && socket.value && socket.value.readyState === WebSocket.OPEN) {
-        sendRealtimeAudio(base64Pcm, 'discord')
-      }
-    }
-
-    const onDiscordAudioEnd = (_event: any, _payload: any) => {
-      const discordStore = useDiscordStore()
-      console.log(`[LiveSession] 📥 IPC Received discord-audio-end. voiceCall setting: "${discordStore.voiceCall}"`)
-
-      if (discordStore.voiceCall !== 'gemini') {
-        return
-      }
-
-      if (isConnecting.value) {
-        console.log('[LiveSession] Discord speaking ended during cold start. StreamEnd will be inferred on flush.')
-        return
-      }
-
-      if (isActive.value && socket.value && socket.value.readyState === WebSocket.OPEN) {
-        console.log('[LiveSession] 🔚 Discord speaking segment ended. Sending audioStreamEnd to Gemini.')
-        sendAudioStreamEnd()
-      }
-    }
-
-    const onDiscordVoiceDisconnected = (_event: any, _payload: any) => {
+      const onDiscordVoiceDisconnected = (_event: any, _payload: any) => {
       // Auto-stop: if the voice call is terminated, cleanly close the Gemini Live session
-      if (activeInputSource.value === 'discord') {
-        console.log('[LiveSession] 🛑 Discord voice call disconnected. Auto-stopping Gemini session...')
-        stop()
-        toast.info('Gemini Live session stopped (Discord disconnected).')
+        if (activeInputSource.value === 'discord') {
+          console.log('[LiveSession] 🛑 Discord voice call disconnected. Auto-stopping Gemini session...')
+          stop()
+          toast.info('Gemini Live session stopped (Discord disconnected).')
+        }
       }
+
+      ipcRenderer.on('discord-audio-chunk', onDiscordAudioChunk)
+      ipcRenderer.on('discord-audio-end', onDiscordAudioEnd)
+      ipcRenderer.on('discord-voice-disconnected', onDiscordVoiceDisconnected)
+
+      console.log('[LiveSession] ✅ Discord audio IPC bridge established at store init (Stage Window only).')
     }
-
-    ipcRenderer.on('discord-audio-chunk', onDiscordAudioChunk)
-    ipcRenderer.on('discord-audio-end', onDiscordAudioEnd)
-    ipcRenderer.on('discord-voice-disconnected', onDiscordVoiceDisconnected)
-
-    console.log('[LiveSession] ✅ Discord audio IPC bridge established at store init.')
   }
 
   return {
