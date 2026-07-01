@@ -42,6 +42,7 @@ import { useDiscordStore } from '../../stores/modules/discord'
 import { useSpeechStore } from '../../stores/modules/speech'
 import { useProvidersStore } from '../../stores/providers'
 import { useSettings } from '../../stores/settings'
+import { useSettingsUserProfile } from '../../stores/settings/user-profile'
 import { useSpeechRuntimeStore } from '../../stores/speech-runtime'
 import { useVHackStore } from '../../stores/vhack'
 
@@ -721,6 +722,25 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
               provider: targetProviderId,
               languages: [{ code: 'en', title: 'English' }],
             }
+          }
+        }
+      }
+    }
+    else {
+      // Narrator/undefined block fallback to user's voice profile if in multi-actor mode
+      const cardStore = useAiriCardStore()
+      const isMultiActor = cardStore.systemPrompt?.includes('<|ACTOR') || false
+
+      if (isMultiActor) {
+        const userProfileStore = useSettingsUserProfile()
+        const userVoiceId = userProfileStore.voiceProfileId
+        if (userVoiceId) {
+          targetProviderId = 'virtual-audio-studio'
+          targetVoice = {
+            id: userVoiceId,
+            name: userVoiceId,
+            provider: 'virtual-audio-studio',
+            languages: [{ code: 'en', title: 'English' }],
           }
         }
       }
