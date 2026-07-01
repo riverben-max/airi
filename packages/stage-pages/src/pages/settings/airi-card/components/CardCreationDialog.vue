@@ -145,6 +145,64 @@ const selectedActingModelExpressionPrompt = ref<string>('')
 const selectedActingSpeechExpressionPrompt = ref<string>('')
 const selectedActingSpeechMannerismPrompt = ref<string>('')
 const selectedActingIdleAnimations = ref<string[]>([])
+
+// Resolve which visual asset (actor) corresponds to the currently active stage model.
+// Returns the actor key and its idleAnimations override, or null if no override exists.
+const activeActorIdleOverride = computed<{ key: string, idleAnimations: string[] } | null>(() => {
+  const card = isEditMode.value && props.cardId ? cardStore.getCard(props.cardId) : undefined
+  if (!card)
+    return null
+  const airiExt = card.extensions?.airi as any
+  const visualAssets = airiExt?.visual_assets || {}
+  const modelId = defaultDisplayModelId.value
+  if (!modelId)
+    return null
+
+  for (const [key, asset] of Object.entries(visualAssets)) {
+    const a = asset as any
+    if (a?.manifestation?.modelId === modelId && a.idleAnimations) {
+      return { key, idleAnimations: [...a.idleAnimations] }
+    }
+  }
+  return null
+})
+
+// When the stage model changes (e.g. toggling concepts in Studio tab),
+// sync the Acting tab's idle animation selection to reflect the active actor's override.
+watch(defaultDisplayModelId, () => {
+  const override = activeActorIdleOverride.value
+  if (override) {
+    selectedActingIdleAnimations.value = [...override.idleAnimations]
+  }
+  else {
+    // Fall back to the global card-level idle animations
+    const card = isEditMode.value && props.cardId ? cardStore.getCard(props.cardId) : undefined
+    const airiExt = card?.extensions?.airi as any
+    selectedActingIdleAnimations.value = [...(airiExt?.acting?.idleAnimations || [])]
+  }
+})
+
+// When the user edits idle animations in the Acting tab while an actor override is active,
+// live-persist the changes back to that actor's visual_assets block.
+watch(selectedActingIdleAnimations, (newAnims) => {
+  const override = activeActorIdleOverride.value
+  if (!override || !isEditMode.value || !props.cardId)
+    return
+
+  const card = cardStore.getCard(props.cardId)
+  if (!card)
+    return
+
+  const extension = JSON.parse(JSON.stringify(card.extensions || {}))
+  if (extension.airi?.visual_assets?.[override.key]) {
+    extension.airi.visual_assets[override.key].idleAnimations = [...newAnims]
+    cardStore.updateCard(props.cardId, {
+      ...card,
+      extensions: extension,
+    })
+  }
+}, { deep: true })
+
 const actingSpeechCapabilities = ref<SpeechCapabilitiesInfo | null>(null)
 const actingSpeechCapabilitiesLoading = ref<boolean>(false)
 
@@ -794,7 +852,11 @@ async function saveCard(card: Card): Promise<boolean> {
           modelExpressionPrompt: selectedActingModelExpressionPrompt.value,
           speechExpressionPrompt: selectedActingSpeechExpressionPrompt.value,
           speechMannerismPrompt: selectedActingSpeechMannerismPrompt.value,
-          idleAnimations: [...(selectedActingIdleAnimations.value || [])],
+          // Only write to the global fallback if no actor-specific override is active.
+          // If an actor override is active, we write the idle animations to that actor's visual_assets block instead.
+          idleAnimations: activeActorIdleOverride.value
+            ? [...(existingAiriExt?.acting?.idleAnimations || [])]
+            : [...(selectedActingIdleAnimations.value || [])],
         },
         generation: {
           ...existingAiriExt?.generation,
@@ -888,7 +950,21 @@ function initializeCard(): Card {
   selectedActingModelExpressionPrompt.value = airiExt?.acting?.modelExpressionPrompt || DEFAULT_ACTING_MODEL_PROMPT
   selectedActingSpeechExpressionPrompt.value = airiExt?.acting?.speechExpressionPrompt || DEFAULT_ACTING_SPEECH_EXPRESSION_PROMPT
   selectedActingSpeechMannerismPrompt.value = airiExt?.acting?.speechMannerismPrompt || DEFAULT_ACTING_SPEECH_MANNERISM_PROMPT
-  selectedActingIdleAnimations.value = [...(airiExt?.acting?.idleAnimations || [])]
+  // Context-aware idle animation initialization:
+  // Check if the current stage model matches an actor with custom idleAnimations override.
+  const visualAssets = airiExt?.visual_assets || {}
+  const currentModelId = defaultDisplayModelId.value
+  let resolvedIdleAnims = airiExt?.acting?.idleAnimations || []
+  if (currentModelId) {
+    for (const asset of Object.values(visualAssets)) {
+      const a = asset as any
+      if (a?.manifestation?.modelId === currentModelId && a.idleAnimations) {
+        resolvedIdleAnims = a.idleAnimations
+        break
+      }
+    }
+  }
+  selectedActingIdleAnimations.value = [...resolvedIdleAnims]
   compactionStrategy.value = airiExt?.generation?.compaction?.strategy || 'none'
   compactionMinKeepTurns.value = airiExt?.generation?.compaction?.minKeepTurns ?? 15
   try {

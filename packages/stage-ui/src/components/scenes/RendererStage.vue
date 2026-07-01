@@ -99,6 +99,24 @@ watch(() => activeCard.value?.extensions?.airi?.active_concepts, async (newConce
   }
 }, { deep: true })
 
+const resolvedIdleAnimations = computed(() => {
+  const card = activeCard.value
+  if (!card)
+    return []
+
+  const modelId = stageModelSelected.value
+  if (modelId && card.extensions?.airi?.visual_assets) {
+    const matchedAsset = Object.values(card.extensions.airi.visual_assets).find(
+      (asset: any) => asset?.manifestation?.modelId === modelId,
+    )
+    if (matchedAsset && (matchedAsset as any).idleAnimations) {
+      return (matchedAsset as any).idleAnimations
+    }
+  }
+
+  return card.extensions?.airi?.acting?.idleAnimations || []
+})
+
 const reducedRenderScale = computed(() => {
   const nextScale = Math.min(vrmStore.renderScale, 0.75)
   return Math.max(0.5, nextScale)
@@ -402,7 +420,7 @@ defineExpose({
       :live2d-force-auto-blink-enabled="live2dForceAutoBlinkEnabled"
       :live2d-shadow-enabled="live2dShadowEnabled"
       :live2d-max-fps="live2dMaxFps"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :draggable="stageViewControlsEnabled"
       :interaction-mode="vrmStore.interactionMode === 'tactile' ? 'tactile' : 'orbit'"
       @scale-change="(val) => emits('scaleChange', val)"
@@ -418,7 +436,7 @@ defineExpose({
       :model-src="stageModelSelectedUrl"
       :model-identity="stageModelSelected"
       :idle-animation="props.vrmActiveAnimation"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :idle-cycle-enabled="props.vrmEffectiveIdleCycleEnabled"
       :render-scale-override="isWindowResizing ? reducedRenderScale : undefined"
       :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
@@ -453,7 +471,7 @@ defineExpose({
       :max-fps="spineMaxFps"
       :render-scale="spineRenderScale"
       :draggable="stageViewControlsEnabled"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :mouth-open-size="mouthOpenSize"
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
@@ -473,7 +491,7 @@ defineExpose({
       :position-x="xOffset !== undefined ? Number(xOffset) : undefined"
       :position-y="yOffset !== undefined ? Number(yOffset) : undefined"
       :interaction-mode="vrmStore.interactionMode"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :draggable="stageViewControlsEnabled"
       :cursor-position="focusAt"
       :preview-expression="previewExpression || undefined"

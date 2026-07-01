@@ -81,6 +81,24 @@ const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 const { updateCard } = airiCardStore
 
+const resolvedIdleAnimations = computed(() => {
+  const card = activeCard.value
+  if (!card)
+    return []
+
+  const modelId = stageModelSelected.value
+  if (modelId && card.extensions?.airi?.visual_assets) {
+    const matchedAsset = Object.values(card.extensions.airi.visual_assets).find(
+      (asset: any) => asset?.manifestation?.modelId === modelId,
+    )
+    if (matchedAsset && (matchedAsset as any).idleAnimations) {
+      return (matchedAsset as any).idleAnimations
+    }
+  }
+
+  return card.extensions?.airi?.acting?.idleAnimations || []
+})
+
 const activeCardName = computed(() => activeCard.value?.name || 'Active Character')
 
 const currentSelectedDisplayModel = computed<DisplayModel | undefined>(() => stageModelSelectedDisplayModel.value)
@@ -245,7 +263,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         ref="threeSceneRef"
         :model-src="stageModelSelectedUrl"
         :model-identity="stageModelSelected"
-        :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        :idle-animations="resolvedIdleAnimations"
         @binary-loaded="vhackStore.setSourceArrayBuffer"
       />
     </div>
@@ -260,7 +278,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         :y-offset="computedYOffset"
         :scale="computedScale"
         :premultiplied-alpha="spinePremultipliedAlpha"
-        :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        :idle-animations="resolvedIdleAnimations"
       />
     </div>
   </template>
@@ -273,7 +291,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         :scale="computedScale"
         :position-x="computedXOffset"
         :position-y="computedYOffset"
-        :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        :idle-animations="resolvedIdleAnimations"
         interaction-mode="drag"
         :preview-expression="previewExpression || undefined"
         @scale-change="handleScaleChange"
