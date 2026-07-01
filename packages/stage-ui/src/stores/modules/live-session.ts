@@ -1118,6 +1118,8 @@ export const useLiveSessionStore = defineStore('live-session', () => {
     const onDiscordAudioChunk = (_event: any, base64Pcm: string) => {
       const discordStore = useDiscordStore()
 
+      console.log(`[LiveSession] 📥 IPC Received discord-audio-chunk (${base64Pcm.length} chars). voiceCall setting: "${discordStore.voiceCall}"`)
+
       // Only handle if voiceCall is set to 'gemini'
       if (discordStore.voiceCall !== 'gemini') {
         return
@@ -1143,6 +1145,8 @@ export const useLiveSessionStore = defineStore('live-session', () => {
 
     const onDiscordAudioEnd = (_event: any, _payload: any) => {
       const discordStore = useDiscordStore()
+      console.log(`[LiveSession] 📥 IPC Received discord-audio-end. voiceCall setting: "${discordStore.voiceCall}"`)
+
       if (discordStore.voiceCall !== 'gemini') {
         return
       }
