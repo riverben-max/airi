@@ -218,21 +218,15 @@ async function playVoicePreview() {
   try {
     toast.info('Synthesizing audio preview...')
     if (voiceForm.value.baseProvider === 'virtual-audio-studio') {
-      const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceForm.value.baseVoice)
-      if (!profile) {
-        throw new Error('Selected voice profile not found.')
-      }
-      const provider = await providersStore.getProviderInstance(profile.baseProvider)
+      const provider = await providersStore.getProviderInstance('virtual-audio-studio')
       if (!provider) {
-        throw new Error(`The base provider "${profile.baseProvider}" for this profile is not active.`)
+        throw new Error('Virtual Audio Studio provider is not active.')
       }
       const audioData = await speechStore.speech(
         provider as any,
-        profile.baseModel || '',
+        'virtual',
         voiceForm.value.testText,
-        profile.baseVoice,
-        profile.effects,
-        profile.id,
+        voiceForm.value.baseVoice,
       )
       const audioUrl = URL.createObjectURL(new Blob([audioData]))
       const audio = new Audio(audioUrl)

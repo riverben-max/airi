@@ -639,7 +639,7 @@ async function confirmCreateCard() {
       if (boundVoice) {
         modules.speech = {
           provider: boundVoice.baseProvider,
-          model: boundVoice.baseModel,
+          model: boundVoice.baseModel || (providersStore.getProviderConfig(boundVoice.baseProvider)?.model as string) || '',
           voice_id: boundVoice.baseVoice,
         }
       }
@@ -667,7 +667,7 @@ async function confirmCreateCard() {
         speech: boundVoice
           ? {
               provider: boundVoice.baseProvider,
-              model: boundVoice.baseModel,
+              model: boundVoice.baseModel || (providersStore.getProviderConfig(boundVoice.baseProvider)?.model as string) || '',
               voice_id: boundVoice.baseVoice,
             }
           : null,

@@ -64,20 +64,15 @@ async function playChoiceSpeech(idx: number, text: string) {
 
   loadingIndex.value = idx
   try {
-    const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceId)
-    if (!profile) {
-      throw new Error('User voice profile not found in saved profiles.')
-    }
-    const provider = await providersStore.getProviderInstance(profile.baseProvider)
+    const provider = await providersStore.getProviderInstance('virtual-audio-studio')
     if (!provider) {
-      throw new Error(`The base provider "${profile.baseProvider}" is not active.`)
+      throw new Error('Virtual Audio Studio provider is not active.')
     }
     const audioData = await speechStore.speech(
       provider as any,
-      profile.baseModel || '',
+      'virtual',
       text,
-      profile.baseVoice,
-      profile.effects,
+      voiceId,
     )
     // Guard: user may have cancelled while we were fetching
     if (loadingIndex.value !== idx)

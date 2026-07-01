@@ -122,6 +122,9 @@ This document tracks all active pending items, architectural roadmaps, and featu
 *   **Virtual Provider Abstraction**: Establish `virtual-audio-studio` to bundle base speech engines (Kokoro, Azure, OpenAI) with custom audio effects and UST settings into named, globally-referenceable voice profiles.
 *   **Xvan's Audio Effects**: Build modular high-fidelity post-processing transformations (Pitch Shifting, Rate/Speed adjustments, and Voice Equalizers) directly into the voice bundle engine (currently working perfectly).
 *   **[x] Advanced UST Rules Expansion**: Expand the per-profile Universal Speech Transformer (UST) settings to support advanced, non-regex rules (Option A Bracket Action Mapper) and custom character substitutions (Custom Replacement Rules) to prevent spelling-out glitches. (Completed)
+*   **Immersive User Profile Playback Routing**:
+    *   Support setting a 3D/2D display model representation in the Global User Profile.
+    *   Route user speech previews through `speechRuntimeStore.openIntent` (Option B) when a user model is active to trigger LipSync, animations, and stage captions, falling back to isolated audio playback (Option A) when no model is set.
 
 ### Higgs Audio v3 TTS Integration
 *Reference: [proposal-higgs-audio-v3-tts-integration.md](../../../../../proposal-higgs-audio-v3-tts-integration.md)*

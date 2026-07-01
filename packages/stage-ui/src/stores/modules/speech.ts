@@ -232,13 +232,14 @@ export const useSpeechStore = defineStore('speech', () => {
   /**
    * Transforms text before sending to TTS provider
    */
-  function transformTextForSpeech(text: string, providerId: string): string {
+  function transformTextForSpeech(text: string, providerId: string, voiceProfileId?: string): string {
     if (providerId === 'chatterbox') {
       return text
     }
 
-    const isVirtual = providerId === 'virtual-audio-studio'
-    const profile = isVirtual ? savedVoiceProfiles.value.find(p => p.id === activeSpeechVoiceId.value) : null
+    const isVirtual = providerId === 'virtual-audio-studio' || !!voiceProfileId
+    const targetVoiceId = voiceProfileId || activeSpeechVoiceId.value
+    const profile = isVirtual ? savedVoiceProfiles.value.find(p => p.id === targetVoiceId) : null
 
     if (!profile || !profile.ust.enabled) {
       return text
@@ -399,7 +400,30 @@ export const useSpeechStore = defineStore('speech', () => {
     voice: string,
     providerConfig: Record<string, any> = {},
   ): Promise<ArrayBuffer> {
-    const transformedInput = transformTextForSpeech(input, activeSpeechProvider.value)
+    const profile = savedVoiceProfiles.value.find(p => p.id === voice)
+
+    let targetProvider = provider
+    let targetModel = model
+    let targetVoice = voice
+    let targetConfig = providerConfig
+    let transformedInput = input
+
+    if (profile) {
+      const rawProvider = await providersStore.getProviderInstance(profile.baseProvider)
+      if (rawProvider) {
+        targetProvider = rawProvider as any
+        targetModel = profile.baseModel || (providersStore.getProviderConfig(profile.baseProvider)?.model as string) || ''
+        targetVoice = profile.baseVoice
+        targetConfig = profile.effects
+        transformedInput = transformTextForSpeech(input, 'virtual-audio-studio', profile.id)
+      }
+      else {
+        transformedInput = transformTextForSpeech(input, activeSpeechProvider.value)
+      }
+    }
+    else {
+      transformedInput = transformTextForSpeech(input, activeSpeechProvider.value)
+    }
 
     // Bail if transformer emptied the text
     if (!transformedInput.trim()) {
@@ -407,11 +431,11 @@ export const useSpeechStore = defineStore('speech', () => {
     }
 
     const response = await generateSpeech({
-      ...provider.speech(model, {
-        ...providerConfig,
+      ...targetProvider.speech(targetModel, {
+        ...targetConfig,
       }),
       input: transformedInput,
-      voice,
+      voice: targetVoice,
     })
 
     const proactivityStore = useProactivityStore()

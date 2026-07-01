@@ -763,7 +763,7 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
     if (!request.text && !request.special)
       return null
 
-    let model = targetModel
+    let model = targetModel || (targetProviderId ? (providersStore.getProviderConfig(targetProviderId)?.model as string) : '') || ''
     let voice = targetVoice
 
     if (targetProviderId === 'openai-compatible-audio-speech') {
