@@ -109,8 +109,8 @@ export const useAnimaDexWizardStore = defineStore('animadex-wizard', () => {
     boundModels.value[characterId] = modelId
   }
 
-  function bindVoiceToCharacter(characterId: string, voiceId: string) {
-    boundVoices.value[characterId] = voiceId
+  function bindVoiceToCharacter(characterId: string, voice: { baseProvider: string, baseModel: string, baseVoice: string }) {
+    boundVoices.value[characterId] = voice as any
   }
 
   function clearBasket() {

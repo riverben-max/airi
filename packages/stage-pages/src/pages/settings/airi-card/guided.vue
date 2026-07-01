@@ -71,8 +71,9 @@ const synthesisPayload = ref<any>(null)
 const showDeveloperPayload = ref(false)
 const synthesisProposal = ref<any>(null)
 const refinementGuidance = ref('')
+const userDescriptionInput = ref('')
 
-function writeBackVoiceBinding(characterId: string, voiceId: string) {
+function writeBackVoiceBinding(characterId: string, voice: { baseProvider: string, baseModel: string, baseVoice: string }) {
   const char = selectedCharacters.value.find(c => c.id === characterId)
   if (char) {
     try {
@@ -80,7 +81,8 @@ function writeBackVoiceBinding(characterId: string, voiceId: string) {
       if (!map[char.trigger]) {
         map[char.trigger] = { trigger: char.trigger }
       }
-      map[char.trigger].voiceProfileId = voiceId || undefined
+      map[char.trigger].voice = voice || undefined
+      map[char.trigger].voiceProfileId = voice?.baseVoice || undefined
       localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
 
       // Remove from blacklist if manually bound
@@ -110,6 +112,7 @@ onMounted(async () => {
   if (!storyPrompt.value.nickname && userProfileStore.name) {
     storyPrompt.value.nickname = userProfileStore.name
   }
+  userDescriptionInput.value = userProfileStore.description || ''
 })
 
 // Reset scroll pagination when search or chips change
@@ -261,8 +264,16 @@ function prefillRosterBindings() {
       if (binding.displayModelId) {
         wizardStore.bindModelToCharacter(c.id, binding.displayModelId)
       }
-      if (binding.voiceProfileId) {
-        wizardStore.bindVoiceToCharacter(c.id, binding.voiceProfileId)
+      if (binding.voice) {
+        wizardStore.bindVoiceToCharacter(c.id, binding.voice)
+      }
+      else if (binding.voiceProfileId) {
+        const isVirtual = binding.voiceProfileId.startsWith('voice_profile_')
+        wizardStore.bindVoiceToCharacter(c.id, {
+          baseProvider: isVirtual ? 'virtual-audio-studio' : 'kokoro-local',
+          baseModel: isVirtual ? 'virtual' : '',
+          baseVoice: binding.voiceProfileId,
+        })
       }
     }
   })
@@ -442,7 +453,7 @@ async function handleGenerate(guidance = '') {
       storySettings: {
         setting: storyPrompt.value.setting || 'A cozy matching lounge',
         userNickname: storyPrompt.value.nickname || 'Companion',
-        userDescription: userProfileStore.description || '',
+        userDescription: userDescriptionInput.value,
         loreRules: storyPrompt.value.lore || 'Follow canon personalities and themes',
       },
       deterministicActorKeys,
@@ -624,13 +635,12 @@ async function confirmCreateCard() {
       if (firstBoundModel) {
         modules.displayModelId = firstBoundModel.id
       }
-      const firstBoundVoiceId = boundVoices.value[firstChar.id]
-      const firstBoundVoice = speechStore.savedVoiceProfiles.find(v => v.id === firstBoundVoiceId)
-      if (firstBoundVoice) {
+      const boundVoice = boundVoices.value[firstChar.id]
+      if (boundVoice) {
         modules.speech = {
-          provider: firstBoundVoice.baseProvider,
-          model: firstBoundVoice.baseModel,
-          voice_id: firstBoundVoice.baseVoice,
+          provider: boundVoice.baseProvider,
+          model: boundVoice.baseModel,
+          voice_id: boundVoice.baseVoice,
         }
       }
     }
@@ -642,8 +652,7 @@ async function confirmCreateCard() {
       const proposalActor = proposal.actors[actorKey] || {}
 
       const boundModel = getBoundModel(c.id)
-      const boundVoiceId = boundVoices.value[c.id]
-      const boundVoice = speechStore.savedVoiceProfiles.find(v => v.id === boundVoiceId)
+      const boundVoice = boundVoices.value[c.id]
 
       const cleanPrompt = c.tags ? `, (${c.tags})` : ''
 
@@ -651,7 +660,7 @@ async function confirmCreateCard() {
       modules[actorKey] = {
         description: proposalActor.short_description || `${c.name}'s default wardrobe`,
         prompt: cleanPrompt,
-        isBase: true,
+        isBase: false,
         manifestation: {
           modelId: boundModel?.id || null,
         },
@@ -668,7 +677,7 @@ async function confirmCreateCard() {
       visualAssets[actorKey] = {
         description: proposalActor.short_description || `${c.name}'s default appearance`,
         prompt: cleanPrompt,
-        isBase: true,
+        isBase: false,
         manifestation: {
           modelId: boundModel?.id || null,
         },
@@ -682,7 +691,7 @@ async function confirmCreateCard() {
       visualAssets[placeKey] = {
         description: place.description || '',
         prompt: cleanPrompt,
-        isBase: placeKey === 'place_main',
+        isBase: true,
         manifestation: {
           backgroundId: null,
         },
@@ -1093,7 +1102,7 @@ async function confirmCreateCard() {
                   <div class="min-w-0 flex flex-1 items-center gap-2 border border-neutral-800 rounded-xl bg-neutral-950/40 px-3 py-2">
                     <div i-solar:music-bold class="shrink-0 text-sm text-neutral-600" />
                     <span class="truncate text-xs text-neutral-300">
-                      {{ boundVoices[char.id] ? speechStore.savedVoiceProfiles.find(p => p.id === boundVoices[char.id])?.name || 'Default Voice' : 'Inherit Default' }}
+                      {{ boundVoices[char.id] ? (boundVoices[char.id].baseProvider === 'virtual-audio-studio' ? (speechStore.savedVoiceProfiles.find(p => p.id === boundVoices[char.id].baseVoice)?.name || 'Default Voice') : boundVoices[char.id].baseVoice) : 'Inherit Default' }}
                     </span>
                   </div>
 
@@ -1215,16 +1224,6 @@ async function confirmCreateCard() {
               </div>
             </div>
 
-            <!-- Setting / Location -->
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Where does this take place?</label>
-              <textarea
-                v-model="storyPrompt.setting"
-                placeholder="Leave blank to let the AI suggest a fitting location (e.g., 'A rainy cafe in Tokyo', 'A fantasy medieval tavern')."
-                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
-              />
-            </div>
-
             <!-- User Nickname -->
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">What should the characters call you?</label>
@@ -1236,6 +1235,26 @@ async function confirmCreateCard() {
               >
             </div>
 
+            <!-- Your looks -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Your looks</label>
+              <textarea
+                v-model="userDescriptionInput"
+                placeholder="Describe your appearance, attire, or gender representation."
+                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
+              />
+            </div>
+
+            <!-- Setting / Location -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Where does this take place?</label>
+              <textarea
+                v-model="storyPrompt.setting"
+                placeholder="Leave blank to let the AI suggest a fitting location (e.g., 'A rainy cafe in Tokyo', 'A fantasy medieval tavern')."
+                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
+              />
+            </div>
+
             <!-- Lore / Rule overrides -->
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Lore & Behavior Rules</label>
@@ -1245,6 +1264,14 @@ async function confirmCreateCard() {
                 class="h-[80px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
             </div>
+          </div>
+
+          <!-- Active LLM Warning/Indicator -->
+          <div class="mt-5 flex items-start gap-2 border border-neutral-800/40 rounded-xl bg-neutral-900/30 p-3.5">
+            <div i-solar:info-circle-bold class="mt-0.5 shrink-0 text-sm text-neutral-500" />
+            <p class="text-[10px] text-neutral-400 leading-relaxed">
+              <span class="text-neutral-300 font-bold">Note:</span> This request will be processed by <span class="text-primary-400 font-semibold">{{ consciousnessStore.activeProvider || 'None' }}</span> / <span class="text-primary-400 font-semibold">{{ consciousnessStore.activeModel || 'None' }}</span>. Please ensure this is a high-quality model as the next step is somewhat complex and requires high reasoning to generate properly.
+            </p>
           </div>
 
           <!-- Bottom Actions -->
@@ -1451,10 +1478,10 @@ async function confirmCreateCard() {
         v-model="voiceCreatorOpen"
         :character-name="voiceTargetCharacterId ? selectedCharacters.find(c => c.id === voiceTargetCharacterId)?.name : undefined"
         :character-gender="voiceTargetCharacterId ? (wizardStore.facets.gender[Number(selectedCharacters.find(c => c.id === voiceTargetCharacterId)?.traits[0] || 0)] || undefined) : undefined"
-        @save="(voiceId) => {
+        @save="(payload) => {
           if (voiceTargetCharacterId) {
-            wizardStore.bindVoiceToCharacter(voiceTargetCharacterId, voiceId)
-            writeBackVoiceBinding(voiceTargetCharacterId, voiceId)
+            wizardStore.bindVoiceToCharacter(voiceTargetCharacterId, payload)
+            writeBackVoiceBinding(voiceTargetCharacterId, payload)
           }
         }"
       />

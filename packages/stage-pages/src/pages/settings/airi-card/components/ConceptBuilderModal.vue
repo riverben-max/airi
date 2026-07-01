@@ -817,13 +817,10 @@ function handleSave() {
   <VoiceCreatorModal
     v-model="showVoiceCreator"
     :character-name="conceptId ? conceptId : undefined"
-    @save="(voiceId) => {
-      selectedSpeechVoiceId = voiceId
-      const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceId)
-      if (profile) {
-        selectedSpeechProvider = profile.baseProvider
-        selectedSpeechModel = profile.baseModel || ''
-      }
+    @save="(payload) => {
+      selectedSpeechProvider = payload.baseProvider
+      selectedSpeechModel = payload.baseModel
+      selectedSpeechVoiceId = payload.baseVoice
     }"
   />
 </template>

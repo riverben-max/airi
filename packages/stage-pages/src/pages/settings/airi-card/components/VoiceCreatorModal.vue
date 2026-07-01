@@ -21,7 +21,7 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', voiceId: string): void
+  (e: 'save', payload: { baseProvider: string, baseModel: string, baseVoice: string }): void
 }>()
 
 const providersStore = useProvidersStore()
@@ -163,19 +163,23 @@ watch(() => [props.modelValue, props.characterName, props.characterGender], () =
 }, { immediate: true })
 
 function handleSave() {
-  if (voiceForm.value.baseProvider === 'virtual-audio-studio') {
-    const voiceId = voiceForm.value.baseVoice
-    emit('save', voiceId)
+  if (voiceForm.value.baseProvider !== 'kokoro-local') {
+    emit('save', {
+      baseProvider: voiceForm.value.baseProvider,
+      baseModel: voiceForm.value.baseProvider === 'virtual-audio-studio' ? 'virtual' : voiceForm.value.baseModel,
+      baseVoice: voiceForm.value.baseVoice,
+    })
     emit('update:modelValue', false)
     return
   }
 
   const profileId = `voice_profile_${voiceForm.value.name.trim()}`
+  const configuredModel = (providersStore.getProviderConfig('kokoro-local')?.model as string) || 'q4'
   const newProfile = {
     id: profileId,
     name: voiceForm.value.name.trim(),
-    baseProvider: voiceForm.value.baseProvider,
-    baseModel: voiceForm.value.baseProvider === 'kokoro-local' ? '' : voiceForm.value.baseModel,
+    baseProvider: 'kokoro-local',
+    baseModel: configuredModel,
     baseVoice: voiceForm.value.baseVoice,
     effects: {
       pitch: voiceForm.value.pitch,
@@ -202,7 +206,11 @@ function handleSave() {
 
   speechStore.saveVoiceProfile(newProfile as any)
   toast.success(`Voice profile "${voiceForm.value.name}" created!`)
-  emit('save', profileId)
+  emit('save', {
+    baseProvider: 'virtual-audio-studio',
+    baseModel: 'virtual',
+    baseVoice: profileId,
+  })
   emit('update:modelValue', false)
 }
 
