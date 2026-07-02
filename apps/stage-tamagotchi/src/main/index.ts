@@ -862,6 +862,10 @@ app.whenReady().then(async () => {
 
       ipcMain.on('reset-window-positions-action', handleResetWindowPositions)
 
+      ipcMain.on('logger:write', (_event, level: string, message: string) => {
+        console.log(`[RendererLog/${level}] ${message}`)
+      })
+
       // NOTICE: ControlStrip.vue calls `ipcRenderer.invoke('eventa:invoke:electron:windows:get-monitor-count')
       // directly (via the raw Electron IPC invoke path, which requires ipcMain.handle).
       // defineInvokeHandler routes over Eventa's 'eventa-message' channel instead, so it

@@ -801,9 +801,13 @@ export const useDiscordStore = defineStore('discord', () => {
         try {
           const res = await invokeSummon?.({ userId: payload.userId })
           if (res?.success) {
+            let warning = ''
+            if (voiceCall.value !== 'gemini') {
+              warning = '\n\n⚠️ *Note: The voicecall engine is currently not set to Gemini Live. To talk with me in real-time, run `/voicecall mode: gemini`!*'
+            }
             await invokeReplyInteraction?.({
               interactionId: payload.interactionId,
-              content: `🟢 Joined voice channel **${res.channelName}**!`,
+              content: `🟢 Joined voice channel **${res.channelName}**!${warning}`,
             })
           }
           else {

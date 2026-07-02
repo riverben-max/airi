@@ -726,6 +726,25 @@ export const useLiveSessionStore = defineStore('live-session', () => {
             }
           }
 
+          // Handle user speech transcription (ingestion of user spoken input)
+          if (content.inputTranscription?.text) {
+            const userText = content.inputTranscription.text
+            const logMsg = `[LiveSession] 🎙️ Intercepted User Speech Transcription: "${userText}" - Inscribing into active chat session.`
+            console.log(logMsg)
+            if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
+              (window as any).electron.ipcRenderer.send('logger:write', 'info', logMsg)
+            }
+
+            chatSession.inscribeTurn({
+              id: nanoid(),
+              role: 'user',
+              content: userText,
+              createdAt: Date.now(),
+              slices: [],
+              tool_results: [],
+            } as any)
+          }
+
           if (content.turnComplete) {
             if (currentStreamingMessage && currentStreamContext) {
               // Flush any buffered tail from the marker parser before finalizing
@@ -745,6 +764,12 @@ export const useLiveSessionStore = defineStore('live-session', () => {
                 tool_results: currentStreamingMessage.tool_results as any,
                 createdAt: currentStreamingMessage.createdAt,
               } as ChatAssistantMessage)
+
+              const logMsg = `[LiveSession] 🤖 Intercepted Assistant Response: "${fullText}" - Inscribing into active chat session.`
+              console.log(logMsg)
+              if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
+                (window as any).electron.ipcRenderer.send('logger:write', 'info', logMsg)
+              }
 
               await chatOrchestrator.emitStreamEndHooks(currentStreamContext)
               await chatOrchestrator.emitAssistantResponseEndHooks(fullText, currentStreamContext)
@@ -1180,7 +1205,7 @@ export const useLiveSessionStore = defineStore('live-session', () => {
 
       const onDiscordVoiceDisconnected = (_event: any, _payload: any) => {
       // Auto-stop: if the voice call is terminated, cleanly close the Gemini Live session
-        if (activeInputSource.value === 'discord') {
+        if (isActive.value || isConnecting.value) {
           console.log('[LiveSession] 🛑 Discord voice call disconnected. Auto-stopping Gemini session...')
           stop()
           toast.info('Gemini Live session stopped (Discord disconnected).')
