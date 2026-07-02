@@ -702,10 +702,8 @@ async function confirmCreateCard() {
     })
 
     if (includeSelfConcept.value) {
-      const userSlug = storyPrompt.value.nickname.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
-      const userConceptKey = `actor_${userSlug}`
-      visualAssets[userConceptKey] = {
-        description: `The user character, ${storyPrompt.value.nickname}`,
+      visualAssets.concept_user = {
+        description: userDescriptionInput.value.trim() || `The user character, ${storyPrompt.value.nickname}`,
         prompt: userImagePromptInput.value.trim() ? `, (${userImagePromptInput.value.trim()})` : '',
         isBase: false,
         manifestation: {
@@ -735,8 +733,7 @@ async function confirmCreateCard() {
     })
 
     if (includeSelfConcept.value) {
-      const userSlug = storyPrompt.value.nickname.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
-      activeConcepts.push(`actor_${userSlug}`)
+      activeConcepts.push('concept_user')
     }
 
     // Build the final V3 Compliant Card Structure
