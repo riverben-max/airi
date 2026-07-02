@@ -66,7 +66,6 @@ export default defineConfig({
           '@proj-airi/electron-eventa',
           '@proj-airi/electron-vueuse',
           '@proj-airi/plugin-sdk',
-          'prism-media',
         ],
       },
     },
