@@ -368,7 +368,7 @@ watch(stageState, (val) => {
       <!-- Selfie Viewfinder Overlay -->
       <div v-if="selfieViewfinderActive" class="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
         <!-- Semi-transparent overlay mask -->
-        <div class="absolute inset-0 bg-neutral-950/40 backdrop-blur-[1px]" />
+        <div class="absolute inset-0 bg-neutral-950/40" />
         <!-- Glowing Crop Box -->
         <div
           class="absolute border-2 border-sky-400 border-dashed bg-transparent shadow-[0_0_0_9999px_rgba(10,10,10,0.5)] transition-all duration-300"

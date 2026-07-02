@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { voicePresets } from '@proj-airi/stage-ui/constants/voices'
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { Button, Select } from '@proj-airi/ui'
@@ -21,24 +22,11 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', voiceId: string): void
+  (e: 'save', payload: { baseProvider: string, baseModel: string, baseVoice: string }): void
 }>()
 
 const providersStore = useProvidersStore()
 const speechStore = useSpeechStore()
-
-const voicePresets = [
-  { id: 'af_heart', name: 'Heart', gender: 'Female', accent: 'US', description: 'Conversational, warm, smiling tone, natural breathiness.' },
-  { id: 'af_bella', name: 'Bella', gender: 'Female', accent: 'US', description: 'Polished, articulate, professional narration.' },
-  { id: 'af_nicole', name: 'Nicole', gender: 'Female', accent: 'US', description: 'Soothing, whisper-soft, ASMR-style, noticeable vocal fry.' },
-  { id: 'af_sky', name: 'Sky', gender: 'Female', accent: 'US', description: 'Youthful energy, clear, helpful assistant tone.' },
-  { id: 'af_sarah', name: 'Sarah', gender: 'Female', accent: 'US', description: 'Standard narrator voice, balanced and neutral.' },
-  { id: 'am_adam', name: 'Adam', gender: 'Male', accent: 'US', description: 'Clear, low-pitched, general-purpose male narrator.' },
-  { id: 'am_echo', name: 'Echo', gender: 'Male', accent: 'US', description: 'Distinct, clear American male voice.' },
-  { id: 'am_eric', name: 'Eric', gender: 'Male', accent: 'US', description: 'Polished corporate voice, excellent for instructions.' },
-  { id: 'bf_emma', name: 'Emma', gender: 'Female', accent: 'UK', description: 'Gentle, friendly British female speaker.' },
-  { id: 'bm_george', name: 'George', gender: 'Male', accent: 'UK', description: 'Rich, deep, professional British male voice.' },
-]
 
 const voiceForm = ref({
   name: '',
@@ -77,11 +65,13 @@ watch(() => voiceForm.value.baseProvider, async (newProvider) => {
 
   if (newProvider === 'virtual-audio-studio') {
     selectedProviderModels.value = []
-    selectedProviderVoices.value = speechStore.savedVoiceProfiles.map(p => ({
-      id: p.id,
-      name: p.name,
-      gender: 'saved profile',
-    }))
+    selectedProviderVoices.value = speechStore.savedVoiceProfiles
+      .filter(p => p.id !== 'voice_profile_auto_preview')
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        gender: 'saved profile',
+      }))
     if (selectedProviderVoices.value.length > 0) {
       voiceForm.value.baseVoice = selectedProviderVoices.value[0].id
     }
@@ -163,19 +153,23 @@ watch(() => [props.modelValue, props.characterName, props.characterGender], () =
 }, { immediate: true })
 
 function handleSave() {
-  if (voiceForm.value.baseProvider === 'virtual-audio-studio') {
-    const voiceId = voiceForm.value.baseVoice
-    emit('save', voiceId)
+  if (voiceForm.value.baseProvider !== 'kokoro-local') {
+    emit('save', {
+      baseProvider: voiceForm.value.baseProvider,
+      baseModel: voiceForm.value.baseProvider === 'virtual-audio-studio' ? 'virtual' : voiceForm.value.baseModel,
+      baseVoice: voiceForm.value.baseVoice,
+    })
     emit('update:modelValue', false)
     return
   }
 
   const profileId = `voice_profile_${voiceForm.value.name.trim()}`
+  const configuredModel = (providersStore.getProviderConfig('kokoro-local')?.model as string) || 'q4'
   const newProfile = {
     id: profileId,
     name: voiceForm.value.name.trim(),
-    baseProvider: voiceForm.value.baseProvider,
-    baseModel: voiceForm.value.baseProvider === 'kokoro-local' ? '' : voiceForm.value.baseModel,
+    baseProvider: 'kokoro-local',
+    baseModel: configuredModel,
     baseVoice: voiceForm.value.baseVoice,
     effects: {
       pitch: voiceForm.value.pitch,
@@ -202,7 +196,11 @@ function handleSave() {
 
   speechStore.saveVoiceProfile(newProfile as any)
   toast.success(`Voice profile "${voiceForm.value.name}" created!`)
-  emit('save', profileId)
+  emit('save', {
+    baseProvider: 'virtual-audio-studio',
+    baseModel: 'virtual',
+    baseVoice: profileId,
+  })
   emit('update:modelValue', false)
 }
 
@@ -210,20 +208,15 @@ async function playVoicePreview() {
   try {
     toast.info('Synthesizing audio preview...')
     if (voiceForm.value.baseProvider === 'virtual-audio-studio') {
-      const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceForm.value.baseVoice)
-      if (!profile) {
-        throw new Error('Selected voice profile not found.')
-      }
-      const provider = await providersStore.getProviderInstance(profile.baseProvider)
+      const provider = await providersStore.getProviderInstance('virtual-audio-studio')
       if (!provider) {
-        throw new Error(`The base provider "${profile.baseProvider}" for this profile is not active.`)
+        throw new Error('Virtual Audio Studio provider is not active.')
       }
       const audioData = await speechStore.speech(
         provider as any,
-        profile.baseModel || '',
+        'virtual',
         voiceForm.value.testText,
-        profile.baseVoice,
-        profile.effects,
+        voiceForm.value.baseVoice,
       )
       const audioUrl = URL.createObjectURL(new Blob([audioData]))
       const audio = new Audio(audioUrl)

@@ -122,6 +122,9 @@ This document tracks all active pending items, architectural roadmaps, and featu
 *   **Virtual Provider Abstraction**: Establish `virtual-audio-studio` to bundle base speech engines (Kokoro, Azure, OpenAI) with custom audio effects and UST settings into named, globally-referenceable voice profiles.
 *   **Xvan's Audio Effects**: Build modular high-fidelity post-processing transformations (Pitch Shifting, Rate/Speed adjustments, and Voice Equalizers) directly into the voice bundle engine (currently working perfectly).
 *   **[x] Advanced UST Rules Expansion**: Expand the per-profile Universal Speech Transformer (UST) settings to support advanced, non-regex rules (Option A Bracket Action Mapper) and custom character substitutions (Custom Replacement Rules) to prevent spelling-out glitches. (Completed)
+*   **Immersive User Profile Playback Routing**:
+    *   Support setting a 3D/2D display model representation in the Global User Profile.
+    *   Route user speech previews through `speechRuntimeStore.openIntent` (Option B) when a user model is active to trigger LipSync, animations, and stage captions, falling back to isolated audio playback (Option A) when no model is set.
 
 ### Higgs Audio v3 TTS Integration
 *Reference: [proposal-higgs-audio-v3-tts-integration.md](../../../../../proposal-higgs-audio-v3-tts-integration.md)*
@@ -189,8 +192,12 @@ This document tracks all active pending items, architectural roadmaps, and featu
 *   **Twitch Chat Plugin (`airi-plugin-twitch-chat`)**: Inbound live stream chat context ingest reacting to chats, subs, raids, and channel points.
 *   **WIP Plugin Stubs**: Complete stubs for Bilibili Live Stream Ingest (`airi-plugin-bilibili-laplace`) and Home Assistant Event Ingest (`airi-plugin-homeassistant`).
 *   **Destiny 2 Proactive Speech Plugin**: Real-time Bungie API game event polling and a local ONNX/WebGPU screen-capture OCR pipeline (`PP-OCRv6_tiny_rec_onnx`) for live PVP/PVE HUD analysis.
-*   **Discord Revamp - Voice Delivery & Isolation**:
+*   **Discord Revamp - Voice Delivery, Isolation & Sync**:
     *   Implement `/voicemode` command to support `puppet` (local speaker playback), `voicenote` (combining TTS audio chunks to upload as voice notes), and `none` modes.
-    *   Implement `/voicecall` command to support the classic `tts` pipeline (Discord Audio -> Deepgram STT -> Custom LLM -> Custom TTS -> Discord Audio) — *Note: Kyo is currently focusing on this classic TTS path, but the bidirectional Gemini Live Voice Call option remains a future-facing target.*
-    *   Implement `/timelines` command (Completed) to list and select the active session per character.
-    *   Enforce per-channel session/character isolation mapping ($\text{channelId} \longrightarrow \text{activeCharacterId} \longrightarrow \text{activeSessionId}$) to resolve multi-guild context tracking.
+    *   Implement `/voicecall` command classic `tts` pipeline (Discord Audio -> Deepgram STT -> Custom LLM -> Custom TTS -> Discord Audio) — *Note: Gemini Live VC call is 100% active/implemented, while this classic TTS VC path remains planned/blocked by Kyo.*
+    *   **Gemini Voice Call Sync Parity**: Capture and ingest both user and assistant transcription events from the Gemini Live WebSocket stream back into the active message history logs so that conversation logs stay in sync with the spoken voice session.
+    *   Implement `/vision` command toggle state guard (supported natively).
+    *   Wire up `/selfie` command trigger (stage capture is fully plumbed).
+    *   Implement `/timelines` command (Completed).
+    *   Implement `/journalmoment` command (Completed).
+    *   Enforce per-channel session/character isolation mapping ($\text{channelId} \longrightarrow \text{activeCharacterId} \longrightarrow \text{activeSessionId}$) (Completed by Kyo, pending merge).

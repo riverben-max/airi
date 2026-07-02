@@ -16,6 +16,9 @@ import {
   discordServiceSummon,
 } from '@proj-airi/stage-shared'
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
+import { useLive2d } from '@proj-airi/stage-ui-live2d'
+import { useModelStore } from '@proj-airi/stage-ui-three'
+import { useBroadcastChannel } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, toRaw, watch } from 'vue'
 
@@ -23,6 +26,7 @@ import { stripMarkers } from '../../composables/response-categoriser'
 import { useBackgroundStore } from '../background'
 import { useChatOrchestratorStore } from '../chat'
 import { useChatSessionStore } from '../chat/session-store'
+import { useSettings } from '../settings'
 import { useAiriCardStore } from './airi-card'
 import { useArtistryStore } from './artistry'
 import { useAutonomousArtistryStore } from './artistry-autonomous'
@@ -42,7 +46,7 @@ const MAX_EVENT_LOG_ENTRIES = 200
 
 // ── Slash Command Definitions ──────────────────────────────────────────────────
 
-const COMMANDS_VERSION = 9
+const COMMANDS_VERSION = 11
 const CORE_COMMANDS: DiscordCommandDefinition[] = [
   {
     name: 'status',
@@ -198,8 +202,36 @@ const CORE_COMMANDS: DiscordCommandDefinition[] = [
     ],
   },
   {
+    name: 'vision',
+    description: 'Toggle VLM processing for image attachments (on or off)',
+    options: [
+      {
+        name: 'mode',
+        description: 'Set to on or off',
+        type: 3, // String
+        required: true,
+        choices: [
+          { name: 'on', value: 'on' },
+          { name: 'off', value: 'off' },
+        ],
+      },
+    ],
+  },
+  {
     name: 'manage',
     description: 'Open the interactive session and modality control dashboard',
+  },
+  {
+    name: 'selfie',
+    description: 'Capture a stage selfie of the active character',
+    options: [
+      {
+        name: 'emotion',
+        description: 'Optional expression/emotion to pose the character with before capturing',
+        type: 3, // String
+        required: false,
+      },
+    ],
   },
 ]
 
@@ -213,6 +245,8 @@ export const useDiscordStore = defineStore('discord', () => {
   const liveSessionStore = useLiveSessionStore()
   const speechStore = useSpeechStore()
   const visionStore = useVisionStore()
+  const settingsStore = useSettings()
+  const { post: postCapture } = useBroadcastChannel<{ characterId: string, includeBg: boolean, channelId?: string }, { characterId: string, includeBg: boolean, channelId?: string }>({ name: 'airi:stage-capture' })
   // ── Persisted Config ───────────────────────────────────────────────────────
   const enabled = useLocalStorageManualReset<boolean>('settings/discord/enabled', false)
   const token = useLocalStorageManualReset<string>('settings/discord/token', '')
@@ -220,6 +254,7 @@ export const useDiscordStore = defineStore('discord', () => {
   const chatMode = useLocalStorageManualReset<'followup' | 'steer' | 'collect'>('settings/discord/chatMode', 'followup')
   const voiceMode = useLocalStorageManualReset<'puppet' | 'voicenote' | 'none'>('settings/discord/voiceMode', 'puppet')
   const voiceCall = useLocalStorageManualReset<'classic' | 'gemini' | 'off'>('settings/discord/voiceCall', 'off')
+  const visionEnabled = useLocalStorageManualReset<boolean>('settings/discord/visionEnabled', true)
 
   const pendingCollectBatch = ref<{ formattedContent: string, attachments: any[], msg: DiscordInboundMessage }[]>([])
   let collectTimer: ReturnType<typeof setTimeout> | null = null
@@ -526,17 +561,19 @@ export const useDiscordStore = defineStore('discord', () => {
 
       const formattedContent = `${msg.displayName} says:\n${msg.content}`
 
-      const attachments = (msg.attachments || []).map((att) => {
-        const match = att.match(/^data:([^;]+);base64,(.*)$/)
-        if (match) {
-          return {
-            type: 'image' as const,
-            mimeType: match[1],
-            data: match[2],
-          }
-        }
-        return null
-      }).filter(Boolean) as any[]
+      const attachments = visionEnabled.value
+        ? (msg.attachments || []).map((att) => {
+            const match = att.match(/^data:([^;]+);base64,(.*)$/)
+            if (match) {
+              return {
+                type: 'image' as const,
+                mimeType: match[1],
+                data: match[2],
+              }
+            }
+            return null
+          }).filter(Boolean) as any[]
+        : []
 
       if (chatMode.value === 'collect') {
         pendingCollectBatch.value.push({ formattedContent, attachments, msg })
@@ -764,9 +801,13 @@ export const useDiscordStore = defineStore('discord', () => {
         try {
           const res = await invokeSummon?.({ userId: payload.userId })
           if (res?.success) {
+            let warning = ''
+            if (voiceCall.value !== 'gemini') {
+              warning = '\n\n⚠️ *Note: The voicecall engine is currently not set to Gemini Live. To talk with me in real-time, run `/voicecall mode: gemini`!*'
+            }
             await invokeReplyInteraction?.({
               interactionId: payload.interactionId,
-              content: `🟢 Joined voice channel **${res.channelName}**!`,
+              content: `🟢 Joined voice channel **${res.channelName}**!${warning}`,
             })
           }
           else {
@@ -1395,6 +1436,15 @@ export const useDiscordStore = defineStore('discord', () => {
           })
         }
       }
+      else if (payload.commandName === 'vision') {
+        const mode = payload.options.mode?.toString()
+        const enabled = mode === 'on'
+        visionEnabled.value = enabled
+        await invokeReplyInteraction?.({
+          interactionId: payload.interactionId,
+          content: `👁️ Discord image VLM processing has been set to **${mode?.toUpperCase()}**.`,
+        })
+      }
       else if (payload.commandName === 'voicecall') {
         const mode = payload.options.mode?.toString() as 'gemini' | 'classic' | 'off'
         if (mode && ['gemini', 'classic', 'off'].includes(mode)) {
@@ -1406,11 +1456,26 @@ export const useDiscordStore = defineStore('discord', () => {
         }
       }
       else if (payload.commandName === 'selfie') {
+        const emotion = payload.options.emotion?.toString()
+        if (emotion) {
+          if (settingsStore.stageModelRenderer === 'live2d') {
+            const live2dStore = useLive2d()
+            live2dStore.triggerEmotion(emotion)
+          }
+          else if (settingsStore.stageModelRenderer === 'vrm') {
+            const vrmStore = useModelStore()
+            vrmStore.triggerEmotion(emotion, 1)
+          }
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+
         await invokeReplyInteraction?.({
           interactionId: payload.interactionId,
-          content: '📸 Capturing stage screenshot...',
+          content: '📸 Capturing stage selfie...',
         })
-        await visionStore.heartbeat({ force: true })
+        if (airiCard.activeCardId) {
+          postCapture({ characterId: airiCard.activeCardId, includeBg: true, channelId: payload.channelId })
+        }
       }
       else if (payload.commandName === 'manage') {
         const buildStatusContent = () => {
@@ -1442,7 +1507,8 @@ export const useDiscordStore = defineStore('discord', () => {
           const vlmProvider = visionStore.activeProvider || 'None'
           const vlmModel = visionStore.activeModel || 'None'
 
-          const visionEnabled = visionStore.isWitnessEnabled
+          const visionEnabledDiscord = visionEnabled.value
+          const visionEnabledWitness = visionStore.isWitnessEnabled
           const directorEnabled = artistryExt?.autonomousEnabled || false
           const liveActive = liveSessionStore.isActive
 
@@ -1455,12 +1521,13 @@ export const useDiscordStore = defineStore('discord', () => {
 **Discord Voice Call:** ${voiceCall.value}
 
 **🧠 Brains (LLM):** ${llmProvider} / ${llmModel}
-**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel}
+**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel} (Discord intake: ${visionEnabledDiscord ? 'ON' : 'OFF'})
 **🗣️ Voice (TTS):** ${ttsProvider} / ${ttsVoice}
 **🎨 Artistry:** ${artProvider} / ${artProvider === 'comfyui' ? 'Workflow' : 'Model'}: \`${artModelName}\`
 
 **Active Modules:**
-- [${visionEnabled ? 'ON' : 'OFF'}] 👁️ **Vision:** Witness Mode ${visionEnabled ? 'active' : 'disabled'}
+- [${visionEnabledDiscord ? 'ON' : 'OFF'}] 👁️ **Vision Intake:** Discord VLM processing
+- [${visionEnabledWitness ? 'ON' : 'OFF'}] 📸 **Witness Mode:** Desktop Witness active
 - [${directorEnabled ? 'ON' : 'OFF'}] 🎬 **Director:** Autonomous Artistry ${directorEnabled ? 'active' : 'disabled'}
 - [${liveActive ? 'ON' : 'OFF'}] 🧠 **Live API:** ${liveActive ? 'Active' : 'Offline'}`
         }
@@ -1554,7 +1621,7 @@ export const useDiscordStore = defineStore('discord', () => {
                 },
                 {
                   type: 2,
-                  style: visionStore.isWitnessEnabled ? 3 : 2,
+                  style: visionEnabled.value ? 3 : 2,
                   label: '👁️ Vision',
                   customId: 'manage:module:vision',
                 },
@@ -1628,7 +1695,8 @@ export const useDiscordStore = defineStore('discord', () => {
           const vlmProvider = visionStore.activeProvider || 'None'
           const vlmModel = visionStore.activeModel || 'None'
 
-          const visionEnabled = visionStore.isWitnessEnabled
+          const visionEnabledDiscord = visionEnabled.value
+          const visionEnabledWitness = visionStore.isWitnessEnabled
           const directorEnabled = artistryExt?.autonomousEnabled || false
           const liveActive = liveSessionStore.isActive
 
@@ -1641,12 +1709,13 @@ export const useDiscordStore = defineStore('discord', () => {
 **Discord Voice Call:** ${voiceCall.value}
 
 **🧠 Brains (LLM):** ${llmProvider} / ${llmModel}
-**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel}
+**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel} (Discord intake: ${visionEnabledDiscord ? 'ON' : 'OFF'})
 **🗣️ Voice (TTS):** ${ttsProvider} / ${ttsVoice}
 **🎨 Artistry:** ${artProvider} / ${artProvider === 'comfyui' ? 'Workflow' : 'Model'}: \`${artModelName}\`
 
 **Active Modules:**
-- [${visionEnabled ? 'ON' : 'OFF'}] 👁️ **Vision:** Witness Mode ${visionEnabled ? 'active' : 'disabled'}
+- [${visionEnabledDiscord ? 'ON' : 'OFF'}] 👁️ **Vision Intake:** Discord VLM processing
+- [${visionEnabledWitness ? 'ON' : 'OFF'}] 📸 **Witness Mode:** Desktop Witness active
 - [${directorEnabled ? 'ON' : 'OFF'}] 🎬 **Director:** Autonomous Artistry ${directorEnabled ? 'active' : 'disabled'}
 - [${liveActive ? 'ON' : 'OFF'}] 🧠 **Live API:** ${liveActive ? 'Active' : 'Offline'}`
         }
@@ -1740,7 +1809,7 @@ export const useDiscordStore = defineStore('discord', () => {
                 },
                 {
                   type: 2,
-                  style: visionStore.isWitnessEnabled ? 3 : 2,
+                  style: visionEnabled.value ? 3 : 2,
                   label: '👁️ Vision',
                   customId: 'manage:module:vision',
                 },
@@ -1800,12 +1869,12 @@ export const useDiscordStore = defineStore('discord', () => {
             airiCard.setAutonomousArtistry(airiCard.activeCardId, !current)
           }
           else if (targetId === 'vision') {
-            visionStore.toggleWitness()
+            visionEnabled.value = !visionEnabled.value
           }
         }
         else if (action === 'util' && targetId) {
-          if (targetId === 'selfie') {
-            await visionStore.heartbeat({ force: true })
+          if (targetId === 'selfie' && airiCard.activeCardId) {
+            postCapture({ characterId: airiCard.activeCardId, includeBg: true, channelId: payload.channelId })
           }
           else if (targetId === 'journalmoment') {
             const llmProvider = consciousnessStore.activeProvider
@@ -1988,13 +2057,14 @@ export const useDiscordStore = defineStore('discord', () => {
 
       console.log('[DiscordStore] Candidate image for Discord routing found.')
 
+      const targetChannelId = entry.metadata?.discordChannelId || lastChannelId.value
       // 2. Connection/Channel Check
-      if (!isConnected.value || !lastChannelId.value) {
-        console.log(`[DiscordStore] Skipping image routing: isConnected=${isConnected.value}, lastChannelId=${lastChannelId.value}`)
+      if (!isConnected.value || !targetChannelId) {
+        console.log(`[DiscordStore] Skipping image routing: isConnected=${isConnected.value}, targetChannelId=${targetChannelId}`)
         const failLog: DiscordEventLogEntry = {
           timestamp: Date.now(),
           type: 'image-debug-log',
-          summary: `Routing skipped: Connected=${isConnected.value}, LastChannel=${lastChannelId.value}`,
+          summary: `Routing skipped: Connected=${isConnected.value}, TargetChannel=${targetChannelId}`,
         }
         eventLog.value = [...eventLog.value.slice(-(MAX_EVENT_LOG_ENTRIES - 1)), failLog]
         return
@@ -2002,7 +2072,7 @@ export const useDiscordStore = defineStore('discord', () => {
 
       // 3. Leadership Election Check
       const hash = window.location.hash || '#/'
-      const isStage = hash === '#/' || hash.startsWith('#/stage')
+      const isStage = hash === '#/' || hash.startsWith('#/stage') || hash.startsWith('#/actor')
 
       if (!isStage) {
         console.log(`[DiscordStore] Skipping image routing: Window (${hash}) is not Stage leader.`)
@@ -2017,13 +2087,6 @@ export const useDiscordStore = defineStore('discord', () => {
 
       try {
         console.log(`[DiscordStore] Routing image to Discord: ${entry.title}`)
-        const routeLog: DiscordEventLogEntry = {
-          timestamp: Date.now(),
-          type: 'IMAGE_ROUTE',
-          summary: `Routing image "${entry.title}" to channel ${lastChannelId.value.slice(-4)}`,
-        }
-        eventLog.value = [...eventLog.value.slice(-(MAX_EVENT_LOG_ENTRIES - 1)), routeLog]
-
         // Convert Blob to Base64 for IPC transfer
         const reader = new FileReader()
         const base64Promise = new Promise<string>((resolve) => {
@@ -2043,7 +2106,7 @@ export const useDiscordStore = defineStore('discord', () => {
           caption += `\n\n🎬 **Director's Note (${recentNote.intensity}/100):** *${recentNote.content}*`
         }
 
-        await sendImageToDiscord(lastChannelId.value, base64, caption)
+        await sendImageToDiscord(targetChannelId, base64, caption)
       }
       catch (err: any) {
         console.error('[DiscordStore] Failed to route image to discord:', err)
@@ -2115,6 +2178,7 @@ export const useDiscordStore = defineStore('discord', () => {
     chatMode,
     voiceMode,
     voiceCall,
+    visionEnabled,
 
     // Live State
     serviceStatus,

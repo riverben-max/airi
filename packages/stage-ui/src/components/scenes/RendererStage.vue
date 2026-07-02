@@ -9,6 +9,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'v
 
 import DatingSimOverlay from './DatingSimOverlay.vue'
 
+import { useIdleAnimations } from '../../composables'
 import { useBackgroundStore } from '../../stores/background'
 import { useDatingSimStore } from '../../stores/dating-sim'
 import { useAiriCardStore } from '../../stores/modules'
@@ -81,6 +82,8 @@ const vrmStore = useModelStore()
 const mmdStore = useMmd()
 const { previewExpression } = storeToRefs(mmdStore)
 
+const { resolveActiveIdleAnimations } = useIdleAnimations()
+
 const { post: postStageModelReady } = useBroadcastChannel<string, string>({ name: 'airi-stage-model-ready' })
 watch(componentState, (state) => {
   console.info('[RendererStage] componentState changed:', state)
@@ -98,6 +101,10 @@ watch(() => activeCard.value?.extensions?.airi?.active_concepts, async (newConce
     postStageModelReady('ready')
   }
 }, { deep: true })
+
+const resolvedIdleAnimations = computed(() => {
+  return resolveActiveIdleAnimations(activeCard.value, stageModelSelected.value)
+})
 
 const reducedRenderScale = computed(() => {
   const nextScale = Math.min(vrmStore.renderScale, 0.75)
@@ -214,22 +221,22 @@ async function cropScreenshot(screenshotBlob: Blob, cropLeft: number, cropTop: n
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
+      const dpr = img.width / window.innerWidth
       const canvas = document.createElement('canvas')
-      canvas.width = cropSize
-      canvas.height = cropSize
+      canvas.width = cropSize * dpr
+      canvas.height = cropSize * dpr
       const ctx = canvas.getContext('2d')
       if (!ctx) {
         resolve(null)
         return
       }
 
-      const dpr = img.width / window.innerWidth
       const sX = cropLeft * dpr
       const sY = cropTop * dpr
       const sWidth = cropSize * dpr
       const sHeight = cropSize * dpr
 
-      ctx.drawImage(img, sX, sY, sWidth, sHeight, 0, 0, cropSize, cropSize)
+      ctx.drawImage(img, sX, sY, sWidth, sHeight, 0, 0, cropSize * dpr, cropSize * dpr)
       canvas.toBlob(resolve, 'image/png')
     }
     img.onerror = () => {
@@ -241,7 +248,7 @@ async function cropScreenshot(screenshotBlob: Blob, cropLeft: number, cropTop: n
 }
 
 const backgroundStore = useBackgroundStore()
-const { data: stageCaptureSignal } = useBroadcastChannel<{ characterId: string, includeBg: boolean }, { characterId: string, includeBg: boolean }>({ name: 'airi:stage-capture' })
+const { data: stageCaptureSignal } = useBroadcastChannel<{ characterId: string, includeBg: boolean, channelId?: string }, { characterId: string, includeBg: boolean, channelId?: string }>({ name: 'airi:stage-capture' })
 watch(stageCaptureSignal, async (val) => {
   const rawVal = toRaw(val)
   console.log('[RendererStage] received stage capture broadcast signal (raw):', rawVal)
@@ -290,7 +297,8 @@ watch(stageCaptureSignal, async (val) => {
       console.log('[RendererStage] captureFrame completed. Returned blob:', blob)
       if (blob) {
         const title = `Selfie - ${new Date().toLocaleString()}`
-        await backgroundStore.addBackground('selfie', blob, title, undefined, rawVal.characterId)
+        const metadata = rawVal.channelId ? { discordChannelId: rawVal.channelId } : undefined
+        await backgroundStore.addBackground('selfie', blob, title, undefined, rawVal.characterId, undefined, undefined, undefined, metadata)
         console.log('[RendererStage] successfully added selfie background to store.')
       }
       else {
@@ -402,7 +410,7 @@ defineExpose({
       :live2d-force-auto-blink-enabled="live2dForceAutoBlinkEnabled"
       :live2d-shadow-enabled="live2dShadowEnabled"
       :live2d-max-fps="live2dMaxFps"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :draggable="stageViewControlsEnabled"
       :interaction-mode="vrmStore.interactionMode === 'tactile' ? 'tactile' : 'orbit'"
       @scale-change="(val) => emits('scaleChange', val)"
@@ -418,7 +426,7 @@ defineExpose({
       :model-src="stageModelSelectedUrl"
       :model-identity="stageModelSelected"
       :idle-animation="props.vrmActiveAnimation"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :idle-cycle-enabled="props.vrmEffectiveIdleCycleEnabled"
       :render-scale-override="isWindowResizing ? reducedRenderScale : undefined"
       :class="['min-w-50% <lg:full min-h-100 sm:100', 'h-full w-full flex-1']"
@@ -453,7 +461,7 @@ defineExpose({
       :max-fps="spineMaxFps"
       :render-scale="spineRenderScale"
       :draggable="stageViewControlsEnabled"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :mouth-open-size="mouthOpenSize"
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
@@ -473,7 +481,7 @@ defineExpose({
       :position-x="xOffset !== undefined ? Number(xOffset) : undefined"
       :position-y="yOffset !== undefined ? Number(yOffset) : undefined"
       :interaction-mode="vrmStore.interactionMode"
-      :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+      :idle-animations="resolvedIdleAnimations"
       :draggable="stageViewControlsEnabled"
       :cursor-position="focusAt"
       :preview-expression="previewExpression || undefined"

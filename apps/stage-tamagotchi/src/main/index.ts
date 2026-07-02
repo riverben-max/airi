@@ -862,6 +862,10 @@ app.whenReady().then(async () => {
 
       ipcMain.on('reset-window-positions-action', handleResetWindowPositions)
 
+      ipcMain.on('logger:write', (_event, level: string, message: string) => {
+        console.log(`[RendererLog/${level}] ${message}`)
+      })
+
       // NOTICE: ControlStrip.vue calls `ipcRenderer.invoke('eventa:invoke:electron:windows:get-monitor-count')
       // directly (via the raw Electron IPC invoke path, which requires ipcMain.handle).
       // defineInvokeHandler routes over Eventa's 'eventa-message' channel instead, so it
@@ -873,8 +877,16 @@ app.whenReady().then(async () => {
         return screen.getAllDisplays().length
       })
 
+      let stageInitialized = false
+
       ipcMain.handle('stage:capture-window', async () => {
         if (deps.stageWindow && !deps.stageWindow.isDestroyed()) {
+          if (!stageInitialized && !deps.stageWindow.isVisible()) {
+            deps.stageWindow.showInactive()
+            await new Promise(resolve => setTimeout(resolve, 5000))
+            deps.stageWindow.hide()
+            stageInitialized = true
+          }
           const image = await deps.stageWindow.webContents.capturePage()
           return image.toPNG()
         }
@@ -885,6 +897,7 @@ app.whenReady().then(async () => {
 
       if (deps.stageWindow && !deps.stageWindow.isDestroyed()) {
         deps.stageWindow.on('show', () => {
+          stageInitialized = true
           if (deps.captionWindow.getIsFollowingWindow()) {
             deps.captionWindow.toggleVisibility(true)
           }

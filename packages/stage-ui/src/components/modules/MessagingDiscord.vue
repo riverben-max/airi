@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, FieldInput } from '@proj-airi/ui'
+import { Button, FieldCheckbox, FieldInput } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,6 +15,7 @@ const {
   isConnecting,
   eventLog,
   configured,
+  visionEnabled,
 } = storeToRefs(discordStore)
 
 // Dev console collapsed state
@@ -125,6 +126,22 @@ function formatTimestamp(ts: number) {
           :variant="isConnected ? 'danger' : 'primary'"
           :disabled="!configured"
           @click="handleStartStop"
+        />
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Section: Controls & Modalities -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <section class="mc-section">
+      <div class="mc-section-header">
+        <h3>{{ t('settings.pages.modules.messaging-discord.controls.title') }}</h3>
+      </div>
+      <div class="mc-controls-grid">
+        <FieldCheckbox
+          v-model="visionEnabled"
+          :label="t('settings.pages.modules.messaging-discord.controls.vision')"
+          :description="t('settings.pages.modules.messaging-discord.controls.vision-description')"
         />
       </div>
     </section>

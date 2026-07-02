@@ -2,7 +2,7 @@
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsUserProfile } from '@proj-airi/stage-ui/stores/settings/user-profile'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 interface Choice {
@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'choose', choice: Choice): void
+  (e: 'choose', choice: Choice, isPlaybackOnly?: boolean): void
   (e: 'retry'): void
   (e: 'delete'): void
 }>()
@@ -62,22 +62,20 @@ async function playChoiceSpeech(idx: number, text: string) {
   // Interrupt any card currently loading or playing
   stopActiveAudio()
 
+  // Update textarea with this choice message immediately for preview
+  emit('choose', props.message.choices[idx], true)
+
   loadingIndex.value = idx
   try {
-    const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceId)
-    if (!profile) {
-      throw new Error('User voice profile not found in saved profiles.')
-    }
-    const provider = await providersStore.getProviderInstance(profile.baseProvider)
+    const provider = await providersStore.getProviderInstance('virtual-audio-studio')
     if (!provider) {
-      throw new Error(`The base provider "${profile.baseProvider}" is not active.`)
+      throw new Error('Virtual Audio Studio provider is not active.')
     }
     const audioData = await speechStore.speech(
       provider as any,
-      profile.baseModel || '',
+      'virtual',
       text,
-      profile.baseVoice,
-      profile.effects,
+      voiceId,
     )
     // Guard: user may have cancelled while we were fetching
     if (loadingIndex.value !== idx)
@@ -112,10 +110,10 @@ async function playAllChoices() {
   stopActiveAudio()
   isPlayingAll.value = true
 
-  for (const choice of props.message.choices) {
+  for (let i = 0; i < props.message.choices.length; i++) {
     if (!isPlayingAll.value)
       break
-    await playChoiceSpeech(props.message.choices.indexOf(choice), choice.message)
+    await playChoiceSpeech(i, props.message.choices[i].message)
     // Wait for the audio to finish before moving to the next one
     await new Promise<void>((resolve) => {
       const check = () => {
@@ -135,6 +133,16 @@ function stopPlayAll() {
   isPlayingAll.value = false
   stopActiveAudio()
 }
+
+// Auto-play all if enabled and choices become loaded/available
+watch(() => props.message.loading, (isLoading) => {
+  if (isLoading === false && props.message.choices.length > 0) {
+    const autoPlayAll = localStorage.getItem('airi:producer:auto-play-all') === 'true'
+    if (autoPlayAll) {
+      void playAllChoices()
+    }
+  }
+}, { immediate: true })
 </script>
 
 <template>

@@ -17,6 +17,7 @@ import Spine from './spine.vue'
 import HackerPanel from './vrm-vhack/HackerPanel.vue'
 import VRM from './vrm.vue'
 
+import { useIdleAnimations } from '../../../../composables'
 import { useAiriCardStore } from '../../../../stores/modules'
 import { useSettings } from '../../../../stores/settings'
 import { usePositioningStore } from '../../../../stores/settings/positioning'
@@ -80,6 +81,12 @@ const computedYOffset = computed(() => {
 const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 const { updateCard } = airiCardStore
+
+const { resolveActiveIdleAnimations } = useIdleAnimations()
+
+const resolvedIdleAnimations = computed(() => {
+  return resolveActiveIdleAnimations(activeCard.value, stageModelSelected.value)
+})
 
 const activeCardName = computed(() => activeCard.value?.name || 'Active Character')
 
@@ -245,7 +252,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         ref="threeSceneRef"
         :model-src="stageModelSelectedUrl"
         :model-identity="stageModelSelected"
-        :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        :idle-animations="resolvedIdleAnimations"
         @binary-loaded="vhackStore.setSourceArrayBuffer"
       />
     </div>
@@ -260,7 +267,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         :y-offset="computedYOffset"
         :scale="computedScale"
         :premultiplied-alpha="spinePremultipliedAlpha"
-        :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        :idle-animations="resolvedIdleAnimations"
       />
     </div>
   </template>
@@ -273,7 +280,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         :scale="computedScale"
         :position-x="computedXOffset"
         :position-y="computedYOffset"
-        :idle-animations="activeCard?.extensions?.airi?.acting?.idleAnimations"
+        :idle-animations="resolvedIdleAnimations"
         interaction-mode="drag"
         :preview-expression="previewExpression || undefined"
         @scale-change="handleScaleChange"

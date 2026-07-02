@@ -14,6 +14,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import AutoVoiceConfigModal from './components/AutoVoiceConfigModal.vue'
 import VoiceCreatorModal from './components/VoiceCreatorModal.vue'
 
 const router = useRouter()
@@ -52,6 +53,8 @@ const activeBindingCharacterId = ref<string | null>(null)
 const modelSelectorOpen = ref(false)
 const voiceCreatorOpen = ref(false)
 const voiceTargetCharacterId = ref<string | null>(null)
+const characterIdleAnimations = ref<Record<string, string[]>>({})
+const autoVoiceModalOpen = ref(false)
 
 // AI Story Idea Suggester state
 interface StoryIdea {
@@ -71,8 +74,11 @@ const synthesisPayload = ref<any>(null)
 const showDeveloperPayload = ref(false)
 const synthesisProposal = ref<any>(null)
 const refinementGuidance = ref('')
+const userDescriptionInput = ref('')
+const userImagePromptInput = ref('')
+const includeSelfConcept = ref(false)
 
-function writeBackVoiceBinding(characterId: string, voiceId: string) {
+function writeBackVoiceBinding(characterId: string, voice: { baseProvider: string, baseModel: string, baseVoice: string }) {
   const char = selectedCharacters.value.find(c => c.id === characterId)
   if (char) {
     try {
@@ -80,7 +86,8 @@ function writeBackVoiceBinding(characterId: string, voiceId: string) {
       if (!map[char.trigger]) {
         map[char.trigger] = { trigger: char.trigger }
       }
-      map[char.trigger].voiceProfileId = voiceId || undefined
+      map[char.trigger].voice = voice || undefined
+      map[char.trigger].voiceProfileId = voice?.baseVoice || undefined
       localStorage.setItem('settings/airi-card/character-bindings', JSON.stringify(map))
 
       // Remove from blacklist if manually bound
@@ -92,6 +99,16 @@ function writeBackVoiceBinding(characterId: string, voiceId: string) {
     }
     catch (e) {
       console.error('Failed to write back voice-binding:', e)
+    }
+  }
+}
+
+function handleApplyAutoVoices(payload: Record<string, { baseProvider: string, baseModel: string, baseVoice: string, idleAnimations?: string[] }>) {
+  for (const [charId, voice] of Object.entries(payload)) {
+    wizardStore.bindVoiceToCharacter(charId, voice)
+    writeBackVoiceBinding(charId, voice)
+    if (voice.idleAnimations) {
+      characterIdleAnimations.value[charId] = [...voice.idleAnimations]
     }
   }
 }
@@ -110,6 +127,8 @@ onMounted(async () => {
   if (!storyPrompt.value.nickname && userProfileStore.name) {
     storyPrompt.value.nickname = userProfileStore.name
   }
+  userDescriptionInput.value = userProfileStore.description || ''
+  userImagePromptInput.value = userProfileStore.prompt || ''
 })
 
 // Reset scroll pagination when search or chips change
@@ -261,8 +280,16 @@ function prefillRosterBindings() {
       if (binding.displayModelId) {
         wizardStore.bindModelToCharacter(c.id, binding.displayModelId)
       }
-      if (binding.voiceProfileId) {
-        wizardStore.bindVoiceToCharacter(c.id, binding.voiceProfileId)
+      if (binding.voice) {
+        wizardStore.bindVoiceToCharacter(c.id, binding.voice)
+      }
+      else if (binding.voiceProfileId) {
+        const isVirtual = binding.voiceProfileId.startsWith('voice_profile_')
+        wizardStore.bindVoiceToCharacter(c.id, {
+          baseProvider: isVirtual ? 'virtual-audio-studio' : 'kokoro-local',
+          baseModel: isVirtual ? 'virtual' : '',
+          baseVoice: binding.voiceProfileId,
+        })
       }
     }
   })
@@ -442,7 +469,7 @@ async function handleGenerate(guidance = '') {
       storySettings: {
         setting: storyPrompt.value.setting || 'A cozy matching lounge',
         userNickname: storyPrompt.value.nickname || 'Companion',
-        userDescription: userProfileStore.description || '',
+        userDescription: userDescriptionInput.value,
         loreRules: storyPrompt.value.lore || 'Follow canon personalities and themes',
       },
       deterministicActorKeys,
@@ -624,13 +651,12 @@ async function confirmCreateCard() {
       if (firstBoundModel) {
         modules.displayModelId = firstBoundModel.id
       }
-      const firstBoundVoiceId = boundVoices.value[firstChar.id]
-      const firstBoundVoice = speechStore.savedVoiceProfiles.find(v => v.id === firstBoundVoiceId)
-      if (firstBoundVoice) {
+      const boundVoice = boundVoices.value[firstChar.id]
+      if (boundVoice) {
         modules.speech = {
-          provider: firstBoundVoice.baseProvider,
-          model: firstBoundVoice.baseModel,
-          voice_id: firstBoundVoice.baseVoice,
+          provider: boundVoice.baseProvider,
+          model: boundVoice.baseModel || (providersStore.getProviderConfig(boundVoice.baseProvider)?.model as string) || '',
+          voice_id: boundVoice.baseVoice,
         }
       }
     }
@@ -642,23 +668,22 @@ async function confirmCreateCard() {
       const proposalActor = proposal.actors[actorKey] || {}
 
       const boundModel = getBoundModel(c.id)
-      const boundVoiceId = boundVoices.value[c.id]
-      const boundVoice = speechStore.savedVoiceProfiles.find(v => v.id === boundVoiceId)
+      const boundVoice = boundVoices.value[c.id]
 
-      const cleanPrompt = c.tags ? `, (${c.tags})` : ''
+      const cleanPrompt = `${c.trigger}${c.tags ? `, (${c.tags})` : ''}`
 
       // Setup modules[actorKey]
       modules[actorKey] = {
         description: proposalActor.short_description || `${c.name}'s default wardrobe`,
         prompt: cleanPrompt,
-        isBase: true,
+        isBase: false,
         manifestation: {
           modelId: boundModel?.id || null,
         },
         speech: boundVoice
           ? {
               provider: boundVoice.baseProvider,
-              model: boundVoice.baseModel,
+              model: boundVoice.baseModel || (providersStore.getProviderConfig(boundVoice.baseProvider)?.model as string) || '',
               voice_id: boundVoice.baseVoice,
             }
           : null,
@@ -668,12 +693,24 @@ async function confirmCreateCard() {
       visualAssets[actorKey] = {
         description: proposalActor.short_description || `${c.name}'s default appearance`,
         prompt: cleanPrompt,
-        isBase: true,
+        isBase: false,
+        idleAnimations: characterIdleAnimations.value[c.id] || [],
         manifestation: {
           modelId: boundModel?.id || null,
         },
       }
     })
+
+    if (includeSelfConcept.value) {
+      visualAssets.concept_user = {
+        description: userDescriptionInput.value.trim() || `The user character, ${storyPrompt.value.nickname}`,
+        prompt: userImagePromptInput.value.trim() ? `, (${userImagePromptInput.value.trim()})` : '',
+        isBase: false,
+        manifestation: {
+          modelId: null,
+        },
+      }
+    }
 
     // Map each place asset
     Object.keys(proposal.places).forEach((placeKey) => {
@@ -682,7 +719,7 @@ async function confirmCreateCard() {
       visualAssets[placeKey] = {
         description: place.description || '',
         prompt: cleanPrompt,
-        isBase: placeKey === 'place_main',
+        isBase: true,
         manifestation: {
           backgroundId: null,
         },
@@ -694,6 +731,10 @@ async function confirmCreateCard() {
       const slug = c.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
       return `actor_${slug}`
     })
+
+    if (includeSelfConcept.value) {
+      activeConcepts.push('concept_user')
+    }
 
     // Build the final V3 Compliant Card Structure
     const newCard: any = {
@@ -1014,10 +1055,22 @@ async function confirmCreateCard() {
       <!-- STEP 2: ROSTER SETTINGS (MODEL & VOICE BINDING) -->
       <div v-else-if="currentStep === 2" class="flex flex-1 flex-col items-center overflow-y-auto bg-neutral-950 p-6">
         <div class="max-w-4xl w-full border border-neutral-900 rounded-2xl bg-neutral-900/20 p-8 shadow-xl">
-          <h3 class="mb-6 flex items-center gap-2 text-lg text-neutral-200 font-bold">
-            <div i-solar:user-circle-bold-duotone class="text-primary-500" />
-            Actor Alignment (Visual & Audio Settings)
-          </h3>
+          <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <h3 class="flex items-center gap-2 text-lg text-neutral-200 font-bold">
+              <div i-solar:user-circle-bold-duotone class="text-primary-500" />
+              Actor Alignment (Visual & Audio Settings)
+            </h3>
+
+            <Button
+              v-if="selectedCharacters.length > 0"
+              variant="secondary"
+              class="h-8 flex items-center gap-1.5 border border-primary-500/30 rounded-xl bg-primary-500/10 px-3 text-xs text-primary-400 font-bold hover:bg-primary-500/20"
+              @click="autoVoiceModalOpen = true"
+            >
+              <div i-solar:magic-stick-3-bold-duotone class="text-sm" />
+              Auto-Assign Voices & Motions
+            </Button>
+          </div>
 
           <!-- Contextual hint strip -->
           <div class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 border border-neutral-800/50 rounded-xl bg-neutral-900/60 px-4 py-2.5">
@@ -1093,7 +1146,7 @@ async function confirmCreateCard() {
                   <div class="min-w-0 flex flex-1 items-center gap-2 border border-neutral-800 rounded-xl bg-neutral-950/40 px-3 py-2">
                     <div i-solar:music-bold class="shrink-0 text-sm text-neutral-600" />
                     <span class="truncate text-xs text-neutral-300">
-                      {{ boundVoices[char.id] ? speechStore.savedVoiceProfiles.find(p => p.id === boundVoices[char.id])?.name || 'Default Voice' : 'Inherit Default' }}
+                      {{ boundVoices[char.id] ? (boundVoices[char.id].baseProvider === 'virtual-audio-studio' ? (speechStore.savedVoiceProfiles.find(p => p.id === boundVoices[char.id].baseVoice)?.name || 'Default Voice') : boundVoices[char.id].baseVoice) : 'Inherit Default' }}
                     </span>
                   </div>
 
@@ -1215,16 +1268,6 @@ async function confirmCreateCard() {
               </div>
             </div>
 
-            <!-- Setting / Location -->
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Where does this take place?</label>
-              <textarea
-                v-model="storyPrompt.setting"
-                placeholder="Leave blank to let the AI suggest a fitting location (e.g., 'A rainy cafe in Tokyo', 'A fantasy medieval tavern')."
-                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
-              />
-            </div>
-
             <!-- User Nickname -->
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">What should the characters call you?</label>
@@ -1236,6 +1279,54 @@ async function confirmCreateCard() {
               >
             </div>
 
+            <!-- Your looks -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Your looks</label>
+              <textarea
+                v-model="userDescriptionInput"
+                placeholder="Describe your appearance, attire, or gender representation."
+                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
+              />
+            </div>
+
+            <!-- Your image prompt looks -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Your Image Prompt Looks</label>
+              <textarea
+                v-model="userImagePromptInput"
+                placeholder="Detailed stable diffusion style prompt tags for your appearance (e.g. '1guy, brown hair, henley shirt, suspenders')."
+                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
+              />
+            </div>
+
+            <!-- Include self concept checkbox -->
+            <div class="flex items-start gap-2.5 border border-neutral-800/40 rounded-xl bg-neutral-900/40 p-3.5">
+              <input
+                id="includeSelfConcept"
+                v-model="includeSelfConcept"
+                type="checkbox"
+                class="mt-0.5 h-4 w-4 cursor-pointer accent-primary-500"
+              >
+              <div class="flex flex-col gap-0.5">
+                <label for="includeSelfConcept" class="cursor-pointer text-xs text-neutral-200 font-bold">
+                  Include Myself As Concept
+                </label>
+                <span class="text-[10px] text-neutral-500 leading-normal">
+                  Enable this if your roleplay includes your own character in scenes. This creates a dedicated background concept for you (<code class="rounded bg-neutral-800 px-1 text-[9px] font-mono">actor_[name]</code>) with your visual description, ensuring the AI Director can render you with a consistent look across generated images.
+                </span>
+              </div>
+            </div>
+
+            <!-- Setting / Location -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Where does this take place?</label>
+              <textarea
+                v-model="storyPrompt.setting"
+                placeholder="Leave blank to let the AI suggest a fitting location (e.g., 'A rainy cafe in Tokyo', 'A fantasy medieval tavern')."
+                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
+              />
+            </div>
+
             <!-- Lore / Rule overrides -->
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Lore & Behavior Rules</label>
@@ -1245,6 +1336,14 @@ async function confirmCreateCard() {
                 class="h-[80px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
             </div>
+          </div>
+
+          <!-- Active LLM Warning/Indicator -->
+          <div class="mt-5 flex items-start gap-2 border border-neutral-800/40 rounded-xl bg-neutral-900/30 p-3.5">
+            <div i-solar:info-circle-bold class="mt-0.5 shrink-0 text-sm text-neutral-500" />
+            <p class="text-[10px] text-neutral-400 leading-relaxed">
+              <span class="text-neutral-300 font-bold">Note:</span> This request will be processed by <span class="text-primary-400 font-semibold">{{ consciousnessStore.activeProvider || 'None' }}</span> / <span class="text-primary-400 font-semibold">{{ consciousnessStore.activeModel || 'None' }}</span>. Please ensure this is a high-quality model as the next step is somewhat complex and requires high reasoning to generate properly.
+            </p>
           </div>
 
           <!-- Bottom Actions -->
@@ -1451,12 +1550,21 @@ async function confirmCreateCard() {
         v-model="voiceCreatorOpen"
         :character-name="voiceTargetCharacterId ? selectedCharacters.find(c => c.id === voiceTargetCharacterId)?.name : undefined"
         :character-gender="voiceTargetCharacterId ? (wizardStore.facets.gender[Number(selectedCharacters.find(c => c.id === voiceTargetCharacterId)?.traits[0] || 0)] || undefined) : undefined"
-        @save="(voiceId) => {
+        @save="(payload) => {
           if (voiceTargetCharacterId) {
-            wizardStore.bindVoiceToCharacter(voiceTargetCharacterId, voiceId)
-            writeBackVoiceBinding(voiceTargetCharacterId, voiceId)
+            wizardStore.bindVoiceToCharacter(voiceTargetCharacterId, payload)
+            writeBackVoiceBinding(voiceTargetCharacterId, payload)
           }
         }"
+      />
+
+      <AutoVoiceConfigModal
+        v-model="autoVoiceModalOpen"
+        :selected-characters="selectedCharacters"
+        :copyrights="wizardStore.copyrights"
+        :genders="wizardStore.facets.gender"
+        :bound-models="boundModels"
+        @apply="handleApplyAutoVoices"
       />
     </main>
   </div>

@@ -39,9 +39,11 @@ A visual two-column layout mapped for each character in the selected cast list:
         *   **Dual Sliders**: Adjusts **Pitch Tuning** and **Speech Speed** (visible only for `kokoro-local`).
         *   **Default UST Rules**: Pre-configures `mode: "mute"` (stripping asterisks `*` and brackets `[ ]` actions from speech while rendering them on screen).
         *   **Sandbox Playground**: A text box and **Play** button to instantly synthesize and preview the current settings.
-    *   **Save Action**:
-        *   *For Kokoro Local*: Saves a *new* `VoiceProfile` with customized effects to the speech store (Audio Studio) and binds its ID.
-        *   *For All Other Options*: Directly binds the selected profile or voice ID to the character.
+    *   **Auto-Assign Voices**: An AI-assisted batch configurator triggered by a sparkle-icon button next to the Step 2 header:
+        *   **LLM Recommendations**: Analyzes the cast characters' details (names, series, genders, tags) and automatically matches them with the best-fitting Kokoro voice presets, suggesting optimal speed rate and pitch offsets.
+        *   **Interactive Playback Previews**: Allows the user to play audio previews for each recommendation. Previews are routed dynamically through a temporary, hidden voice profile (`voice_profile_auto_preview`) using the standard virtual audio studio effects pipeline for exact in-game representation.
+        *   **Manual Refinement**: Exposes dropdowns and speed/pitch sliders next to each recommendation for manual overrides before committing.
+        *   **Batch Action**: Tapping "Apply" registers all configured voice profiles in the store and binds them to the characters in one click.
     *   **Skipping**: Users can skip bindings entirely, in which case characters remain "LLM-only" (no ACT tokens or voice configs are bound).
 
 
@@ -117,7 +119,7 @@ Each actor receives a dedicated configuration block under the modules namespace 
 ```typescript
 "extensions.airi.modules.[actor_key]": {
   "description": string,             // Text description (e.g. "Gura's default shark outfit")
-  "prompt": string,                  // Visual generation tags formatted as ", (${prompt})"
+  "prompt": string,                  // Visual generation prompt combining trigger and tags: trigger, (tags)
   "isBase": boolean,                 // Set to true
   "manifestation": {
     "modelId": string                // The bound displayModelId (e.g. "display-model-...")
@@ -137,7 +139,7 @@ The asset parameters are mirrored under the root `visual_assets` configuration t
 ```typescript
 "extensions.airi.visual_assets.[actor_key]": {
   "description": string,             // Short visual summary of character clothing
-  "prompt": string,                  // Prompt tags generated as ", (${prompt})"
+  "prompt": string,                  // Visual generation prompt combining trigger and tags: trigger, (tags)
   "isBase": boolean,                 // Set to true
   "manifestation": {
     "modelId": string                // Bound displayModelId
@@ -166,9 +168,9 @@ Once the synthesis payload is sent and resolved by the LLM, the wizard presents 
 
 ---
 
-## 6. Future: Persistent Character → Model & Voice Associations
+## 6. Stable Character Binding Store
 
-> **Status**: Planned — not yet implemented.
+> **Status**: Implemented.
 
 ### 6.1 The Problem
 Every time a user opens the AnimaDex Wizard to compose a new World, they need to manually re-bind every character to their 3D model and voice profile from scratch. Characters like Hikari, Hina, or Arona each need to be individually re-linked to the files already on disk — even if the user has done this before.

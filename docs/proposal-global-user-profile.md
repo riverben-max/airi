@@ -62,3 +62,12 @@ Under the **Producer Directives** suggestions drawer (Producer Lite / OE):
 - [ ] Refactor AnimaDex Wizard Step 3 to read default nickname from user profile store.
 - [ ] Add the `+ Add User` button in the Image Studio prompt panels.
 - [ ] Add the Speaker Playback button next to Producer suggestions in `DatingSimOverlay.vue` or suggestion drawers.
+
+---
+
+## 4. Future Immersive Speech Routing
+
+When previewing or playing user speech (such as Producer Directive suggestions in the overlay view):
+*   **Dynamic Playback Routing:**
+    *   **Option A (Isolated Preview - Default):** When the user does *not* have an active 3D/2D model representation configured in their profile, speech plays back in isolation using a localized HTML5 `Audio` instance. This prevents story timeline pollution and avoids interrupting active character dialog.
+    *   **Option B (Stage-Linked Playback - Immersive):** When the user *has* a bound 3D/2D display model representation on the stage, the preview routes the text through the main speech pipeline (`speechRuntimeStore.openIntent`). This dynamically activates the user's model, registers the speech segment in the live captions system, and triggers physical LipSync and visual animations on the user's avatar for a fully immersive preview.

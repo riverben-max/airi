@@ -23,6 +23,7 @@ export interface BackgroundEntry {
   createdAt: number
   universeId?: string
   sessionId?: string
+  metadata?: any
 }
 
 const BUILTIN_BACKGROUNDS = [
@@ -318,6 +319,7 @@ export const useBackgroundStore = defineStore('background', () => {
     remixId?: string,
     universeId?: string,
     sessionId?: string,
+    metadata?: any,
   ) {
     const airiCardStore = useAiriCardStore()
     const chatSessionStore = useChatSessionStore()
@@ -370,8 +372,9 @@ export const useBackgroundStore = defineStore('background', () => {
       await sync()
 
       // Emit hook for other stores (like Discord) to react
+      const entryWithMetadata = { ...entry, metadata }
       for (const hook of onBackgroundAddedHooks) {
-        void hook(entry)
+        void hook(entryWithMetadata)
       }
 
       console.log(`[BackgroundStore] Successfully added background: ${id} (${type})`)

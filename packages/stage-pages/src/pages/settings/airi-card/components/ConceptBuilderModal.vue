@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIdleAnimations } from '@proj-airi/stage-ui/composables'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
@@ -210,11 +211,99 @@ watch(() => [props.modelValue, props.conceptId, props.initialData], () => {
     selectedExpressions.value = props.initialData?.manifestation?.active_expressions
       ? { ...props.initialData.manifestation.active_expressions }
       : {}
+
+    selectedIdleAnimations.value = props.initialData?.idleAnimations
+      ? [...props.initialData.idleAnimations]
+      : []
   }
 }, { immediate: true })
 
 const manifestationSearch = ref('')
 const manifestationFormatFilter = ref<'all' | 'live2d' | 'vrm' | 'spine' | 'mmd'>('all')
+
+const selectedIdleAnimations = ref<string[]>([])
+const newIdleAnimInput = ref('')
+const isAnimDropdownOpen = ref(false)
+const highlightedIndex = ref(0)
+
+const { getAvailableModelMotions } = useIdleAnimations()
+
+const availableMotionsForSelectedModel = computed(() => {
+  return getAvailableModelMotions(selectedModelId.value)
+})
+
+const filteredDropdownOptions = computed(() => {
+  const query = newIdleAnimInput.value.trim().toLowerCase()
+  const motions = availableMotionsForSelectedModel.value
+
+  if (!query) {
+    return motions.filter(m => !selectedIdleAnimations.value.includes(m)).slice(0, 50)
+  }
+
+  return motions.filter(
+    m => m.toLowerCase().includes(query) && !selectedIdleAnimations.value.includes(m),
+  )
+})
+
+function onAnimInputBlur() {
+  setTimeout(() => {
+    isAnimDropdownOpen.value = false
+  }, 150)
+}
+
+function selectHighlightedAnim() {
+  const opts = filteredDropdownOptions.value
+  if (opts.length > 0 && highlightedIndex.value < opts.length) {
+    addSelectedAnim(opts[highlightedIndex.value])
+  }
+  else {
+    addIdleAnimation()
+  }
+}
+
+function addIdleAnimation() {
+  const val = newIdleAnimInput.value.trim()
+  if (val && !selectedIdleAnimations.value.includes(val)) {
+    selectedIdleAnimations.value.push(val)
+  }
+  newIdleAnimInput.value = ''
+  highlightedIndex.value = 0
+}
+
+function addSelectedAnim(name: string) {
+  if (name && !selectedIdleAnimations.value.includes(name)) {
+    selectedIdleAnimations.value.push(name)
+  }
+  newIdleAnimInput.value = ''
+  highlightedIndex.value = 0
+}
+
+function removeIdleAnimation(name: string) {
+  selectedIdleAnimations.value = selectedIdleAnimations.value.filter(n => n !== name)
+}
+
+function toggleIdleAnimation(name: string) {
+  if (selectedIdleAnimations.value.includes(name)) {
+    removeIdleAnimation(name)
+  }
+  else {
+    selectedIdleAnimations.value.push(name)
+  }
+}
+
+function highlightNext() {
+  const max = filteredDropdownOptions.value.length
+  if (max > 0) {
+    highlightedIndex.value = (highlightedIndex.value + 1) % max
+  }
+}
+
+function highlightPrev() {
+  const max = filteredDropdownOptions.value.length
+  if (max > 0) {
+    highlightedIndex.value = (highlightedIndex.value - 1 + max) % max
+  }
+}
 
 const mapFormatRenderer: Record<string, string> = {
   'live2d-zip': 'Live2D',
@@ -349,6 +438,7 @@ function handleSave() {
       description: description.value.trim(),
       prompt: prompt.value.trim(),
       isBase: isBase.value,
+      idleAnimations: selectedIdleAnimations.value,
       artistry: selectedProvider.value !== 'inherit'
         ? {
             provider: selectedProvider.value,
@@ -656,6 +746,77 @@ function handleSave() {
               </p>
             </div>
 
+            <!-- Idle Loop / Cycle Animations -->
+            <div class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">
+                Idle Loop / Cycle Animations (Optional override)
+              </label>
+              <div class="text-[10px] text-neutral-500">
+                Pick from the animations available for this model to cycle through automatically.
+              </div>
+
+              <!-- Autocomplete Input -->
+              <div class="relative w-full">
+                <input
+                  v-model="newIdleAnimInput"
+                  type="text"
+                  placeholder="Search and add animation name..."
+                  class="w-full border border-neutral-200 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
+                  @focus="isAnimDropdownOpen = true"
+                  @blur="onAnimInputBlur"
+                  @keydown.enter.prevent="selectHighlightedAnim"
+                  @keydown.down.prevent="highlightNext"
+                  @keydown.up.prevent="highlightPrev"
+                >
+
+                <!-- Dropdown options -->
+                <div
+                  v-if="isAnimDropdownOpen && filteredDropdownOptions.length > 0"
+                  class="absolute left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto border border-neutral-200 rounded-lg bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+                >
+                  <div
+                    v-for="(opt, index) in filteredDropdownOptions"
+                    :key="opt"
+                    :class="[
+                      'cursor-pointer px-3 py-1.5 text-xs text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-primary-500/10 hover:text-primary-500',
+                      highlightedIndex === index ? 'bg-primary-500/15 text-primary-500 dark:bg-primary-500/10' : '',
+                    ]"
+                    @mousedown="addSelectedAnim(opt)"
+                  >
+                    {{ opt }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tags List (Accumulated outside input) -->
+              <div v-if="selectedIdleAnimations.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+                <span
+                  v-for="anim in selectedIdleAnimations"
+                  :key="anim"
+                  class="flex items-center gap-1 border border-primary-500/20 rounded-full bg-primary-500/10 px-3 py-1 text-[10px] text-primary-600 font-medium dark:text-primary-400"
+                >
+                  {{ anim }}
+                  <button type="button" class="ml-1 text-[12px] text-neutral-400 leading-none hover:text-red-400 focus:outline-none" @click="removeIdleAnimation(anim)">
+                    &times;
+                  </button>
+                </span>
+              </div>
+
+              <!-- Quick Helper Buttons -->
+              <div v-if="availableMotionsForSelectedModel.length > 0" class="flex flex-wrap items-center gap-1">
+                <span class="mr-1 text-[9px] text-neutral-500">Quick Add:</span>
+                <button
+                  v-for="preset in availableMotionsForSelectedModel.slice(0, 6)"
+                  :key="preset"
+                  type="button"
+                  class="rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] text-neutral-600 dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-white"
+                  @click="toggleIdleAnimation(preset)"
+                >
+                  + {{ preset }}
+                </button>
+              </div>
+            </div>
+
             <!-- Active Expressions Override -->
             <div class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
               <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Active Expressions / Outfits</label>
@@ -817,13 +978,10 @@ function handleSave() {
   <VoiceCreatorModal
     v-model="showVoiceCreator"
     :character-name="conceptId ? conceptId : undefined"
-    @save="(voiceId) => {
-      selectedSpeechVoiceId = voiceId
-      const profile = speechStore.savedVoiceProfiles.find(p => p.id === voiceId)
-      if (profile) {
-        selectedSpeechProvider = profile.baseProvider
-        selectedSpeechModel = profile.baseModel || ''
-      }
+    @save="(payload) => {
+      selectedSpeechProvider = payload.baseProvider
+      selectedSpeechModel = payload.baseModel
+      selectedSpeechVoiceId = payload.baseVoice
     }"
   />
 </template>

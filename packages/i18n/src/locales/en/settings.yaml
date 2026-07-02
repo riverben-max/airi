@@ -576,6 +576,10 @@ pages:
         content: Message
         content-placeholder: Enter a test message...
         send: Send
+      controls:
+        title: Controls & Modalities
+        vision: Enable VLM (Vision) Image Intake
+        vision-description: Allow AIRI to read and process image attachments from Discord
     speech:
       description: Speech synthesis
       sections:
