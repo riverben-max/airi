@@ -248,7 +248,7 @@ async function cropScreenshot(screenshotBlob: Blob, cropLeft: number, cropTop: n
 }
 
 const backgroundStore = useBackgroundStore()
-const { data: stageCaptureSignal } = useBroadcastChannel<{ characterId: string, includeBg: boolean }, { characterId: string, includeBg: boolean }>({ name: 'airi:stage-capture' })
+const { data: stageCaptureSignal } = useBroadcastChannel<{ characterId: string, includeBg: boolean, channelId?: string }, { characterId: string, includeBg: boolean, channelId?: string }>({ name: 'airi:stage-capture' })
 watch(stageCaptureSignal, async (val) => {
   const rawVal = toRaw(val)
   console.log('[RendererStage] received stage capture broadcast signal (raw):', rawVal)
@@ -297,7 +297,8 @@ watch(stageCaptureSignal, async (val) => {
       console.log('[RendererStage] captureFrame completed. Returned blob:', blob)
       if (blob) {
         const title = `Selfie - ${new Date().toLocaleString()}`
-        await backgroundStore.addBackground('selfie', blob, title, undefined, rawVal.characterId)
+        const metadata = rawVal.channelId ? { discordChannelId: rawVal.channelId } : undefined
+        await backgroundStore.addBackground('selfie', blob, title, undefined, rawVal.characterId, undefined, undefined, undefined, metadata)
         console.log('[RendererStage] successfully added selfie background to store.')
       }
       else {

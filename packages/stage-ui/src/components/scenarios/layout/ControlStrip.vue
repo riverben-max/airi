@@ -375,7 +375,7 @@ const selfies = computed(() => {
 })
 
 const selfieCountdown = ref<number | null>(null)
-const { post: postCapture } = useBroadcastChannel<{ characterId: string, includeBg: boolean }, { characterId: string, includeBg: boolean }>({ name: 'airi:stage-capture' })
+const { post: postCapture } = useBroadcastChannel<{ characterId: string, includeBg: boolean, channelId?: string }, { characterId: string, includeBg: boolean, channelId?: string }>({ name: 'airi:stage-capture' })
 
 function triggerSelfie() {
   if (!activeCardId.value) {

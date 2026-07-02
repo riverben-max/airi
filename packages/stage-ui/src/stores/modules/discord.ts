@@ -16,6 +16,7 @@ import {
   discordServiceSummon,
 } from '@proj-airi/stage-shared'
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
+import { useBroadcastChannel } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, toRaw, watch } from 'vue'
 
@@ -229,6 +230,7 @@ export const useDiscordStore = defineStore('discord', () => {
   const liveSessionStore = useLiveSessionStore()
   const speechStore = useSpeechStore()
   const visionStore = useVisionStore()
+  const { post: postCapture } = useBroadcastChannel<{ characterId: string, includeBg: boolean, channelId?: string }, { characterId: string, includeBg: boolean, channelId?: string }>({ name: 'airi:stage-capture' })
   // ── Persisted Config ───────────────────────────────────────────────────────
   const enabled = useLocalStorageManualReset<boolean>('settings/discord/enabled', false)
   const token = useLocalStorageManualReset<string>('settings/discord/token', '')
@@ -1436,9 +1438,11 @@ export const useDiscordStore = defineStore('discord', () => {
       else if (payload.commandName === 'selfie') {
         await invokeReplyInteraction?.({
           interactionId: payload.interactionId,
-          content: '📸 Capturing stage screenshot...',
+          content: '📸 Capturing stage selfie...',
         })
-        await visionStore.heartbeat({ force: true })
+        if (airiCard.activeCardId) {
+          postCapture({ characterId: airiCard.activeCardId, includeBg: true, channelId: payload.channelId })
+        }
       }
       else if (payload.commandName === 'manage') {
         const buildStatusContent = () => {
@@ -1836,8 +1840,8 @@ export const useDiscordStore = defineStore('discord', () => {
           }
         }
         else if (action === 'util' && targetId) {
-          if (targetId === 'selfie') {
-            await visionStore.heartbeat({ force: true })
+          if (targetId === 'selfie' && airiCard.activeCardId) {
+            postCapture({ characterId: airiCard.activeCardId, includeBg: true, channelId: payload.channelId })
           }
           else if (targetId === 'journalmoment') {
             const llmProvider = consciousnessStore.activeProvider
@@ -2020,13 +2024,14 @@ export const useDiscordStore = defineStore('discord', () => {
 
       console.log('[DiscordStore] Candidate image for Discord routing found.')
 
+      const targetChannelId = entry.metadata?.discordChannelId || lastChannelId.value
       // 2. Connection/Channel Check
-      if (!isConnected.value || !lastChannelId.value) {
-        console.log(`[DiscordStore] Skipping image routing: isConnected=${isConnected.value}, lastChannelId=${lastChannelId.value}`)
+      if (!isConnected.value || !targetChannelId) {
+        console.log(`[DiscordStore] Skipping image routing: isConnected=${isConnected.value}, targetChannelId=${targetChannelId}`)
         const failLog: DiscordEventLogEntry = {
           timestamp: Date.now(),
           type: 'image-debug-log',
-          summary: `Routing skipped: Connected=${isConnected.value}, LastChannel=${lastChannelId.value}`,
+          summary: `Routing skipped: Connected=${isConnected.value}, TargetChannel=${targetChannelId}`,
         }
         eventLog.value = [...eventLog.value.slice(-(MAX_EVENT_LOG_ENTRIES - 1)), failLog]
         return
@@ -2034,7 +2039,7 @@ export const useDiscordStore = defineStore('discord', () => {
 
       // 3. Leadership Election Check
       const hash = window.location.hash || '#/'
-      const isStage = hash === '#/' || hash.startsWith('#/stage')
+      const isStage = hash === '#/' || hash.startsWith('#/stage') || hash.startsWith('#/actor')
 
       if (!isStage) {
         console.log(`[DiscordStore] Skipping image routing: Window (${hash}) is not Stage leader.`)
@@ -2049,13 +2054,6 @@ export const useDiscordStore = defineStore('discord', () => {
 
       try {
         console.log(`[DiscordStore] Routing image to Discord: ${entry.title}`)
-        const routeLog: DiscordEventLogEntry = {
-          timestamp: Date.now(),
-          type: 'IMAGE_ROUTE',
-          summary: `Routing image "${entry.title}" to channel ${lastChannelId.value.slice(-4)}`,
-        }
-        eventLog.value = [...eventLog.value.slice(-(MAX_EVENT_LOG_ENTRIES - 1)), routeLog]
-
         // Convert Blob to Base64 for IPC transfer
         const reader = new FileReader()
         const base64Promise = new Promise<string>((resolve) => {
@@ -2075,7 +2073,7 @@ export const useDiscordStore = defineStore('discord', () => {
           caption += `\n\n🎬 **Director's Note (${recentNote.intensity}/100):** *${recentNote.content}*`
         }
 
-        await sendImageToDiscord(lastChannelId.value, base64, caption)
+        await sendImageToDiscord(targetChannelId, base64, caption)
       }
       catch (err: any) {
         console.error('[DiscordStore] Failed to route image to discord:', err)

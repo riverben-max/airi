@@ -873,8 +873,16 @@ app.whenReady().then(async () => {
         return screen.getAllDisplays().length
       })
 
+      let stageInitialized = false
+
       ipcMain.handle('stage:capture-window', async () => {
         if (deps.stageWindow && !deps.stageWindow.isDestroyed()) {
+          if (!stageInitialized && !deps.stageWindow.isVisible()) {
+            deps.stageWindow.showInactive()
+            await new Promise(resolve => setTimeout(resolve, 5000))
+            deps.stageWindow.hide()
+            stageInitialized = true
+          }
           const image = await deps.stageWindow.webContents.capturePage()
           return image.toPNG()
         }
@@ -885,6 +893,7 @@ app.whenReady().then(async () => {
 
       if (deps.stageWindow && !deps.stageWindow.isDestroyed()) {
         deps.stageWindow.on('show', () => {
+          stageInitialized = true
           if (deps.captionWindow.getIsFollowingWindow()) {
             deps.captionWindow.toggleVisibility(true)
           }
