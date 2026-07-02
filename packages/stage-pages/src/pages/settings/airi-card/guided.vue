@@ -75,6 +75,8 @@ const showDeveloperPayload = ref(false)
 const synthesisProposal = ref<any>(null)
 const refinementGuidance = ref('')
 const userDescriptionInput = ref('')
+const userImagePromptInput = ref('')
+const includeSelfConcept = ref(false)
 
 function writeBackVoiceBinding(characterId: string, voice: { baseProvider: string, baseModel: string, baseVoice: string }) {
   const char = selectedCharacters.value.find(c => c.id === characterId)
@@ -126,6 +128,7 @@ onMounted(async () => {
     storyPrompt.value.nickname = userProfileStore.name
   }
   userDescriptionInput.value = userProfileStore.description || ''
+  userImagePromptInput.value = userProfileStore.prompt || ''
 })
 
 // Reset scroll pagination when search or chips change
@@ -698,6 +701,19 @@ async function confirmCreateCard() {
       }
     })
 
+    if (includeSelfConcept.value) {
+      const userSlug = storyPrompt.value.nickname.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
+      const userConceptKey = `actor_${userSlug}`
+      visualAssets[userConceptKey] = {
+        description: `The user character, ${storyPrompt.value.nickname}`,
+        prompt: userImagePromptInput.value.trim() ? `, (${userImagePromptInput.value.trim()})` : '',
+        isBase: false,
+        manifestation: {
+          modelId: null,
+        },
+      }
+    }
+
     // Map each place asset
     Object.keys(proposal.places).forEach((placeKey) => {
       const place = proposal.places[placeKey]
@@ -717,6 +733,11 @@ async function confirmCreateCard() {
       const slug = c.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
       return `actor_${slug}`
     })
+
+    if (includeSelfConcept.value) {
+      const userSlug = storyPrompt.value.nickname.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
+      activeConcepts.push(`actor_${userSlug}`)
+    }
 
     // Build the final V3 Compliant Card Structure
     const newCard: any = {
@@ -1269,6 +1290,34 @@ async function confirmCreateCard() {
                 placeholder="Describe your appearance, attire, or gender representation."
                 class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
+            </div>
+
+            <!-- Your image prompt looks -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Your Image Prompt Looks</label>
+              <textarea
+                v-model="userImagePromptInput"
+                placeholder="Detailed stable diffusion style prompt tags for your appearance (e.g. '1guy, brown hair, henley shirt, suspenders')."
+                class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
+              />
+            </div>
+
+            <!-- Include self concept checkbox -->
+            <div class="flex items-start gap-2.5 border border-neutral-800/40 rounded-xl bg-neutral-900/40 p-3.5">
+              <input
+                id="includeSelfConcept"
+                v-model="includeSelfConcept"
+                type="checkbox"
+                class="mt-0.5 h-4 w-4 cursor-pointer accent-primary-500"
+              >
+              <div class="flex flex-col gap-0.5">
+                <label for="includeSelfConcept" class="cursor-pointer text-xs text-neutral-200 font-bold">
+                  Include Myself As Concept
+                </label>
+                <span class="text-[10px] text-neutral-500 leading-normal">
+                  Enable this if your roleplay includes your own character in scenes. This creates a dedicated background concept for you (<code class="rounded bg-neutral-800 px-1 text-[9px] font-mono">actor_[name]</code>) with your visual description, ensuring the AI Director can render you with a consistent look across generated images.
+                </span>
+              </div>
             </div>
 
             <!-- Setting / Location -->
