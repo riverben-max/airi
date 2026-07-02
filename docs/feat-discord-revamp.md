@@ -29,6 +29,8 @@ These commands are registered with Discord and processed natively.
 | `/timelines` | `[id: string]` | Lists or switches the active character's chat sessions/timelines. |
 | `/summon` | none | Joins the user's current Voice Channel. |
 | `/leave` | none | Leaves the Voice Channel. |
+| `/journalmoment` | `prompt: string` | Triggers a background text journal summary entry using the specified guidance/instructions. |
+| `/voicecall` | `mode: classic \| gemini` | Selects VC engine (Gemini Live [Active/Implemented] vs Classic TTS [Planned/Blocked]). |
 
 ### Tool Calls Support (Active)
 The Discord integration fully supports LLM-driven tool calls (e.g., creating/searching text journal entries, generating/applying images).
@@ -41,10 +43,8 @@ Advanced toggles and routing capabilities scheduled for future updates.
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
 | `/voicemode` | `mode: puppet \| voicenote \| none` | Controls TTS audio playback location (Desktop speakers, Discord voice notes, or muted). |
-| `/voicecall` | `mode: classic \| gemini` | Selects the underlying technology for real-time VC sessions (Standard TTS vs Native Gemini Live). |
-| `/vision` | `mode: on \| off` | Toggles VLM processing for image attachments. |
-| `/selfie` | `[emotion: string]` | Captures a stage screenshot as is. Optional `emotion` argument overrides expression. |
-| `/journalmoment` | `prompt: string` | Triggers a background text journal summary entry using the specified guidance/instructions (equivalent to the UI "Journal Moment" popup). |
+| `/vision` | `mode: on \| off` | Toggles VLM processing for image attachments (supported natively, needs simple toggle guard). |
+| `/selfie` | `[emotion: string]` | Captures a stage screenshot as is. Optional `emotion` argument overrides expression (needs command trigger wired up). |
 
 
 ---
@@ -79,16 +79,26 @@ The unified service layer exposes deep hooks into existing AIRI store logic:
 
 ### 🎙️ Audio Delivery & Voice Modes
 The `/voicemode` command dictates how speech is handled for standard text messages:
-- **`puppet` (Default)**: Audio is played locally on the Desktop app. Ideal for "Home Base" usage.
-- **`voicenote`**: The TTS audio chunks are collected, combined into a single `.ogg` or `.mp3` file, and uploaded to the Discord channel as a Voice Note / Attachment.
-- **`none`**: No TTS is generated. Saves significant API credits and local resources.
+- **`puppet` (Default - Desktop Speakers Only)**:
+  *   **Desktop Speaker Playback**: Active (TTS audio plays through the desktop speakers).
+  *   **Discord Attachment**: Disabled (does not upload an `.mp3` voice note to the Discord channel).
+  *   *Use Case*: Sit at your desk using Discord as a remote controller; hear voice locally without cluttering channel logs.
+- **`voicenote` (Discord Attachments Only)**:
+  *   **Desktop Speaker Playback**: Disabled (muted locally on desktop app).
+  *   **Discord Attachment**: Active (TTS audio chunks are compiled and uploaded as an `.mp3` voice note attachment).
+  *   *Use Case*: Away from your desk (e.g. mobile chatting); hear speech from your phone without playing sound at home.
+- **`none` (Muted/Text Only)**:
+  *   **Desktop Speaker Playback**: Disabled.
+  *   **Discord Attachment**: Disabled.
+  *   *Use Case*: Silent operation to conserve bandwidth, resources, or API credits.
 
 ### 📞 Voice Call Engines
 The `/voicecall` command selects the underlying technology for real-time VC sessions:
-1. **`gemini` (Modern)**:
+1. **`gemini` (Modern - Active/Implemented)**:
    - Discord raw audio -> Gemini Live WebSocket -> Discord raw audio.
-   - Low latency, "No text" involved.
-2. **`tts` (Classic)**:
+   - Low latency, "No text" involved during stream.
+   - **CRITICAL PENDING parity task (Gemini Voice Call Sync Parity)**: Read/capture the incoming WebSocket stream transcription text events (for both the user and assistant) and ingest them back into the active message logs so the text log stays perfectly in sync with the spoken conversation during the call.
+2. **`tts` (Classic - Planned/Blocked by Kyo)**:
    - Discord audio -> STT -> LLM -> TTS -> Discord audio.
    - Slower, but utilizes the high-fidelity desktop TTS providers and maintains a full text log of the VC interaction.
 
