@@ -42,7 +42,7 @@ const MAX_EVENT_LOG_ENTRIES = 200
 
 // ── Slash Command Definitions ──────────────────────────────────────────────────
 
-const COMMANDS_VERSION = 9
+const COMMANDS_VERSION = 10
 const CORE_COMMANDS: DiscordCommandDefinition[] = [
   {
     name: 'status',
@@ -198,6 +198,22 @@ const CORE_COMMANDS: DiscordCommandDefinition[] = [
     ],
   },
   {
+    name: 'vision',
+    description: 'Toggle VLM processing for image attachments (on or off)',
+    options: [
+      {
+        name: 'mode',
+        description: 'Set to on or off',
+        type: 3, // String
+        required: true,
+        choices: [
+          { name: 'on', value: 'on' },
+          { name: 'off', value: 'off' },
+        ],
+      },
+    ],
+  },
+  {
     name: 'manage',
     description: 'Open the interactive session and modality control dashboard',
   },
@@ -220,6 +236,7 @@ export const useDiscordStore = defineStore('discord', () => {
   const chatMode = useLocalStorageManualReset<'followup' | 'steer' | 'collect'>('settings/discord/chatMode', 'followup')
   const voiceMode = useLocalStorageManualReset<'puppet' | 'voicenote' | 'none'>('settings/discord/voiceMode', 'puppet')
   const voiceCall = useLocalStorageManualReset<'classic' | 'gemini' | 'off'>('settings/discord/voiceCall', 'off')
+  const visionEnabled = useLocalStorageManualReset<boolean>('settings/discord/visionEnabled', true)
 
   const pendingCollectBatch = ref<{ formattedContent: string, attachments: any[], msg: DiscordInboundMessage }[]>([])
   let collectTimer: ReturnType<typeof setTimeout> | null = null
@@ -526,17 +543,19 @@ export const useDiscordStore = defineStore('discord', () => {
 
       const formattedContent = `${msg.displayName} says:\n${msg.content}`
 
-      const attachments = (msg.attachments || []).map((att) => {
-        const match = att.match(/^data:([^;]+);base64,(.*)$/)
-        if (match) {
-          return {
-            type: 'image' as const,
-            mimeType: match[1],
-            data: match[2],
-          }
-        }
-        return null
-      }).filter(Boolean) as any[]
+      const attachments = visionEnabled.value
+        ? (msg.attachments || []).map((att) => {
+            const match = att.match(/^data:([^;]+);base64,(.*)$/)
+            if (match) {
+              return {
+                type: 'image' as const,
+                mimeType: match[1],
+                data: match[2],
+              }
+            }
+            return null
+          }).filter(Boolean) as any[]
+        : []
 
       if (chatMode.value === 'collect') {
         pendingCollectBatch.value.push({ formattedContent, attachments, msg })
@@ -1395,6 +1414,15 @@ export const useDiscordStore = defineStore('discord', () => {
           })
         }
       }
+      else if (payload.commandName === 'vision') {
+        const mode = payload.options.mode?.toString()
+        const enabled = mode === 'on'
+        visionEnabled.value = enabled
+        await invokeReplyInteraction?.({
+          interactionId: payload.interactionId,
+          content: `👁️ Discord image VLM processing has been set to **${mode?.toUpperCase()}**.`,
+        })
+      }
       else if (payload.commandName === 'voicecall') {
         const mode = payload.options.mode?.toString() as 'gemini' | 'classic' | 'off'
         if (mode && ['gemini', 'classic', 'off'].includes(mode)) {
@@ -1442,7 +1470,8 @@ export const useDiscordStore = defineStore('discord', () => {
           const vlmProvider = visionStore.activeProvider || 'None'
           const vlmModel = visionStore.activeModel || 'None'
 
-          const visionEnabled = visionStore.isWitnessEnabled
+          const visionEnabledDiscord = visionEnabled.value
+          const visionEnabledWitness = visionStore.isWitnessEnabled
           const directorEnabled = artistryExt?.autonomousEnabled || false
           const liveActive = liveSessionStore.isActive
 
@@ -1455,12 +1484,13 @@ export const useDiscordStore = defineStore('discord', () => {
 **Discord Voice Call:** ${voiceCall.value}
 
 **🧠 Brains (LLM):** ${llmProvider} / ${llmModel}
-**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel}
+**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel} (Discord intake: ${visionEnabledDiscord ? 'ON' : 'OFF'})
 **🗣️ Voice (TTS):** ${ttsProvider} / ${ttsVoice}
 **🎨 Artistry:** ${artProvider} / ${artProvider === 'comfyui' ? 'Workflow' : 'Model'}: \`${artModelName}\`
 
 **Active Modules:**
-- [${visionEnabled ? 'ON' : 'OFF'}] 👁️ **Vision:** Witness Mode ${visionEnabled ? 'active' : 'disabled'}
+- [${visionEnabledDiscord ? 'ON' : 'OFF'}] 👁️ **Vision Intake:** Discord VLM processing
+- [${visionEnabledWitness ? 'ON' : 'OFF'}] 📸 **Witness Mode:** Desktop Witness active
 - [${directorEnabled ? 'ON' : 'OFF'}] 🎬 **Director:** Autonomous Artistry ${directorEnabled ? 'active' : 'disabled'}
 - [${liveActive ? 'ON' : 'OFF'}] 🧠 **Live API:** ${liveActive ? 'Active' : 'Offline'}`
         }
@@ -1554,7 +1584,7 @@ export const useDiscordStore = defineStore('discord', () => {
                 },
                 {
                   type: 2,
-                  style: visionStore.isWitnessEnabled ? 3 : 2,
+                  style: visionEnabled.value ? 3 : 2,
                   label: '👁️ Vision',
                   customId: 'manage:module:vision',
                 },
@@ -1628,7 +1658,8 @@ export const useDiscordStore = defineStore('discord', () => {
           const vlmProvider = visionStore.activeProvider || 'None'
           const vlmModel = visionStore.activeModel || 'None'
 
-          const visionEnabled = visionStore.isWitnessEnabled
+          const visionEnabledDiscord = visionEnabled.value
+          const visionEnabledWitness = visionStore.isWitnessEnabled
           const directorEnabled = artistryExt?.autonomousEnabled || false
           const liveActive = liveSessionStore.isActive
 
@@ -1641,12 +1672,13 @@ export const useDiscordStore = defineStore('discord', () => {
 **Discord Voice Call:** ${voiceCall.value}
 
 **🧠 Brains (LLM):** ${llmProvider} / ${llmModel}
-**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel}
+**👁️ Vision (VLM):** ${vlmProvider} / ${vlmModel} (Discord intake: ${visionEnabledDiscord ? 'ON' : 'OFF'})
 **🗣️ Voice (TTS):** ${ttsProvider} / ${ttsVoice}
 **🎨 Artistry:** ${artProvider} / ${artProvider === 'comfyui' ? 'Workflow' : 'Model'}: \`${artModelName}\`
 
 **Active Modules:**
-- [${visionEnabled ? 'ON' : 'OFF'}] 👁️ **Vision:** Witness Mode ${visionEnabled ? 'active' : 'disabled'}
+- [${visionEnabledDiscord ? 'ON' : 'OFF'}] 👁️ **Vision Intake:** Discord VLM processing
+- [${visionEnabledWitness ? 'ON' : 'OFF'}] 📸 **Witness Mode:** Desktop Witness active
 - [${directorEnabled ? 'ON' : 'OFF'}] 🎬 **Director:** Autonomous Artistry ${directorEnabled ? 'active' : 'disabled'}
 - [${liveActive ? 'ON' : 'OFF'}] 🧠 **Live API:** ${liveActive ? 'Active' : 'Offline'}`
         }
@@ -1740,7 +1772,7 @@ export const useDiscordStore = defineStore('discord', () => {
                 },
                 {
                   type: 2,
-                  style: visionStore.isWitnessEnabled ? 3 : 2,
+                  style: visionEnabled.value ? 3 : 2,
                   label: '👁️ Vision',
                   customId: 'manage:module:vision',
                 },
@@ -1800,7 +1832,7 @@ export const useDiscordStore = defineStore('discord', () => {
             airiCard.setAutonomousArtistry(airiCard.activeCardId, !current)
           }
           else if (targetId === 'vision') {
-            visionStore.toggleWitness()
+            visionEnabled.value = !visionEnabled.value
           }
         }
         else if (action === 'util' && targetId) {
@@ -2115,6 +2147,7 @@ export const useDiscordStore = defineStore('discord', () => {
     chatMode,
     voiceMode,
     voiceCall,
+    visionEnabled,
 
     // Live State
     serviceStatus,
