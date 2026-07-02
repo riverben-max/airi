@@ -1050,7 +1050,7 @@ async function confirmCreateCard() {
               @click="autoVoiceModalOpen = true"
             >
               <div i-solar:magic-stick-3-bold-duotone class="text-sm" />
-              Auto-Assign Voices
+              Auto-Assign Voices & Motions
             </Button>
           </div>
 

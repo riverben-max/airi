@@ -394,7 +394,7 @@ function handleApply() {
               <div class="i-solar:magic-stick-3-bold-duotone animate-pulse text-xl" />
             </div>
             <DialogTitle class="text-base text-neutral-100 font-bold">
-              Magic Voice Configurator
+              Magic Character Configurator
             </DialogTitle>
           </div>
         </div>
@@ -411,7 +411,7 @@ function handleApply() {
                 Analyzing Cast Profiles
               </h4>
               <p class="mt-1 text-xs text-neutral-400">
-                matching characters with the best Kokoro voice presets...
+                matching characters with the best Kokoro voice presets and idle loop animations...
               </p>
             </div>
           </div>
@@ -437,7 +437,7 @@ function handleApply() {
           <!-- Results Review State -->
           <div v-else-if="state === 'results'" class="flex flex-col gap-4">
             <p class="text-xs text-neutral-400 leading-normal">
-              Review and adjust the recommended voice presets and parameters for each character. Click Apply to save voice profiles for all characters at once.
+              Review and adjust the recommended voice presets, speed/pitch modifiers, and idle animation overrides for each character. Click Apply to save assignments for all characters at once.
             </p>
 
             <div class="flex flex-col gap-3">
