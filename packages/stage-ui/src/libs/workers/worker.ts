@@ -291,12 +291,20 @@ defineStreamInvokeHandler(context, whisperTranscribeEvent, toStreamHandler<Whisp
 
     const inputs = await processor(audioData)
 
-    const outputs = await model.generate({
+    const modelId = AutomaticSpeechRecognitionPipeline.model_id
+    const isEnglishOnly = modelId ? modelId.endsWith('.en') : false
+
+    const generateOptions: any = {
       ...inputs,
       max_new_tokens: MAX_NEW_TOKENS,
-      language: payload.language,
       streamer,
-    })
+    }
+
+    if (!isEnglishOnly && payload.language) {
+      generateOptions.language = payload.language
+    }
+
+    const outputs = await model.generate(generateOptions)
 
     const outputText = tokenizer.batch_decode(outputs as Tensor, { skip_special_tokens: true })
 
