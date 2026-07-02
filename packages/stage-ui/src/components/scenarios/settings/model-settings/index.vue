@@ -17,6 +17,7 @@ import Spine from './spine.vue'
 import HackerPanel from './vrm-vhack/HackerPanel.vue'
 import VRM from './vrm.vue'
 
+import { useIdleAnimations } from '../../../../composables'
 import { useAiriCardStore } from '../../../../stores/modules'
 import { useSettings } from '../../../../stores/settings'
 import { usePositioningStore } from '../../../../stores/settings/positioning'
@@ -81,22 +82,10 @@ const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 const { updateCard } = airiCardStore
 
+const { resolveActiveIdleAnimations } = useIdleAnimations()
+
 const resolvedIdleAnimations = computed(() => {
-  const card = activeCard.value
-  if (!card)
-    return []
-
-  const modelId = stageModelSelected.value
-  if (modelId && card.extensions?.airi?.visual_assets) {
-    const matchedAsset = Object.values(card.extensions.airi.visual_assets).find(
-      (asset: any) => asset?.manifestation?.modelId === modelId,
-    )
-    if (matchedAsset && (matchedAsset as any).idleAnimations) {
-      return (matchedAsset as any).idleAnimations
-    }
-  }
-
-  return card.extensions?.airi?.acting?.idleAnimations || []
+  return resolveActiveIdleAnimations(activeCard.value, stageModelSelected.value)
 })
 
 const activeCardName = computed(() => activeCard.value?.name || 'Active Character')

@@ -9,6 +9,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, toRaw, watch } from 'v
 
 import DatingSimOverlay from './DatingSimOverlay.vue'
 
+import { useIdleAnimations } from '../../composables'
 import { useBackgroundStore } from '../../stores/background'
 import { useDatingSimStore } from '../../stores/dating-sim'
 import { useAiriCardStore } from '../../stores/modules'
@@ -81,6 +82,8 @@ const vrmStore = useModelStore()
 const mmdStore = useMmd()
 const { previewExpression } = storeToRefs(mmdStore)
 
+const { resolveActiveIdleAnimations } = useIdleAnimations()
+
 const { post: postStageModelReady } = useBroadcastChannel<string, string>({ name: 'airi-stage-model-ready' })
 watch(componentState, (state) => {
   console.info('[RendererStage] componentState changed:', state)
@@ -100,21 +103,7 @@ watch(() => activeCard.value?.extensions?.airi?.active_concepts, async (newConce
 }, { deep: true })
 
 const resolvedIdleAnimations = computed(() => {
-  const card = activeCard.value
-  if (!card)
-    return []
-
-  const modelId = stageModelSelected.value
-  if (modelId && card.extensions?.airi?.visual_assets) {
-    const matchedAsset = Object.values(card.extensions.airi.visual_assets).find(
-      (asset: any) => asset?.manifestation?.modelId === modelId,
-    )
-    if (matchedAsset && (matchedAsset as any).idleAnimations) {
-      return (matchedAsset as any).idleAnimations
-    }
-  }
-
-  return card.extensions?.airi?.acting?.idleAnimations || []
+  return resolveActiveIdleAnimations(activeCard.value, stageModelSelected.value)
 })
 
 const reducedRenderScale = computed(() => {

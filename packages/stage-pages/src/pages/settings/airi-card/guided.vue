@@ -53,6 +53,7 @@ const activeBindingCharacterId = ref<string | null>(null)
 const modelSelectorOpen = ref(false)
 const voiceCreatorOpen = ref(false)
 const voiceTargetCharacterId = ref<string | null>(null)
+const characterIdleAnimations = ref<Record<string, string[]>>({})
 const autoVoiceModalOpen = ref(false)
 
 // AI Story Idea Suggester state
@@ -100,10 +101,13 @@ function writeBackVoiceBinding(characterId: string, voice: { baseProvider: strin
   }
 }
 
-function handleApplyAutoVoices(payload: Record<string, { baseProvider: string, baseModel: string, baseVoice: string }>) {
+function handleApplyAutoVoices(payload: Record<string, { baseProvider: string, baseModel: string, baseVoice: string, idleAnimations?: string[] }>) {
   for (const [charId, voice] of Object.entries(payload)) {
     wizardStore.bindVoiceToCharacter(charId, voice)
     writeBackVoiceBinding(charId, voice)
+    if (voice.idleAnimations) {
+      characterIdleAnimations.value[charId] = [...voice.idleAnimations]
+    }
   }
 }
 
@@ -687,6 +691,7 @@ async function confirmCreateCard() {
         description: proposalActor.short_description || `${c.name}'s default appearance`,
         prompt: cleanPrompt,
         isBase: false,
+        idleAnimations: characterIdleAnimations.value[c.id] || [],
         manifestation: {
           modelId: boundModel?.id || null,
         },
@@ -1512,6 +1517,7 @@ async function confirmCreateCard() {
         :selected-characters="selectedCharacters"
         :copyrights="wizardStore.copyrights"
         :genders="wizardStore.facets.gender"
+        :bound-models="boundModels"
         @apply="handleApplyAutoVoices"
       />
     </main>

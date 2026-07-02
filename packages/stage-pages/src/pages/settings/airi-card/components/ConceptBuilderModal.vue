@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useMmd } from '@proj-airi/stage-ui-mmd'
-import { useSpine } from '@proj-airi/stage-ui-spine'
-import { useCustomVrmAnimationsStore } from '@proj-airi/stage-ui-three'
+import { useIdleAnimations } from '@proj-airi/stage-ui/composables'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
@@ -228,37 +226,10 @@ const newIdleAnimInput = ref('')
 const isAnimDropdownOpen = ref(false)
 const highlightedIndex = ref(0)
 
-const customVrmAnimationsStore = useCustomVrmAnimationsStore()
-const spineStore = useSpine()
-const mmdStore = useMmd()
+const { getAvailableModelMotions } = useIdleAnimations()
 
 const availableMotionsForSelectedModel = computed(() => {
-  const modelId = selectedModelId.value
-  if (!modelId || modelId === 'inherit')
-    return []
-  const model = displayModelsStore.displayModels.find(m => m.id === modelId)
-  if (!model)
-    return []
-
-  const format = model.format.toLowerCase()
-
-  if (format.includes('live2d') || format.includes('spine')) {
-    const motions = model.motions || []
-    return motions.map(m => m.split('/').pop() || m).sort((a, b) => a.localeCompare(b))
-  }
-
-  if (format.includes('vrm')) {
-    const options = customVrmAnimationsStore.animationOptions || []
-    return options.map(opt => opt.value).sort((a, b) => a.localeCompare(b))
-  }
-
-  if (format.includes('pmx') || format.includes('pmd') || format.includes('mmd')) {
-    const builtIn = mmdStore.availableMotions || []
-    const custom = (mmdStore.customMotions || []).map((m: any) => m.name)
-    return [...builtIn, ...custom].sort((a, b) => a.localeCompare(b))
-  }
-
-  return model.motions || []
+  return getAvailableModelMotions(selectedModelId.value)
 })
 
 const filteredDropdownOptions = computed(() => {

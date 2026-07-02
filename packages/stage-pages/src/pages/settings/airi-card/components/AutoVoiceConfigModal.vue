@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIdleAnimations } from '@proj-airi/stage-ui/composables'
 import { voicePresets } from '@proj-airi/stage-ui/constants/voices'
 import { useLLM } from '@proj-airi/stage-ui/stores/llm'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
@@ -29,12 +30,13 @@ interface Props {
   selectedCharacters: Character[]
   copyrights: string[]
   genders: string[]
+  boundModels: Record<string, string>
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'apply', payload: Record<string, { baseProvider: string, baseModel: string, baseVoice: string }>): void
+  (e: 'apply', payload: Record<string, { baseProvider: string, baseModel: string, baseVoice: string, idleAnimations?: string[] }>): void
 }>()
 
 const llmStore = useLLM()
@@ -51,11 +53,88 @@ interface Recommendation {
   voiceId: string
   rate: number
   pitch: number
+  idleAnimations: string[]
   reasoning: string
 }
 
 const recommendations = ref<Recommendation[]>([])
 const activePlayingId = ref<string | null>(null)
+
+// Autocomplete and selection states
+const { getAvailableModelMotions } = useIdleAnimations()
+const dropdownOpenMap = ref<Record<string, boolean>>({})
+const searchInputMap = ref<Record<string, string>>({})
+const dropdownHighlightMap = ref<Record<string, number>>({})
+
+function getFilteredDropdownOptions(rec: Recommendation) {
+  const modelId = props.boundModels[rec.characterId]
+  const motions = getAvailableModelMotions(modelId)
+  const query = (searchInputMap.value[rec.characterId] || '').trim().toLowerCase()
+
+  if (!query) {
+    return motions.filter(m => !rec.idleAnimations.includes(m)).slice(0, 50)
+  }
+
+  return motions.filter(
+    m => m.toLowerCase().includes(query) && !rec.idleAnimations.includes(m),
+  )
+}
+
+function handleAddIdleAnimation(rec: Recommendation, val: string) {
+  const cleanVal = val.trim()
+  if (cleanVal && !rec.idleAnimations.includes(cleanVal)) {
+    rec.idleAnimations.push(cleanVal)
+  }
+  searchInputMap.value[rec.characterId] = ''
+  dropdownHighlightMap.value[rec.characterId] = 0
+}
+
+function handleRemoveIdleAnimation(rec: Recommendation, anim: string) {
+  rec.idleAnimations = rec.idleAnimations.filter(a => a !== anim)
+}
+
+function handleToggleIdleAnimation(rec: Recommendation, anim: string) {
+  if (rec.idleAnimations.includes(anim)) {
+    handleRemoveIdleAnimation(rec, anim)
+  }
+  else {
+    handleAddIdleAnimation(rec, anim)
+  }
+}
+
+function selectHighlightedAnim(rec: Recommendation) {
+  const opts = getFilteredDropdownOptions(rec)
+  const idx = dropdownHighlightMap.value[rec.characterId] || 0
+  if (opts.length > 0 && idx < opts.length) {
+    handleAddIdleAnimation(rec, opts[idx])
+  }
+  else {
+    const val = searchInputMap.value[rec.characterId] || ''
+    handleAddIdleAnimation(rec, val)
+  }
+}
+
+function highlightNext(rec: Recommendation) {
+  const opts = getFilteredDropdownOptions(rec)
+  if (opts.length > 0) {
+    const current = dropdownHighlightMap.value[rec.characterId] || 0
+    dropdownHighlightMap.value[rec.characterId] = (current + 1) % opts.length
+  }
+}
+
+function highlightPrev(rec: Recommendation) {
+  const opts = getFilteredDropdownOptions(rec)
+  if (opts.length > 0) {
+    const current = dropdownHighlightMap.value[rec.characterId] || 0
+    dropdownHighlightMap.value[rec.characterId] = (current - 1 + opts.length) % opts.length
+  }
+}
+
+function onAnimInputBlur(rec: Recommendation) {
+  setTimeout(() => {
+    dropdownOpenMap.value[rec.characterId] = false
+  }, 150)
+}
 let activeAudio: HTMLAudioElement | null = null
 
 watch(() => props.modelValue, (isOpen) => {
@@ -103,12 +182,18 @@ async function runAutoConfiguration() {
       return `- ID: "${v.id}", Name: "${v.name}", Gender: "${v.gender}", Description: ${v.description}`
     }).join('\n')
 
-    const systemMsg = `You are a professional voice casting director. 
-Match each of the provided characters with the single best-fitting voice from the available Kokoro voice list.
+    // Format motions list for LLM matching
+    const characterMotionsText = props.selectedCharacters.map((c) => {
+      const modelId = props.boundModels[c.id]
+      const motions = getAvailableModelMotions(modelId)
+      return `Character: "${c.name}" (ID: "${c.id}") - Available Idle Motions: [${motions.join(', ')}]`
+    }).join('\n')
 
-For each character, suggest optimal "rate" (speech speed, normally 1.0, range 0.7 to 1.4) and "pitch" (speech pitch, normally 1.0, range 0.7 to 1.4) to match their canon character description. For example:
-- High energy, hyperactive, young girls: slightly higher rate (e.g. 1.05 - 1.15) and higher pitch (e.g. 1.05 - 1.15)
-- Deep, calm, older characters: lower pitch (e.g. 0.85 - 0.95)
+    const systemMsg = `You are a professional character setup director. 
+For each of the provided characters:
+1. Match them with the single best-fitting voice from the available Kokoro voice list.
+2. Suggest optimal speech "rate" (speech speed, normally 1.0, range 0.7 to 1.4) and "pitch" (speech pitch, normally 1.0, range 0.7 to 1.4) matching their canon description.
+3. Suggest 1 to 3 best-fitting "idleAnimations" selected ONLY from their specific "Available Idle Motions" list. Do not invent any animation names that are not in their list.
 
 Return ONLY a raw JSON array matching this schema (no markdown formatting, no wrapping text):
 [
@@ -117,11 +202,12 @@ Return ONLY a raw JSON array matching this schema (no markdown formatting, no wr
     "voiceId": "the selected Kokoro voice ID",
     "rate": 1.0,
     "pitch": 1.0,
-    "reasoning": "A 1-sentence explanation of why this voice fits the character."
+    "idleAnimations": ["motion1", "motion2"],
+    "reasoning": "A 1-sentence explanation of why this configuration fits the character."
   }
 ]`
 
-    const userMsg = `AVAILABLE VOICES:\n${voicesList}\n\nCHARACTERS TO CONFIGURE:\n${castList}`
+    const userMsg = `AVAILABLE VOICES:\n${voicesList}\n\nCHARACTERS & AVAILABLE IDLE MOTIONS:\n${characterMotionsText}\n\nCHARACTERS PROFILE INFO:\n${castList}`
 
     const response = await llmStore.generate(activeModel, providerInstance as any, [
       { role: 'system', content: systemMsg },
@@ -151,6 +237,7 @@ Return ONLY a raw JSON array matching this schema (no markdown formatting, no wr
         voiceId: item.voiceId || 'af_heart',
         rate: typeof item.rate === 'number' ? item.rate : 1.0,
         pitch: typeof item.pitch === 'number' ? item.pitch : 1.0,
+        idleAnimations: Array.isArray(item.idleAnimations) ? item.idleAnimations : [],
         reasoning: item.reasoning || 'Automatically matched.',
       }
     })
@@ -283,6 +370,7 @@ function handleApply() {
       baseProvider: 'virtual-audio-studio',
       baseModel: 'virtual',
       baseVoice: profileId,
+      idleAnimations: [...rec.idleAnimations],
     }
   })
 
@@ -424,6 +512,74 @@ function handleApply() {
                       step="0.05"
                       class="h-1 cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary-500"
                     >
+                  </div>
+                </div>
+
+                <!-- Idle Loop / Cycle Animations Override -->
+                <div class="mt-3.5 flex flex-col gap-2 border-t border-neutral-800/40 pt-3">
+                  <label class="text-[10px] text-neutral-400 font-bold">
+                    Idle Loop Override
+                  </label>
+
+                  <!-- Autocomplete Input -->
+                  <div class="relative w-full">
+                    <input
+                      v-model="searchInputMap[rec.characterId]"
+                      type="text"
+                      placeholder="Search and add animation name..."
+                      class="w-full border border-neutral-800 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs text-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
+                      @focus="dropdownOpenMap[rec.characterId] = true"
+                      @blur="onAnimInputBlur(rec)"
+                      @keydown.enter.prevent="selectHighlightedAnim(rec)"
+                      @keydown.down.prevent="highlightNext(rec)"
+                      @keydown.up.prevent="highlightPrev(rec)"
+                    >
+
+                    <!-- Dropdown Options -->
+                    <div
+                      v-if="dropdownOpenMap[rec.characterId] && getFilteredDropdownOptions(rec).length > 0"
+                      class="absolute left-0 right-0 z-50 mt-1 max-h-32 overflow-y-auto border border-neutral-800 rounded-lg bg-neutral-900 shadow-xl"
+                    >
+                      <div
+                        v-for="(opt, idx) in getFilteredDropdownOptions(rec)"
+                        :key="opt"
+                        :class="[
+                          'cursor-pointer px-3 py-1 text-[11px] text-neutral-300 transition-colors hover:bg-primary-500/10 hover:text-primary-500',
+                          (dropdownHighlightMap[rec.characterId] || 0) === idx ? 'bg-primary-500/15 text-primary-500' : '',
+                        ]"
+                        @mousedown="addSelectedAnim(rec, opt)"
+                      >
+                        {{ opt }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Accumulated Tags List -->
+                  <div v-if="rec.idleAnimations.length > 0" class="flex flex-wrap gap-1.5 pt-0.5">
+                    <span
+                      v-for="anim in rec.idleAnimations"
+                      :key="anim"
+                      class="flex items-center gap-1 rounded bg-primary-500/10 px-2.5 py-0.5 text-[9px] text-primary-400 font-medium"
+                    >
+                      {{ anim }}
+                      <button type="button" class="ml-1 text-[10px] text-neutral-400 font-bold hover:text-red-400 focus:outline-none" @click="handleRemoveIdleAnimation(rec, anim)">
+                        &times;
+                      </button>
+                    </span>
+                  </div>
+
+                  <!-- Dynamic Quick Add Presets -->
+                  <div v-if="getAvailableModelMotions(props.boundModels[rec.characterId]).length > 0" class="flex flex-wrap items-center gap-1">
+                    <span class="mr-1 text-[9px] text-neutral-500">Quick Add:</span>
+                    <button
+                      v-for="preset in getAvailableModelMotions(props.boundModels[rec.characterId]).slice(0, 6)"
+                      :key="preset"
+                      type="button"
+                      class="rounded bg-neutral-800 px-1.5 py-0.5 text-[9px] text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                      @click="handleToggleIdleAnimation(rec, preset)"
+                    >
+                      + {{ preset }}
+                    </button>
                   </div>
                 </div>
 
