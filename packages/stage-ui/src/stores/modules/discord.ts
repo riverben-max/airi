@@ -802,13 +802,17 @@ export const useDiscordStore = defineStore('discord', () => {
         try {
           const res = await invokeSummon?.({ userId: payload.userId })
           if (res?.success) {
-            let warning = ''
-            if (voiceCall.value === 'off') {
-              warning = '\n\n⚠️ *Note: Voice call mode is currently **off**. To enable voice chat, run `/voicecall mode: gemini` or `/voicecall mode: classic`!*'
-            }
+            const modeLabel = voiceCall.value === 'off'
+              ? 'off'
+              : voiceCall.value === 'gemini'
+                ? '🤖 Gemini Live'
+                : '🎙️ Classic TTS'
+            const warning = voiceCall.value === 'off'
+              ? '\n\n⚠️ *Voice call mode is currently **off**. Run `/voicecall mode: gemini` or `/voicecall mode: classic` to enable it!*'
+              : ''
             await invokeReplyInteraction?.({
               interactionId: payload.interactionId,
-              content: `🟢 Joined voice channel **${res.channelName}**!${warning}`,
+              content: `🟢 Joined voice channel **${res.channelName}** in **${modeLabel}** mode!${warning}`,
             })
           }
           else {
