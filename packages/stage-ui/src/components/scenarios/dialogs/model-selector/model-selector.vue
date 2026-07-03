@@ -232,6 +232,17 @@ const isTagsInitialized = computed(() => {
   return displayModels.value.some(m => m.tags && m.tags.length > 0)
 })
 
+const formatCounts = computed(() => {
+  const models = displayModels.value
+  return {
+    all: models.length,
+    live2d: models.filter(m => m.format === DisplayModelFormat.Live2dZip || m.format === DisplayModelFormat.Live2dDirectory).length,
+    vrm: models.filter(m => m.format === DisplayModelFormat.VRM).length,
+    spine: models.filter(m => m.format === DisplayModelFormat.SpineZip).length,
+    mmd: models.filter(m => m.format === DisplayModelFormat.PMXZip || m.format === DisplayModelFormat.PMXDirectory || m.format === DisplayModelFormat.PMD).length,
+  }
+})
+
 function openGroupsDialog(model: DisplayModel) {
   modelToGroup.value = model
   tempGroupsValue.value = model.groups ? [...model.groups] : []
@@ -743,7 +754,7 @@ async function runAutoLinkCatalog() {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-4">
         <div class="text-xl font-bold">
-          Model Selector
+          Models
         </div>
         <!-- Tab Navigation -->
         <div class="flex rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
@@ -755,7 +766,7 @@ async function runAutoLinkCatalog() {
             @click="currentTab = 'library'"
           >
             <div class="i-solar:library-bold-duotone" />
-            Library
+            Library ({{ formatCounts.all }})
           </button>
           <button
             :class="[
@@ -933,16 +944,16 @@ async function runAutoLinkCatalog() {
             All Formats
           </option>
           <option value="live2d">
-            Live2D
+            Live2D ({{ formatCounts.live2d }})
           </option>
           <option value="vrm">
-            VRM
+            VRM ({{ formatCounts.vrm }})
           </option>
           <option value="spine">
-            Spine
+            Spine ({{ formatCounts.spine }})
           </option>
           <option value="mmd">
-            MMD
+            MMD ({{ formatCounts.mmd }})
           </option>
         </select>
 

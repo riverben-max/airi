@@ -2059,6 +2059,20 @@ export const useDiscordStore = defineStore('discord', () => {
         if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
           (window as any).electron.ipcRenderer.send('logger:write', 'info', resultLog)
         }
+
+        // Phase 2: Ingest the transcription into the active chat session,
+        // triggering the LLM response exactly as a typed Discord message would.
+        if (text && text.trim()) {
+          void chatOrchestrator.ingest(text.trim(), {
+            metadata: {
+              _discordVoiceSource: {
+                userId: payload.userId,
+                username: payload.username,
+                mode: 'classic',
+              },
+            },
+          })
+        }
       }
       catch (err: any) {
         const errLog = `[DiscordStore/Classic] Failed to transcribe classic speech: ${err.message}`
