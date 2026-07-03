@@ -73,6 +73,7 @@ const {
 const { mouthOpenSize } = storeToRefs(useSpeakingStore())
 const { audioContext } = useAudioContext()
 const currentAudioSource = ref<AudioBufferSourceNode>()
+const isPlaybackSuppressed = ref(false)
 
 const { onBeforeMessageComposed, onBeforeSend, onTokenLiteral, onTokenSpecial, onStreamEnd, onAssistantResponseEnd } = useChatOrchestratorStore()
 const chatHookCleanups: Array<() => void> = []
@@ -601,7 +602,12 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
   }
 
   // Ensure final audio is connected to output destination and analyser
-  lastNode.connect(audioContext.destination)
+  if (isPlaybackSuppressed.value) {
+    console.info('[Stage:Playback] Local speaker playback is suppressed (active Discord voice call).')
+  }
+  else {
+    lastNode.connect(audioContext.destination)
+  }
   if (audioAnalyser.value)
     lastNode.connect(audioAnalyser.value)
 
@@ -1029,8 +1035,13 @@ chatHookCleanups.push(watch(sessionUpdate, (event) => {
   }
 }))
 
-chatHookCleanups.push(onBeforeMessageComposed(async () => {
+chatHookCleanups.push(onBeforeMessageComposed(async (_message, context) => {
   cardStore.isModelSyncPrevented = true
+  const isDiscordVoice = !!(context as any)?.message?.metadata?._discordVoiceSource
+  isPlaybackSuppressed.value = isDiscordVoice
+  if (isDiscordVoice) {
+    console.info('[Stage] Ingesting message from Discord voice source, suppressing local speaker playback.')
+  }
   // NOTICE: chat and proactivity share the same speech lane. Stopping playback alone is not
   // enough if a previous turn left an active or queued intent inside the speech pipeline.
   // Reset the entire host pipeline on each new assistant turn so later chat TTS cannot inherit
