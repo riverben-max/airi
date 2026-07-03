@@ -43,6 +43,7 @@ import {
   //  electronStageSetAlwaysOnTop,
   electronStageToggleVisibility,
   electronStartDraggingWindow,
+  noticeWindowEventa,
 } from '../../shared/eventa'
 import { builtinTools } from '../stores/tools/builtin'
 import { useWindowStore } from '../stores/window'
@@ -66,6 +67,7 @@ const syncControlStripState = useElectronEventaInvoke(electronControlStripSyncSt
 const applySizePreset = useElectronEventaInvoke(electronApplySizePreset)
 const getMainWindowConfig = useElectronEventaInvoke(electronGetMainWindowConfig)
 const setIgnoreMouseEvents = useElectronEventaInvoke(electron.window.setIgnoreMouseEvents)
+const requestNotice = useElectronEventaInvoke(noticeWindowEventa.openWindow)
 
 const colorMode = useColorMode()
 const modelStore = useModelStore()
@@ -650,6 +652,15 @@ function handleControlStripAction(e: Event) {
     controlStripStore.stageEnabled = !controlStripStore.stageEnabled
   }
   else if (action === 'gemini-session') {
+    if (!liveSessionStore.isActive) {
+      void requestNotice({
+        id: 'gemini-onboarding',
+        route: '/notice/gemini',
+        type: 'gemini-onboarding',
+      }).catch((err) => {
+        console.error('Failed to open Gemini onboarding notice:', err)
+      })
+    }
     liveSessionStore.toggle()
   }
   else if (action === 'always-on-top') {
