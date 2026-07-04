@@ -372,7 +372,9 @@ export const useProactivityStore = defineStore('proactivity', () => {
   }
 
   async function evaluateDreamState(options?: { force?: boolean }) {
+    console.warn('[Dream State] Starting evaluation. Options:', options)
     if (isDreamStateEvaluating.value && !options?.force) {
+      console.warn('[Dream State] Skipped: already evaluating')
       return
     }
 
@@ -381,12 +383,14 @@ export const useProactivityStore = defineStore('proactivity', () => {
     const config = card?.extensions?.airi?.dreamState
 
     if (!card || !characterId || !config?.enabled) {
+      console.warn('[Dream State] Skipped: dreamState is disabled on the card')
       return
     }
 
     const conversationalMessages = await collectCharacterConversationMessages(characterId)
 
     if (conversationalMessages.length < (config.minConversationTurns || 4)) {
+      console.warn(`[Dream State] Skipped: total turns (${conversationalMessages.length}) < min turns required (${config.minConversationTurns || 4})`)
       return
     }
 
@@ -395,6 +399,7 @@ export const useProactivityStore = defineStore('proactivity', () => {
     const effectiveFromTimestamp = config.lastProcessedAt ?? Math.max(0, now - firstDreamFallbackMs)
     const unprocessedMessages = conversationalMessages.filter(msg => (msg.createdAt || 0) > effectiveFromTimestamp)
     if (unprocessedMessages.length < (config.minConversationTurns || 4)) {
+      console.warn(`[Dream State] Skipped: unprocessed turns since last dream (${unprocessedMessages.length}) < min turns required (${config.minConversationTurns || 4})`)
       return
     }
 
@@ -403,6 +408,7 @@ export const useProactivityStore = defineStore('proactivity', () => {
     const quietWindowMs = quietWindowMinutes * 60 * 1000
 
     if (!options?.force && now - lastTurnAt < quietWindowMs) {
+      console.warn(`[Dream State] Skipped: idle timeout hasn't elapsed (${Math.round((now - lastTurnAt) / 1000)}s elapsed, quiet window is ${quietWindowMinutes}m)`)
       return
     }
 
@@ -414,6 +420,7 @@ export const useProactivityStore = defineStore('proactivity', () => {
 
       const afkThresholdSec = (config.afkThresholdMinutes || 5) * 60
       if (!options?.force && (idleTimeSec.value ?? 0) < afkThresholdSec) {
+        console.warn(`[Dream State] Skipped: user not AFK long enough (${idleTimeSec.value}s idle, AFK threshold is ${afkThresholdSec}s)`)
         return
       }
     }
@@ -422,9 +429,11 @@ export const useProactivityStore = defineStore('proactivity', () => {
     const dailyRunCount = config.dailyRunDate === todayKey ? (config.dailyRunCount ?? 0) : 0
     const maxSessionsPerDay = config.maxSessionsPerDay || 4
     if (!options?.force && dailyRunCount >= maxSessionsPerDay) {
+      console.warn(`[Dream State] Skipped: daily cap reached (${dailyRunCount}/${maxSessionsPerDay})`)
       return
     }
 
+    console.warn('[Dream State] Proceeding to synthesis...')
     isDreamStateEvaluating.value = true
     try {
       const activeSessionId = chatSession.activeSessionId
@@ -432,13 +441,16 @@ export const useProactivityStore = defineStore('proactivity', () => {
       const currentUniverseId = activeSessionMeta?.universeId || 'global'
 
       await echoesStore.load()
-      await echoesStore.synthesizeForCharacter(characterId, {
+      const newChips = await echoesStore.synthesizeForCharacter(characterId, {
         fromTimestamp: config.lastProcessedAt ?? null,
         toTimestamp: lastTurnAt,
         force: options?.force,
         universeId: currentUniverseId,
         sessionId: activeSessionId,
       })
+
+      const pendingDreamChips = (newChips || []).map(chip => chip.content)
+      const hasDreamChips = pendingDreamChips.length > 0
 
       airiCardStore.updateCard(characterId, {
         extensions: {
@@ -450,6 +462,8 @@ export const useProactivityStore = defineStore('proactivity', () => {
               lastProcessedAt: lastTurnAt,
               dailyRunDate: todayKey,
               dailyRunCount: dailyRunCount + 1,
+              pendingDreamChips: config.injectDreamContext && hasDreamChips ? pendingDreamChips : undefined,
+              pendingDreamTimestamp: config.injectDreamContext && hasDreamChips ? Date.now() : undefined,
             },
           },
         },

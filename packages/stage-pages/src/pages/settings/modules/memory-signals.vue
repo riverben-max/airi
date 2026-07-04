@@ -47,6 +47,11 @@ const timeoutThreshold = computed({
   set: value => updateDreamState({ sessionTimeoutMinutes: Number(value) || 60 }),
 })
 
+const minTurns = computed({
+  get: () => activeCard.value?.extensions?.airi?.dreamState?.minConversationTurns ?? 4,
+  set: value => updateDreamState({ minConversationTurns: Number(value) || 4 }),
+})
+
 const afkGating = computed({
   get: () => activeCard.value?.extensions?.airi?.dreamState?.strictAfkGating ?? true,
   set: value => updateDreamState({ strictAfkGating: value }),
@@ -215,9 +220,10 @@ const statusChips = computed(() => [
 
         <!-- Metric Controls -->
         <div class="flex flex-col gap-8">
-          <div class="grid gap-6 sm:grid-cols-2">
-            <FieldInput v-model="maxSessions" label="Max Sessions / Day" type="number" description="Daily consolidation cap." />
+          <div class="grid gap-6 sm:grid-cols-3">
+            <FieldInput v-model="maxSessions" label="Max Sessions / Day" type="number" description="The maximum number of times the character is allowed to dream per day." />
             <FieldInput v-model="timeoutThreshold" label="Timeout (Minutes)" type="number" description="Idle time before dreaming starts." />
+            <FieldInput v-model="minTurns" label="Min Turns to Dream" type="number" description="Minimum turns of active conversation required to trigger a dream cycle. Cycles are skipped if there is not enough context to synthesize." />
           </div>
 
           <div class="flex flex-wrap gap-6 pt-4">

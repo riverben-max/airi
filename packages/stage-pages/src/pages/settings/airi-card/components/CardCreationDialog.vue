@@ -859,6 +859,8 @@ async function saveCard(card: Card): Promise<boolean> {
           lastProcessedAt: existingAiriExt?.dreamState?.lastProcessedAt,
           dailyRunDate: existingAiriExt?.dreamState?.dailyRunDate,
           dailyRunCount: existingAiriExt?.dreamState?.dailyRunCount ?? 0,
+          injectDreamContext: selectedInjectDreamContext.value,
+          dreamIntrusionPrompt: selectedDreamIntrusionPrompt.value,
         },
         acting: {
           ...existingAiriExt?.acting,
