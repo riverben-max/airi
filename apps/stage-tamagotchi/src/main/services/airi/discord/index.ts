@@ -6,7 +6,7 @@ import type {
   DiscordServiceStatus,
 } from '@proj-airi/stage-shared'
 
-import { PassThrough } from 'node:stream'
+import { PassThrough, Readable } from 'node:stream'
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -54,6 +54,11 @@ let lastError: string | null = null
 let activeAudioPlayer: AudioPlayer | null = null
 let activeAudioPassthrough: PassThrough | null = null
 
+// Classic mode speech playback states
+let classicAudioQueue: Buffer[] = []
+let isClassicPlaying = false
+let classicAudioAccumulator: Buffer[] = []
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /** Broadcast an event payload to all BrowserWindows. */
@@ -76,6 +81,26 @@ function broadcastToAllWindows(channel: string, payload: unknown) {
       }
     }
   })
+}
+
+function playNextClassicChunk() {
+  if (!activeAudioPlayer || classicAudioQueue.length === 0) {
+    isClassicPlaying = false
+    console.log('[DiscordService/Voice] Classic queue empty or player inactive.')
+    return
+  }
+
+  isClassicPlaying = true
+  const nextChunk = classicAudioQueue.shift()!
+
+  console.log(`[DiscordService/Voice] 🔊 Playing next classic chunk (${Math.round(nextChunk.length / 1024)}KB) from queue. Remaining: ${classicAudioQueue.length}`)
+
+  const stream = new Readable()
+  stream.push(nextChunk)
+  stream.push(null)
+
+  const resource = createAudioResource(stream)
+  activeAudioPlayer.play(resource)
 }
 
 function buildStatus(): DiscordServiceStatus {
@@ -541,11 +566,18 @@ export function setupDiscordService() {
   }
 
   ipcMain.handle('eventa:invoke:electron:discord:send-voice-note', async (_event, payload: { channelId: string, audioBuffers: Uint8Array[], content?: string, filename?: string }) => {
-    // 0. Hard Terminal Log
-    console.log(`[DiscordService/Native] IPC Received Voice Note. Chunks: ${payload?.audioBuffers?.length}, Total Chunks: ${payload?.audioBuffers?.length}`)
+    let chunks = payload?.audioBuffers || []
+    const isAccumulated = chunks.length === 0 && classicAudioAccumulator.length > 0
+    if (isAccumulated) {
+      chunks = classicAudioAccumulator
+    }
 
-    if (!discordClient?.isReady() || !payload?.channelId || !payload?.audioBuffers || payload.audioBuffers.length === 0) {
-      pushLog('ERROR', `SendVoiceNote skipped: ClientReady=${discordClient?.isReady()}, Channel=${payload?.channelId}, BufferCount=${payload?.audioBuffers?.length}`)
+    // 0. Hard Terminal Log
+    console.log(`[DiscordService/Native] IPC Received Voice Note. Chunks: ${chunks.length}, Accumulated: ${isAccumulated}`)
+
+    if (!discordClient?.isReady() || !payload?.channelId || chunks.length === 0) {
+      pushLog('ERROR', `SendVoiceNote skipped: ClientReady=${discordClient?.isReady()}, Channel=${payload?.channelId}, BufferCount=${chunks.length}`)
+      classicAudioAccumulator = []
       return { success: false, error: 'Client not ready or empty buffers' }
     }
 
@@ -554,9 +586,9 @@ export function setupDiscordService() {
       const channel = await discordClient.channels.fetch(payload.channelId)
 
       if (channel?.isTextBased() && 'send' in channel && typeof (channel as any).send === 'function') {
-        pushLog('VOICE_PUSH', `Merging ${payload.audioBuffers.length} audio chunks...`)
+        pushLog('VOICE_PUSH', `Merging ${chunks.length} audio chunks...`)
 
-        const buffer = mergeAudioBuffers(payload.audioBuffers)
+        const buffer = mergeAudioBuffers(chunks)
         const isWav = buffer.length >= 4
           && buffer[0] === 0x52
           && buffer[1] === 0x49
@@ -577,16 +609,19 @@ export function setupDiscordService() {
           }],
         })
         pushLog('VOICE_SEND', `Successfully sent voice note to ${payload.channelId} (Native Bypass)`)
+        classicAudioAccumulator = []
         return { success: true }
       }
       else {
         pushLog('ERROR', `Channel ${payload.channelId} is not text-based or lacks send()`)
+        classicAudioAccumulator = []
         return { success: false, error: 'Invalid channel type' }
       }
     }
     catch (err: any) {
       pushLog('ERROR', `Failed to send voice note: ${err?.message || 'Unknown Error'}`)
       console.error('[DiscordService/Native] sendVoiceNote Error:', err)
+      classicAudioAccumulator = []
       return { success: false, error: err.message }
     }
   })
@@ -742,6 +777,9 @@ export function setupDiscordService() {
       })
       activeAudioPlayer.on(AudioPlayerStatus.Idle, () => {
         console.log('[DiscordService/Voice] AudioPlayer is idle (finished playing).')
+        if (isClassicPlaying) {
+          playNextClassicChunk()
+        }
       })
 
       // Set up speaking listeners on connection.receiver
@@ -976,6 +1014,36 @@ export function setupDiscordService() {
       activeAudioPassthrough.end()
       activeAudioPassthrough = null
     }
+  })
+
+  // ── Classic Audio Bridge: Renderer → Discord Voice ───────────────────────
+  // Receives audio chunk segments (WAV or MP3 raw files) from the renderer,
+  // appends them to playback queue and accumulator, and triggers playback sequentially.
+
+  ipcMain.on('eventa:invoke:electron:discord:send-classic-audio-chunk', (_event, arrayBuffer: Uint8Array) => {
+    if (!activeAudioPlayer) {
+      console.warn('[DiscordService/Voice] Received classic audio chunk but no active AudioPlayer.')
+      return
+    }
+
+    const buffer = Buffer.from(arrayBuffer)
+    console.log(`[DiscordService/Voice] 🎙️ IPC Received classic audio chunk segment (${Math.round(buffer.length / 1024)}KB).`)
+
+    classicAudioQueue.push(buffer)
+    classicAudioAccumulator.push(buffer)
+
+    if (!isClassicPlaying) {
+      playNextClassicChunk()
+    }
+  })
+
+  ipcMain.on('eventa:invoke:electron:discord:clear-classic-audio', () => {
+    console.log('[DiscordService/Voice] IPC Received clear-classic-audio. Halting speech playback and clearing queue.')
+    classicAudioQueue = []
+    if (activeAudioPlayer && isClassicPlaying) {
+      activeAudioPlayer.stop()
+    }
+    isClassicPlaying = false
   })
 
   log.log('Discord service handlers registered')
