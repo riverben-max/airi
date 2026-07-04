@@ -155,6 +155,22 @@ watch(model, async () => {
   const providerConfig = providersStore.getProviderConfig(providerId)
   providerConfig.model = model.value
 })
+
+const isEnabled = computed(() => {
+  return providersStore.providerRuntimeState[providerId]?.isConfigured && !!providersStore.addedProviders[providerId]
+})
+
+async function toggleProvider() {
+  if (isEnabled.value) {
+    providersStore.unmarkProviderAdded(providerId)
+    if (providersStore.providerRuntimeState[providerId]) {
+      providersStore.providerRuntimeState[providerId].isConfigured = false
+    }
+  }
+  else {
+    await providersStore.validateProvider(providerId, { force: true })
+  }
+}
 </script>
 
 <template>
@@ -204,13 +220,25 @@ watch(model, async () => {
           <div class="i-lucide:check-circle" />
           <span>Model is ready and cached</span>
         </div>
+
+        <!-- Provider Status / Activation Toggle -->
+        <div class="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
+          <span class="text-sm font-medium">Provider Status</span>
+          <Button
+            size="sm"
+            :variant="isEnabled ? 'secondary' : 'primary'"
+            @click="toggleProvider"
+          >
+            {{ isEnabled ? 'Deactivate' : 'Activate' }}
+          </Button>
+        </div>
       </div>
     </template>
 
     <template #playground>
       <TranscriptionPlayground
         :generate-transcription="handleGenerateTranscription"
-        :api-key-configured="true"
+        :api-key-configured="isEnabled"
       />
     </template>
   </TranscriptionProviderSettings>
