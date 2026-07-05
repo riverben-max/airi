@@ -214,14 +214,29 @@ export async function chunkEmitter(
   options: TtsInputChunkOptions | undefined,
   handler: (ttsSegment: TtsChunkItem) => Promise<void> | void,
 ) {
+  // Reuse a single Segmenter instance for the lifetime of this emitter call.
+  const sanitizeSegmenter = new Intl.Segmenter(undefined, { granularity: 'word' })
+
   const sanitizeChunk = (text: string) => {
     let cleanedText = text
       .replaceAll(TTS_SPECIAL_TOKEN, '')
       .replaceAll(TTS_FLUSH_INSTRUCTION, '')
 
     cleanedText = processNarrative(cleanedText, options)
+    cleanedText = cleanedText.trim()
 
-    return cleanedText.trim()
+    // Drop chunks that carry no speakable words — e.g. a lone closing `"`,
+    // a stray `...`, or a bare `:` left over after sentence-ending punctuation
+    // flushes the buffer.  The chunker's hard-punc logic correctly splits text,
+    // but punctuation-only remnants must be silently discarded here rather than
+    // dispatched to the TTS API where they produce audible artifacts.
+    if (cleanedText.length > 0) {
+      const words = [...sanitizeSegmenter.segment(cleanedText)].filter(w => w.isWordLike)
+      if (words.length === 0)
+        return ''
+    }
+
+    return cleanedText
   }
 
   try {
