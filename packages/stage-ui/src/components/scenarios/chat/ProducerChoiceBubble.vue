@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsUserProfile } from '@proj-airi/stage-ui/stores/settings/user-profile'
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 interface Choice {
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 const userProfileStore = useSettingsUserProfile()
 const speechStore = useSpeechStore()
 const providersStore = useProvidersStore()
+const chatOrchestratorStore = useChatOrchestratorStore()
 
 // Tracks which card index is currently loading TTS audio
 const loadingIndex = ref<number | null>(null)
@@ -143,6 +145,17 @@ watch(() => props.message.loading, (isLoading) => {
     }
   }
 }, { immediate: true })
+
+// Auto-stop all playing/loading suggestion speech when any message is submitted
+watch(() => chatOrchestratorStore.sending, (isSending) => {
+  if (isSending) {
+    stopPlayAll()
+  }
+})
+
+onUnmounted(() => {
+  stopPlayAll()
+})
 </script>
 
 <template>
