@@ -424,6 +424,7 @@ export const useTextJournalStore = defineStore('text-journal', () => {
   async function createJournalMoment(input: {
     messages: any[]
     instructions?: string
+    promptTemplate?: string
     modelId: string
     providerId: string
   }) {
@@ -510,12 +511,23 @@ export const useTextJournalStore = defineStore('text-journal', () => {
       }
     })
 
-    const instructionSuffix = `You are a cognitive memory system. Write a journal entry about the preceding conversation history in the first person as ${activeCard.value.name}. Reflect on the highlights, jokes, and relationship dynamics.
-${input.instructions ? `\nAdditional Instructions: ${input.instructions}\n` : ''}
-Return a JSON object with 'title' and 'content' for your journal entry. Ensure you strictly output in this JSON schema format:
+    let instructionSuffix = ''
+    if (input.promptTemplate) {
+      const additionalIns = input.instructions ? `\nAdditional Instructions: ${input.instructions}\n` : ''
+      instructionSuffix = input.promptTemplate
+        .replaceAll('{characterName}', activeCard.value.name)
+        .replaceAll('{instructions}', additionalIns)
+    }
+    else {
+      instructionSuffix = `You are a cognitive memory system. Write a journal entry about the preceding conversation history in the first person as ${activeCard.value.name}. Reflect on the highlights, jokes, and relationship dynamics.
+${input.instructions ? `\nAdditional Instructions: ${input.instructions}\n` : ''}`
+    }
+
+    // Always append the fixed JSON schema rules at the end to ensure syntax stability
+    instructionSuffix += `\n\nReturn a JSON object with 'title' and 'content' for your journal entry. Ensure you strictly output in this JSON schema format:
 {
   "title": "A short, narrative title for the journal entry",
-  "content": "The actual journal entry content written in Jueva's natural voice."
+  "content": "The actual journal entry content written in ${activeCard.value.name}'s natural voice."
 }`
 
     const inputMessages = [

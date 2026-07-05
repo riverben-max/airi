@@ -163,7 +163,7 @@ function handleJournal() {
   showJournalModal.value = true
 }
 
-async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: number, instructions: string }) {
+async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: number, instructions: string, promptTemplate?: string }) {
   const activeSessionId = chatSession.activeSessionId
   if (!activeSessionId)
     return
@@ -197,6 +197,7 @@ async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: numbe
   toast.promise(textJournalStore.createJournalMoment({
     messages: contextMessages,
     instructions: data.instructions,
+    promptTemplate: data.promptTemplate,
     modelId,
     providerId,
   }).catch((err) => {
