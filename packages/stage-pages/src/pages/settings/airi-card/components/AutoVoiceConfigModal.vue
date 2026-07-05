@@ -91,6 +91,44 @@ const deepgramVoicePresets = [
   { id: 'aura-2-zeus-en', name: 'Zeus', gender: 'Male', accent: 'US', description: 'Adult, American, Deep, trustworthy, smooth.' },
 ]
 
+const awsPollyVoicePresets = [
+  { id: 'Lisa', name: 'Lisa', gender: 'Female', accent: 'nl-BE', description: 'A soft, medium-pitched adult female voice with a warm, professional Flemish accent and smooth, gentle cadence.' },
+  { id: 'Laura', name: 'Laura', gender: 'Female', accent: 'nl-NL', description: 'A warm, mature, medium-to-low pitched adult female voice with a clear Dutch accent and calm, professional presence.' },
+  { id: 'Olivia', name: 'Olivia', gender: 'Female', accent: 'en-AU', description: 'A youthful, cheerful female voice with a bright Australian accent, clear timbre, and energetic, friendly cadence.' },
+  { id: 'Amy', name: 'Amy', gender: 'Female', accent: 'en-GB', description: 'A warm, clear, and professional adult female voice with a smooth British accent and a sincere, confident cadence.' },
+  { id: 'Brian', name: 'Brian', gender: 'Male', accent: 'en-GB', description: 'A deep, resonant, and calm baritone male voice with a polished British accent, sounding mature and authoritative yet reassuring.' },
+  { id: 'Kajal', name: 'Kajal', gender: 'Female', accent: 'en-IN', description: 'A gentle, medium-pitched adult female voice with a smooth Indian English accent, clear timbre, and a professional, sincere delivery.' },
+  { id: 'Niamh', name: 'Niamh', gender: 'Female', accent: 'en-IE', description: 'A warm, slightly breathy adult female voice with a soft Irish accent, friendly cadence, and gentle, comforting tone.' },
+  { id: 'Aria', name: 'Aria', gender: 'Female', accent: 'en-NZ', description: 'A bright, youthful adult female voice with a clear New Zealand accent, smooth timbre, and approachable, professional cadence.' },
+  { id: 'Jasmine', name: 'Jasmine', gender: 'Female', accent: 'en-SG', description: 'A calm, professional, and clear adult female voice with a subtle Singaporean accent, medium pitch, and a confident, steady delivery.' },
+  { id: 'Ayanda', name: 'Ayanda', gender: 'Female', accent: 'en-ZA', description: 'A rich, deep, and smooth mature female voice with a professional South African accent, confident presence, and warm cadence.' },
+  { id: 'Danielle', name: 'Danielle', gender: 'Female', accent: 'en-US', description: 'A clear, bright, and professional adult female voice with a standard American accent, friendly cadence, and warm timbre.' },
+  { id: 'Joanna', name: 'Joanna', gender: 'Female', accent: 'en-US', description: 'A smooth, confident, and professional adult female voice with a standard American accent and a clear, authoritative presence.' },
+  { id: 'Salli', name: 'Salli', gender: 'Female', accent: 'en-US', description: 'A youthful, bright, and cheerful female voice with a light American accent, energetic cadence, and friendly tone.' },
+  { id: 'Matthew', name: 'Matthew', gender: 'Male', accent: 'en-US', description: 'A warm, natural, medium-pitched adult male voice with a standard American accent, smooth timbre, and friendly, professional cadence.' },
+  { id: 'Ruth', name: 'Ruth', gender: 'Female', accent: 'en-US', description: 'A mature, warm, and comforting female voice with a standard American accent, smooth timbre, and a reassuring, professional presence.' },
+  { id: 'Stephen', name: 'Stephen', gender: 'Male', accent: 'en-US', description: 'A clear, confident, and professional adult male voice with a standard American accent, medium pitch, and energetic delivery.' },
+  { id: 'Tiffany', name: 'Tiffany', gender: 'Female', accent: 'en-US', description: 'A youthful, bright, and clear female voice with a standard American accent, friendly cadence, and cheerful, approachable tone.' },
+  { id: 'Lea', name: 'Lea', gender: 'Female', accent: 'fr-FR', description: 'A smooth, soft, and slightly breathy adult female voice with a clear French accent and a gentle, romantic cadence.' },
+  { id: 'Remi', name: 'Remi', gender: 'Male', accent: 'fr-FR', description: 'A warm, medium-pitched adult male voice with a smooth French accent, calm timbre, and professional, polite tone.' },
+  { id: 'Isabelle', name: 'Isabelle', gender: 'Female', accent: 'fr-BE', description: 'A soft, gentle, and warm adult female voice with a Belgian French accent, clear timbre, and a sincere, reassuring cadence.' },
+  { id: 'Gabrielle', name: 'Gabrielle', gender: 'Female', accent: 'fr-CA', description: 'A clear, confident, and expressive adult female voice with a Canadian French accent, medium pitch, and professional delivery.' },
+  { id: 'Liam', name: 'Liam', gender: 'Male', accent: 'fr-CA', description: 'A friendly, energetic, and youthful adult male voice with a Canadian French accent, clear timbre, and warm tone.' },
+  { id: 'Vicki', name: 'Vicki', gender: 'Female', accent: 'de-DE', description: 'A clear, precise, and professional adult female voice with a standard German accent, medium pitch, and confident presence.' },
+  { id: 'Hannah', name: 'Hannah', gender: 'Female', accent: 'de-AT', description: 'A warm, friendly, and smooth adult female voice with an Austrian German accent, clear timbre, and gentle cadence.' },
+  { id: 'Sabrina', name: 'Sabrina', gender: 'Female', accent: 'de-CH', description: 'A calm, professional, and slightly bright adult female voice with a Swiss German accent and a reassuring, clear delivery.' },
+  { id: 'Bianca', name: 'Bianca', gender: 'Female', accent: 'it-IT', description: 'A clear, medium-pitched adult female voice with a distinct Italian accent, smooth and warm timbre, and a professional, confident cadence.' },
+  { id: 'Seoyeon', name: 'Seoyeon', gender: 'Female', accent: 'ko-KR', description: 'A youthful, light, and bright adult female voice with a clear Korean accent, clear timbre, and a cheerful, friendly delivery.' },
+  { id: 'Ola', name: 'Ola', gender: 'Female', accent: 'pl-PL', description: 'A smooth, medium-pitched adult female voice with a clear Polish accent, warm and friendly timbre, and professional cadence.' },
+  { id: 'Camila', name: 'Camila', gender: 'Female', accent: 'pt-BR', description: 'A warm, expressive adult female voice with a smooth Brazilian Portuguese accent, clear timbre, and a confident, natural delivery.' },
+  { id: 'Lucia', name: 'Lucia', gender: 'Female', accent: 'es-ES', description: 'A clear, energetic, and professional adult female voice with a standard Spanish accent, medium pitch, and confident cadence.' },
+  { id: 'Sergio', name: 'Sergio', gender: 'Male', accent: 'es-ES', description: 'A warm, friendly, medium-pitched adult male voice with a standard Spanish accent, smooth timbre, and approachable delivery.' },
+  { id: 'Mia', name: 'Mia', gender: 'Female', accent: 'es-MX', description: 'A youthful, soft, and warm female voice with a clear Mexican Spanish accent, gentle timbre, and a sincere cadence.' },
+  { id: 'Andres', name: 'Andres', gender: 'Male', accent: 'es-MX', description: 'A clear, professional, and confident adult male voice with a standard Mexican Spanish accent, medium pitch, and steady cadence.' },
+  { id: 'Lupe', name: 'Lupe', gender: 'Female', accent: 'es-US', description: 'A mature, warm, and professional adult female voice with a standard US Spanish accent, smooth timbre, and reassuring presence.' },
+  { id: 'Pedro', name: 'Pedro', gender: 'Male', accent: 'es-US', description: 'A friendly, energetic, and medium-pitched adult male voice with a US Spanish accent, clear timbre, and dynamic delivery.' },
+]
+
 interface VoiceProviderConfig {
   id: string
   label: string
@@ -113,6 +151,13 @@ const voiceProvidersRegistry: Record<string, VoiceProviderConfig> = {
     baseProvider: 'deepgram-tts',
     getDefaultModel: () => 'aura-2',
     voices: deepgramVoicePresets,
+  },
+  'aws-polly-tts': {
+    id: 'aws-polly-tts',
+    label: 'Amazon Polly (Cloud Engine)',
+    baseProvider: 'aws-polly-tts',
+    getDefaultModel: () => 'generative',
+    voices: awsPollyVoicePresets,
   },
 }
 
@@ -574,6 +619,9 @@ function handleApply() {
                   </option>
                   <option value="deepgram-tts">
                     Deepgram Aura-2 (Remote TTS)
+                  </option>
+                  <option value="aws-polly-tts">
+                    Amazon Polly (Cloud Engine)
                   </option>
                 </select>
               </div>

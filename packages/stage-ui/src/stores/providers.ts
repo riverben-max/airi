@@ -1234,6 +1234,8 @@ export const useProvidersStore = defineStore('providers', () => {
         listModels: async () => {
           return [
             { id: 'neural', name: 'Neural', provider: 'aws-polly-tts', tasks: ['text-to-speech', 'tts'], deployment: 'cloud' },
+            { id: 'generative', name: 'Generative', provider: 'aws-polly-tts', tasks: ['text-to-speech', 'tts'], deployment: 'cloud' },
+            { id: 'long-form', name: 'Long-form', provider: 'aws-polly-tts', tasks: ['text-to-speech', 'tts'], deployment: 'cloud' },
             { id: 'standard', name: 'Standard', provider: 'aws-polly-tts', tasks: ['text-to-speech', 'tts'], deployment: 'cloud' },
           ] satisfies ModelInfo[]
         },
