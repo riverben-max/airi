@@ -5,6 +5,7 @@ import { defineInvoke } from '@moeru/eventa'
 import { createContext } from '@moeru/eventa/adapters/electron/renderer'
 import {
   resolveArtistryConfigFromStore,
+  stageArtistryIntrusion,
   useAiriCardStore,
   useArtistryStore,
   useBackgroundStore,
@@ -124,6 +125,17 @@ async function executeCreateImageJournalEntry(params: { prompt?: string, title?:
       catch {
         console.warn('[ImageJournalTool] Failed to spawn Result widget')
       }
+    }
+
+    // Stage the generated image prompt for Artistry Intrusion
+    try {
+      stageArtistryIntrusion({
+        prompt: params.prompt as string,
+        timestamp: Date.now(),
+      })
+    }
+    catch (e) {
+      console.warn('[ImageJournalTool] Failed to stage artistry intrusion:', e)
     }
 
     // Return structured result for UI rendering

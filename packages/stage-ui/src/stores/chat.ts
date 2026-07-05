@@ -161,10 +161,10 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     // Listen for cross-window intrusion staging from secondary window
     watch(intrusionBroadcast, (payload) => {
       if (payload?.type === 'journal') {
-        stageJournalIntrusion(payload.data)
+        stageJournalIntrusion(payload.data, true)
       }
       else if (payload?.type === 'artistry') {
-        stageArtistryIntrusion(payload.data)
+        stageArtistryIntrusion(payload.data, true)
       }
     })
   }

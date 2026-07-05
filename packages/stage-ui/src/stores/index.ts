@@ -1,5 +1,6 @@
 export * from './animadex-wizard'
 export * from './background'
+export * from './chat/intrusion-staging'
 export * from './display-models'
 export * from './echo-chips'
 export * from './lhack'
