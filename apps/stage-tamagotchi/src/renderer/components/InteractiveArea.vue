@@ -810,156 +810,170 @@ defineExpose({
     </div>
 
     <!-- Journal Preview Chips -->
-    <div v-if="latestTextEntries.length > 0 || latestImageEntries.length > 0" class="w-full flex flex-col gap-3 px-2 py-1 md:flex-row">
-      <!-- Text Journal Chips -->
-      <div
-        v-if="groupedTextEntries.length > 0"
-        :class="[
-          latestImageEntries.length > 0 ? 'w-full md:w-1/2' : 'w-full',
-          'flex flex-col gap-1 min-w-0',
-        ]"
-      >
-        <!-- Memories Header -->
-        <div class="h-[22px] flex select-none items-center justify-between px-1">
-          <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Memories</span>
-          <div class="flex items-center gap-2">
-            <button
-              class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
-              @click="showJournalModal = true"
-            >
-              + New
-            </button>
-            <div
-              :class="[isMemoriesCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear', 'cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-600']"
-              @click="isMemoriesCollapsed = !isMemoriesCollapsed"
-            />
-          </div>
+    <div v-if="latestTextEntries.length > 0 || latestImageEntries.length > 0" class="w-full flex flex-col gap-2 px-2 py-1">
+      <!-- Unified Header Bar with Collapsible Badges -->
+      <div class="h-[22px] flex select-none items-center justify-between px-1">
+        <div class="flex items-center gap-3">
+          <!-- Memories Badge -->
+          <span
+            v-if="groupedTextEntries.length > 0"
+            :class="['flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer',
+                     isMemoriesCollapsed ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50' : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
+            @click="isMemoriesCollapsed = !isMemoriesCollapsed"
+          >
+            Memories
+            <span :class="isMemoriesCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
+          </span>
+          <!-- Media Gallery Badge -->
+          <span
+            v-if="latestImageEntries.length > 0"
+            :class="['flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer',
+                     isMediaCollapsed ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50' : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
+            @click="isMediaCollapsed = !isMediaCollapsed"
+          >
+            Media Gallery
+            <span :class="isMediaCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
+          </span>
         </div>
-        <div v-if="!isMemoriesCollapsed" class="animate-in fade-in flex gap-2 overflow-x-auto duration-200 scrollbar-none">
-          <template v-for="(group, idx) in groupedTextEntries" :key="idx">
-            <!-- Echo Group (2-story Ticker) -->
-            <div v-if="group.type === 'echo-group'" class="h-14 min-w-fit flex flex-col flex-wrap gap-1">
-              <div
-                v-for="entry in group.items"
-                :key="entry.id"
-                :class="[
-                  'h-[26px] flex items-center gap-2 shrink-0 cursor-pointer px-2 py-1 rounded-lg border border-opacity-30 transition-all',
-                  entry.echoType === 'mood' ? 'bg-rose-50/50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400'
-                  : entry.echoType === 'flavor' ? 'bg-amber-50/50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
-                    : 'bg-indigo-50/50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-400',
-                ]"
-                @click="openTextPreview(entry)"
-              >
-                <div class="flex items-center gap-1 text-[8px] font-bold tracking-tighter uppercase opacity-70">
-                  <span>{{ formatDayMonth(entry.timestamp) }}</span>
-                  <div
-                    :class="[
-                      'text-[10px]',
-                      entry.echoType === 'mood' ? 'i-solar:heart-bold-duotone'
-                      : entry.echoType === 'flavor' ? 'i-solar:tag-bold-duotone'
-                        : 'i-solar:magic-stick-3-bold-duotone',
-                    ]"
-                  />
-                </div>
-                <span class="max-w-40 truncate text-[10px] font-bold leading-none">{{ entry.content }}</span>
-              </div>
-            </div>
-
-            <!-- Single Entries (DNA Snaps / Emerald Cards) -->
-            <div v-else-if="group.type === 'single'" @click="openTextPreview(group.entry)">
-              <!-- STMM (Auto) Square Block -->
-              <div
-                v-if="group.entry.type === 'auto'"
-                :class="[
-                  'h-14 w-14 shrink-0 flex flex-col items-center justify-between p-1 cursor-pointer',
-                  'border border-primary-200/30 rounded-lg bg-primary-50/50 transition-all hover:bg-primary-100/50',
-                  'dark:border-primary-800/30 dark:bg-primary-900/30 dark:hover:bg-primary-800/50',
-                ]"
-              >
-                <span class="mt-0.5 text-[9px] text-primary-500/80 font-bold leading-none">{{ formatDayMonth(group.entry.timestamp) }}</span>
-                <div class="i-solar:dna-bold-duotone text-sm text-primary-500" />
-                <span class="mb-0.5 text-[8px] text-primary-400 font-bold leading-none font-mono dark:text-primary-500">{{ group.entry.messageCount }}</span>
-              </div>
-
-              <!-- Manual Journal Card -->
-              <div
-                v-else
-                :class="[
-                  'min-w-28 max-w-40 h-14 flex flex-col shrink-0 cursor-pointer p-2 text-xs',
-                  'border border-emerald-200/30 rounded-lg bg-emerald-50/50 transition-all hover:bg-emerald-100/50',
-                  'dark:border-emerald-800/30 dark:bg-emerald-900/30 dark:hover:bg-emerald-800/50',
-                ]"
-              >
-                <div :class="['flex items-center gap-1', 'text-emerald-500 text-[10px] font-bold uppercase tracking-tighter leading-none mb-1']">
-                  <div class="i-solar:notebook-bold-duotone" />
-                  <span>{{ formatDate(group.entry.timestamp) }}</span>
-                </div>
-                <div :class="['line-clamp-2 text-[10px] leading-tight', 'text-emerald-900/70 dark:text-emerald-100/70']">
-                  {{ group.entry.title }}
-                </div>
-              </div>
-            </div>
-          </template>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="groupedTextEntries.length > 0"
+            class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
+            @click="showJournalModal = true"
+          >
+            + New
+          </button>
+          <button
+            v-if="latestImageEntries.length > 0"
+            class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
+            @click="showImagineDialog = true; imaginePrompt = ''"
+          >
+            + Add
+          </button>
+          <button
+            v-if="latestImageEntries.length > 0"
+            class="select-none text-[10px] text-neutral-400 font-bold transition-colors hover:text-neutral-600"
+            @click="stageBackgroundDialogOpen = true"
+          >
+            View All
+          </button>
         </div>
       </div>
 
-      <!-- Image Journal Chips -->
-      <div
-        v-if="latestImageEntries.length > 0"
-        :class="[
-          latestTextEntries.length > 0 ? 'w-full md:w-1/2' : 'w-full',
-          'flex flex-col gap-1 min-w-0',
-        ]"
-      >
-        <!-- Media Gallery Header -->
-        <div class="h-[22px] flex select-none items-center justify-between px-1">
-          <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Media Gallery</span>
-          <div class="flex items-center gap-2.5">
-            <button
-              class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
-              @click="showImagineDialog = true; imaginePrompt = ''"
-            >
-              + Add
-            </button>
-            <button
-              class="select-none text-[10px] text-neutral-400 font-bold transition-colors hover:text-neutral-600"
-              @click="stageBackgroundDialogOpen = true"
-            >
-              View All
-            </button>
-            <div
-              :class="[isMediaCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear', 'cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-600']"
-              @click="isMediaCollapsed = !isMediaCollapsed"
-            />
+      <!-- Section Bodies -->
+      <div class="w-full flex flex-col gap-3 md:flex-row">
+        <!-- Text Journal Chips -->
+        <div
+          v-if="groupedTextEntries.length > 0 && !isMemoriesCollapsed"
+          :class="[
+            latestImageEntries.length > 0 && !isMediaCollapsed ? 'w-full md:w-1/2' : 'w-full',
+            'flex flex-col gap-1 min-w-0',
+          ]"
+        >
+          <div class="animate-in fade-in flex gap-2 overflow-x-auto duration-200 scrollbar-none">
+            <template v-for="(group, idx) in groupedTextEntries" :key="idx">
+              <!-- Echo Group (2-story Ticker) -->
+              <div v-if="group.type === 'echo-group'" class="h-14 min-w-fit flex flex-col flex-wrap gap-1">
+                <div
+                  v-for="entry in group.items"
+                  :key="entry.id"
+                  :class="[
+                    'h-[26px] flex items-center gap-2 shrink-0 cursor-pointer px-2 py-1 rounded-lg border border-opacity-30 transition-all',
+                    entry.echoType === 'mood' ? 'bg-rose-50/50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400'
+                    : entry.echoType === 'flavor' ? 'bg-amber-50/50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
+                      : 'bg-indigo-50/50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-400',
+                  ]"
+                  @click="openTextPreview(entry)"
+                >
+                  <div class="flex items-center gap-1 text-[8px] font-bold tracking-tighter uppercase opacity-70">
+                    <span>{{ formatDayMonth(entry.timestamp) }}</span>
+                    <div
+                      :class="[
+                        'text-[10px]',
+                        entry.echoType === 'mood' ? 'i-solar:heart-bold-duotone'
+                        : entry.echoType === 'flavor' ? 'i-solar:tag-bold-duotone'
+                          : 'i-solar:magic-stick-3-bold-duotone',
+                      ]"
+                    />
+                  </div>
+                  <span class="max-w-40 truncate text-[10px] font-bold leading-none">{{ entry.content }}</span>
+                </div>
+              </div>
+
+              <!-- Single Entries (DNA Snaps / Emerald Cards) -->
+              <div v-else-if="group.type === 'single'" @click="openTextPreview(group.entry)">
+                <!-- STMM (Auto) Square Block -->
+                <div
+                  v-if="group.entry.type === 'auto'"
+                  :class="[
+                    'h-14 w-14 shrink-0 flex flex-col items-center justify-between p-1 cursor-pointer',
+                    'border border-primary-200/30 rounded-lg bg-primary-50/50 transition-all hover:bg-primary-100/50',
+                    'dark:border-primary-800/30 dark:bg-primary-900/30 dark:hover:bg-primary-800/50',
+                  ]"
+                >
+                  <span class="mt-0.5 text-[9px] text-primary-500/80 font-bold leading-none">{{ formatDayMonth(group.entry.timestamp) }}</span>
+                  <div class="i-solar:dna-bold-duotone text-sm text-primary-500" />
+                  <span class="mb-0.5 text-[8px] text-primary-400 font-bold leading-none font-mono dark:text-primary-500">{{ group.entry.messageCount }}</span>
+                </div>
+
+                <!-- Manual Journal Card -->
+                <div
+                  v-else
+                  :class="[
+                    'min-w-28 max-w-40 h-14 flex flex-col shrink-0 cursor-pointer p-2 text-xs',
+                    'border border-emerald-200/30 rounded-lg bg-emerald-50/50 transition-all hover:bg-emerald-100/50',
+                    'dark:border-emerald-800/30 dark:bg-emerald-900/30 dark:hover:bg-emerald-800/50',
+                  ]"
+                >
+                  <div :class="['flex items-center gap-1', 'text-emerald-500 text-[10px] font-bold uppercase tracking-tighter leading-none mb-1']">
+                    <div class="i-solar:notebook-bold-duotone" />
+                    <span>{{ formatDate(group.entry.timestamp) }}</span>
+                  </div>
+                  <div :class="['line-clamp-2 text-[10px] leading-tight', 'text-emerald-900/70 dark:text-emerald-100/70']">
+                    {{ group.entry.title }}
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
-        <div v-if="!isMediaCollapsed" class="animate-in fade-in flex gap-2 overflow-x-auto duration-200 scrollbar-none">
-          <div
-            v-for="entry in latestImageEntries"
-            :key="entry.id"
-            :class="[
-              'group relative h-14 w-14 shrink-0 cursor-pointer of-hidden rounded-lg',
-              'border border-primary-200/30 transition-all hover:border-primary-500',
-              'dark:border-primary-800/30 dark:hover:border-primary-400',
-            ]"
-            @click="openImagePreview(entry)"
-          >
-            <img :src="entry.url || ''" class="h-full w-full object-cover">
-            <div :class="['absolute inset-0 flex items-end p-1', 'bg-gradient-to-t from-black/60 to-transparent']">
-              <span class="truncate text-[8px] text-white font-medium">{{ entry.title }}</span>
-            </div>
 
-            <!-- Save Button (Top Right, Hover Only) -->
-            <button
+        <!-- Image Journal Chips -->
+        <div
+          v-if="latestImageEntries.length > 0 && !isMediaCollapsed"
+          :class="[
+            latestTextEntries.length > 0 && !isMemoriesCollapsed ? 'w-full md:w-1/2' : 'w-full',
+            'flex flex-col gap-1 min-w-0',
+          ]"
+        >
+          <div class="animate-in fade-in flex gap-2 overflow-x-auto duration-200 scrollbar-none">
+            <div
+              v-for="entry in latestImageEntries"
+              :key="entry.id"
               :class="[
-                'absolute right-1 top-1 z-10 p-1 rounded-md bg-black/40 text-white backdrop-blur-sm',
-                'opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/60',
+                'group relative h-14 w-14 shrink-0 cursor-pointer of-hidden rounded-lg',
+                'border border-primary-200/30 transition-all hover:border-primary-500',
+                'dark:border-primary-800/30 dark:hover:border-primary-400',
               ]"
-              title="Save to computer"
-              @click.stop="journalPreviewStore.downloadImage(entry.url || '', entry.title)"
+              @click="openImagePreview(entry)"
             >
-              <div class="i-solar:download-minimalistic-bold-duotone text-[10px]" />
-            </button>
+              <img :src="entry.url || ''" class="h-full w-full object-cover">
+              <div :class="['absolute inset-0 flex items-end p-1', 'bg-gradient-to-t from-black/60 to-transparent']">
+                <span class="truncate text-[8px] text-white font-medium">{{ entry.title }}</span>
+              </div>
+
+              <!-- Save Button (Top Right, Hover Only) -->
+              <button
+                :class="[
+                  'absolute right-1 top-1 z-10 p-1 rounded-md bg-black/40 text-white backdrop-blur-sm',
+                  'opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/60',
+                ]"
+                title="Save to computer"
+                @click.stop="journalPreviewStore.downloadImage(entry.url || '', entry.title)"
+              >
+                <div class="i-solar:download-minimalistic-bold-duotone text-[10px]" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -974,7 +988,6 @@ defineExpose({
       </div>
     </div>
 
-    <div class="flex items-center justify-end gap-2 py-1" />
     <!-- Ephemeral Grounding Preview Block -->
     <div
       v-if="activeCard?.extensions?.airi?.groundingEnabled || (activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0) || (activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length) || (activeCard?.extensions?.airi?.groundingDirectorScratchpadEnabled && latestDirectorScratchpad)"
