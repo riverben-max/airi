@@ -12,9 +12,11 @@ const props = withDefaults(defineProps<{
   /** Tooltip for the main button */
   title?: string
   variant?: 'default' | 'mobile'
+  side?: 'top' | 'right' | 'bottom' | 'left'
 }>(), {
   title: 'Model & Provider',
   variant: 'default',
+  side: 'top',
 })
 
 // Store bindings
@@ -212,7 +214,7 @@ const activeModelDisplay = computed(() => {
 
     <PopoverPortal>
       <PopoverContent
-        side="top"
+        :side="side"
         :side-offset="8"
         align="end"
         class="animate-in fade-in zoom-in z-100 w-80 border border-neutral-200/50 rounded-2xl bg-white/90 p-4 shadow-2xl backdrop-blur-xl duration-200 dark:border-neutral-700/50 dark:bg-neutral-900/90"

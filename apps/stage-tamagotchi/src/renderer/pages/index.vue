@@ -807,8 +807,8 @@ onMounted(async () => {
     const w = mainConfig.width ?? 48
     const h = mainConfig.height ?? 48
 
-    const availLeft = window.screen?.availLeft ?? 0
-    const availTop = window.screen?.availTop ?? 0
+    const availLeft = (window.screen as any)?.availLeft ?? 0
+    const availTop = (window.screen as any)?.availTop ?? 0
     const availWidth = window.screen?.availWidth ?? window.innerWidth
     const availHeight = window.screen?.availHeight ?? window.innerHeight
     const threshold = 25
@@ -880,8 +880,8 @@ onMounted(async () => {
         const w = config.width ?? 48
         const h = config.height ?? 48
 
-        const availLeft = window.screen?.availLeft ?? 0
-        const availTop = window.screen?.availTop ?? 0
+        const availLeft = (window.screen as any)?.availLeft ?? 0
+        const availTop = (window.screen as any)?.availTop ?? 0
         const availWidth = window.screen?.availWidth ?? window.innerWidth
         const availHeight = window.screen?.availHeight ?? window.innerHeight
         const threshold = 25

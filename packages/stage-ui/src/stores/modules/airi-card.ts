@@ -65,6 +65,10 @@ export interface DreamStateConfig {
   lastProcessedAt?: number
   dailyRunDate?: string
   dailyRunCount?: number
+  injectDreamContext?: boolean
+  pendingDreamChips?: string[]
+  pendingDreamTimestamp?: number
+  dreamIntrusionPrompt?: string
 }
 
 export interface ShortTermMemoryConfig {
@@ -161,6 +165,12 @@ export interface AiriExtension {
     selfie: boolean
   }
 
+  textJournal?: {
+    widgetInstruction?: string
+    injectJournalContext?: boolean
+    journalIntrusionPrompt?: string
+  }
+
   artistry?: {
     provider?: string
     model?: string
@@ -174,6 +184,8 @@ export interface AiriExtension {
     autonomousMonitorEnabled?: boolean
     autonomousMonitorDiscordEnabled?: boolean
     autonomousHistoryDepth?: number
+    injectArtistryContext?: boolean
+    artistryIntrusionPrompt?: string
   }
 
   generation?: CharacterGenerationConfig

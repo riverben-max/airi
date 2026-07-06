@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { ChatHistoryItem } from '@proj-airi/stage-ui/types/chat'
 
-import { estimateTokens, formatTokenCount } from '@proj-airi/stage-shared'
 import {
   CharacterContextDialog,
-  ChatBrainPopover,
   ChatGroundingPopover,
   ChatHistory,
   ChatImagesPopover,
@@ -28,7 +26,6 @@ import { useTextJournalStore } from '@proj-airi/stage-ui/stores/memory-text-jour
 import { buildSystemPrompt, useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { useAutonomousArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry-autonomous'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
-import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useVisionStore } from '@proj-airi/stage-ui/stores/modules/vision'
 import { useProactivityStore } from '@proj-airi/stage-ui/stores/proactivity'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
@@ -57,7 +54,6 @@ const echoesStore = useEchoesStore()
 
 const { activeCard } = storeToRefs(airiCardStore)
 const shortTermMemory = useShortTermMemoryStore()
-const liveSessionStore = useLiveSessionStore()
 
 const { cleanupMessages } = useChatMaintenanceStore()
 const { ingest, onAfterMessageComposed } = chatOrchestrator
@@ -608,72 +604,6 @@ const sendButtonLabel = computed(() => {
   return 'Send'
 })
 
-// --- Token Counter ---
-const sessionTokenCount = computed(() => {
-  let total = 0
-  for (const message of historyMessages.value) {
-    if ('type' in message && (message as any).type === 'producer-suggestion')
-      continue
-    const msg = message as ChatHistoryItem
-    if (typeof msg.content === 'string') {
-      total += estimateTokens(msg.content)
-    }
-    else if (Array.isArray(msg.content)) {
-      const textOnly = msg.content
-        .map((part: any) => {
-          if (typeof part === 'string')
-            return part
-          if (part && typeof part === 'object' && 'text' in part && !('image_url' in part))
-            return String(part.text ?? '')
-          return ''
-        })
-        .join('')
-      total += estimateTokens(textOnly)
-    }
-  }
-  return total
-})
-
-const formattedTokenCount = computed(() => formatTokenCount(sessionTokenCount.value))
-
-function formatAbbreviatedCount(num: number): string {
-  if (num >= 1_000_000_000)
-    return `${(num / 1_000_000_000).toFixed(1)}B`
-  if (num >= 1_000_000)
-    return `${(num / 1_000_000).toFixed(1)}M`
-  if (num >= 1000)
-    return `${(num / 1000).toFixed(1)}K`
-  return String(num)
-}
-
-const globalContextWidth = computed(() => {
-  if (activeCard.value?.extensions?.airi?.generation?.known?.contextWidth)
-    return undefined
-
-  if (!activeProvider.value || !activeModel.value)
-    return undefined
-
-  try {
-    const rawMap = localStorage.getItem('airi:context-width-map')
-    if (!rawMap)
-      return undefined
-
-    const map = JSON.parse(rawMap)
-    return map[activeProvider.value]?.[activeModel.value]
-  }
-  catch {
-    return undefined
-  }
-})
-
-const effectiveContextWidth = computed(() => activeCard.value?.extensions?.airi?.generation?.known?.contextWidth || globalContextWidth.value)
-
-const contextPercentage = computed(() => {
-  if (!effectiveContextWidth.value)
-    return 0
-  return (sessionTokenCount.value / effectiveContextWidth.value) * 100
-})
-
 onMounted(() => {
   updateWindowTitle()
 
@@ -938,49 +868,8 @@ function jumpToMessage(messageId: string) {
     </div>
 
     <div class="flex items-center justify-end gap-2 py-1">
-      <!-- Lifetime Token Counter -->
-      <div
-        class="flex cursor-help items-center gap-1.5 px-2 py-1 text-[10px] text-neutral-400 font-bold tracking-tight uppercase dark:text-neutral-500"
-        :title="`Lifetime Tokens (Global): ${Number(liveSessionStore.totalTokens || 0).toLocaleString()}`"
-      >
-        <div class="i-solar:chart-linear text-xs" />
-        <span>{{ formatAbbreviatedCount(liveSessionStore.totalTokens || 0) }}</span>
-      </div>
-
-      <div
-        v-if="effectiveContextWidth"
-        class="flex cursor-help items-center gap-1.5 px-2 py-1"
-        :title="`${globalContextWidth ? '[Inherited] ' : ''}Context: ${formattedTokenCount} / ${formatTokenCount(effectiveContextWidth)} (${contextPercentage.toFixed(1)}%)`"
-      >
-        <div class="i-solar:graph-bold-duotone text-[10px] text-neutral-400 dark:text-neutral-500" />
-        <span class="text-[10px] text-neutral-400 font-bold leading-none tracking-tight uppercase dark:text-neutral-500">{{ formattedTokenCount }}</span>
-        <div class="h-1.5 w-12 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-          <div
-            class="h-full transition-all duration-300"
-            :class="[
-              contextPercentage > 85 ? 'bg-red-500' : contextPercentage > 60 ? 'bg-amber-500' : 'bg-emerald-500',
-            ]"
-            :style="{ width: `${Math.min(contextPercentage, 100)}%` }"
-          />
-        </div>
-      </div>
-      <div
-        v-else
-        class="flex cursor-help items-center gap-1.5 px-2 py-1 text-[10px] font-bold tracking-tight uppercase"
-        :class="[
-          sessionTokenCount > 100000 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-400 dark:text-neutral-500',
-        ]"
-        title="Est. of tokens used for this chat"
-      >
-        <div class="i-solar:graph-bold-duotone text-xs" />
-        <span>{{ formattedTokenCount }}</span>
-      </div>
-
       <!-- Grounding Options Popover -->
       <ChatGroundingPopover />
-
-      <!-- Model & Provider Selection -->
-      <ChatBrainPopover />
 
       <!-- Memory & Context -->
       <ChatMemoryPopover

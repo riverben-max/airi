@@ -1,41 +1,31 @@
-# 🚀 AIRI v0.9.13-stable.20260704 — Release Notes
+# 🚀 AIRI v0.9.14-stable.20260706 — Release Notes
 
-This release introduces brand new Discord slash commands (`/selfie`, `/vision`), implements **Discord Classic Voice Mode (STT/TTS)**, adds a new **AI Auto-Assign Voices configurator**, implements **User-configurable Idle Animations**, introduces **User Self-Concepts**, and delivers a major Quality-of-Life pass for system prompt and context control.
+This release introduces **Introspective Memory Feedback Loops**, implements **Automatic Edge-Snapping Auto-Hide** for the Control Strip, adds **Discord Direct Message (DM) controls**, and refines the **AnimaDex Wizard** with auto-assignment utilities.
 
 ---
 
 ## ✨ Key Highlights
 
-### 💬 New Discord Slash Commands
-* **`/selfie` (New)**: A brand new headless capture command to generate camera snapshots of your character on command, supporting optional emotion triggers (e.g., proud, shy).
-* **`/vision` (New)**: A brand new visual intake command that routes uploaded images to the VLM with a customizable filter toggle.
-* **DPI Retina Selfie Fix**: Scaled canvas size by the device pixel ratio (DPR) to prevent blurry or cropped selfie captures on Retina/high-DPI screens.
+### 🧠 Memory Features & Introspective Feedback Loops
+* **Action Reflection Loops**: Implemented introspective feedback loops where your character's recent activities (such as journaling, dreaming, or creating art) are injected into their immediate context. This allows them to reflect on their own recent actions and naturally incorporate those memories into their next response.
+* **Dream & Artistry Reflective Prompts**: Created guided prompts that let your character know what they just dreamed or painted, allowing them to reference these moments dynamically during chat.
+* **Memory Summary Stability**: Added safety locking to the short-term memory manager to prevent duplicate concurrent summary runs, ensuring memory histories remain stable.
+* **Custom Journal Prompts**: Added a customizable system prompt template for shaping Journal Moments.
 
-### 🎙️ Discord Classic Voice Mode & Audio Upgrades
-* **Classic Mode Audio Streaming**: Implemented raw PCM audio streaming and chunk streaming directly to voice channels in Classic mode without external dependency bottlenecks.
-* **Classic Mode STT Ingestion**: Added local voice capturing and transcription parsing, automatically injecting classic voice channel transcripts into the active chat session.
-* **Self-Speaker Muting**: Added local speaker playback suppression during active Discord voice calls to prevent annoying echo-back issues.
+### 🎛️ Control Strip Snap-to-Edge & Auto-Hide
+* **Auto-Hide Mode**: Implemented an automatic edge-snapping auto-hide mode with full support for macOS work area/screen boundaries.
+* **Popover Retention**: Automatically holds the Control Strip in an expanded state whenever a popover menu is actively open.
 
-### ⚙️ Context Control & System Prompt QoL
-* **Per-Character Tool Gating**: Added options to disable tool calls on a per-character basis. This allows you to reduce context size and prevent errors on models (like RWKV) that don't support tool usage.
-* **Blank Field Preservation**: Restructured the system prompt compiler so that if you set fields to blank, they stay blank, preventing rogue default values from injecting unexpected instructions.
+### 💬 Discord DM Access Control
+* **Master Toggle for DMs**: Added a settings toggle to restrict or enable DM command ingestion and private message listening on Discord.
+* **Sync Isolation**: Excluded the `settings/discord/enabled` configuration flag from cloud sync to avoid syncing local integration status.
 
-### 🧙 Wizard Voice Auto-Assign & Idle Animations
-* **AI Auto-Assign Voices**: Implemented an automated batch configurator in the wizard to auto-match and bind appropriate voices with fallback proxies.
-* **Per-Character Idle Animations**: You can now define and customize idle animations per actor directly in the wizard's auto-assign flow.
-* **Narrator Voice Fallback**: Narrative cards will automatically fall back to the user's customized profile voice when dealing with multi-actor layouts.
+### 🧙 AnimaDex Wizard & Auto-Assign Tools
+* **Studio Auto-Assign Utility**: Added a new utility to batch auto-assign voices and motions to existing cards directly in the Studio panel.
+* **Extensible Voice Assigner**: Refactored the voice auto-assigner tool to hook into an extensible provider registry.
+* **Wizard Action Splits**: Split the final "Confirm & Create" step in the onboarding wizard into 3 explicit actions and resolved Step 3 scrolling issues.
 
-### 👤 User Self-Concepts & Profiles
-* **Self-Concept Wizard Option**: Introduced a dedicated step in Wizard Step 3 to register a "user self-concept" template (compiled under a generic `concept_user` key).
-* **Profile Autofill**: Improved profile field autocomplete and shortcut handling during configuration.
-
-### 🗣️ Transcription & Whisper Integration
-* **App-Local Transcription**: Consolidated transcription configurations under a unified App (Local) provider with an interactive activation toggle.
-* **Whisper-Local Updates**: Replaced standalone Whisper setups with an eventa-compatible Whisper worker that supports English-only optimized models.
-
-### 🎭 Producer Lite (Auto Suggestions) Enhancements
-* **Decoupled Preview Textareas**: Decoupled option previews, synchronized textareas, and added an option to auto-play all choices sequentially.
-
-### 📦 Build & Dependency Packaging
-* **Relative Paths in copy-deps**: Updated `copy-deps.ts` to resolve package dependencies relative to the workspace root directory.
-* **Prism-media Externalization**: Externalized `prism-media` to resolve runtime errors related to `ffmpeg-static` loading.
+### 🗣️ TTS & Choice Improvements
+* **AWS Polly Enhancements**: Integrated new AWS Polly generative and long-form voice models.
+* **Punctuation Filtering**: Automatically filters out and drops punctuation-only text chunks before sending them to the TTS dispatcher to prevent silent vocal triggers.
+* **Producer Choice Mutings**: Instantly cancels suggestion audio playback when a message is sent or when the producer bubble component unmounts.

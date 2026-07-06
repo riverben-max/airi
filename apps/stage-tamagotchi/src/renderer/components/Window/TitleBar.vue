@@ -18,23 +18,27 @@ const { platform } = useAppRuntime()
       platform === 'macos' ? 'pl-20' : 'pl-4',
     ]"
   >
-    <div flex drag-region>
-      <div
-        bg="hover:neutral-200 hover:dark:neutral-800"
-        transition="all duration-200 ease-in-out"
-        flex cursor-pointer select-none items-center gap-2 rounded-md px-1.5 py-0.5
-      >
-        <div :class="icon" select-none text="neutral-400 dark:neutral-500" whitespace-nowrap />
-        <div><span select-none whitespace-nowrap text-sm>{{ title }}</span></div>
-      </div>
-      <div w-full drag-region />
-      <div
-        bg="hover:neutral-200 hover:dark:neutral-800"
-        transition="all duration-200 ease-in-out"
-        flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-0.5
-      >
-        <div i-solar:info-circle-bold text="neutral-400 dark:neutral-500" whitespace-nowrap />
-      </div>
+    <div flex items-center justify-between drag-region>
+      <slot>
+        <div w-full flex items-center gap-2 drag-region>
+          <div
+            bg="hover:neutral-200 hover:dark:neutral-800"
+            transition="all duration-200 ease-in-out"
+            flex cursor-pointer select-none items-center gap-2 rounded-md px-1.5 py-0.5
+          >
+            <div :class="icon" select-none text="neutral-400 dark:neutral-500" whitespace-nowrap />
+            <div><span select-none whitespace-nowrap text-sm>{{ title }}</span></div>
+          </div>
+          <div w-full drag-region />
+          <div
+            bg="hover:neutral-200 hover:dark:neutral-800"
+            transition="all duration-200 ease-in-out"
+            flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-0.5
+          >
+            <div i-solar:info-circle-bold text="neutral-400 dark:neutral-500" whitespace-nowrap />
+          </div>
+        </div>
+      </slot>
     </div>
   </div>
 </template>

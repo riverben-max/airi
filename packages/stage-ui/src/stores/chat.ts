@@ -133,7 +133,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   >({ name: 'airi-chat-input-bridge' })
 
   // Cross-window intrusion staging channel
-  const { data: intrusionBroadcast, post: postIntrusionStaging } = useBroadcastChannel<
+  const { data: intrusionBroadcast } = useBroadcastChannel<
     { type: 'journal' | 'artistry', data: any },
     { type: 'journal' | 'artistry', data: any }
   >({ name: 'airi-intrusion-staging' })
@@ -1147,7 +1147,7 @@ You must now react to this outcome and provide a rich, narrative-driven climax r
           }
 
           if (activeCard.value && dreamPrompt && dreamState) {
-            void airiCardStore.updateCard(activeCard.value.id, {
+            void airiCardStore.updateCard((activeCard.value as any).id, {
               ...toRaw(activeCard.value),
               extensions: {
                 ...activeCard.value.extensions,
