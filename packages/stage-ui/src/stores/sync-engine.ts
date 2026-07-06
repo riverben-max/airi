@@ -2441,6 +2441,8 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
       return true
     if (key.startsWith('settings/sync/'))
       return true
+    if (key === 'settings/discord/enabled')
+      return true
     return false
   }
 
@@ -2754,6 +2756,7 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
         'settings/sync/s3-region',
         'settings/sync/s3-access-key-id',
         'settings/sync/s3-secret-access-key',
+        'settings/discord/enabled',
         'airi-onboarding-state',
       ]
       const lsKeys = []

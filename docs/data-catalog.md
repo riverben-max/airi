@@ -632,6 +632,11 @@ interface DisplayModelFile {
   name: string
   previewImage?: string
   importedAt: number
+  nsfw?: boolean
+  groups?: string[]
+  tags?: string[]
+  expressions?: string[]
+  motions?: string[]
 }
 
 interface DisplayModelURL {
@@ -642,6 +647,11 @@ interface DisplayModelURL {
   name: string
   previewImage?: string
   importedAt: number
+  nsfw?: boolean
+  groups?: string[]
+  tags?: string[]
+  expressions?: string[]
+  motions?: string[]
 }
 
 type DisplayModel = DisplayModelFile | DisplayModelURL
