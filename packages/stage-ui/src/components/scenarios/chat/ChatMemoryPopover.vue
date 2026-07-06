@@ -24,6 +24,7 @@ const emit = defineEmits<{
   (e: 'view-context'): void
   (e: 'manage-sessions'): void
   (e: 'search-memories'): void
+  (e: 'clear-messages'): void
 }>()
 
 const router = useRouter()
@@ -85,6 +86,12 @@ async function handleRebuildFromHistory() {
 function navigateToMemory() {
   router.push('/settings/memory')
 }
+
+function navigateToProactivity() {
+  if (!activeCardId.value)
+    return
+  router.push(`/settings/airi-card?cardId=${activeCardId.value}&tab=proactivity`)
+}
 </script>
 
 <template>
@@ -111,7 +118,7 @@ function navigateToMemory() {
 
     <PopoverPortal>
       <PopoverContent
-        side="top"
+        side="bottom"
         :side-offset="8"
         align="end"
         class="animate-in fade-in zoom-in z-100 w-72 border border-neutral-200/50 rounded-2xl bg-white/90 p-3 shadow-2xl backdrop-blur-xl duration-200 dark:border-neutral-700/50 dark:bg-neutral-900/90"
@@ -219,6 +226,31 @@ function navigateToMemory() {
               <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Memory Management</span>
             </div>
             <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
+          </button>
+
+          <button
+            class="w-full flex items-center justify-between rounded-xl p-2 text-left transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            @click="navigateToProactivity"
+          >
+            <div class="flex items-center gap-2">
+              <div class="i-solar:target-linear text-neutral-400" />
+              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Proactivity Settings</span>
+            </div>
+            <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
+          </button>
+
+          <!-- Destructive separator -->
+          <div class="my-1 border-t border-neutral-100 dark:border-neutral-800" />
+
+          <!-- Clear Messages -->
+          <button
+            class="w-full flex items-center justify-between rounded-xl p-2 text-left transition-all hover:bg-red-50 dark:hover:bg-red-950/30"
+            @click="emit('clear-messages')"
+          >
+            <div class="flex items-center gap-2">
+              <div class="i-solar:trash-bin-2-bold-duotone text-red-400" />
+              <span class="text-xs text-red-500 font-medium dark:text-red-400">Clear Messages</span>
+            </div>
           </button>
         </div>
       </PopoverContent>

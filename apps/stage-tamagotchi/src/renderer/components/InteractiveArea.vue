@@ -3,10 +3,8 @@ import type { ChatHistoryItem } from '@proj-airi/stage-ui/types/chat'
 
 import {
   CharacterContextDialog,
-  ChatGroundingPopover,
   ChatHistory,
   ChatImagesPopover,
-  ChatMemoryPopover,
   ChatSessionModal,
   JournalMomentModal,
   JournalPreviewModal,
@@ -760,6 +758,13 @@ function jumpToMessage(messageId: string) {
     }
   })
 }
+
+defineExpose({
+  showContext,
+  showSessions,
+  openSearchModal,
+  handleTrashClick,
+})
 </script>
 
 <template>
@@ -950,18 +955,6 @@ function jumpToMessage(messageId: string) {
     </div>
 
     <div class="flex items-center justify-end gap-2 py-1">
-      <!-- Grounding Options Popover -->
-      <ChatGroundingPopover />
-
-      <!-- Memory & Context -->
-      <ChatMemoryPopover
-        show-cache-status
-        :title="`Memory & Context for ${characterName}`"
-        @view-context="showContext = true"
-        @manage-sessions="showSessions = true"
-        @search-memories="openSearchModal"
-      />
-
       <ChatImagesPopover
         :imagine-mode="isImagineMode"
         :hide-toolbar-style="true"
@@ -971,20 +964,6 @@ function jumpToMessage(messageId: string) {
         @view-journal="stageBackgroundDialogOpen = true"
         @open-studio="navigateToConceptStudio"
       />
-
-      <!-- Clear Messages (with safety hook) -->
-      <button
-        class="max-h-[10lh] min-h-[1lh]"
-        bg="neutral-100 dark:neutral-800"
-        text="lg neutral-500 dark:neutral-400"
-        hover:text="red-500 dark:red-400"
-        flex items-center justify-center rounded-md p-2 outline-none
-        transition-colors transition-transform active:scale-95
-        title="Clear Messages"
-        @click="handleTrashClick"
-      >
-        <div class="i-solar:trash-bin-2-bold-duotone" />
-      </button>
     </div>
     <!-- Ephemeral Grounding Preview Block -->
     <div
