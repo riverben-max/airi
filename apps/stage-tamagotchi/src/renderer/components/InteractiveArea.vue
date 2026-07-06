@@ -1029,7 +1029,7 @@ function jumpToMessage(messageId: string) {
         v-model="messageInput"
         :send-mode="settingsChat.sendMode"
         :placeholder="isImagineMode ? 'Describe a scene to imagine...' : t('stage.message')"
-        class="ph-no-capture w-full pr-20"
+        class="ph-no-capture w-full pr-24"
         text="primary-600 dark:primary-100 placeholder:primary-500 dark:placeholder:primary-200"
         border="solid 2 primary-200/20 dark:primary-400/20"
         bg="primary-100/50 dark:primary-900/70"
@@ -1041,10 +1041,10 @@ function jumpToMessage(messageId: string) {
         @compositionend="isComposing = false"
         @attach="handleFilePaste"
       />
-      <div class="no-drag absolute bottom-2 right-2 z-10 flex select-none items-center gap-1">
+      <div class="no-drag absolute right-2.5 top-1/2 z-10 flex select-none items-center gap-2 -translate-y-1/2">
         <!-- Suggest Response (Producer Sparkle) Inline Button -->
         <button
-          class="flex items-center justify-center rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200/30 dark:text-neutral-400 hover:text-primary-500 dark:hover:bg-neutral-800/30 dark:hover:text-primary-400"
+          class="h-8 w-8 flex items-center justify-center rounded-xl bg-neutral-200/20 text-neutral-500 transition-all duration-200 active:scale-95 dark:bg-neutral-800/20 hover:bg-neutral-200/40 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-800/40 dark:hover:text-neutral-200"
           title="Suggest responses"
           @click="isProducerModalOpen = true"
         >
@@ -1053,11 +1053,11 @@ function jumpToMessage(messageId: string) {
 
         <!-- Send / Greet Inline Button -->
         <button
-          class="flex items-center justify-center rounded-lg p-1.5 text-primary-500 transition-colors hover:bg-neutral-200/30 dark:text-primary-400 hover:text-primary-600 dark:hover:bg-neutral-800/30 dark:hover:text-primary-300"
+          class="h-8 w-8 flex items-center justify-center rounded-xl bg-primary-600 text-white transition-all duration-200 active:scale-95 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600"
           :title="isGreetMode ? 'Greet' : 'Send Message'"
           @click="handleSend"
         >
-          <div :class="[isGreetMode ? 'i-ph:hand-waving-duotone' : 'i-solar:plain-2-bold-duotone', 'text-base']" />
+          <div :class="[isGreetMode ? 'i-ph:hand-waving-bold' : 'i-solar:plain-2-bold-duotone', 'text-base']" />
         </button>
       </div>
     </div>
