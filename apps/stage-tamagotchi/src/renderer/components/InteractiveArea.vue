@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ChatHistoryItem } from '@proj-airi/stage-ui/types/chat'
 
+// Watch messageInput and search universe-scoped memory context
+import { useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
 import {
   CharacterContextDialog,
   ChatHistory,
@@ -30,13 +32,14 @@ import { useProactivityStore } from '@proj-airi/stage-ui/stores/proactivity'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
 import { BasicTextarea, Button } from '@proj-airi/ui'
-// Watch messageInput and search universe-scoped memory context
 import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+
+import { noticeWindowEventa } from '../../shared/eventa'
 
 const messageInput = ref('')
 const attachments = ref<{ type: 'image', data: string, mimeType: string, url: string }[]>([])
@@ -313,9 +316,21 @@ const producerSuggestion = ref<{ type: 'producer-suggestion', choices: Array<{ t
 const { generateSuggestions } = useProducer()
 const lastProducerConfig = ref<{ guidance: string, contextDepth: number, count: number, shortReplies: boolean } | null>(null)
 
+const requestNotice = useElectronEventaInvoke(noticeWindowEventa.openWindow)
+
 const quickSuggestContextDepth = useLocalStorage('airi:producer:context-depth', 6)
 const quickSuggestCount = useLocalStorage('airi:producer:suggestion-count', 4)
 const quickSuggestShortReplies = useLocalStorage('airi:producer:short-replies', true)
+
+function handleOpenUserProfile() {
+  void requestNotice({
+    id: 'user-profile',
+    route: '#/settings/system/user-profile',
+    type: 'user-profile',
+  }).catch((err: any) => {
+    console.error('Failed to open user profile notice:', err)
+  })
+}
 
 function handleQuickSuggest() {
   const input = messageInput.value.trim()
@@ -1338,6 +1353,7 @@ defineExpose({
       v-model="isProducerModalOpen"
       :character-name="characterName"
       @submit="handleProducerSubmit"
+      @open-user-profile="handleOpenUserProfile"
     />
   </div>
 </template>

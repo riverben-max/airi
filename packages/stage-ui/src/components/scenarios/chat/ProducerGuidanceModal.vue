@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'submit', payload: { guidance: string, contextDepth: number, count: number, shortReplies: boolean }): void
+  (e: 'openUserProfile'): void
 }>()
 
 const chatSessionStore = useChatSessionStore()
@@ -274,6 +275,20 @@ function resetTemplate() {
                 <li><code class="text-primary-500 dark:text-primary-400">{lengthRule}</code>: Short/long reply configuration instruction</li>
               </ul>
             </div>
+          </div>
+
+          <!-- User Profile Tip -->
+          <div v-if="!showPromptEditor" class="flex items-start gap-2 border-t border-neutral-200/50 px-5 py-3 dark:border-neutral-700/50">
+            <div class="i-solar:info-circle-linear mt-0.5 shrink-0 text-sm text-neutral-400" />
+            <p class="text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
+              Tip: You can configure the narrator's voice by setting up your
+              <button
+                class="text-primary-500 font-semibold underline underline-offset-2 transition-colors hover:text-primary-400"
+                @click="emit('openUserProfile')"
+              >
+                user's setting
+              </button>.
+            </p>
           </div>
 
           <!-- Footer -->
