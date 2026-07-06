@@ -699,6 +699,13 @@ async function doCreateCard(): Promise<boolean> {
         manifestation: {
           modelId: boundModel?.id || null,
         },
+        speech: boundVoice
+          ? {
+              provider: boundVoice.baseProvider,
+              model: boundVoice.baseModel || (providersStore.getProviderConfig(boundVoice.baseProvider)?.model as string) || '',
+              voice_id: boundVoice.baseVoice,
+            }
+          : undefined,
       }
     })
 

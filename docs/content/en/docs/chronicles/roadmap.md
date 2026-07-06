@@ -43,6 +43,11 @@ This document tracks all active pending items, architectural roadmaps, and featu
     *   Instruct synthesis LLM to populate `idleAnimations[]` from available motions.
     *   Add per-actor idle selector in Wizard Step 2.
     *   Expose per-actor idle selectors in the Card Edit UI's Acting tab.
+*   **AnimaDex Ad-hoc Cast Expansion (Dynamic Character Injection)**:
+    *   *Reference: [proposal-animadex-new-characters.md](../../../../proposal-animadex-new-characters.md)*
+    *   Implement "Add Character" gallery selection and voice/model binding modal context.
+    *   Build injection engine parsing and generation rules for Mode A (markers), Mode B (multi-actor tags), and Mode C (single-to-multi conversion).
+    *   Support Step 4 review interface with choices for "Apply to Current Card (with Backup)" and "Create as New Card".
 
 ---
 

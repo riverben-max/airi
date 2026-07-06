@@ -45,3 +45,17 @@ Blocked on a **schema gap** — must fix card schema before wiring wizard UI.
 | 7.3 | Synthesis prompt: instruct LLM to populate `idleAnimations[]` from `motions[]` | Small |
 | 7.4 | Wizard Step 2 UI: add per-actor idle picker to Manifestation panel | Medium |
 | 7.5 | Card Edit UI: expose per-actor idle pickers in Acting tab for multi-actor cards | Medium |
+
+---
+
+## 🔮 Future Phase: Dynamic Character Injection (Ad-hoc Cast Expansion)
+
+Planned as part of [proposal-animadex-new-characters.md](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/docs/proposal-animadex-new-characters.md).
+
+| # | Item | Effort | Description |
+|---|------|--------|-------------|
+| 9.1 | Mode A Injection | Medium | Automatic parsing and insertion for cards with template markers |
+| 9.2 | Mode B Injection | High | Regex-based insertion for structured multi-actor cards without markers |
+| 9.3 | Mode C Injection | High | Coercive conversion and wrapping of single-character cards into actor formats |
+| 9.4 | UI / Integration Hooks | Medium | "Add Character" dashboard widget loading Wizard Steps 1 & 2 in modal context |
+| 9.5 | Safety Backups | Small | Automatic backup or derivative generation prior to card modifications |
