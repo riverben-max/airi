@@ -500,42 +500,59 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     }
   }
 
+  const runningEnsure = new Map<string, Promise<boolean>>()
+
   async function ensureYesterdayBlock(characterId: string, options?: { tokenBudgetPerDay?: number, universeId?: string }) {
-    await load()
-
-    const card = cards.value.get(characterId)
-    if (!card)
-      return false
-
     const chatSessionStore = useChatSessionStore()
     const activeSessionId = chatSessionStore.getCharacterIndex(characterId)?.activeSessionId || chatSessionStore.activeSessionId
     const activeSessionMeta = chatSessionStore.getSessionMeta(activeSessionId)
     const currentUniverseId = options?.universeId !== undefined ? options.universeId : (activeSessionMeta?.universeId || 'global')
 
-    const targetDate = getYesterdayLocalDayKey()
-    const existingBlock = blocks.value.find(block => block.characterId === characterId && block.date === targetDate && (block.universeId || 'global') === currentUniverseId)
-    if (existingBlock)
-      return false
+    const key = `${characterId}:${currentUniverseId}`
+    if (runningEnsure.has(key)) {
+      return runningEnsure.get(key)!
+    }
 
-    const providerId = card.extensions?.airi?.modules?.consciousness?.provider || activeProvider.value
-    const modelId = card.extensions?.airi?.modules?.consciousness?.model || activeModel.value
-    if (!providerId || !modelId)
-      return false
+    const promise = (async () => {
+      await load()
 
-    const provider = await providersStore.getProviderInstance<ChatProvider>(providerId)
-    if (!provider)
-      return false
+      const card = cards.value.get(characterId)
+      if (!card)
+        return false
 
-    const dayBucket = (await collectCharacterDayBuckets(characterId, currentUniverseId)).find(bucket => bucket.date === targetDate)
-    if (!dayBucket)
-      return false
+      const targetDate = getYesterdayLocalDayKey()
+      const existingBlock = blocks.value.find(block => block.characterId === characterId && block.date === targetDate && (block.universeId || 'global') === currentUniverseId)
+      if (existingBlock)
+        return false
 
-    const nextBlock = await summarizeBucket(characterId, card, provider, modelId, dayBucket, 'automatic', { ...options, universeId: currentUniverseId })
-    if (!nextBlock)
-      return false
+      const providerId = card.extensions?.airi?.modules?.consciousness?.provider || activeProvider.value
+      const modelId = card.extensions?.airi?.modules?.consciousness?.model || activeModel.value
+      if (!providerId || !modelId)
+        return false
 
-    await persist([...blocks.value, nextBlock])
-    return true
+      const provider = await providersStore.getProviderInstance<ChatProvider>(providerId)
+      if (!provider)
+        return false
+
+      const dayBucket = (await collectCharacterDayBuckets(characterId, currentUniverseId)).find(bucket => bucket.date === targetDate)
+      if (!dayBucket)
+        return false
+
+      const nextBlock = await summarizeBucket(characterId, card, provider, modelId, dayBucket, 'automatic', { ...options, universeId: currentUniverseId })
+      if (!nextBlock)
+        return false
+
+      await persist([...blocks.value, nextBlock])
+      return true
+    })()
+
+    runningEnsure.set(key, promise)
+    try {
+      return await promise
+    }
+    finally {
+      runningEnsure.delete(key)
+    }
   }
 
   return {
