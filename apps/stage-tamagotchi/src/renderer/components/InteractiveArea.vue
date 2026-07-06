@@ -36,10 +36,8 @@ import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
-const router = useRouter()
 const messageInput = ref('')
 const attachments = ref<{ type: 'image', data: string, mimeType: string, url: string }[]>([])
 
@@ -65,7 +63,6 @@ const providersStore = useProvidersStore()
 const { activeModel, activeProvider } = storeToRefs(useConsciousnessStore())
 const settingsChat = useSettingsChat()
 const isComposing = ref(false)
-const isImagineMode = ref(false)
 const CHAT_WINDOW_TITLE = 'AIRI - Chat Window'
 
 const isMemoriesCollapsed = useLocalStorage('airi:chat:memories-collapsed', false)
@@ -415,12 +412,6 @@ const stageBackgroundDialogOpen = ref(false)
 
 // --- Deep Links ---
 
-function navigateToConceptStudio() {
-  if (!activeCardId.value)
-    return
-  router.push(`/settings/airi-card?cardId=${activeCardId.value}&tab=studio`)
-}
-
 function updateWindowTitle() {
   const nextTitle = messageInput.value.trim()
     ? `${CHAT_WINDOW_TITLE} - User Typing...`
@@ -452,12 +443,6 @@ async function handleSend() {
   attachments.value = []
   groundedMemories.value = []
   isOptimisticClearing = false
-
-  if (isImagineMode.value) {
-    const artistryStore = useAutonomousArtistryStore()
-    void artistryStore.runArtistTask(textToSend, chatSession.messages as any, 'assistant')
-    return
-  }
 
   try {
     const providerConfig = providersStore.getProviderConfig(activeProvider.value)
@@ -954,17 +939,7 @@ defineExpose({
       </div>
     </div>
 
-    <div class="flex items-center justify-end gap-2 py-1">
-      <ChatImagesPopover
-        :imagine-mode="isImagineMode"
-        :hide-toolbar-style="true"
-        @toggle-imagine="isImagineMode = !isImagineMode"
-        @attach="fileInput?.click()"
-        @screenshot="handleScreenshotClick"
-        @view-journal="stageBackgroundDialogOpen = true"
-        @open-studio="navigateToConceptStudio"
-      />
-    </div>
+    <div class="flex items-center justify-end gap-2 py-1" />
     <!-- Ephemeral Grounding Preview Block -->
     <div
       v-if="activeCard?.extensions?.airi?.groundingEnabled || (activeCard?.extensions?.airi?.groundingMemoryEnabled && groundedMemories.length > 0) || (activeCard?.extensions?.airi?.groundingTopicsEnabled && activeCard?.extensions?.airi?.recentTopics?.length) || (activeCard?.extensions?.airi?.groundingDirectorScratchpadEnabled && latestDirectorScratchpad)"
@@ -1094,8 +1069,8 @@ defineExpose({
       <BasicTextarea
         v-model="messageInput"
         :send-mode="settingsChat.sendMode"
-        :placeholder="isImagineMode ? 'Describe a scene to imagine...' : t('stage.message')"
-        class="ph-no-capture w-full pr-24"
+        :placeholder="t('stage.message')"
+        class="ph-no-capture w-full pr-36"
         text="primary-600 dark:primary-100 placeholder:primary-500 dark:placeholder:primary-200"
         border="solid 2 primary-200/20 dark:primary-400/20"
         bg="primary-100/50 dark:primary-900/70"
@@ -1108,6 +1083,12 @@ defineExpose({
         @attach="handleFilePaste"
       />
       <div class="no-drag absolute right-2.5 top-1/2 z-10 flex select-none items-center gap-2 -translate-y-1/2">
+        <!-- Add Media inline button -->
+        <ChatImagesPopover
+          @attach="fileInput?.click()"
+          @screenshot="handleScreenshotClick"
+        />
+
         <!-- Suggest Response (Producer Sparkle) Inline Button -->
         <button
           class="h-8 w-8 flex items-center justify-center rounded-xl bg-neutral-200/20 text-neutral-500 transition-all duration-200 active:scale-95 dark:bg-neutral-800/20 hover:bg-neutral-200/40 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-800/40 dark:hover:text-neutral-200"
