@@ -199,7 +199,6 @@ export function setupDiscordService() {
         })
       }
 
-      // 4. Forward to Renderer
       pushInteraction({
         interactionId: interaction.id,
         commandName,
@@ -207,6 +206,7 @@ export function setupDiscordService() {
         channelId: interaction.channelId,
         userId: interaction.user.id,
         username: interaction.user.username,
+        guildId: interaction.guildId || null,
       })
 
       // 5. Auto-cleanup interactions after 15 minutes (Discord's token limit)

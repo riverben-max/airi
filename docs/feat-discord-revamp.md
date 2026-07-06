@@ -153,6 +153,8 @@ Tools to ease development and verification of the new pipeline:
 - **Identity Sync Toggle**: Options for how AIRI appears (e.g., "Always use Desktop Character Name" vs. "Use Discord Nickname").
 - **Multimodal Toggles**: Enabling/disabling inbound image processing for VLM context.
 - **Voice Gates**: Configuration for "Kill Switch" sensitivity and Voice Activity thresholds for the Phase 4 bridge.
+- **Access Control & DMs Security**:
+  - **Allow Direct Messages (DMs)**: Master toggle to enable/disable bot interactions (slash commands and text messages) in private DMs. Defaults to `false` for absolute safety.
 
 ---
 

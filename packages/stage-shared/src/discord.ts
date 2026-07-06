@@ -74,6 +74,7 @@ export interface DiscordInteractionPayload {
   channelId: string
   userId: string
   username: string
+  guildId?: string | null
 }
 
 /** Payload for replying to an interaction from Renderer to Main */

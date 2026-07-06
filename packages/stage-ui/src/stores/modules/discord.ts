@@ -256,6 +256,7 @@ export const useDiscordStore = defineStore('discord', () => {
   const voiceMode = useLocalStorageManualReset<'puppet' | 'voicenote' | 'none'>('settings/discord/voiceMode', 'puppet')
   const voiceCall = useLocalStorageManualReset<'classic' | 'gemini' | 'off'>('settings/discord/voiceCall', 'off')
   const visionEnabled = useLocalStorageManualReset<boolean>('settings/discord/visionEnabled', true)
+  const dmsEnabled = useLocalStorageManualReset<boolean>('settings/discord/dmsEnabled', false)
 
   const pendingCollectBatch = ref<{ formattedContent: string, attachments: any[], msg: DiscordInboundMessage }[]>([])
   let collectTimer: ReturnType<typeof setTimeout> | null = null
@@ -535,6 +536,11 @@ export const useDiscordStore = defineStore('discord', () => {
     }
 
     const onInboundMessage = (_event: any, msg: DiscordInboundMessage) => {
+      if (!dmsEnabled.value && !msg.guildId) {
+        console.log(`[DiscordStore] Ignoring message ${msg.messageId.slice(-6)}: private DMs are disabled.`)
+        return
+      }
+
       console.log(`[DiscordStore] Inbound message received: ${msg.messageId.slice(-6)} from ${msg.username}`)
 
       // 0. Deduplicate by ID within this window process
@@ -792,6 +798,16 @@ export const useDiscordStore = defineStore('discord', () => {
       const isStage = hash === '#/' || hash.startsWith('#/stage')
       if (!isStage) {
         console.log(`[DiscordStore] Ignoring interaction ${payload.interactionId}: Not the leader window.`)
+        return
+      }
+
+      if (!dmsEnabled.value && !payload.guildId) {
+        console.log(`[DiscordStore] Rejecting interaction ${payload.interactionId}: private DMs are disabled.`)
+        await invokeReplyInteraction?.({
+          interactionId: payload.interactionId,
+          content: '❌ Private DMs are disabled by the owner.',
+          ephemeral: true,
+        })
         return
       }
 
@@ -2288,6 +2304,7 @@ export const useDiscordStore = defineStore('discord', () => {
     voiceMode,
     voiceCall,
     visionEnabled,
+    dmsEnabled,
 
     // Live State
     serviceStatus,

@@ -16,6 +16,7 @@ const {
   eventLog,
   configured,
   visionEnabled,
+  dmsEnabled,
 } = storeToRefs(discordStore)
 
 // Dev console collapsed state
@@ -142,6 +143,11 @@ function formatTimestamp(ts: number) {
           v-model="visionEnabled"
           :label="t('settings.pages.modules.messaging-discord.controls.vision')"
           :description="t('settings.pages.modules.messaging-discord.controls.vision-description')"
+        />
+        <FieldCheckbox
+          v-model="dmsEnabled"
+          label="Allow Direct Messages (DMs)"
+          description="Enable or disable bot interactions (commands and chat) in private direct messages."
         />
       </div>
     </section>
