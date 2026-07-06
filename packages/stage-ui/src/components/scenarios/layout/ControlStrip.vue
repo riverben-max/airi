@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useElectronMouseInWindow } from '@proj-airi/electron-vueuse'
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { useLive2d } from '@proj-airi/stage-ui-live2d'
 import { useMmd } from '@proj-airi/stage-ui-mmd/stores/mmd'
@@ -28,10 +29,81 @@ const settingsStore = useSettings()
 console.log('[ControlStrip.vue] Setup loaded with Selfie feature support')
 const colorMode = useColorMode()
 const controlStripStore = useSettingsControlStrip()
-const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed, selfieIncludeBg } = storeToRefs(controlStripStore)
+const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint, stageMode, collapsed, dockedEdge, selfieIncludeBg } = storeToRefs(controlStripStore)
 const isHoveredHandle = ref(false)
 const displayModelsStore = useDisplayModelsStore()
 const datingSimStore = useDatingSimStore()
+
+const autoHideMode = computed(() => dockedEdge.value !== null)
+
+// Auto-hide Tab hover states
+const hoverExpanded = ref(false)
+const hoverTimer = ref<NodeJS.Timeout | null>(null)
+const mouseApproaching = ref(false)
+
+const { isOutside: isOutsideWindow } = useElectronMouseInWindow()
+
+watch(isOutsideWindow, (isOutside) => {
+  if (!isElectron.value)
+    return
+  if (autoHideMode.value) {
+    mouseApproaching.value = !isOutside
+    if (isOutside) {
+      hoverExpanded.value = false
+    }
+  }
+})
+
+const isFullyExpanded = computed(() => {
+  if (autoHideMode.value) {
+    return !collapsed.value || hoverExpanded.value
+  }
+  return !collapsed.value
+})
+
+function onContainerMouseEnter() {
+  if (autoHideMode.value && collapsed.value) {
+    if (hoverTimer.value) {
+      clearTimeout(hoverTimer.value)
+      hoverTimer.value = null
+    }
+    hoverExpanded.value = true
+  }
+}
+
+function onContainerMouseLeave() {
+  if (autoHideMode.value && collapsed.value) {
+    if (hoverTimer.value)
+      clearTimeout(hoverTimer.value)
+    hoverTimer.value = setTimeout(() => {
+      hoverExpanded.value = false
+    }, 400)
+  }
+}
+
+const autoHideTabClasses = computed(() => {
+  if (!autoHideMode.value || isFullyExpanded.value) {
+    return ''
+  }
+  const edge = dockedEdge.value
+  const approaching = mouseApproaching.value
+
+  const base = 'transition-transform duration-300 ease-out'
+
+  if (edge === 'left') { // Left edge
+    return `${base} rounded-r-full rounded-l-none border-l-0 ${approaching ? '-translate-x-2' : '-translate-x-8'}`
+  }
+  if (edge === 'right') { // Right edge
+    return `${base} rounded-l-full rounded-r-none border-r-0 ${approaching ? 'translate-x-2' : 'translate-x-8'}`
+  }
+  if (edge === 'top') { // Top edge
+    return `${base} rounded-b-full rounded-t-none border-t-0 ${approaching ? '-translate-y-2' : '-translate-y-8'}`
+  }
+  if (edge === 'bottom') { // Bottom edge
+    return `${base} rounded-t-full rounded-b-none border-b-0 ${approaching ? 'translate-y-2' : 'translate-y-8'}`
+  }
+  return ''
+})
 
 const avatarSearch = ref('')
 const avatarTypeFilter = ref('all')
@@ -528,7 +600,7 @@ const popoverPlacement = computed(() => {
 })
 
 const stripLength = computed(() => {
-  if (collapsed.value) {
+  if (!isFullyExpanded.value) {
     return 52
   }
   const N = activeButtons.value.length
@@ -1126,12 +1198,33 @@ function getShortLabel(btnId: string): string {
       'shadow-2xl shadow-black/10 rounded-full',
       isDragging ? 'scale-102 border-primary-500/30 shadow-primary-500/5' : '',
       orientation === 'vertical' ? 'flex flex-col items-center py-2 px-1 gap-2 w-12' : 'flex flex-row items-center px-2 py-1 gap-2 h-12',
+      autoHideTabClasses,
     ]"
     :style="containerStyle"
     @contextmenu="handleRightClick"
+    @mouseenter="onContainerMouseEnter"
+    @mouseleave="onContainerMouseLeave"
   >
+    <!-- AUTO-HIDE TAB HANDLE -->
+    <div
+      v-if="autoHideMode && !isFullyExpanded"
+      class="h-9 w-9 flex cursor-pointer items-center justify-center text-neutral-200"
+      title="Click to Pin Control Strip"
+      @click="collapsed = false"
+    >
+      <span
+        :class="[
+          'text-2xl transition-all duration-200',
+          (dockedEdge === 'left' || dockedEdge === 'right') ? 'i-solar:double-alt-arrow-right-linear' : 'i-solar:double-alt-arrow-down-linear',
+          dockedEdge === 'right' ? 'rotate-180' : '',
+          dockedEdge === 'bottom' ? 'rotate-180' : '',
+        ]"
+      />
+    </div>
+
     <!-- TOP/LEFT ENDCAP: Perpendicular Drag & Layout Handle -->
     <button
+      v-else
       :class="[
         'relative flex items-center justify-center overflow-hidden',
         'w-9 h-9 rounded-full',
@@ -1170,7 +1263,7 @@ function getShortLabel(btnId: string): string {
 
     <!-- CORE INTERACTIVE BUTTONS -->
     <div
-      v-if="!collapsed"
+      v-if="isFullyExpanded"
       :class="[
         orientation === 'vertical' ? 'flex flex-col items-center gap-2' : 'flex flex-row items-center gap-2',
       ]"

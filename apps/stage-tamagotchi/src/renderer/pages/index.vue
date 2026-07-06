@@ -198,7 +198,46 @@ function handleOffsetChange(offset: { x: number, y: number }) {
 
 watch(componentStateStage, () => isLoading.value = componentStateStage.value !== 'mounted', { immediate: true })
 
+const autoHideMode = computed(() => controlStripStore.dockedEdge !== null)
+
 // Main window control strip sizing and smart popovers state
+const hoverExpanded = ref(false)
+const hoverTimer = ref<NodeJS.Timeout | null>(null)
+
+const isFullyExpanded = computed(() => {
+  if (autoHideMode.value) {
+    return !collapsed.value || hoverExpanded.value
+  }
+  return !collapsed.value
+})
+
+watch(isOutsideWindow, (isOutside) => {
+  if (autoHideMode.value) {
+    if (isOutside) {
+      hoverExpanded.value = false
+    }
+  }
+})
+
+watch(isOutsideControlStrip, (isOutside) => {
+  if (autoHideMode.value && collapsed.value) {
+    if (!isOutside) {
+      if (hoverTimer.value) {
+        clearTimeout(hoverTimer.value)
+        hoverTimer.value = null
+      }
+      hoverExpanded.value = true
+    }
+    else {
+      if (hoverTimer.value)
+        clearTimeout(hoverTimer.value)
+      hoverTimer.value = setTimeout(() => {
+        hoverExpanded.value = false
+      }, 400)
+    }
+  }
+})
+
 const activePopover = ref<string | null>(null)
 const lastPlacement = ref<'left' | 'right' | 'top' | 'bottom' | null>(null)
 const lastOrientation = ref<'vertical' | 'horizontal'>('vertical')
@@ -208,7 +247,7 @@ const activeButtons = computed(() => {
 })
 
 const stripLength = computed(() => {
-  if (collapsed.value) {
+  if (!isFullyExpanded.value) {
     return 52
   }
   const N = activeButtons.value.length
@@ -757,8 +796,34 @@ onMounted(async () => {
   // Initialize orientation from main process config
   const mainConfig = await getMainWindowConfig()
   // console.log('[Renderer Page] Loaded mainConfig on mount:', mainConfig)
-  if (mainConfig?.orientation) {
-    controlStripStore.orientation = mainConfig.orientation
+  if (mainConfig) {
+    if (mainConfig.orientation) {
+      controlStripStore.orientation = mainConfig.orientation
+    }
+
+    // Snapping edge detection on load
+    const x = mainConfig.x ?? 0
+    const y = mainConfig.y ?? 0
+    const w = mainConfig.width ?? 48
+    const h = mainConfig.height ?? 48
+
+    const availLeft = window.screen?.availLeft ?? 0
+    const availTop = window.screen?.availTop ?? 0
+    const availWidth = window.screen?.availWidth ?? window.innerWidth
+    const availHeight = window.screen?.availHeight ?? window.innerHeight
+    const threshold = 25
+
+    let edge: 'left' | 'right' | 'top' | 'bottom' | null = null
+    if (x <= availLeft + threshold)
+      edge = 'left'
+    else if (x + w >= availLeft + availWidth - threshold)
+      edge = 'right'
+    else if (y <= availTop + threshold)
+      edge = 'top'
+    else if (y + h >= availTop + availHeight - threshold)
+      edge = 'bottom'
+
+    controlStripStore.dockedEdge = edge
   }
   if (mainConfig?.collapsed !== undefined) {
     controlStripStore.collapsed = mainConfig.collapsed
@@ -807,6 +872,32 @@ onMounted(async () => {
     window.electron.ipcRenderer.on('stage-window-state', (_, isOpen: boolean) => {
       lastIpcStageEnabled = isOpen
       controlStripStore.stageEnabled = isOpen
+    })
+    window.electron.ipcRenderer.on('eventa:event:electron:windows:main:config-changed', (_, config) => {
+      if (config) {
+        const x = config.x ?? 0
+        const y = config.y ?? 0
+        const w = config.width ?? 48
+        const h = config.height ?? 48
+
+        const availLeft = window.screen?.availLeft ?? 0
+        const availTop = window.screen?.availTop ?? 0
+        const availWidth = window.screen?.availWidth ?? window.innerWidth
+        const availHeight = window.screen?.availHeight ?? window.innerHeight
+        const threshold = 25
+
+        let edge: 'left' | 'right' | 'top' | 'bottom' | null = null
+        if (x <= availLeft + threshold)
+          edge = 'left'
+        else if (x + w >= availLeft + availWidth - threshold)
+          edge = 'right'
+        else if (y <= availTop + threshold)
+          edge = 'top'
+        else if (y + h >= availTop + availHeight - threshold)
+          edge = 'bottom'
+
+        controlStripStore.dockedEdge = edge
+      }
     })
   }
 
