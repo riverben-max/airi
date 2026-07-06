@@ -3,6 +3,7 @@ import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsUserProfile } from '@proj-airi/stage-ui/stores/settings/user-profile'
+import { useLocalStorage } from '@vueuse/core'
 import { onUnmounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
@@ -28,6 +29,7 @@ const userProfileStore = useSettingsUserProfile()
 const speechStore = useSpeechStore()
 const providersStore = useProvidersStore()
 const chatOrchestratorStore = useChatOrchestratorStore()
+const suggestionCount = useLocalStorage('airi:producer:suggestion-count', 4)
 
 // Tracks which card index is currently loading TTS audio
 const loadingIndex = ref<number | null>(null)
@@ -208,7 +210,7 @@ onUnmounted(() => {
       <!-- Loading Skeleton State -->
       <div v-if="message.loading" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div
-          v-for="i in 4"
+          v-for="i in suggestionCount"
           :key="i"
           class="h-18 flex flex-col animate-pulse gap-2 border border-neutral-800/50 rounded-xl bg-neutral-900/30 p-3"
         >
