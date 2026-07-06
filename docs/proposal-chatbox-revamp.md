@@ -4,90 +4,66 @@
 The goal is to evolve the AIRI Chatbox from a standard chat interface into a **hybrid conversation workspace** by introducing a fixed top header for session controls and streamlining the bottom input area.
 
 We will execute this in two phases:
-* **Phase 1 (MVP)**: Focuses on the top header's session selector, token metrics, brain button, and simple inline inputs (Magic Wand/Attachment inside composer).
-* **Phase 2 (Long-term)**: Focuses on the hamburger button (side-menu), top-right ellipsis settings panel, and context band optimizations.
+* **Phase 1 (MVP)**: Focuses on the top header's session selector, token metrics, brain button, settings ellipsis menu, and inline composer action endcaps. (COMPLETED)
+* **Phase 2**: Focuses on the Context Artifact Band optimizations (Memories and Media Gallery collapsible headers, responsive rows, and the creative `[+ Add]` imagine modal). (IN PROGRESS)
 
 ---
 
 ## 2. Fixed Top Header
 The top header transitions from a static title label into a functional **Control Hub**.
 
-### Phase 1 (MVP)
+### Completed Features
 * **Word "AIRI"**: Placed on the left as a clean brand identifier.
-* **Premium Session Selector**: A stylized, premium dropdown (not a native HTML `<select>`) to switch chat sessions instantly. This resolves the current multi-step workflow of going to `Memory & Context > Session Management`.
+* **Premium Session Selector**: A stylized, premium dropdown to switch chat sessions instantly. Displays message counts on the right endcap of each session.
 * **Token Metrics Pair**: Displays both global usage metrics and per-session metrics side-by-side in the top-right corner.
-* **Brain Button**: Promoted to the top right to easily change the active LLM.
-
-#### Session Selector Format & Naming Logic
-The main label of the dropdown will resolve using active character details and session metadata:
-* **Base Actor Name**: Resolves to `nickname` first, falling back to `name` from the active card.
-* **Universe & Title Suffix**: Appends parenthetical details in the format `(universeId>title)` using the following rules:
-  1. **Universe ID**: If `universeId` is `"global"`, it is omitted.
-  2. **Session Title**: If `title` is `"Untitled Timeline"` or empty/falsy, it is omitted.
-  3. **Parentheses block**: If both universe and title are omitted, the entire `(universeId>title)` suffix block is stripped.
-  4. **Single-element fallback**:
-     * If only `universeId` is valid: `({nickname || name} ({universeId}))`
-     * If only `title` is valid: `({nickname || name} ({title}))`
-     * If both are valid: `({nickname || name} ({universeId}>{title}))`
-
-*Examples:*
-* `Mori` (where universe is `global` and title is `Untitled Timeline`)
-* `Mori (cyberpunk)` (where universe is `cyberpunk` and title is `Untitled Timeline`)
-* `Mori (Special Episode)` (where universe is `global` and title is `Special Episode`)
-* `Mori (cyberpunk>Neon Streets)` (where universe is `cyberpunk` and title is `Neon Streets`)
-
-### Phase 2
-* **Hamburger Button**: Left-aligned, reserved for a hidden side menu to house desktop-specific options.
-* **Vertical Ellipsis Button (`⋮`)**: Far right-aligned, acting as an overflow menu for miscellaneous controls and advanced settings.
-* **Send Style Configuration**: The send-style selection caret/notch from the original send button will be integrated here (controlling the global send behavior/mode).
+* **Brain Button**: Promoted to the top right to easily change the active LLM (opens downwards).
+* **Vertical Ellipsis Settings (`⋮`)**: Placed on the far right, allowing users to toggle the active **Send Key Mode** (`Enter`, `Ctrl + Enter`, `Double Enter`).
 
 ---
 
-## 3. Context Artifact Band (Memory & Media)
-Instead of wasting vertical space with standard layout headers, the band will be kept thin and optimized.
+## 3. Context Artifact Band (Memories & Media Gallery)
+To prevent the bands from dominating vertical space, we introduce collapsible headers with persistent local storage state.
 
-### Layout Breakpoints
-* **Desktop / Wide Layout**: Rendered as a single horizontal band split down the middle (Left = Memory, Right = Media) to maximize vertical content space.
-* **Mobile / Portrait Layout**: Splits into two distinct, thin stacked rows.
+### Layout & Responsiveness
+* **Label Poetry**: Renamed "Memory Tokens" to **Memories** (which comprises Short-Term Memory, Long-Term Memory, and Journal Moments).
+* **Collapsible Panels**:
+  * Each panel ("Memories" and "Media Gallery") has a header row with the title on the left and action buttons on the right.
+  * An **eye icon / collapse toggle** (`i-solar:eye-bold` or similar) sits on the header. Toggling it collapses the content carousel beneath it, leaving only the header.
+  * **Persistence**: The collapse state is stored in `localStorage` under keys `airi:chat:memories-collapsed` and `airi:chat:media-collapsed`.
+* **Breakpoints**:
+  * **Desktop**: If not collapsed, side-by-side or wide layouts are supported.
+  * **Portrait**: Splits into two distinct, stacked rows if both are visible.
 
-### Memory Tokens
-* **"New" Button**: Positioned in the corner to trigger the existing **Journal Moment** feature.
-* **Capsules**: Styled as compact, color-coded state/relationship summary cards.
-
-### Media Gallery
-* **"View All" Trigger**: Bound to the existing media/gallery modal, reusing the codebase's existing preview hooks.
-* **Endcap "Add" Button**: Rejected to keep the strip clean.
+### Action Hooks
+* **Memories Header Actions**:
+  * **`+ New` Button**: Opens the `JournalMomentModal` to let the user generate a journal entry from the conversation history.
+* **Media Gallery Header Actions**:
+  * **`+ Add` Button**: Positioned in the header next to the collapse toggle. When clicked, opens a prompt dialog asking: *"What would you like to imagine a picture of?"* It temporarily toggles Imagine Mode and routes the prompt directly to the image generator to append a new scene to the gallery. *(Deferred to later implementation)*
+  * **`View All` Button**: Triggers the `StageBackgroundDialogPicker` (Stage Style/Background selection dialog).
 
 ---
 
-## 4. Action Toolbar
-The toolbar is simplified and acts as a minor utility tray for what remains:
-* Retains leftover icons that cannot be cleanly placed in the header or inline text area (e.g., config filter, refresh, camera, and clear/trash).
-
----
-
-## 5. Input Composer (Textarea)
+## 4. Input Composer (Textarea)
 The input composer integrates inline quick-actions directly inside the text box border to keep the layout tight.
 
-* **Inline Magic Wand (Producer Lite)**: Placed inline within the textarea (replacing the mockup's `@` button) to generate magical suggestions on the fly.
-* **Inline Attachment Button (`+`)**: Placed inline within the textarea to quickly attach media, bypassing the need to click through the camera menu first.
-* **Inline Send Button**: A simple paper-plane icon positioned inline on the far right. Custom dispatch styles (send modes) are delegated to the top-right ellipsis menu.
+### Completed Features
+* **Inline Magic Wand (Suggest response)**: A transparent square button (`w-8 h-8 rounded-xl bg-neutral-200/20`) inline on the right to suggest responses.
+* **Inline Send / Greet Button**: A solid primary square button (`w-8 h-8 rounded-xl bg-primary-600`) inline on the far right.
+  * **Greet Mode**: Renders a waving hand icon (`i-ph:hand-waving-bold`) when history is empty and input is clear.
+  * **Send Mode**: Renders a paper airplane (`i-solar:plain-2-bold-duotone`) when typing text.
 
 ---
 
-## 6. Relevant Component & Data Store File Paths
+## 5. Relevant Component & Data Store File Paths
 Below are the key code locations to target during implementation:
 
 ### Component UI Files
 * **Header/Main Host**: [InteractiveArea.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue)
-* **Chat Layout Widget**: [ChatArea.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-layouts/src/components/Widgets/ChatArea.vue)
-* **Parallel Timelines Modal**: [ChatSessionModal.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/components/scenarios/chat/ChatSessionModal.vue)
-* **Input Composer**: [WhisperDock.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/components/scenarios/chat/WhisperDock.vue) and [basic-text-area.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/ui/src/components/form/textarea/basic-text-area.vue)
+* **Chat Page**: [chat.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/apps/stage-tamagotchi/src/renderer/pages/chat.vue)
+* **Journal Moment Modal**: [JournalMomentModal.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/components/scenarios/chat/JournalMomentModal.vue)
 
 ### Data Stores
 * **Session Store**: [session-store.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/stores/chat/session-store.ts)
-  * Accessible via `useChatSessionStore()`
-  * Exposes `activeSessionId` and `sessionMetas` (containing metadata like `universeId` and `title` per session).
 * **Character Card Store**: [airi-card.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/stores/modules/airi-card.ts)
-  * Accessible via `useAiriCardStore()`
-  * Exposes `activeCard` (which contains `name` and `nickname` properties).
+* **Text Journal Store**: [memory-text-journal.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/stores/memory-text-journal.ts)
+
