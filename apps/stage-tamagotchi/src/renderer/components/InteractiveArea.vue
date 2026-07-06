@@ -8,6 +8,7 @@ import {
   ChatImagesPopover,
   ChatMemoryPopover,
   ChatSessionModal,
+  JournalMomentModal,
   JournalPreviewModal,
   MarkdownRenderer,
   ProducerGuidanceModal,
@@ -32,7 +33,7 @@ import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
 import { BasicTextarea, Button } from '@proj-airi/ui'
 // Watch messageInput and search universe-scoped memory context
-import { watchDebounced } from '@vueuse/core'
+import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
@@ -68,6 +69,50 @@ const settingsChat = useSettingsChat()
 const isComposing = ref(false)
 const isImagineMode = ref(false)
 const CHAT_WINDOW_TITLE = 'AIRI - Chat Window'
+
+const isMemoriesCollapsed = useLocalStorage('airi:chat:memories-collapsed', false)
+const isMediaCollapsed = useLocalStorage('airi:chat:media-collapsed', false)
+const showJournalModal = ref(false)
+const showImagineDialog = ref(false)
+const imaginePrompt = ref('')
+
+async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: number, instructions: string, promptTemplate?: string }) {
+  let msgSlice = historyMessages.value
+  if (data.scope === 'turns' && data.turns) {
+    msgSlice = historyMessages.value.slice(-data.turns)
+  }
+
+  toast.promise(
+    textJournalStore.createJournalMoment({
+      messages: msgSlice,
+      instructions: data.instructions,
+      promptTemplate: data.promptTemplate,
+      modelId: activeModel.value,
+      providerId: activeProvider.value,
+    }),
+    {
+      loading: 'Generating journal entry...',
+      success: 'Journal entry created!',
+      error: 'Failed to create journal entry.',
+    },
+  )
+  showJournalModal.value = false
+}
+
+function handleImagineSubmit() {
+  if (!imaginePrompt.value.trim())
+    return
+  showImagineDialog.value = false
+
+  toast.promise(
+    artistryStore.runArtistTask(imaginePrompt.value.trim(), chatSession.messages as any, 'assistant'),
+    {
+      loading: 'Generating background image scene...',
+      success: 'Scene added to Media Gallery!',
+      error: 'Failed to generate scene.',
+    },
+  )
+}
 
 const proactivityStore = useProactivityStore()
 const isGroundingPreviewExpanded = ref(false)
@@ -753,13 +798,19 @@ function jumpToMessage(messageId: string) {
         <div class="h-[22px] flex select-none items-center justify-between px-1">
           <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Memories</span>
           <div class="flex items-center gap-2">
-            <button class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600">
+            <button
+              class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
+              @click="showJournalModal = true"
+            >
               + New
             </button>
-            <div class="i-solar:eye-linear cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-600" />
+            <div
+              :class="[isMemoriesCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear', 'cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-600']"
+              @click="isMemoriesCollapsed = !isMemoriesCollapsed"
+            />
           </div>
         </div>
-        <div class="flex gap-2 overflow-x-auto scrollbar-none">
+        <div v-if="!isMemoriesCollapsed" class="animate-in fade-in flex gap-2 overflow-x-auto duration-200 scrollbar-none">
           <template v-for="(group, idx) in groupedTextEntries" :key="idx">
             <!-- Echo Group (2-story Ticker) -->
             <div v-if="group.type === 'echo-group'" class="h-14 min-w-fit flex flex-col flex-wrap gap-1">
@@ -839,16 +890,25 @@ function jumpToMessage(messageId: string) {
         <div class="h-[22px] flex select-none items-center justify-between px-1">
           <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Media Gallery</span>
           <div class="flex items-center gap-2.5">
-            <button class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600">
+            <button
+              class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
+              @click="showImagineDialog = true; imaginePrompt = ''"
+            >
               + Add
             </button>
-            <button class="select-none text-[10px] text-neutral-400 font-bold transition-colors hover:text-neutral-600">
+            <button
+              class="select-none text-[10px] text-neutral-400 font-bold transition-colors hover:text-neutral-600"
+              @click="stageBackgroundDialogOpen = true"
+            >
               View All
             </button>
-            <div class="i-solar:eye-linear cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-600" />
+            <div
+              :class="[isMediaCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear', 'cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-600']"
+              @click="isMediaCollapsed = !isMediaCollapsed"
+            />
           </div>
         </div>
-        <div class="flex gap-2 overflow-x-auto scrollbar-none">
+        <div v-if="!isMediaCollapsed" class="animate-in fade-in flex gap-2 overflow-x-auto duration-200 scrollbar-none">
           <div
             v-for="entry in latestImageEntries"
             :key="entry.id"
@@ -1099,6 +1159,44 @@ function jumpToMessage(messageId: string) {
       :character-name="characterName"
       :system-prompt="effectiveSystemPrompt"
     />
+
+    <!-- Journal Moment Dialog -->
+    <JournalMomentModal
+      :open="showJournalModal"
+      :messages="historyMessages"
+      @close="showJournalModal = false"
+      @submit="handleJournalSubmit"
+    />
+
+    <!-- Imagine Prompt Dialog -->
+    <DialogRoot v-model:open="showImagineDialog">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+        <DialogContent class="animate-scale-in fixed left-1/2 top-1/2 z-50 w-96 border border-neutral-200/60 rounded-2xl bg-white p-6 shadow-2xl -translate-x-1/2 -translate-y-1/2 dark:border-neutral-800 dark:bg-neutral-950">
+          <DialogTitle class="mb-2 text-sm text-neutral-800 font-bold dark:text-neutral-200">
+            Imagine a Scene
+          </DialogTitle>
+          <p class="mb-4 text-xs text-neutral-500">
+            Describe the scene background you want to generate and append to the gallery.
+          </p>
+          <input
+            v-model="imaginePrompt"
+            type="text"
+            placeholder="A cozy study with books, warm lighting..."
+            class="mb-4 w-full border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
+            @keydown.enter="handleImagineSubmit"
+          >
+          <div class="flex justify-end gap-2">
+            <button class="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-600 font-semibold dark:bg-neutral-800 dark:text-neutral-400" @click="showImagineDialog = false">
+              Cancel
+            </button>
+            <button class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs text-white font-semibold" @click="handleImagineSubmit">
+              Generate
+            </button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
 
     <!-- Trash Safety Confirmation Dialog -->
     <Teleport to="body">
