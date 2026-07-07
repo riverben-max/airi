@@ -1,15 +1,29 @@
 <script setup lang="ts">
+import { useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores'
 import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { electronOpenSettings } from '../../../shared/eventa'
+
 const airiCardStore = useAiriCardStore()
 const backgroundStore = useBackgroundStore()
 const displayModelsStore = useDisplayModelsStore()
+const openSettings = useElectronEventaInvoke(electronOpenSettings)
 
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
+
+function handleConfigureStudio() {
+  if (!activeCardId.value)
+    return
+  void openSettings({
+    route: `/settings/airi-card?cardId=${activeCardId.value}&tab=studio`,
+  }).catch((err: any) => {
+    console.error('Failed to open Studio settings:', err)
+  })
+}
 
 // Expanded states for collapsible blocks
 const expandedActors = ref<Record<string, boolean>>({})
@@ -285,13 +299,22 @@ const otherConcepts = computed(() => {
   <div class="h-full w-full flex flex-col gap-6 overflow-y-auto bg-white p-6 font-urbanist dark:bg-neutral-900/10">
     <div v-if="activeCardId" class="flex flex-col gap-6">
       <!-- Section Header -->
-      <div class="border-b border-neutral-100 pb-4 dark:border-neutral-800/40">
-        <h3 class="text-sm text-neutral-800 font-bold dark:text-neutral-200">
-          Studio Monitor
-        </h3>
-        <p class="mt-0.5 text-[10px] text-neutral-500">
-          At-a-glance creator diagnostics of current concept states, outfit definitions, and actor alignments.
-        </p>
+      <div class="flex items-start justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800/40">
+        <div class="flex flex-col gap-0.5">
+          <h3 class="text-sm text-neutral-800 font-bold dark:text-neutral-200">
+            Studio Monitor
+          </h3>
+          <p class="mt-0.5 text-[10px] text-neutral-500">
+            At-a-glance creator diagnostics of current concept states, outfit definitions, and actor alignments.
+          </p>
+        </div>
+        <button
+          class="flex shrink-0 items-center gap-1.5 border border-neutral-200/60 rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[10px] text-neutral-600 font-bold transition-all dark:border-neutral-800 hover:border-primary-300/60 dark:bg-neutral-900 hover:bg-primary-50 dark:text-neutral-400 hover:text-primary-600 dark:hover:border-primary-700/40 dark:hover:bg-primary-950/20 dark:hover:text-primary-400"
+          @click="handleConfigureStudio"
+        >
+          <div class="i-solar:clapperboard-play-bold-duotone text-xs" />
+          Configure
+        </button>
       </div>
 
       <!-- Cast Roster Billboard Centerpiece -->
