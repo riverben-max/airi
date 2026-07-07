@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores'
+import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
 const airiCardStore = useAiriCardStore()
 const backgroundStore = useBackgroundStore()
+const displayModelsStore = useDisplayModelsStore()
+
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 
 // Expanded states for collapsible blocks
@@ -24,6 +27,14 @@ function togglePlace(key: string) {
 const activeConceptsList = computed<string[]>(() => {
   return activeCard.value?.extensions?.airi?.active_concepts || []
 })
+
+// Get preview image URL for a given model ID
+function getModelPreviewUrl(modelId?: string) {
+  if (!modelId)
+    return ''
+  const model = displayModelsStore.displayModels.find(m => m.id === modelId)
+  return model?.previewImage || ''
+}
 
 // Parsed prose helper from card description/systemPrompt
 const parsedProseMap = computed(() => {
@@ -75,6 +86,7 @@ const characters = computed(() => {
     voiceProvider?: string
     voiceId?: string
     modelId?: string
+    avatarUrl?: string
     longProse?: string
     actingInstructions?: string
     isFallback?: boolean
@@ -115,6 +127,9 @@ const characters = computed(() => {
         actingInstructions = actMatch[1].trim()
       }
 
+      const boundModelId = manifestation?.modelId
+      const avatarUrl = getModelPreviewUrl(boundModelId)
+
       list.push({
         key,
         name: displayName.charAt(0).toUpperCase() + displayName.slice(1),
@@ -123,7 +138,8 @@ const characters = computed(() => {
         isActive: activeConceptsList.value.includes(key),
         voiceProvider: speech?.provider,
         voiceId: speech?.voice_id,
-        modelId: manifestation?.modelId,
+        modelId: boundModelId,
+        avatarUrl,
         longProse: parsedProseMap.value[key]?.content,
         actingInstructions,
       })
@@ -135,6 +151,7 @@ const characters = computed(() => {
     const displayName = activeCard.value.name || 'Main Actor'
     const mainModelId = cardModules.displayModelId
     const speech = cardModules.speech
+    const avatarUrl = getModelPreviewUrl(mainModelId)
 
     list.push({
       key: 'actor_primary',
@@ -145,6 +162,7 @@ const characters = computed(() => {
       voiceProvider: speech?.provider,
       voiceId: speech?.voice_id,
       modelId: mainModelId,
+      avatarUrl,
       isFallback: true,
     })
   }
@@ -295,7 +313,13 @@ const otherConcepts = computed(() => {
             <!-- Header/Card Title -->
             <div class="flex items-center justify-between border-b border-neutral-100/60 bg-neutral-50/30 p-4 dark:border-neutral-900 dark:bg-neutral-950/5">
               <div class="min-w-0 flex items-center gap-2.5">
-                <div class="h-6 w-6 flex items-center justify-center rounded-full bg-primary-500/10 text-primary-500">
+                <!-- Avatar Thumbnail -->
+                <img
+                  v-if="char.avatarUrl"
+                  :src="char.avatarUrl"
+                  class="h-6 w-6 border border-neutral-200 rounded-full bg-neutral-100 object-cover dark:border-neutral-800 dark:bg-neutral-900"
+                >
+                <div v-else class="h-6 w-6 flex items-center justify-center rounded-full bg-primary-500/10 text-primary-500">
                   <div class="i-solar:user-bold-duotone text-xs" />
                 </div>
                 <span class="truncate text-xs text-neutral-800 font-bold dark:text-neutral-200">{{ char.name }}</span>
