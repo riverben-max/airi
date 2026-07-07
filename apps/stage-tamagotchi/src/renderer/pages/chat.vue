@@ -10,6 +10,7 @@ import { storeToRefs } from 'pinia'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, markRaw, ref } from 'vue'
 
+import LogoDark from '../../../../../packages/stage-layouts/src/assets/logo-dark.svg'
 import chat_director from '../components/chat/chat_director.vue'
 import chat_lifetime from '../components/chat/chat_lifetime.vue'
 import chat_media from '../components/chat/chat_media.vue'
@@ -254,7 +255,7 @@ function selectSurface(surface: typeof activeSurface.value) {
 
           <div class="flex items-center gap-2">
             <img
-              src="/@fs/Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-layouts/src/assets/logo-dark.svg"
+              :src="LogoDark"
               class="theme-colored h-7 w-7"
             >
             <div class="translate-y-[1px] text-lg text-primary-500 font-semibold font-quicksand dark:text-primary-300">
