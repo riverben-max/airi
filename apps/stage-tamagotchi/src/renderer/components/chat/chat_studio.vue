@@ -92,9 +92,19 @@ const characters = computed(() => {
     isFallback?: boolean
   }> = []
 
-  // Check all asset keys
-  const keys = Array.from(new Set([...Object.keys(assets), ...Object.keys(cardModules)]))
-  let hasActors = false
+  // Check all asset keys from visual_assets ground truth
+  const keys = Object.keys(assets)
+
+  // Gen 1 detection: no actor_/actress_ prefixed keys AND no concept with a bound modelId
+  // Gen 2 (hand-rolled multi): may have no actor_ prefix but DOES have modelId bindings on concepts
+  // Gen 3 (deterministic multi): uses actor_/actress_ prefixes from the guided wizard
+  const hasActorPrefixes = keys.some(k => k.startsWith('actor_') || k.startsWith('actress_'))
+  const hasAnyModelBinding = keys.some((k) => {
+    const asset = assets[k] || {}
+    const mod = cardModules[k] || {}
+    return (mod.manifestation?.modelId || asset.manifestation?.modelId)
+  })
+  const isGen1SingleCharacterCard = !hasActorPrefixes && !hasAnyModelBinding
 
   for (const key of keys) {
     const isActor = key.startsWith('actor_') || key.startsWith('actress_') || key === 'concept_user'
@@ -107,7 +117,6 @@ const characters = computed(() => {
     const hasBindings = speech || manifestation?.modelId
 
     if (isActor || hasBindings) {
-      hasActors = true
       // Normalize name
       let displayName = key
       if (key === 'concept_user') {
@@ -146,9 +155,10 @@ const characters = computed(() => {
     }
   }
 
-  // Fallback: If no structured actors are present, represent the card's single main identity
-  if (!hasActors) {
-    const displayName = activeCard.value.name || 'Main Actor'
+  // Gen 1 Single Character Card fallback: coalesce using the card's root identity
+  // Only inject when there are truly no actor-type concepts and no model bindings anywhere
+  if (isGen1SingleCharacterCard) {
+    const displayName = (activeCard.value as any).nickname || activeCard.value.name || 'Main Character'
     const mainModelId = cardModules.displayModelId
     const speech = cardModules.speech
     const avatarUrl = getModelPreviewUrl(mainModelId)
@@ -163,6 +173,8 @@ const characters = computed(() => {
       voiceId: speech?.voice_id,
       modelId: mainModelId,
       avatarUrl,
+      longProse: activeCard.value.description || '',
+      actingInstructions: activeCard.value.systemPrompt || '',
       isFallback: true,
     })
   }
@@ -188,7 +200,7 @@ const places = computed(() => {
     thumbnailUrl?: string
   }> = []
 
-  const keys = Array.from(new Set([...Object.keys(assets), ...Object.keys(cardModules)]))
+  const keys = Object.keys(assets)
 
   for (const key of keys) {
     if (key.startsWith('place_')) {
@@ -242,7 +254,7 @@ const otherConcepts = computed(() => {
     isActive: boolean
   }> = []
 
-  const keys = Array.from(new Set([...Object.keys(assets), ...Object.keys(cardModules)]))
+  const keys = Object.keys(assets)
 
   for (const key of keys) {
     const isActor = key.startsWith('actor_') || key.startsWith('actress_') || key === 'concept_user'
