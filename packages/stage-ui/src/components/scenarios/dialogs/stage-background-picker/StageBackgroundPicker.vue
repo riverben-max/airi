@@ -3,9 +3,12 @@ import { useBackgroundStore } from '@proj-airi/stage-ui/stores'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { computed, ref } from 'vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   cardId: string
-}>()
+  gridMaxHeightClass?: string
+}>(), {
+  gridMaxHeightClass: 'max-h-[60vh]',
+})
 
 const cardStore = useAiriCardStore()
 const backgroundStore = useBackgroundStore()
@@ -133,7 +136,7 @@ function handlePreviewEntry(id: string, title: string) {
     </div>
 
     <!-- Grid -->
-    <div class="grid grid-cols-2 max-h-[60vh] gap-3 overflow-y-auto pr-2 scrollbar-none lg:grid-cols-4 md:grid-cols-3">
+    <div :class="['grid grid-cols-2 gap-3 overflow-y-auto pr-2 scrollbar-none lg:grid-cols-4 md:grid-cols-3', gridMaxHeightClass]">
       <!-- Background Items -->
       <div
         v-for="entry in allBackgrounds"
