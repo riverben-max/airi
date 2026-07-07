@@ -5,6 +5,8 @@ export { default as ChatImagesPopover } from './ChatImagesPopover.vue'
 export { default as ChatMemoryPopover } from './ChatMemoryPopover.vue'
 export { default as ChatSessionModal } from './ChatSessionModal.vue'
 export { default as CharacterContextView } from './components/CharacterContextView.vue'
+export { default as DirectorMonitorView } from './components/DirectorMonitorView.vue'
+
 export { default as ChatErrorItem } from './error-item.vue'
 export { default as ChatHistory } from './history.vue'
 export { default as JournalMomentModal } from './JournalMomentModal.vue'

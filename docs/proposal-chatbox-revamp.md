@@ -20,12 +20,16 @@ The core principle driving this redesign:
 
 * **Phase 3**
   Three-column workspace, left navigation panel, right context panel, bottom toolbar removal, layout consolidation.
-  *(In Progress)*
+  *(Completed)*
   * Done: Right context panel with memories (echo chips, STMM cards, journal cards), media gallery (3-column grid, lazy-loading), md+ toggle button with active state
   * Done: Context band badge consolidation (unified header with collapsible badges)
   * Done: Fixed top header with send mode, grounding, modes, and sidebar toggle
   * Done: Left panel routing architecture and navigation model designed (see Section 7)
-  * Pending: Left panel implementation (nav component, chat.vue shell restructure, surface components), bottom toolbar removal, token capacity indicator
+  * Done: Left panel implementation (nav component, chat.vue shell restructure, surface components), bottom toolbar removal
+  * Done: Reused StageBackgroundPicker as a responsive full-page Media Library in chat_media.vue
+  * Done: Created CharacterContextView for advanced structured prompt inspection in chat_world.vue & context dialog
+  * Done: Created three-column diagnostic card feed for Director's Monitor in chat_director.vue with two-way prompt-to-image matching
+  * Pending: Token capacity progress bar indicator
 
 * **Phase 4 (Extended System Layer)**
   Input preprocessing pipeline, enriched attachments, Director’s Monitor surface, token visualization refinement, expanded attachment system.
