@@ -1,165 +1,490 @@
-# Proposal: Chatbox Revamp
+# Proposal: AIRI Chatbox Revamp
 
 ## 1. Overview & Phased Roadmap
-The goal is to evolve the AIRI Chatbox from a standard chat interface into a **hybrid conversation workspace** — a three-column, panel-driven layout where the composer, memory artifacts, and navigation context all coexist without fighting for space.
 
-We will execute this in phases:
-* **Phase 1 (MVP)**: Top header session selector, token metrics, brain button, settings ellipsis, inline send/greet composer endcaps. (COMPLETED)
-* **Phase 2**: Context Artifact Band — Memories and Media Gallery collapsible headers, responsive rows, `[+ Add]` imagine modal, `[+ New]` journal entry trigger. (COMPLETED)
-* **Phase 3**: Three-Column Layout, Left Side Panel, Right Context Panel, Bottom Toolbar Elimination, Top Toolbar Consolidation. (PLANNED)
+The AIRI Chatbox is evolving from a linear messaging interface into a **hybrid conversation workspace** — a system where chat, context, and system behavior are clearly separated into dedicated surfaces.
 
----
+The core principle driving this redesign:
 
-## 2. Fixed Top Header (Phase 1 — Completed)
-The top header transitions from a static title label into a functional **Control Hub**.
+> **Message Content, System Behavior, and Navigation must never compete for the same space.**
 
-### Completed Features
-* **Hamburger `☰`**: Far left — toggles the Left Side Panel (see Phase 3). Only visible at `md+`.
-* **AIRI Logo + Label**: Brand anchor. Kept in title bar. Session selector lives immediately to its right.
-* **Premium Session Selector**: A dropdown to switch chat timelines, placed next to the AIRI label.
-* **Stacked Token Metrics**: One icon with two stat lines stacked vertically (Global · Session). Replaces the old side-by-side layout to save horizontal space.
-  * _(Deferred)_ A visual context width meter (filled progress bar showing session tokens vs. the configured Context Width compaction threshold) should eventually replace the raw numbers. The "Context Width (Compaction Threshold)" is already a configurable setting. See §9 for details.
-* **Brain Button**: Opens the active LLM selector (opens downward).
-* **Memory & Context Popover**: Moved from the bottom toolbar to the top right. Now contains the **Trash** action (formerly a standalone bottom toolbar button) nested as a destructive action within this popover.
-* **Vertical Ellipsis `⋮`**: Expanded to contain both Send Mode options AND the Grounding Options (previously a separate popover in the bottom toolbar). These are grouped as labelled sections within the same popover.
+### Phases
 
----
+* **Phase 1 (MVP)**
+  Header control hub, session switching, token metrics, LLM selector, behavior controls, inline composer actions.
+  *(Completed)*
 
-## 3. Context Artifact Band (Phase 2 — Completed)
-Collapsible strip at the bottom of the chat area, above the composer. Visible in portrait mode and in landscape mode when the Right Panel is toggled off.
+* **Phase 2**
+  Context Artifact Band (Memories + Media), collapsible containers, responsive layout.
+  *(Completed)*
 
-### Layout & Responsiveness
-* **Renamed**: "Memory Tokens" → **Memories** (comprises STMM blocks, LTMM blocks, Journal Moments, Echo Chips).
-* **Collapsible Panels**: Each panel (Memories / Media Gallery) has a header row. An eye icon collapses the carousel below. State persists in `localStorage` (`airi:chat:memories-collapsed`, `airi:chat:media-collapsed`).
-* **Breakpoints**: Below `768px` → single stacked column. At `md+` → two columns side-by-side.
+* **Phase 3**
+  Three-column workspace, left navigation panel, right context panel, bottom toolbar removal, layout consolidation.
+  *(In Progress)*
+  * Done: Right context panel with memories (echo chips, STMM cards, journal cards), media gallery (3-column grid, lazy-loading), md+ toggle button with active state
+  * Done: Context band badge consolidation (unified header with collapsible badges)
+  * Done: Fixed top header with send mode, grounding, modes, and sidebar toggle
+  * Pending: Left navigation panel, bottom toolbar removal, token capacity indicator
 
-### Action Hooks
-* **Memories Header**: `[+ New]` → opens `JournalMomentModal` to generate a journal entry from history. `[👁]` → collapse toggle.
-* **Media Gallery Header**: `[+ Add]` → opens imagine prompt dialog, routes to `runArtistTask`. `[View All]` → triggers `StageBackgroundDialogPicker`. `[👁]` → collapse toggle.
+* **Phase 4 (Extended System Layer)**
+  Input preprocessing pipeline, enriched attachments, Director’s Monitor surface, token visualization refinement, expanded attachment system.
+  *(Future)*
 
 ---
 
-## 4. Input Composer (Phases 1 & 2 — Completed)
-The composer integrates inline quick-actions directly inside the textarea border.
+## 2. Fixed Top Header (Control Hub)
 
-### Completed Features
-* **`[✨]` Magic Wand (Suggest Response)**: Inline transparent button, left of the send button. Neutral color, blends with input.
-* **`[✈]` Send / Greet Button**: Solid primary pill. Greet mode (waving hand) when history is empty; Send mode (paper plane) when typing.
+The header is the **system control plane**. It governs session state, model selection, and runtime behavior.
 
-### Planned (Phase 3)
-* **`[+]` Attach Button**: Replaces the Images & Screenshots popover trigger. Lives to the left of the magic wand. Opens a reduced 2-item popover: Take Screenshot + Attach Image.
+### Features
+
+* **Hamburger `☰` (md+)**
+  Toggles Left Panel. Hidden in portrait.
+
+* **AIRI Logo + Session Selector**
+  Brand anchor + timeline switching.
+
+* **Stacked Token Metrics**
+  Compact vertical display:
+
+  * Global Tokens
+  * Session Tokens
+
+* **Token Capacity Indicator (Phase 3+)**
+  Thin animated progress bar **under the header**, representing:
+
+  ```
+  sessionTokens / contextWidth
+  ```
+
+  * Neutral → Amber → Red as capacity fills
+  * Smooth animated transitions (no snapping)
+
+* **Brain Button**
+  Active LLM selector dropdown.
+
+* **Memory & Context Popover**
+
+  * Contains context controls
+  * Includes **Trash (destructive action)**
+
+* **Ellipsis `⋮` (Behavior Panel)**
+  Unified behavioral control surface:
+
+  * Send Mode (Enter / Shift+Enter / Ctrl+Enter)
+  * Grounding Options
+  * Autonomous Artistry toggle
+  * Heartbeats toggle
+
+> This panel exclusively controls **system behavior**, never message content.
+
+---
+
+## 3. Context Artifact Band (Portrait + Fallback Mode)
+
+A bottom strip that surfaces contextual artifacts when the Right Panel is not active.
+
+### Structure
+
+Two independent sections:
+
+* **Memories**
+* **Media Gallery**
+
+### Behavior
+
+* Each section:
+
+  * Has header + content
+  * Supports collapse via eye icon
+  * Persists state in localStorage
+
+### Critical Constraint (Added)
+
+When **both sections are collapsed**, they compress into a **single shared row**:
+
+```
+[ Memories ▸ ] [ Media ▸ ]
+```
+
+* Prevents vertical dead space
+* Ensures zero-content state remains compact
+
+### Layout
+
+* `<768px`: stacked vertically
+* `>=768px`: side-by-side
+
+### Actions
+
+* **Memories**
+
+  * `[+ New]` → JournalMomentModal
+
+* **Media**
+
+  * `[+ Add]` → imagine flow
+  * `[View All]` → full Media view (Left Panel route)
+
+---
+
+## 4. Input Composer
+
+The composer is strictly for **message creation**.
+
+### Layout
+
+```
+[+] · [✨] · [textarea] · [✈]
+```
+
+### Features
+
+* **`[+]` Attach / Enrichment Button**
+* **`[✨]` Suggest Response**
+* **Textarea**
+* **Send / Greet Button**
+
+---
+
+### `[+]` Design Rule (Critical)
+
+`[+]` is not a generic action menu.
+
+It is the:
+
+> **Message Enrichment Layer**
+
+Anything added here becomes part of the message payload.
+
+#### Allowed
+
+* Images
+* Screenshots
+* Audio (Phase 4)
+* Files (Phase 4)
+* Links (with preprocessing)
+
+#### Not Allowed
+
+* System toggles
+* Agent tools / MCP controls
+* Memory management actions
 
 ---
 
 ## 5. Phase 3: Three-Column Workspace Layout
 
-### Architecture Overview
+### Layout Modes
+
+#### Portrait (<768px)
+
 ```
-Portrait  (<768px):
-┌──────────────────────────────────────────────────────────────────┐
-│ [ ☰ ] [ AIRI ] [ Session Selector ] ... [ Metrics ] [Brain] [⋯] │
-├──────────────────────────────────────────────────────────────────┤
-│              Chat History                                        │
-│              Context Band (Memories + Media Gallery)             │
-│              Composer                                            │
-└──────────────────────────────────────────────────────────────────┘
-
-Landscape (>=768px, right panel off):
-┌────────────────────────────────────────────────────────────────────────┐
-│ [ ☰ ] [ AIRI ] [ Session ] ... [ Metrics ] [ Mem&Ctx ] [Brain] [⋯]   │
-├──────────────────┬─────────────────────────────────────────────────────┤
-│  Left Panel      │  Chat History                                       │
-│  (if open)       │  Context Band                                       │
-│                  │  Composer                                           │
-└──────────────────┴─────────────────────────────────────────────────────┘
-
-Landscape (>=768px, right panel on):
-┌────────────────────────────────────────────────────────────────────────┐
-│ [ ☰ ] [ AIRI ] [ Session ] ... [ Metrics ] [ Mem&Ctx ] [Brain] [⋯]   │
-├──────────────────┬──────────────────────────────┬──────────────────────┤
-│  Left Panel      │  Chat History                │  Right Panel         │
-│  (if open)       │  (no Context Band)           │  (Memories +         │
-│                  │  Composer                    │   Media Gallery)     │
-└──────────────────┴──────────────────────────────┴──────────────────────┘
+Header
+Chat
+Context Band
+Composer
 ```
 
-### Key Layout Rules
-* **Right Panel is mutually exclusive with the Context Band.** When the right panel is visible, the context band is hidden (they show the same data in different layouts). When the right panel is hidden, the context band returns.
-* **Right Panel toggle button** is only shown at `md+`. Portrait mode always uses the Context Band.
-* **If the user has right panel toggled on and switches to portrait mode**, the right panel is suppressed and the context band is shown automatically. The toggle state is preserved so switching back to landscape restores the right panel.
-* **Left Panel toggle (hamburger `☰`)** is sticky — persists in `localStorage` (`airi:chat:left-panel-open`). Only shown at `md+`.
-* The left panel, when open, acts as a parent wrapper and controls the full width of the center + right columns.
+---
+
+#### Landscape (Right Panel OFF)
+
+```
+[Left Panel] [ Chat + Context Band + Composer ]
+```
 
 ---
 
-## 6. Phase 3: Bottom Toolbar Elimination
+#### Landscape (Right Panel ON)
 
-### Old Bottom Toolbar Items → New Destinations
-
-| Old Button | New Home | Notes |
-|---|---|---|
-| **Take Screenshot** | `[+]` composer popover | 2-item mini popover |
-| **Attach Image** | `[+]` composer popover | 2-item mini popover |
-| **Imagine Mode toggle** | Removed | Covered by Media Gallery `[+ Add]` |
-| **Visit Image Studio** | Removed | Redundant with Left Panel |
-| **Stage Style** | Removed | Redundant with `View All` + Left Panel |
-| **Memory & Context popover** | Top toolbar | Moved as-is; gains Trash action inside |
-| **Grounding Options popover** | `⋯` ellipsis | Merged as a new labelled section |
-| **Trash 🗑** | Memory & Context popover | Destructive action nested within |
-
-**Result**: The bottom toolbar row disappears entirely. The composer becomes:
-`[+]` · `[✨]` · `[textarea]` · `[✈ Send/Greet]`
+```
+[Left Panel] [ Chat + Composer ] [ Right Panel ]
+```
+Context Band remains independently collapsible via its eye toggles — the user chooses what surfaces where.
 
 ---
 
-## 7. Phase 3: Left Side Panel
+### Layout Options (Revised)
 
-The left panel is a navigation sidebar that persists open/closed independently. It houses views that used to be buried in modals or inaccessible.
+The original spec enforced **mutual exclusion** — Right Panel open = Context Band hidden. After building and using the layout, this was relaxed:
 
-### Left Panel Items (priority order)
-1. **Chat** _(active indicator, current view)_
-2. **Director's Monitor** — Running historical thread of director notes, generated images, and narrative beats. First-class scrollable artifact view, not a bubble context menu item.
-3. **World Bible** — Replaces the "View System Prompt" modal. Full concatenated character card system prompt rendered as a scrollable first-class view.
-4. **Characters** — Quick-glance Studio view of the active character card. Potential character switching.
-5. **Media** — Full inline gallery view, replacing the need for the Media sheet/page.
-6. **Archives** — Surfaces the Lifetime Artifact view (formerly buried under Context & Memory → Memory Management → Lifetime Artifact). First-class one-click destination.
-7. **Notes** — Scratch notes or journal entries surface.
-8. _(Settings link at bottom)_
+* **Context Band and Right Panel can coexist.** The user controls redundancy via the eye toggles on each band section.
+* This enables flexible configurations: e.g., journals on the right panel, images in the band, or only echo chips in the band with the full media gallery on the right.
+* The collapse toggles already give users precise control — enforced exclusion would only remove freedom.
+
+**Why this works:** The Context Band is always in the chat column. The Right Panel is a separate column. They don't compete for the same space — they offer different scales of the same content, and the user decides which scale to use for each section.
 
 ---
 
-## 8. Phase 3: Right Context Panel
+### Core Rules
 
-The right panel is a **vertical stacked** version of the Context Artifact Band, shown only at `md+` when toggled on. It offers richer card layouts since it has more vertical room.
-
-### Right Panel Differences vs. Context Band
-* Memory cards are taller and show more preview text.
-* Media Gallery renders in a 3-column image grid.
-* **No `View All` button** in the Media Gallery header (the Left Panel's Media view replaces it).
-* **No `+ Add` card in the gallery grid** — the `[+ Add]` header button remains.
-* The `[+ New]` Memories button remains.
+* Portrait mode always uses Context Band only
+* Right Panel state persists but is suppressed in portrait
+* Restores automatically when returning to landscape
 
 ---
 
-## 9. Token Metrics Redesign (Deferred)
+### Layout Constraints (New)
 
-> [!NOTE]
-> The old bottom toolbar had a 2-slot loading-bar widget showing current context tokens vs. the model's configured Context Width (Compaction Threshold). This was lost during the port. It should be reimagined and restored.
+To prevent layout collapse:
 
-**Goal**: Give the user a visual at-a-glance sense of how full the context window is relative to the configured `Context Width (Compaction Threshold)` setting (stored per card, e.g. `1,000,000` tokens).
+* **Minimum Chat Width enforced**
 
-**Proposed New Design**: The stacked metrics element in the top toolbar (one icon + two stat lines) could gain a thin progress bar underline or background fill indicating `sessionTokens / contextWidth`. Color shifts neutral → amber → red as it approaches capacity.
+* Panel priority on shrink:
+
+  1. Collapse Right Panel
+  2. Collapse Left Panel
+
+* Layout overrides user state only when necessary
+
+* Original state restored on resize back
 
 ---
 
-## 10. Relevant Component & Data Store File Paths
+## 6. Bottom Toolbar Elimination
 
-### Component UI Files
-* **Chat Page**: [chat.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/apps/stage-tamagotchi/src/renderer/pages/chat.vue)
-* **Interactive Area**: [InteractiveArea.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/apps/stage-tamagotchi/src/renderer/components/InteractiveArea.vue)
-* **Journal Moment Modal**: [JournalMomentModal.vue](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/components/scenarios/chat/JournalMomentModal.vue)
+All bottom toolbar functionality is redistributed.
 
-### Data Stores
-* **Session Store**: [session-store.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/stores/chat/session-store.ts)
-* **Character Card Store**: [airi-card.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/stores/modules/airi-card.ts)
-* **Text Journal Store**: [memory-text-journal.ts](file:///Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-ui/src/stores/memory-text-journal.ts)
+### Final Composer
+
+```
+[+] · [✨] · [textarea] · [✈]
+```
+
+### Mapping
+
+| Old Feature        | New Location              |
+| ------------------ | ------------------------- |
+| Screenshot / Image | `[+]`                     |
+| Imagine Mode       | Removed → Media `[+ Add]` |
+| Image Studio       | Left Panel                |
+| Stage Style        | Left Panel                |
+| Memory & Context   | Header                    |
+| Grounding          | Ellipsis                  |
+| Trash              | Memory Popover            |
+
+---
+
+## 7. Left Panel (Navigation Router)
+
+The Left Panel is not just a sidebar.
+
+It is the:
+
+> **Primary Navigation Router for Workspace Surfaces**
+
+### Behavior
+
+* `<768px`: overlay, auto-closes on selection
+* `>=768px`: persistent, manual toggle
+
+### Critical Shift
+
+Selecting a panel:
+
+> **Replaces the main content area entirely**
+
+Chat is just one route among many.
+
+---
+
+### Routes
+
+1. Chat
+2. Director’s Monitor
+3. World Bible
+4. Characters
+5. Media
+6. Archives
+7. Notes
+8. Settings (footer)
+
+---
+
+## 8. Right Context Panel
+
+A vertical, expanded version of the Context Band.
+
+### Behavior
+
+* Only visible at `md+`
+* Can coexist with Context Band — the user manages redundancy via eye toggles
+* State persists in localStorage and is restored across sessions
+* State is suppressed below 768px but automatically restores when width returns past the threshold
+
+### Differences from Context Band
+
+* Larger Memory cards with detailed metadata (STMM stats, content previews)
+* Echo chips rendered as full-width vertical items (not grouped pills)
+* "View More" pagination for Media Gallery (12 items per batch)
+* Collapse toggles managed per-section via the Context Band badges
+
+---
+
+## 9. Token Metrics System (Refined)
+
+### Visual Model
+
+* Thin progress bar under header
+* Represents:
+
+  ```
+  sessionTokens / contextWidth
+  ```
+
+### Behavior
+
+* Smooth animated transitions
+* Color escalation:
+
+  * Neutral → Amber → Red
+
+### Future Hook (Phase 4)
+
+* Visual indication when compaction occurs
+* Pre-threshold warning state
+
+---
+
+## 10. Phase 4: Extended System Layer
+
+### 10.1 Input Preprocessing Pipeline
+
+All enriched inputs pass through a deterministic pipeline:
+
+```
+User Input
+ + Attachments / Links
+   → Preprocessor
+     → Normalized Context Bundle
+       → LLM
+```
+
+### Capabilities
+
+* Link metadata extraction
+* Content scraping (when applicable)
+* File parsing
+* Media normalization
+
+### Goal
+
+Shift intelligence from:
+
+* runtime tools
+
+to:
+
+* input shaping
+
+---
+
+### 10.2 Expanded `[+]` System
+
+Adds support for:
+
+* Audio input
+* File attachments
+* Link previews with extracted context
+
+Strictly remains:
+
+> message enrichment only
+
+---
+
+### 10.3 Director’s Monitor (First-Class Surface)
+
+A dedicated timeline of **non-chat events**.
+
+### Data Model (existing)
+
+```ts
+interface DirectorNote {
+  id: string
+  sessionId: string
+  type: 'director-note'
+  content: string
+  intensity: number
+  title?: string
+  prompt?: string
+  target?: 'user' | 'assistant'
+  state: 'pending' | 'done'
+  selected_concepts?: string[]
+  scratchpad?: string
+  createdAt: number
+  isArchived?: boolean
+}
+```
+
+### Core Rule
+
+> Director’s Monitor is NOT chat.
+
+### It represents:
+
+* Narrative injections
+* System-level interventions
+* Generated artifacts
+* Structured events
+
+### It explicitly excludes:
+
+* user messages
+* assistant replies
+
+---
+
+### 10.4 Workspace Separation
+
+Each surface:
+
+* has independent rendering
+* maintains its own scroll/state where appropriate
+* avoids overloading the Chat view
+
+---
+
+### 10.5 Token Awareness Evolution
+
+Future enhancements:
+
+* compaction visualization
+* threshold warnings
+* contextual hints for token pressure
+
+---
+
+## 11. Component & Data Store References
+
+### UI Components
+
+* Chat Page: `chat.vue`
+* Interactive Area: `InteractiveArea.vue`
+* Journal Modal: `JournalMomentModal.vue`
+
+### Stores
+
+* Session Store: `session-store.ts`
+* Character Store: `airi-card.ts`
+* Journal Store: `memory-text-journal.ts`
+
+---
+
+# Final System Principle
+
+Everything in the UI must map cleanly to one of these:
+
+| Domain          | Surface                    |
+| --------------- | -------------------------- |
+| Message Content | Composer (`[+]`)           |
+| System Behavior | Ellipsis                   |
+| Navigation      | Left Panel                 |
+| Context         | Right Panel / Context Band |
+
+If something does not fit one of these, it does not belong in the current model.
+
+---
+
+This version removes ambiguity, locks the layout rules that would otherwise break under pressure, and cleanly separates what belongs where. It also sets you up to scale without reintroducing the chaos you just eliminated.
