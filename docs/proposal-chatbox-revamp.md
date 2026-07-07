@@ -24,7 +24,8 @@ The core principle driving this redesign:
   * Done: Right context panel with memories (echo chips, STMM cards, journal cards), media gallery (3-column grid, lazy-loading), md+ toggle button with active state
   * Done: Context band badge consolidation (unified header with collapsible badges)
   * Done: Fixed top header with send mode, grounding, modes, and sidebar toggle
-  * Pending: Left navigation panel, bottom toolbar removal, token capacity indicator
+  * Done: Left panel routing architecture and navigation model designed (see Section 7)
+  * Pending: Left panel implementation (nav component, chat.vue shell restructure, surface components), bottom toolbar removal, token capacity indicator
 
 * **Phase 4 (Extended System Layer)**
   Input preprocessing pipeline, enriched attachments, Director’s Monitor surface, token visualization refinement, expanded attachment system.
@@ -291,14 +292,59 @@ Chat is just one route among many.
 
 ### Routes
 
-1. Chat
-2. Director’s Monitor
-3. World Bible
-4. Characters
-5. Media
-6. Archives
-7. Notes
-8. Settings (footer)
+```
+#/chat              → redirect to #/chat/messages
+#/chat/messages     ← Chat view (InteractiveArea + composer)
+#/chat/director     ← Director's Monitor
+#/chat/world        ← World Bible
+#/chat/characters   ← Characters
+#/chat/media        ← Media
+#/chat/archives     ← Archives
+#/chat/notes        ← Notes
+#/chat/settings     ← Settings (footer link)
+```
+
+All routes nest under `#/chat/` — this preserves the workspace context. `#/chat` alone redirects to `#/chat/messages` so existing bookmarks and deep links don't break.
+
+### Component Architecture
+
+`chat.vue` becomes a **workspace shell** — it owns the shared chrome and delegates the center surface via a component slot:
+
+```
+chat.vue                         ← workspace shell (shared chrome)
+  ├── WindowTitleBar             ← session selector, tokens, LLM brain, memory, ellipsis, sidebar toggles
+  ├── Left panel nav             ← ☰ toggle, route nav items, footer settings link
+  ├── <component :is="activeSurface" />  ← center surface slot
+  │     ├── chat_messages.vue    ← InteractiveArea + composer (current #/chat content)
+  │     ├── chat_director.vue    ← Director's Monitor surface
+  │     ├── chat_world.vue       ← World Bible surface
+  │     ├── chat_characters.vue
+  │     ├── chat_media.vue
+  │     ├── chat_archives.vue
+  │     ├── chat_notes.vue
+  │     └── chat_settings.vue
+  └── Right context panel        ← memories + media gallery (already built)
+```
+
+**The shell owns:**
+- Header toolbar (always visible, never replaced)
+- Left panel nav (always visible at md+, overlay at <768px)
+- Right context panel (toggleable at md+, hidden at <768px)
+- Center surface slot (the only part that changes between routes)
+
+**Active surface** is keyed from a localStorage ref (`airi:chat:left-panel-active`) that holds the route segment (`'messages'`, `'director'`, `'world'`, etc.). A computed maps the key to the corresponding component via `markRaw()` for performance.
+
+### Navigation State
+
+| Property | Key | Default |
+|----------|-----|---------|
+| Left panel open | `airi:chat:left-panel-open` | `true` |
+| Active surface | `airi:chat:left-panel-active` | `'messages'` |
+
+### Behavior
+
+* `<768px`: left panel renders as an overlay drawer, auto-closes on route selection
+* `>=768px`: left panel renders as a persistent sidebar; collapsed by the ☰ hamburger in the header (sits between logo and session selector)
 
 ---
 
