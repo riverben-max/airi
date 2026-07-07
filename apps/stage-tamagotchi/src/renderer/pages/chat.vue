@@ -8,12 +8,22 @@ import { useSettingsChat } from '@proj-airi/stage-ui/stores/settings'
 import { useLocalStorage, useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { computed, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 
-import InteractiveArea from '../components/InteractiveArea.vue'
+import chat_archives from '../components/chat/chat_archives.vue'
+import chat_characters from '../components/chat/chat_characters.vue'
+import chat_director from '../components/chat/chat_director.vue'
+import chat_media from '../components/chat/chat_media.vue'
+// Import Sub-Surfaces
+import chat_messages from '../components/chat/chat_messages.vue'
+import chat_notes from '../components/chat/chat_notes.vue'
+import chat_world from '../components/chat/chat_world.vue'
 import WindowTitleBar from '../components/Window/TitleBar.vue'
 
-const interactiveAreaRef = ref<InstanceType<typeof InteractiveArea> | null>(null)
+// Active Surface Ref
+const activeSurfaceRef = ref<any>(null)
+// Extract the nested interactiveAreaRef from activeSurfaceRef if available
+const interactiveAreaRef = computed(() => activeSurfaceRef.value?.interactiveAreaRef)
 
 const chatSessionStore = useChatSessionStore()
 const airiCardStore = useAiriCardStore()
@@ -49,10 +59,31 @@ function handleOpenJournal() {
 
 const isRightPanelOpen = useLocalStorage('airi:chat:right-panel-open', false)
 const { width } = useWindowSize()
-const showRightPanel = computed(() => isRightPanelOpen.value && width.value >= 768)
+const showRightPanel = computed(() => isRightPanelOpen.value && width.value >= 768 && activeSurface.value === 'messages')
 const mediaDisplayCount = ref(12)
 const rightPanelMemoriesCollapsed = useLocalStorage('airi:chat:rp-memories-collapsed', false)
 const rightPanelMediaCollapsed = useLocalStorage('airi:chat:rp-media-collapsed', false)
+
+// Left Panel Routing States
+const isLeftPanelOpen = useLocalStorage('airi:chat:left-panel-open', true)
+const activeSurface = useLocalStorage<'messages' | 'director' | 'world' | 'characters' | 'media' | 'archives' | 'notes'>('airi:chat:left-panel-active', 'messages')
+
+const activeSurfaceComponent = computed(() => {
+  const map = {
+    messages: chat_messages,
+    director: chat_director,
+    world: chat_world,
+    characters: chat_characters,
+    media: chat_media,
+    archives: chat_archives,
+    notes: chat_notes,
+  }
+  return markRaw(map[activeSurface.value] || chat_messages)
+})
+
+// Whether left panel is rendered in persistent or overlay mode
+const showLeftSidebar = computed(() => isLeftPanelOpen.value && width.value >= 768)
+const showLeftOverlay = computed(() => isLeftPanelOpen.value && width.value < 768)
 
 // --- Grounding toggle helpers ---
 function handleToggleGrounding() {
@@ -193,6 +224,13 @@ function formatMonthDay(ts: number): string {
   const d = new Date(ts)
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
+
+function selectSurface(surface: typeof activeSurface.value) {
+  activeSurface.value = surface
+  if (width.value < 768) {
+    isLeftPanelOpen.value = false
+  }
+}
 </script>
 
 <template>
@@ -202,8 +240,18 @@ function formatMonthDay(ts: number): string {
       icon="i-solar:chat-line-bold"
     >
       <div class="relative w-full flex items-center justify-between px-2" drag-region>
-        <!-- Left: Brand Logo & Premium Session Selector -->
+        <!-- Left: Brand Logo, Hamburger Toggle, & Premium Session Selector -->
         <div class="no-drag flex select-none items-center gap-3 outline-none">
+          <!-- Hamburger menu toggle -->
+          <button
+            class="flex cursor-pointer items-center justify-center rounded-xl p-1.5 text-neutral-500 transition-all duration-200 ease-in-out hover:bg-neutral-200 dark:text-neutral-400 hover:text-neutral-700 hover:dark:bg-neutral-800 dark:hover:text-neutral-200"
+            :class="{ 'text-primary-500 dark:text-primary-400 bg-primary-50/50 dark:bg-primary-950/30': isLeftPanelOpen }"
+            title="Toggle Navigation Menu"
+            @click="isLeftPanelOpen = !isLeftPanelOpen"
+          >
+            <div class="i-solar:hamburger-menu-bold text-base" />
+          </button>
+
           <div class="flex items-center gap-2">
             <img
               src="/@fs/Users/richardpinedo/Projects.nosync/airi/airi_dasilva333/packages/stage-layouts/src/assets/logo-dark.svg"
@@ -523,187 +571,290 @@ function formatMonthDay(ts: number): string {
         </div>
       </div>
     </WindowTitleBar>
-    <div class="flex flex-1 overflow-hidden">
-      <div
-        :class="['flex flex-col overflow-hidden transition-all duration-300 ease-in-out',
-                 showRightPanel ? 'w-9/12 border-r border-neutral-200/50 dark:border-neutral-800/50' : 'w-full']"
-      >
-        <InteractiveArea
-          ref="interactiveAreaRef"
-          class="interaction-area block h-full w-full p-4 transition-opacity duration-250"
-        />
-      </div>
-
-      <!-- Right Context Panel -->
-      <Transition name="slide-right">
+    <div class="relative flex flex-1 overflow-hidden">
+      <!-- 1. Left Panel Mobile Overlay Drawer -->
+      <Transition name="fade">
         <div
-          v-if="showRightPanel"
-          class="w-3/12 flex flex-col overflow-y-auto bg-neutral-50/30 dark:bg-neutral-950/30"
+          v-if="showLeftOverlay"
+          class="absolute inset-0 z-[999] bg-black/40 md:hidden"
+          @click="isLeftPanelOpen = false"
+        />
+      </Transition>
+      <Transition name="slide-left">
+        <div
+          v-if="showLeftOverlay"
+          class="absolute bottom-0 left-0 top-0 z-[1000] w-60 flex flex-col border-r border-neutral-200/50 bg-neutral-50 p-3 shadow-2xl dark:border-neutral-800/50 dark:bg-neutral-950 md:hidden"
         >
-          <!-- Panel Body -->
-          <div class="flex flex-col gap-4 p-4">
-            <!-- Memories Section -->
-            <div class="flex flex-col gap-2">
-              <div class="flex items-center justify-between">
-                <span
-                  :class="['flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors',
-                           rightPanelMemoriesCollapsed
-                             ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50'
-                             : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
-                  @click="rightPanelMemoriesCollapsed = !rightPanelMemoriesCollapsed"
-                >
-                  Memories
-                  <span :class="rightPanelMemoriesCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
-                </span>
-                <button
-                  class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
-                  @click="handleOpenJournal"
-                >
-                  + New
-                </button>
-              </div>
-              <div v-if="!rightPanelMemoriesCollapsed" class="flex flex-col gap-1">
-                <template v-for="entry in (interactiveAreaRef?.allTextEntries ?? [])" :key="entry.id">
-                  <!-- Echo chip -->
-                  <div
-                    v-if="entry.type === 'echo'"
-                    class="h-[26px] w-full flex cursor-pointer items-center gap-2 border rounded-lg px-2 py-1 text-[10px] font-bold leading-none transition-all"
-                    :class="entry.echoType === 'mood'
-                      ? 'border-rose-200/60 bg-rose-50/50 text-rose-600 dark:border-rose-800/60 dark:bg-rose-900/20 dark:text-rose-400'
-                      : entry.echoType === 'flavor'
-                        ? 'border-amber-200/60 bg-amber-50/50 text-amber-600 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-400'
-                        : 'border-indigo-200/60 bg-indigo-50/50 text-indigo-600 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-400'"
-                    @click="interactiveAreaRef?.openTextPreview?.(entry)"
-                  >
-                    <span class="shrink-0 opacity-70">{{ formatMonthDay(entry.timestamp) }}</span>
-                    <span
-                      :class="entry.echoType === 'mood'
-                        ? 'i-solar:heart-bold-duotone'
-                        : entry.echoType === 'flavor'
-                          ? 'i-solar:tag-bold-duotone'
-                          : 'i-solar:magic-stick-3-bold-duotone'"
-                      class="shrink-0 text-[10px]"
-                    />
-                    <span class="truncate">{{ entry.content }}</span>
-                  </div>
+          <!-- Sidebar Navigation Header -->
+          <div class="mb-4 flex items-center justify-between border-b border-neutral-200/40 px-2 py-1.5 dark:border-neutral-800/40">
+            <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Workspace Routes</span>
+          </div>
 
-                  <!-- STMM auto entry card -->
-                  <div
-                    v-else-if="entry.type === 'auto'"
-                    class="flex flex-col cursor-pointer gap-1 border border-primary-200/30 rounded-lg bg-primary-50/30 p-2.5 transition-colors dark:border-primary-800/30 hover:border-primary-300 dark:bg-primary-950/20 dark:hover:border-primary-700"
-                    @click="interactiveAreaRef?.openTextPreview?.(entry)"
-                  >
-                    <div class="flex items-center gap-1.5 text-[10px] text-primary-500 font-bold uppercase dark:text-primary-400">
-                      <span>{{ formatMonthDay(entry.timestamp) }}</span>
-                      <span class="i-solar:dna-bold-duotone text-[10px]" />
-                      <span>Daily Summary Block</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-[9px] text-neutral-400 font-medium">
-                      <span>{{ entry.messageCount }} messages</span>
-                      <span>·</span>
-                      <span>{{ entry.sessionCount }} sessions</span>
-                      <span v-if="entry.estimatedTokens">·</span>
-                      <span v-if="entry.estimatedTokens">{{ entry.estimatedTokens }} tokens</span>
-                    </div>
-                    <p class="line-clamp-2 text-[10px] text-neutral-600 leading-relaxed dark:text-neutral-400">
-                      {{ entry.content }}
-                    </p>
-                  </div>
+          <!-- Navigation Links -->
+          <div class="flex-1 space-y-1">
+            <button
+              v-for="item in ([
+                { id: 'messages', label: 'Chat View', icon: 'i-solar:chat-line-bold-duotone' },
+                { id: 'director', label: 'Director\'s Monitor', icon: 'i-solar:videocamera-record-bold-duotone' },
+                { id: 'world', label: 'World Bible', icon: 'i-solar:notes-bold-duotone' },
+                { id: 'characters', label: 'Characters', icon: 'i-solar:users-group-two-rounded-bold-duotone' },
+                { id: 'media', label: 'Media Library', icon: 'i-solar:gallery-bold-duotone' },
+                { id: 'archives', label: 'Archives', icon: 'i-solar:box-minimalistic-bold-duotone' },
+                { id: 'notes', label: 'Notes', icon: 'i-solar:document-text-bold-duotone' },
+              ] as const)"
+              :key="item.id"
+              class="w-full flex items-center gap-3 rounded-xl p-2.5 text-left text-xs font-semibold transition-all"
+              :class="activeSurface === item.id
+                ? 'bg-primary-50/70 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 ring-1 ring-primary-500/10'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900/50'"
+              @click="selectSurface(item.id)"
+            >
+              <div :class="[item.icon, 'text-base']" />
+              <span>{{ item.label }}</span>
+            </button>
+          </div>
 
-                  <!-- Manual journal entry card -->
-                  <div
-                    v-else-if="entry.type === 'manual'"
-                    class="flex flex-col cursor-pointer gap-1 border border-emerald-200/30 rounded-lg bg-emerald-50/30 p-2.5 transition-colors dark:border-emerald-800/30 hover:border-emerald-300 dark:bg-emerald-950/20 dark:hover:border-emerald-700"
-                    @click="interactiveAreaRef?.openTextPreview?.(entry)"
-                  >
-                    <div class="flex items-center gap-1.5 text-[10px] text-emerald-500 font-bold uppercase dark:text-emerald-400">
-                      <span>{{ formatMonthDay(entry.timestamp) }}</span>
-                      <span class="i-solar:notebook-bold-duotone text-[10px]" />
-                      <span>Journal Entry</span>
-                    </div>
-                    <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-200">{{ entry.title }}</span>
-                    <p class="line-clamp-2 text-[10px] text-neutral-500 leading-relaxed dark:text-neutral-400">
-                      {{ entry.content }}
-                    </p>
-                  </div>
-                </template>
+          <!-- Settings Footer -->
+          <div class="border-t border-neutral-200/40 pt-2 dark:border-neutral-800/40">
+            <button
+              class="w-full flex items-center justify-between rounded-xl p-2 text-left text-xs text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+              @click="selectSurface('messages')"
+            >
+              <div class="flex items-center gap-2">
+                <div class="i-solar:settings-minimalistic-linear text-base" />
+                <span>Settings</span>
               </div>
-            </div>
-
-            <!-- Media Gallery Section -->
-            <div class="flex flex-col gap-2">
-              <div class="flex items-center justify-between">
-                <span
-                  :class="['flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors',
-                           rightPanelMediaCollapsed
-                             ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50'
-                             : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
-                  @click="rightPanelMediaCollapsed = !rightPanelMediaCollapsed"
-                >
-                  Media Gallery
-                  <span :class="rightPanelMediaCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
-                </span>
-                <div class="flex items-center gap-2">
-                  <button
-                    class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
-                    @click="interactiveAreaRef?.openImagineDialog()"
-                  >
-                    + Add
-                  </button>
-                  <button
-                    class="select-none text-[10px] text-neutral-400 font-bold transition-colors hover:text-neutral-600"
-                    @click="interactiveAreaRef?.openBackgroundDialog()"
-                  >
-                    View All
-                  </button>
-                </div>
-              </div>
-              <div v-if="!rightPanelMediaCollapsed" class="flex flex-col gap-1.5">
-                <div class="grid grid-cols-3 gap-1.5">
-                  <div
-                    v-for="entry in (interactiveAreaRef?.allImageEntries ?? []).slice(0, mediaDisplayCount)"
-                    :key="entry.id"
-                    :class="[
-                      'group relative aspect-square cursor-pointer overflow-hidden rounded-lg',
-                      'border border-neutral-200/60 transition-all hover:border-primary-400',
-                      'dark:border-neutral-800/60 dark:hover:border-primary-500',
-                      'bg-neutral-200/50 dark:bg-neutral-800/50',
-                    ]"
-                    @click="interactiveAreaRef?.openImagePreview?.(entry)"
-                  >
-                    <img
-                      v-if="entry.url"
-                      :src="entry.url"
-                      class="h-full w-full object-cover"
-                    >
-                    <!-- Placeholder square when no url -->
-                    <div v-else class="h-full w-full" />
-                    <!-- Hover overlay -->
-                    <div class="absolute inset-0 flex items-end from-black/50 to-transparent bg-gradient-to-t p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                      <span class="truncate text-[8px] text-white font-medium leading-tight">{{ entry.title }}</span>
-                    </div>
-                  </div>
-                  <!-- Fill remaining slots with placeholders -->
-                  <div
-                    v-for="n in Math.max(0, mediaDisplayCount - (interactiveAreaRef?.allImageEntries?.length ?? 0))"
-                    :key="`fill-${n}`"
-                    class="aspect-square border border-neutral-200/60 rounded-lg bg-neutral-100/50 dark:border-neutral-800/60 dark:bg-neutral-800/30"
-                  />
-                </div>
-
-                <!-- View More -->
-                <button
-                  class="w-full flex items-center justify-center gap-1.5 border border-neutral-200/60 rounded-xl bg-neutral-50/50 py-2 text-[10px] text-neutral-500 font-bold tracking-wider uppercase transition-all dark:border-neutral-800/60 hover:border-primary-200 dark:bg-neutral-950/50 dark:text-neutral-400 hover:text-primary-500 dark:hover:border-primary-800 dark:hover:text-primary-400"
-                  @click="mediaDisplayCount += 12"
-                >
-                  View More
-                  <span class="i-solar:alt-arrow-down-bold text-[8px]" />
-                </button>
-              </div>
-            </div>
+            </button>
           </div>
         </div>
       </Transition>
+
+      <!-- 2. Left Panel Persistent Sidebar (Desktop md+) -->
+      <div
+        :class="[
+          'h-full flex flex-col bg-neutral-50/40 dark:bg-neutral-950/20 border-r border-neutral-200/50 dark:border-neutral-800/50 transition-all duration-300 ease-in-out overflow-hidden hidden md:flex',
+          showLeftSidebar ? 'w-2/12 p-3' : 'w-0 border-r-0 p-0',
+        ]"
+      >
+        <div class="mb-4 flex items-center justify-between border-b border-neutral-200/45 px-2 py-1.5 dark:border-neutral-800/45">
+          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Workspace</span>
+        </div>
+
+        <div class="flex-1 space-y-1">
+          <button
+            v-for="item in ([
+              { id: 'messages', label: 'Chat View', icon: 'i-solar:chat-line-bold-duotone' },
+              { id: 'director', label: 'Director\'s Monitor', icon: 'i-solar:videocamera-record-bold-duotone' },
+              { id: 'world', label: 'World Bible', icon: 'i-solar:notes-bold-duotone' },
+              { id: 'characters', label: 'Characters', icon: 'i-solar:users-group-two-rounded-bold-duotone' },
+              { id: 'media', label: 'Media Library', icon: 'i-solar:gallery-bold-duotone' },
+              { id: 'archives', label: 'Archives', icon: 'i-solar:box-minimalistic-bold-duotone' },
+              { id: 'notes', label: 'Notes', icon: 'i-solar:document-text-bold-duotone' },
+            ] as const)"
+            :key="item.id"
+            class="w-full flex items-center gap-3 rounded-xl p-2.5 text-left text-xs font-semibold transition-all"
+            :class="activeSurface === item.id
+              ? 'bg-primary-50/70 text-primary-600 dark:bg-primary-950/20 dark:text-primary-400 ring-1 ring-primary-500/10'
+              : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900/50'"
+            @click="selectSurface(item.id)"
+          >
+            <div :class="[item.icon, 'text-base']" />
+            <span class="truncate">{{ item.label }}</span>
+          </button>
+        </div>
+
+        <div class="border-t border-neutral-200/45 pt-2 dark:border-neutral-800/45">
+          <button
+            class="w-full flex items-center justify-between rounded-xl p-2 text-left text-xs text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+            @click="selectSurface('messages')"
+          >
+            <div class="flex items-center gap-2">
+              <div class="i-solar:settings-minimalistic-linear text-base" />
+              <span>Settings</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Dynamic Center Content Workspace Slot -->
+      <div class="h-full flex flex-1 flex-row overflow-hidden">
+        <component
+          :is="activeSurfaceComponent"
+          ref="activeSurfaceRef"
+          class="h-full flex-1 overflow-hidden"
+        />
+
+        <!-- Right Context Panel (Exclusive to Chat View) -->
+        <Transition name="slide-right">
+          <div
+            v-if="showRightPanel"
+            class="w-3/12 flex flex-col overflow-y-auto border-l border-neutral-200/50 bg-neutral-50/30 dark:border-neutral-800/50 dark:bg-neutral-950/30"
+          >
+            <!-- Panel Body -->
+            <div class="flex flex-col gap-4 p-4">
+              <!-- Memories Section -->
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <span
+                    :class="['flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors',
+                             rightPanelMemoriesCollapsed
+                               ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50'
+                               : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
+                    @click="rightPanelMemoriesCollapsed = !rightPanelMemoriesCollapsed"
+                  >
+                    Memories
+                    <span :class="rightPanelMemoriesCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
+                  </span>
+                  <button
+                    class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
+                    @click="handleOpenJournal"
+                  >
+                    + New
+                  </button>
+                </div>
+                <div v-if="!rightPanelMemoriesCollapsed" class="flex flex-col gap-1">
+                  <template v-for="entry in (interactiveAreaRef?.allTextEntries ?? [])" :key="entry.id">
+                    <!-- Echo chip -->
+                    <div
+                      v-if="entry.type === 'echo'"
+                      class="h-[26px] w-full flex cursor-pointer items-center gap-2 border rounded-lg px-2 py-1 text-[10px] font-bold leading-none transition-all"
+                      :class="entry.echoType === 'mood'
+                        ? 'border-rose-200/60 bg-rose-50/50 text-rose-600 dark:border-rose-800/60 dark:bg-rose-900/20 dark:text-rose-400'
+                        : entry.echoType === 'flavor'
+                          ? 'border-amber-200/60 bg-amber-50/50 text-amber-600 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-400'
+                          : 'border-indigo-200/60 bg-indigo-50/50 text-indigo-600 dark:border-indigo-800/60 dark:bg-indigo-900/20 dark:text-indigo-400'"
+                      @click="interactiveAreaRef?.openTextPreview?.(entry)"
+                    >
+                      <span class="shrink-0 opacity-70">{{ formatMonthDay(entry.timestamp) }}</span>
+                      <span
+                        :class="entry.echoType === 'mood'
+                          ? 'i-solar:heart-bold-duotone'
+                          : entry.echoType === 'flavor'
+                            ? 'i-solar:tag-bold-duotone'
+                            : 'i-solar:magic-stick-3-bold-duotone'"
+                        class="shrink-0 text-[10px]"
+                      />
+                      <span class="truncate">{{ entry.content }}</span>
+                    </div>
+
+                    <!-- STMM auto entry card -->
+                    <div
+                      v-else-if="entry.type === 'auto'"
+                      class="flex flex-col cursor-pointer gap-1 border border-primary-200/30 rounded-lg bg-primary-50/30 p-2.5 transition-colors dark:border-primary-800/30 hover:border-primary-300 dark:bg-primary-950/20 dark:hover:border-primary-700"
+                      @click="interactiveAreaRef?.openTextPreview?.(entry)"
+                    >
+                      <div class="flex items-center gap-1.5 text-[10px] text-primary-500 font-bold uppercase dark:text-primary-400">
+                        <span>{{ formatMonthDay(entry.timestamp) }}</span>
+                        <span class="i-solar:dna-bold-duotone text-[10px]" />
+                        <span>Daily Summary Block</span>
+                      </div>
+                      <div class="flex items-center gap-2 text-[9px] text-neutral-400 font-medium">
+                        <span>{{ entry.messageCount }} messages</span>
+                        <span>·</span>
+                        <span>{{ entry.sessionCount }} sessions</span>
+                        <span v-if="entry.estimatedTokens">·</span>
+                        <span v-if="entry.estimatedTokens">{{ entry.estimatedTokens }} tokens</span>
+                      </div>
+                      <p class="line-clamp-2 text-[10px] text-neutral-600 leading-relaxed dark:text-neutral-400">
+                        {{ entry.content }}
+                      </p>
+                    </div>
+
+                    <!-- Manual journal entry card -->
+                    <div
+                      v-else-if="entry.type === 'manual'"
+                      class="flex flex-col cursor-pointer gap-1 border border-emerald-200/30 rounded-lg bg-emerald-50/30 p-2.5 transition-colors dark:border-emerald-800/30 hover:border-emerald-300 dark:bg-emerald-950/20 dark:hover:border-emerald-700"
+                      @click="interactiveAreaRef?.openTextPreview?.(entry)"
+                    >
+                      <div class="flex items-center gap-1.5 text-[10px] text-emerald-500 font-bold uppercase dark:text-emerald-400">
+                        <span>{{ formatMonthDay(entry.timestamp) }}</span>
+                        <span class="i-solar:notebook-bold-duotone text-[10px]" />
+                        <span>Journal Entry</span>
+                      </div>
+                      <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-200">{{ entry.title }}</span>
+                      <p class="line-clamp-2 text-[10px] text-neutral-500 leading-relaxed dark:text-neutral-400">
+                        {{ entry.content }}
+                      </p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Media Gallery Section -->
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <span
+                    :class="['flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors',
+                             rightPanelMediaCollapsed
+                               ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50'
+                               : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
+                    @click="rightPanelMediaCollapsed = !rightPanelMediaCollapsed"
+                  >
+                    Media Gallery
+                    <span :class="rightPanelMediaCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
+                      @click="interactiveAreaRef?.openImagineDialog()"
+                    >
+                      + Add
+                    </button>
+                    <button
+                      class="select-none text-[10px] text-neutral-400 font-bold transition-colors hover:text-neutral-600"
+                      @click="interactiveAreaRef?.openBackgroundDialog()"
+                    >
+                      View All
+                    </button>
+                  </div>
+                </div>
+                <div v-if="!rightPanelMediaCollapsed" class="flex flex-col gap-1.5">
+                  <div class="grid grid-cols-3 gap-1.5">
+                    <div
+                      v-for="entry in (interactiveAreaRef?.allImageEntries ?? []).slice(0, mediaDisplayCount)"
+                      :key="entry.id"
+                      :class="[
+                        'group relative aspect-square cursor-pointer overflow-hidden rounded-lg',
+                        'border border-neutral-200/60 transition-all hover:border-primary-400',
+                        'dark:border-neutral-800/60 dark:hover:border-primary-500',
+                        'bg-neutral-200/50 dark:bg-neutral-800/50',
+                      ]"
+                      @click="interactiveAreaRef?.openImagePreview?.(entry)"
+                    >
+                      <img
+                        v-if="entry.url"
+                        :src="entry.url"
+                        class="h-full w-full object-cover"
+                      >
+                      <!-- Placeholder square when no url -->
+                      <div v-else class="h-full w-full" />
+                      <!-- Hover overlay -->
+                      <div class="absolute inset-0 flex items-end from-black/50 to-transparent bg-gradient-to-t p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <span class="truncate text-[8px] text-white font-medium leading-tight">{{ entry.title }}</span>
+                      </div>
+                    </div>
+                    <!-- Fill remaining slots with placeholders -->
+                    <div
+                      v-for="n in Math.max(0, mediaDisplayCount - (interactiveAreaRef?.allImageEntries?.length ?? 0))"
+                      :key="`fill-${n}`"
+                      class="aspect-square border border-neutral-200/60 rounded-lg bg-neutral-100/50 dark:border-neutral-800/60 dark:bg-neutral-800/30"
+                    />
+                  </div>
+
+                  <!-- View More -->
+                  <button
+                    class="w-full flex items-center justify-center gap-1.5 border border-neutral-200/60 rounded-xl bg-neutral-50/50 py-2 text-[10px] text-neutral-500 font-bold tracking-wider uppercase transition-all dark:border-neutral-800/60 hover:border-primary-200 dark:bg-neutral-950/50 dark:text-neutral-400 hover:text-primary-500 dark:hover:border-primary-800 dark:hover:text-primary-400"
+                    @click="mediaDisplayCount += 12"
+                  >
+                    View More
+                    <span class="i-solar:alt-arrow-down-bold text-[8px]" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
     </div>
   </div>
 </template>
