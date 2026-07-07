@@ -51,6 +51,8 @@ const isRightPanelOpen = useLocalStorage('airi:chat:right-panel-open', false)
 const { width } = useWindowSize()
 const showRightPanel = computed(() => isRightPanelOpen.value && width.value >= 768)
 const mediaDisplayCount = ref(12)
+const rightPanelMemoriesCollapsed = useLocalStorage('airi:chat:rp-memories-collapsed', false)
+const rightPanelMediaCollapsed = useLocalStorage('airi:chat:rp-media-collapsed', false)
 
 // --- Grounding toggle helpers ---
 function handleToggleGrounding() {
@@ -538,24 +540,21 @@ function formatMonthDay(ts: number): string {
           v-if="showRightPanel"
           class="w-3/12 flex flex-col overflow-y-auto bg-neutral-50/30 dark:bg-neutral-950/30"
         >
-          <!-- Panel Header -->
-          <div class="flex select-none items-center justify-between border-b border-neutral-200/50 px-4 py-3 dark:border-neutral-800/50">
-            <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Context Panel</span>
-            <button
-              class="rounded-lg p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-              title="Close context panel"
-              @click="isRightPanelOpen = false"
-            >
-              <div class="i-solar:close-square-outline text-sm" />
-            </button>
-          </div>
-
           <!-- Panel Body -->
           <div class="flex flex-col gap-4 p-4">
             <!-- Memories Section -->
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Memories</span>
+                <span
+                  :class="['flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors',
+                           rightPanelMemoriesCollapsed
+                             ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50'
+                             : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
+                  @click="rightPanelMemoriesCollapsed = !rightPanelMemoriesCollapsed"
+                >
+                  Memories
+                  <span :class="rightPanelMemoriesCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
+                </span>
                 <button
                   class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
                   @click="handleOpenJournal"
@@ -563,7 +562,7 @@ function formatMonthDay(ts: number): string {
                   + New
                 </button>
               </div>
-              <div class="flex flex-col gap-1">
+              <div v-if="!rightPanelMemoriesCollapsed" class="flex flex-col gap-1">
                 <template v-for="entry in (interactiveAreaRef?.allTextEntries ?? [])" :key="entry.id">
                   <!-- Echo chip -->
                   <div
@@ -634,7 +633,16 @@ function formatMonthDay(ts: number): string {
             <!-- Media Gallery Section -->
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Media Gallery</span>
+                <span
+                  :class="['flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors',
+                           rightPanelMediaCollapsed
+                             ? 'bg-neutral-100/50 text-neutral-400 dark:bg-neutral-800/50'
+                             : 'bg-primary-50/50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-400']"
+                  @click="rightPanelMediaCollapsed = !rightPanelMediaCollapsed"
+                >
+                  Media Gallery
+                  <span :class="rightPanelMediaCollapsed ? 'i-solar:eye-closed-linear' : 'i-solar:eye-linear'" class="text-xs" />
+                </span>
                 <div class="flex items-center gap-2">
                   <button
                     class="select-none text-[10px] text-primary-500 font-bold transition-colors hover:text-primary-600"
@@ -650,46 +658,48 @@ function formatMonthDay(ts: number): string {
                   </button>
                 </div>
               </div>
-              <div class="grid grid-cols-3 gap-1.5">
-                <div
-                  v-for="entry in (interactiveAreaRef?.allImageEntries ?? []).slice(0, mediaDisplayCount)"
-                  :key="entry.id"
-                  :class="[
-                    'group relative aspect-square cursor-pointer overflow-hidden rounded-lg',
-                    'border border-neutral-200/60 transition-all hover:border-primary-400',
-                    'dark:border-neutral-800/60 dark:hover:border-primary-500',
-                    'bg-neutral-200/50 dark:bg-neutral-800/50',
-                  ]"
-                  @click="interactiveAreaRef?.openImagePreview?.(entry)"
-                >
-                  <img
-                    v-if="entry.url"
-                    :src="entry.url"
-                    class="h-full w-full object-cover"
+              <div v-if="!rightPanelMediaCollapsed" class="flex flex-col gap-1.5">
+                <div class="grid grid-cols-3 gap-1.5">
+                  <div
+                    v-for="entry in (interactiveAreaRef?.allImageEntries ?? []).slice(0, mediaDisplayCount)"
+                    :key="entry.id"
+                    :class="[
+                      'group relative aspect-square cursor-pointer overflow-hidden rounded-lg',
+                      'border border-neutral-200/60 transition-all hover:border-primary-400',
+                      'dark:border-neutral-800/60 dark:hover:border-primary-500',
+                      'bg-neutral-200/50 dark:bg-neutral-800/50',
+                    ]"
+                    @click="interactiveAreaRef?.openImagePreview?.(entry)"
                   >
-                  <!-- Placeholder square when no url -->
-                  <div v-else class="h-full w-full" />
-                  <!-- Hover overlay -->
-                  <div class="absolute inset-0 flex items-end from-black/50 to-transparent bg-gradient-to-t p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                    <span class="truncate text-[8px] text-white font-medium leading-tight">{{ entry.title }}</span>
+                    <img
+                      v-if="entry.url"
+                      :src="entry.url"
+                      class="h-full w-full object-cover"
+                    >
+                    <!-- Placeholder square when no url -->
+                    <div v-else class="h-full w-full" />
+                    <!-- Hover overlay -->
+                    <div class="absolute inset-0 flex items-end from-black/50 to-transparent bg-gradient-to-t p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <span class="truncate text-[8px] text-white font-medium leading-tight">{{ entry.title }}</span>
+                    </div>
                   </div>
+                  <!-- Fill remaining slots with placeholders -->
+                  <div
+                    v-for="n in Math.max(0, mediaDisplayCount - (interactiveAreaRef?.allImageEntries?.length ?? 0))"
+                    :key="`fill-${n}`"
+                    class="aspect-square border border-neutral-200/60 rounded-lg bg-neutral-100/50 dark:border-neutral-800/60 dark:bg-neutral-800/30"
+                  />
                 </div>
-                <!-- Fill remaining slots with placeholders -->
-                <div
-                  v-for="n in Math.max(0, mediaDisplayCount - (interactiveAreaRef?.allImageEntries?.length ?? 0))"
-                  :key="`fill-${n}`"
-                  class="aspect-square border border-neutral-200/60 rounded-lg bg-neutral-100/50 dark:border-neutral-800/60 dark:bg-neutral-800/30"
-                />
-              </div>
 
-              <!-- View More -->
-              <button
-                class="w-full flex items-center justify-center gap-1.5 border border-neutral-200/60 rounded-xl bg-neutral-50/50 py-2 text-[10px] text-neutral-500 font-bold tracking-wider uppercase transition-all dark:border-neutral-800/60 hover:border-primary-200 dark:bg-neutral-950/50 dark:text-neutral-400 hover:text-primary-500 dark:hover:border-primary-800 dark:hover:text-primary-400"
-                @click="mediaDisplayCount += 12"
-              >
-                View More
-                <span class="i-solar:alt-arrow-down-bold text-[8px]" />
-              </button>
+                <!-- View More -->
+                <button
+                  class="w-full flex items-center justify-center gap-1.5 border border-neutral-200/60 rounded-xl bg-neutral-50/50 py-2 text-[10px] text-neutral-500 font-bold tracking-wider uppercase transition-all dark:border-neutral-800/60 hover:border-primary-200 dark:bg-neutral-950/50 dark:text-neutral-400 hover:text-primary-500 dark:hover:border-primary-800 dark:hover:text-primary-400"
+                  @click="mediaDisplayCount += 12"
+                >
+                  View More
+                  <span class="i-solar:alt-arrow-down-bold text-[8px]" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
