@@ -176,33 +176,55 @@ Anything added here becomes part of the message payload.
 
 ## 5. Phase 3: Three-Column Workspace Layout
 
+### Column Architecture (Two-Level Nesting)
+
+The left panel, center content, and right panel are NOT flat siblings in a single row. The layout is a **two-level nesting**:
+
+```
+[ col-2 left sidebar ] [ content-wrapper (col-10 or col-12)         ]
+                                  [ chat col-9 ][ right panel col-3 ]
+```
+
+**Level 1** — `chat.vue` manages only the sidebar ↔ content split:
+- The left sidebar is either `col-2` (landscape) or an overlay (portrait)
+- The content wrapper fills the remaining space (`col-10` or `col-12`)
+- The sidebar has no knowledge of the right panel's state
+
+**Level 2** — the content surface (`chat_messages.vue`) manages its own internal split:
+- When the right panel is open: `col-9` chat + `col-3` right panel
+- When closed: `col-12` chat, the full context band visible
+
+**Why this matters:** The three columns never coexist in a single `w-2/12 + w-7/12 + w-3/12` grid. The sidebar wraps around the content wrapper, and the content wrapper negotiates its own inner layout. This keeps the sidebar and right panel completely decoupled — neither needs to know the other exists.
+
 ### Layout Modes
 
 #### Portrait (<768px)
 
 ```
 Header
-Chat
-Context Band
-Composer
++----------------------------+
+| [overlay sidebar (col-2)]  | ← hovers over content, auto-closes on selection
+|   Chat + Context Band      |
+|   Composer                 |
++----------------------------+
 ```
 
----
+- Sidebar renders as a floating overlay at `col-2` width
+- Content remains `col-12` underneath
+- Right panel auto-suppressed (already wired via `showRightPanel`)
+- One-click use: open → select → auto-close
 
-#### Landscape (Right Panel OFF)
-
-```
-[Left Panel] [ Chat + Context Band + Composer ]
-```
-
----
-
-#### Landscape (Right Panel ON)
+#### Landscape (md+)
 
 ```
-[Left Panel] [ Chat + Composer ] [ Right Panel ]
+[ col-2 sidebar ] [                   col-10 content wrapper                   ]
+                              [ chat col-9 ][ right panel col-3 ]
 ```
-Context Band remains independently collapsible via its eye toggles — the user chooses what surfaces where.
+
+- Sidebar is `col-2`, persistent, toggled via ☰ hamburger
+- Content wrapper is `col-10` when sidebar is open, `col-12` when closed
+- Inside the content wrapper, the chat surface handles its own right panel split
+- Right panel carve-out (`col-3` from the content wrapper's `col-10`) is invisible to the sidebar
 
 ---
 
@@ -220,26 +242,12 @@ The original spec enforced **mutual exclusion** — Right Panel open = Context B
 
 ### Core Rules
 
-* Portrait mode always uses Context Band only
-* Right Panel state persists but is suppressed in portrait
-* Restores automatically when returning to landscape
-
----
-
-### Layout Constraints (New)
-
-To prevent layout collapse:
-
-* **Minimum Chat Width enforced**
-
-* Panel priority on shrink:
-
-  1. Collapse Right Panel
-  2. Collapse Left Panel
-
-* Layout overrides user state only when necessary
-
-* Original state restored on resize back
+* Portrait (<768px): left sidebar is an overlay, content is `col-12`, right panel force-suppressed
+* Landscape (md+): left sidebar is persistent `col-2`, toggled via ☰ hamburger — content fills remaining space
+* Right panel state persists in localStorage but is suppressed below 768px
+* Right panel auto-restores when crossing back above 768px
+* Context Band is always in the content column — independently collapsible via eye toggles
+* Panel priority on shrink: right panel collapses first, then left sidebar
 
 ---
 
