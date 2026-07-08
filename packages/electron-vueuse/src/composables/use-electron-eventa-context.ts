@@ -1,47 +1,39 @@
 import type { InvokeEventa } from '@moeru/eventa'
+import type { ShallowRef } from 'vue'
 
 import { defineInvoke } from '@moeru/eventa'
 import { createContext } from '@moeru/eventa/adapters/electron/renderer'
-import { ref } from 'vue'
+import { shallowRef } from 'vue'
 
 type EventaContext = ReturnType<typeof createContext>['context']
 type IpcRendererLike = Parameters<typeof createContext>[0]
 
 let sharedContext: EventaContext | undefined
 
-function resolveIpcRenderer(ipcRenderer?: IpcRendererLike): IpcRendererLike | undefined {
+function resolveIpcRenderer(ipcRenderer?: IpcRendererLike): IpcRendererLike {
   if (ipcRenderer) {
     return ipcRenderer
   }
 
-  return (globalThis as { window?: { electron?: { ipcRenderer?: IpcRendererLike } } }).window?.electron?.ipcRenderer
-}
-
-export function getElectronEventaContext(ipcRenderer?: IpcRendererLike): EventaContext | undefined {
-  const resolved = resolveIpcRenderer(ipcRenderer)
-  if (!resolved) {
-    return undefined
+  const globalIpcRenderer = (globalThis as { window?: { electron?: { ipcRenderer?: IpcRendererLike } } }).window?.electron?.ipcRenderer
+  if (!globalIpcRenderer) {
+    throw new Error('Electron ipcRenderer is not available. Pass it explicitly to useElectronEventaContext().')
   }
 
-  sharedContext ??= createContext(resolved).context
+  return globalIpcRenderer
+}
+
+export function getElectronEventaContext(ipcRenderer?: IpcRendererLike): EventaContext {
+  sharedContext ??= createContext(resolveIpcRenderer(ipcRenderer)).context
   return sharedContext
 }
 
-export function useElectronEventaContext(ipcRenderer?: IpcRendererLike) {
-  return ref(getElectronEventaContext(ipcRenderer))
+export function useElectronEventaContext(ipcRenderer?: IpcRendererLike): ShallowRef<EventaContext> {
+  return shallowRef(getElectronEventaContext(ipcRenderer))
 }
 
 export function useElectronEventaInvoke<Res, Req = undefined, ResErr = Error, ReqErr = Error>(invoke: InvokeEventa<Res, Req, ResErr, ReqErr>, context?: EventaContext) {
-  const ctx = context ?? getElectronEventaContext()
-
-  if (!ctx) {
-    return (async () => {
-      console.warn('Electron IPC is not available in this environment. This invoke will do nothing.')
-      throw new Error('Electron IPC not available')
-    }) as any
-  }
-
-  return defineInvoke(ctx, invoke)
+  return defineInvoke(context ?? getElectronEventaContext(), invoke)
 }
 
 export function resetElectronEventaContextForTesting() {

@@ -1,4 +1,5 @@
 export * from './artistry'
+export * from './auth'
 export * from './discord'
 export * from './env-vars'
 export * from './environment'

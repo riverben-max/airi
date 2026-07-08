@@ -136,6 +136,9 @@ export function convertProviderDefinitionToMetadata(
     order: definition.order,
     category,
     tasks: definition.tasks,
+    ...(definition.id.startsWith('official-provider') || definition.id.startsWith('vision-official-provider')
+      ? { requiresCredentials: false }
+      : {}),
     nameKey: definition.nameLocalize({ t: keyExtractor }),
     name: definition.name,
     descriptionKey: definition.descriptionLocalize({ t: keyExtractor }),
@@ -194,10 +197,10 @@ export function convertProviderDefinitionToMetadata(
           }
         },
       listVoices: definition.extraMethods?.listVoices
-        ? async (config) => {
+        ? async (config, model) => {
           const provider = await definition.createProvider(config as any)
           try {
-            return await definition.extraMethods!.listVoices!(config as any, provider)
+            return await definition.extraMethods!.listVoices!(config as any, provider, model)
           }
           finally {
             await (provider as { dispose?: () => Promise<void> | void }).dispose?.()

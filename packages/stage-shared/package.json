@@ -16,6 +16,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./auth": "./src/auth/index.ts",
     "./vite": "./src/vite.ts",
     "./beat-sync": "./src/beat-sync/index.ts",
     "./electron-renderer": "./src/electron-renderer.d.ts",
@@ -32,6 +33,7 @@
     "@valibot/to-json-schema": "1.0.0-rc.0",
     "@vueuse/core": "catalog:",
     "@xsai/generate-text": "catalog:",
+    "@xsai/shared": "catalog:",
     "@xsai/shared-chat": "catalog:",
     "@xsai/utils-chat": "catalog:",
     "gpuu": "^1.0.7",

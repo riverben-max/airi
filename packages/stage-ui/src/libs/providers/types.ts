@@ -37,7 +37,7 @@ export function isModelProvider(providerInstance: ProviderInstance): providerIns
 
 export interface ProviderExtraMethods<TConfig> {
   listModels?: (config: TConfig, provider: ProviderInstance) => Promise<ModelInfo[]>
-  listVoices?: (config: TConfig, provider: ProviderInstance) => Promise<VoiceInfo[]>
+  listVoices?: (config: TConfig, provider: ProviderInstance, model?: string) => Promise<VoiceInfo[]>
   loadModel?: (config: TConfig, provider: ProviderInstance, hooks?: { onProgress?: (progress: ProgressInfo) => Promise<void> | void }) => Promise<void>
 }
 
@@ -140,6 +140,12 @@ export interface ProviderDefinition<TConfig extends any = any> {
    */
   isAvailableBy?: () => Promise<boolean> | boolean
 
+  /**
+   * If false, the provider does not require user-provided credentials (for example API keys).
+   * Used for built-in providers that authenticate via the current session.
+   */
+  requiresCredentials?: boolean
+
   createProviderConfig: (contextOptions: { t: ComposerTranslation }) => $ZodType<TConfig>
   createProvider: (config: TConfig) => MaybePromise<ProviderInstance>
   extraMethods?: ProviderExtraMethods<TConfig>
@@ -154,6 +160,9 @@ export interface ProviderDefinition<TConfig extends any = any> {
       generateOutput: boolean
       streamOutput: boolean
       streamInput: boolean
+    }
+    speech?: {
+      transport: 'rest' | 'bidirectional-ws'
     }
   }
   business?: (contextOptions: { t: ComposerTranslation }) => {

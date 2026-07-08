@@ -1,15 +1,32 @@
+import type { Ref } from 'vue'
+
 import type { Character, CreateCharacterPayload, UpdateCharacterPayload } from '../types/character'
 
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
 import { parse } from 'valibot'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
-import { client } from '../composables/api'
-import { useLocalFirstRequest } from '../composables/use-local-first'
 import { charactersRepo } from '../database/repos/characters.repo'
 import { CharacterWithRelationsSchema } from '../types/character'
 import { useAuthStore } from './auth'
+
+interface StoreQuery<TData> {
+  error: Ref<Error | null>
+  isLoading: Ref<boolean>
+  refetch: (force?: boolean) => Promise<{ data?: TData }>
+}
+
+interface StoreMutation<TVars, TData> {
+  error: Ref<Error | null>
+  mutateAsync: (vars: TVars) => Promise<TData>
+}
+
+function setCharactersMap(target: Map<string, Character>, characters: Character[]) {
+  target.clear()
+  for (const character of characters)
+    target.set(character.id, character)
+}
 
 function buildLocalCharacter(userId: string, payload: CreateCharacterPayload) {
   const id = payload.character.id ?? nanoid()
@@ -72,215 +89,150 @@ function buildLocalCharacter(userId: string, payload: CreateCharacterPayload) {
   })
 }
 
-export const useCharacterStore = defineStore('characters', () => {
-  const characters = ref<Map<string, Character>>(new Map())
-  const auth = useAuthStore()
+function createLocalOnlyListQuery(): StoreQuery<Character[]> {
+  return {
+    error: ref<Error | null>(null),
+    isLoading: ref(false),
+    async refetch() {
+      return { data: [] }
+    },
+  }
+}
+
+function createLocalOnlyMutation<TVars, TData>(): StoreMutation<TVars, TData> {
+  const error = ref<Error | null>(null)
+
+  return {
+    error,
+    async mutateAsync() {
+      const nextError = new Error('Remote character sync is disabled')
+      error.value = nextError
+      throw nextError
+    },
+  }
+}
+
+export function createCharactersListQueryOptions(params: {
+  client?: unknown
+  listAll: Ref<boolean>
+  service?: unknown
+}) {
+  return {
+    key: () => ['characters', { all: params.listAll.value }],
+    query: async () => charactersRepo.getAll(),
+    enabled: false,
+  }
+}
+
+export function createCharacterStoreController(params: {
+  auth: { userId: string }
+  bookmarkMutation: StoreMutation<string, Character>
+  characters: Ref<Map<string, Character>>
+  createMutation: StoreMutation<CreateCharacterPayload, Character>
+  model?: unknown
+  likeMutation: StoreMutation<string, Character>
+  listAll: Ref<boolean>
+  listQuery: StoreQuery<Character[]>
+  service?: unknown
+  removeMutation: StoreMutation<string, void>
+  updateMutation: StoreMutation<{ id: string, data: UpdateCharacterPayload }, Character>
+}) {
+  const {
+    auth,
+    bookmarkMutation,
+    characters,
+    createMutation,
+    likeMutation,
+    listAll,
+    listQuery,
+    removeMutation,
+    updateMutation,
+  } = params
+  const mutationError = computed(() =>
+    createMutation.error.value
+    ?? updateMutation.error.value
+    ?? removeMutation.error.value
+    ?? likeMutation.error.value
+    ?? bookmarkMutation.error.value)
 
   async function fetchList(all: boolean = false) {
-    return useLocalFirstRequest({
-      local: async () => {
-        const cached = await charactersRepo.getAll()
-        if (cached.length > 0) {
-          characters.value.clear()
-          for (const char of cached) {
-            characters.value.set(char.id, char)
-          }
-        }
-      },
-      remote: async () => {
-        const res = await client.api.characters.$get({
-          query: { all: String(all) },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to fetch characters')
-        }
-        const data = (await res.json()) as any[]
-
-        characters.value.clear()
-        const parsedData: Character[] = []
-        for (const char of data) {
-          const parsed = parse(CharacterWithRelationsSchema, char)
-          characters.value.set(char.id, parsed)
-          parsedData.push(parsed)
-        }
-        await charactersRepo.saveAll(parsedData)
-      },
-    })
+    listAll.value = all
+    const cached = await charactersRepo.getAll()
+    if (cached.length > 0)
+      setCharactersMap(characters.value, cached)
+    return cached
   }
 
   async function fetchById(id: string) {
-    return useLocalFirstRequest({
-      local: async () => {
-        const cached = characters.value.get(id) ?? (await charactersRepo.getAll()).find(char => char.id === id)
-        if (cached) {
-          characters.value.set(cached.id, cached)
-        }
-        return cached
-      },
-      remote: async () => {
-        const res = await client.api.characters[':id'].$get({
-          param: { id },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to fetch character')
-        }
-        const data = await res.json()
-        const character = parse(CharacterWithRelationsSchema, data)
-
-        characters.value.set(character.id, character)
-        await charactersRepo.upsert(character)
-        return character
-      },
-    })
+    const cached = characters.value.get(id) ?? (await charactersRepo.getAll()).find(character => character.id === id)
+    if (cached)
+      characters.value.set(cached.id, cached)
+    return cached
   }
 
   async function create(payload: CreateCharacterPayload) {
-    let localCharacter: Character
-    return useLocalFirstRequest({
-      local: async () => {
-        localCharacter = buildLocalCharacter(auth.userId, payload)
-        characters.value.set(localCharacter.id, localCharacter)
-        await charactersRepo.upsert(localCharacter)
-        return localCharacter
-      },
-      remote: async () => {
-        const res = await client.api.characters.$post({
-          json: payload,
-        })
-        if (!res.ok) {
-          throw new Error('Failed to create character')
-        }
-        const data = await res.json()
-        const character = parse(CharacterWithRelationsSchema, data)
-
-        // Replace local temp character with remote data
-        characters.value.delete(localCharacter.id)
-        characters.value.set(character.id, character)
-        await charactersRepo.remove(localCharacter.id)
-        await charactersRepo.upsert(character)
-        return character
-      },
-    })
+    const localCharacter = buildLocalCharacter(auth.userId, payload)
+    characters.value.set(localCharacter.id, localCharacter)
+    await charactersRepo.upsert(localCharacter)
+    return localCharacter
   }
 
   async function update(id: string, payload: UpdateCharacterPayload) {
-    return useLocalFirstRequest({
-      local: async () => {
-        const character = characters.value.get(id)
-        if (!character) {
-          return
-        }
-        if (payload.version !== undefined)
-          character.version = payload.version
-        if (payload.coverUrl !== undefined)
-          character.coverUrl = payload.coverUrl
-        if (payload.characterId !== undefined)
-          character.characterId = payload.characterId
-        character.updatedAt = new Date()
-        characters.value.set(character.id, character)
-        await charactersRepo.upsert(character)
-        return character
-      },
-      remote: async () => {
-        const res = await (client.api.characters[':id'].$patch)({
-          param: { id },
-          // @ts-expect-error FIXME: hono client typing misses json option for this route
-          json: payload,
-        })
-        if (!res.ok) {
-          throw new Error('Failed to update character')
-        }
-        const data = await res.json()
-        const character = parse(CharacterWithRelationsSchema, data)
+    const character = characters.value.get(id)
+    if (!character)
+      return
 
-        characters.value.set(character.id, character)
-        await charactersRepo.upsert(character)
-        return character
-      },
-    })
+    const localCharacter = {
+      ...character,
+      ...(payload.version !== undefined ? { version: payload.version } : {}),
+      ...(payload.coverUrl !== undefined ? { coverUrl: payload.coverUrl } : {}),
+      ...(payload.characterId !== undefined ? { characterId: payload.characterId } : {}),
+      updatedAt: new Date(),
+    }
+    characters.value.set(localCharacter.id, localCharacter)
+    await charactersRepo.upsert(localCharacter)
+    return localCharacter
   }
 
   async function remove(id: string) {
-    return useLocalFirstRequest({
-      local: async () => {
-        characters.value.delete(id)
-        await charactersRepo.remove(id)
-      },
-      remote: async () => {
-        const res = await client.api.characters[':id'].$delete({
-          param: { id },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to remove character')
-        }
-      },
-    })
+    characters.value.delete(id)
+    await charactersRepo.remove(id)
   }
 
   async function like(id: string) {
-    return useLocalFirstRequest({
-      local: async () => {
-        const character = characters.value.get(id)
-        if (!character) {
-          return
-        }
-        const likes = character.likes ?? []
-        if (!likes.some(item => item.userId === auth.userId)) {
-          likes.push({ userId: auth.userId, characterId: id })
-          character.likes = likes
-          character.likesCount += 1
-          character.updatedAt = new Date()
-          characters.value.set(character.id, character)
-          await charactersRepo.upsert(character)
-        }
-      },
-      remote: async () => {
-        const res = await client.api.characters[':id'].like.$post({
-          param: { id },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to like character')
-        }
+    const character = characters.value.get(id)
+    if (!character)
+      return
 
-        const data = await res.json()
-        const character = parse(CharacterWithRelationsSchema, data)
-        characters.value.set(character.id, character)
-        await charactersRepo.upsert(character)
-      },
-    })
+    const likes = character.likes ?? []
+    if (!likes.some(item => item.userId === auth.userId)) {
+      const localCharacter = {
+        ...character,
+        likes: [...likes, { userId: auth.userId, characterId: id }],
+        likesCount: character.likesCount + 1,
+        updatedAt: new Date(),
+      }
+      characters.value.set(localCharacter.id, localCharacter)
+      await charactersRepo.upsert(localCharacter)
+    }
   }
 
   async function bookmark(id: string) {
-    return useLocalFirstRequest({
-      local: async () => {
-        const character = characters.value.get(id)
-        if (!character) {
-          return
-        }
-        const bookmarks = character.bookmarks ?? []
-        if (!bookmarks.some(item => item.userId === auth.userId)) {
-          bookmarks.push({ userId: auth.userId, characterId: id })
-          character.bookmarks = bookmarks
-          character.bookmarksCount += 1
-          character.updatedAt = new Date()
-          characters.value.set(character.id, character)
-          await charactersRepo.upsert(character)
-        }
-      },
-      remote: async () => {
-        const res = await client.api.characters[':id'].bookmark.$post({
-          param: { id },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to bookmark character')
-        }
+    const character = characters.value.get(id)
+    if (!character)
+      return
 
-        const data = await res.json()
-        const character = parse(CharacterWithRelationsSchema, data)
-        characters.value.set(character.id, character)
-        await charactersRepo.upsert(character)
-      },
-    })
+    const bookmarks = character.bookmarks ?? []
+    if (!bookmarks.some(item => item.userId === auth.userId)) {
+      const localCharacter = {
+        ...character,
+        bookmarks: [...bookmarks, { userId: auth.userId, characterId: id }],
+        bookmarksCount: character.bookmarksCount + 1,
+        updatedAt: new Date(),
+      }
+      characters.value.set(localCharacter.id, localCharacter)
+      await charactersRepo.upsert(localCharacter)
+    }
   }
 
   function getCharacter(id: string) {
@@ -289,6 +241,9 @@ export const useCharacterStore = defineStore('characters', () => {
 
   return {
     characters,
+    isLoading: computed(() => listQuery.isLoading.value),
+    error: computed(() => listQuery.error.value),
+    mutationError,
 
     fetchList,
     fetchById,
@@ -299,4 +254,29 @@ export const useCharacterStore = defineStore('characters', () => {
     bookmark,
     getCharacter,
   }
+}
+
+export const useCharacterStore = defineStore('characters', () => {
+  const characters = ref<Map<string, Character>>(new Map())
+  const listAll = ref(false)
+  const auth = useAuthStore()
+
+  const listQuery = createLocalOnlyListQuery()
+  const createMutation = createLocalOnlyMutation<CreateCharacterPayload, Character>()
+  const updateMutation = createLocalOnlyMutation<{ id: string, data: UpdateCharacterPayload }, Character>()
+  const removeMutation = createLocalOnlyMutation<string, void>()
+  const likeMutation = createLocalOnlyMutation<string, Character>()
+  const bookmarkMutation = createLocalOnlyMutation<string, Character>()
+
+  return createCharacterStoreController({
+    auth,
+    bookmarkMutation,
+    characters,
+    createMutation,
+    likeMutation,
+    listAll,
+    listQuery,
+    removeMutation,
+    updateMutation,
+  })
 })

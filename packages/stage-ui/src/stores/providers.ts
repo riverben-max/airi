@@ -10,6 +10,7 @@ import type {
 } from '@xsai-ext/providers/utils'
 import type { ProgressInfo } from '@xsai-transformers/shared/types'
 import type {
+  ListVoicesOptions,
   UnAlibabaCloudOptions,
   UnDeepgramOptions,
   UnElevenLabsOptions,
@@ -75,6 +76,7 @@ import { toast } from 'vue-sonner'
 import { createLocalVisionAdapter, DEFAULT_LOCAL_VISION_MODEL, LOCAL_VISION_MODELS } from '../libs/inference'
 import { getKokoroAdapter } from '../libs/inference/adapters/kokoro'
 import { DEFAULT_WEB_RWKV_MODEL, WEB_RWKV_MODELS } from '../libs/inference/constants'
+import { listProviders as listDefinedProviders } from '../libs/providers'
 import { appLocalAudioTranscription } from '../libs/providers/providers/transcription/app-local-audio-transcription'
 import { getDefaultKokoroModel, KOKORO_MODELS, kokoroModelsToModelInfo } from '../workers/kokoro/constants'
 import { createAliyunNLSProvider as createAliyunNlsStreamProvider } from './providers/aliyun/stream-transcription'
@@ -115,6 +117,11 @@ async function getMossAdapterInstance() {
     mossAdapter = createMossAdapter()
   }
   return mossAdapter
+}
+
+function toListVoicesOptions<T>(provider: VoiceProviderWithExtraOptions<T>, options?: T): ListVoicesOptions {
+  const { fetch: _fetch, ...voiceOptions } = provider.voice(options)
+  return voiceOptions
 }
 
 async function decodeAudioToWaveform(arrayBuffer: ArrayBuffer, targetSampleRate = 16000, targetChannels = 2): Promise<Float32Array> {
@@ -1768,9 +1775,7 @@ export const useProvidersStore = defineStore('providers', () => {
         listVoices: async (config) => {
           const provider = createUnDeepgram((config.apiKey as string).trim(), (config.baseUrl as string).trim()) as VoiceProviderWithExtraOptions<UnDeepgramOptions>
 
-          const voices = await listVoices({
-            ...provider.voice(),
-          })
+          const voices = await listVoices(toListVoicesOptions(provider))
 
           return voices.map((voice) => {
             return {
@@ -1891,9 +1896,7 @@ export const useProvidersStore = defineStore('providers', () => {
           const baseUrl = (config.baseUrl as string | undefined)?.trim() ?? ''
           const provider = createUnMicrosoft(apiKey, baseUrl) as VoiceProviderWithExtraOptions<UnMicrosoftOptions>
 
-          const voices = await listVoices({
-            ...provider.voice({ region: config.region as string }),
-          })
+          const voices = await listVoices(toListVoicesOptions(provider, { region: config.region as string }))
 
           return voices.map((voice) => {
             return {
@@ -2045,9 +2048,7 @@ export const useProvidersStore = defineStore('providers', () => {
           const baseUrl = (config.baseUrl as string | undefined)?.trim() ?? ''
           const provider = createUnAlibabaCloud(apiKey, baseUrl) as VoiceProviderWithExtraOptions<UnAlibabaCloudOptions>
 
-          const voices = await listVoices({
-            ...provider.voice(),
-          })
+          const voices = await listVoices(toListVoicesOptions(provider))
 
           return voices.map((voice) => {
             return {
@@ -2128,9 +2129,7 @@ export const useProvidersStore = defineStore('providers', () => {
           const baseUrl = (config.baseUrl as string | undefined)?.trim() ?? ''
           const provider = createUnVolcengine(apiKey, baseUrl) as VoiceProviderWithExtraOptions<UnVolcengineOptions>
 
-          const voices = await listVoices({
-            ...provider.voice(),
-          })
+          const voices = await listVoices(toListVoicesOptions(provider))
 
           return voices.map((voice) => {
             return {
@@ -3167,6 +3166,9 @@ export const useProvidersStore = defineStore('providers', () => {
     },
   }
 
+  const definedProviders = listDefinedProviders()
+  const definedProviderIds = new Set(definedProviders.map(d => d.id))
+
   const providerMetadata = createProviderRegistry(t, providerDefinitions)
 
   // const validatedCredentials = ref<Record<string, string>>({})
@@ -3276,11 +3278,9 @@ export const useProvidersStore = defineStore('providers', () => {
       if (providerRuntimeState.value[providerId]) {
         providerRuntimeState.value[providerId].isConfigured = validationResult.valid
         providerRuntimeState.value[providerId].validatedCredentialHash = configString
-        // Auto-mark credential-free local providers as added once valid, so they
-        // surface in the "persisted" provider lists (e.g. the consciousness page,
-        // which only lists added chat providers) without a manual add step. These
-        // have no API key to enter, so there is nothing for the user to configure.
-        if (validationResult.valid && ['browser-web-speech-api', 'player2', 'web-rwkv', 'blip-local', 'app-local-audio-transcription'].includes(providerId)) {
+        // Auto-mark credential-free providers as added once valid, so they
+        // surface in the persisted provider lists without a manual add step.
+        if (validationResult.valid && (metadata.requiresCredentials === false || ['browser-web-speech-api', 'player2', 'web-rwkv', 'blip-local', 'app-local-audio-transcription'].includes(providerId))) {
           markProviderAdded(providerId)
         }
       }
@@ -3530,12 +3530,22 @@ export const useProvidersStore = defineStore('providers', () => {
 
   // Get all providers metadata (for settings page)
   const allProvidersMetadata = computed(() => {
-    return Object.values(providerMetadata).map(metadata => ({
+    const localize = (metadata: ProviderMetadata) => ({
       ...metadata,
       localizedName: t(metadata.nameKey, metadata.name),
       localizedDescription: t(metadata.descriptionKey, metadata.description),
       configured: providerRuntimeState.value[metadata.id]?.isConfigured || false,
-    }))
+    })
+
+    const ordered = definedProviders
+      .filter(d => providerMetadata[d.id])
+      .map(d => localize(providerMetadata[d.id]))
+
+    const legacy = Object.values(providerMetadata)
+      .filter(m => !definedProviderIds.has(m.id))
+      .map(localize)
+
+    return [...ordered, ...legacy]
   })
 
   function getTranscriptionFeatures(providerId: string) {
@@ -3669,15 +3679,18 @@ export const useProvidersStore = defineStore('providers', () => {
   }
 
   function isProviderConfigured(providerId: string) {
+    const metadata = providerMetadata[providerId]
+    if (!metadata)
+      return false
+
+    if (metadata.requiresCredentials === false)
+      return true
+
     if (providerId === 'virtual-audio-studio' || providerId === 'speech-noop' || providerId === 'kokoro-local' || providerId === 'moss-nano-local')
       return true
 
     const config = providerCredentials.value[providerId]
     if (!config)
-      return false
-
-    const metadata = providerMetadata[providerId]
-    if (!metadata)
       return false
 
     const configObj = config as Record<string, any>

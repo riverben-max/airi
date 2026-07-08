@@ -102,7 +102,7 @@ export const useSpeechStore = defineStore('speech', () => {
     return false
   })
 
-  async function loadVoicesForProvider(provider: string) {
+  async function loadVoicesForProvider(provider: string, model?: string) {
     if (!provider) {
       return []
     }
@@ -123,7 +123,11 @@ export const useSpeechStore = defineStore('speech', () => {
         }
       }
 
-      const voices = await metadata.capabilities.listVoices?.(config) || []
+      const selectedModel = model?.trim()
+        || (provider === activeSpeechProvider.value ? activeSpeechModel.value.trim() : '')
+        || (typeof config.model === 'string' ? config.model.trim() : '')
+        || undefined
+      const voices = await metadata.capabilities.listVoices?.(config, selectedModel) || []
       // Reassign to trigger reactivity when adding/updating provider entries
       availableVoices.value = {
         ...availableVoices.value,

@@ -58,7 +58,7 @@ export interface ProviderMetadata {
     | Promise<TranscriptionProviderWithExtraOptions>
   capabilities: {
     listModels?: (config: Record<string, unknown>) => Promise<ModelInfo[]>
-    listVoices?: (config: Record<string, unknown>) => Promise<VoiceInfo[]>
+    listVoices?: (config: Record<string, unknown>, model?: string) => Promise<VoiceInfo[]>
     getSpeechCapabilities?: (config: Record<string, unknown>) => Promise<SpeechCapabilitiesInfo | null>
     loadModel?: (config: Record<string, unknown>, hooks?: { onProgress?: (progress: ProgressInfo) => Promise<void> | void }) => Promise<void>
     chatPingCheckAvailable?: boolean

@@ -13,10 +13,6 @@ let startedTracking = false
 export function useElectronMouseEventTarget() {
   const context = getElectronEventaContext()
 
-  if (!context) {
-    return ref(new EventTarget())
-  }
-
   if (!sharedEventTarget) {
     sharedEventTarget = new EventTarget()
 

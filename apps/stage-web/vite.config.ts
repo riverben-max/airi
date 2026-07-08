@@ -17,6 +17,8 @@ import { LFS, SpaceCard } from 'hfup/vite'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+import { stageWebNavigateFallbackDenylist } from './src/modules/pwa-navigation'
+
 /**
  * Helper to retry an async function multiple times with optional backoff.
  */
@@ -205,12 +207,7 @@ export default defineConfig({
           },
           workbox: {
             maximumFileSizeToCacheInBytes: 64 * 1024 * 1024,
-            navigateFallbackDenylist: [
-              /^\/docs\//,
-              /^\/ui\//,
-              /^\/remote-assets\//,
-              /^\/api\//,
-            ],
+            navigateFallbackDenylist: stageWebNavigateFallbackDenylist,
           },
         })]),
 

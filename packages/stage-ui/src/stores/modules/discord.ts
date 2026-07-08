@@ -1,4 +1,5 @@
 import type { DiscordCommandDefinition, DiscordEventLogEntry, DiscordInboundMessage, DiscordInteractionPayload, DiscordServiceStatus } from '@proj-airi/stage-shared'
+import type {} from '@proj-airi/stage-shared/electron-renderer'
 
 import { useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
 import {

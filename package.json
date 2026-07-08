@@ -16,7 +16,7 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
-    "postinstall": "npx simple-git-hooks && pnpm run build:packages",
+    "postinstall": "node -e \"const fs=require('fs');const {execSync}=require('child_process');if(fs.existsSync('.git')&&fs.lstatSync('.git').isDirectory()){execSync('pnpm exec simple-git-hooks',{stdio:'inherit'});}\" && pnpm run build:packages",
     "dev": "pnpm -r -F @proj-airi/stage-web dev",
     "dev:docs": "pnpm -rF @proj-airi/docs run dev",
     "dev:ui": "pnpm -rF @proj-airi/stage-ui run story:dev",

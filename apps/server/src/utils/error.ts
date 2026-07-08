@@ -48,8 +48,53 @@ export function createNotFoundError(message = 'Not Found', details?: unknown) {
 }
 
 /**
+ * Creates a payment required error (402)
+ */
+export function createPaymentRequiredError(message: string, details?: unknown) {
+  return new ApiError(402, 'PAYMENT_REQUIRED', message, details)
+}
+
+/**
  * Creates a conflict error (409)
  */
 export function createConflictError(message: string, details?: unknown) {
   return new ApiError(409, 'CONFLICT', message, details)
+}
+
+/**
+ * Creates a service unavailable error (503)
+ */
+export function createServiceUnavailableError(message = 'Service Unavailable', errorCode = 'SERVICE_UNAVAILABLE', details?: unknown) {
+  return new ApiError(503, errorCode, message, details)
+}
+
+/**
+ * Creates a bad gateway error (502).
+ *
+ * Use when:
+ * - An upstream provider (LLM, TTS, third-party API) returned a fallback-
+ *   triggering response (401 / 402 / 403 / 5xx) and the gateway has exhausted
+ *   every retry/fallback path. The client must see a gateway-side error code,
+ *   not the upstream's status, because the client did nothing wrong.
+ *
+ * Expects:
+ * - `details` is sanitized — never include raw upstream response bodies or
+ *   headers (they can leak provider-internal info like subscription IDs,
+ *   region identifiers, or rate-limit metadata). Use shape
+ *   `{ triedKeys?: number, triedUpstreams?: number, lastStatusCode?: number }`.
+ */
+export function createBadGatewayError(message = 'Bad Gateway', details?: unknown) {
+  return new ApiError(502, 'BAD_GATEWAY', message, details)
+}
+
+/**
+ * Creates a gateway timeout error (504).
+ *
+ * Use when:
+ * - The gateway aborted an upstream call (or the entire fallback chain) on a
+ *   timeout boundary. Distinct from 503: 504 tells clients "retry after a
+ *   delay" rather than "service is offline".
+ */
+export function createGatewayTimeoutError(message = 'Gateway Timeout', details?: unknown) {
+  return new ApiError(504, 'GATEWAY_TIMEOUT', message, details)
 }

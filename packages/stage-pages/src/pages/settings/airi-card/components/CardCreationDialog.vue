@@ -1430,7 +1430,7 @@ function handleGeneratorSave(newValue: string) {
           />
           <CardCreationTabTools
             v-else-if="activeTab === 'tools'"
-            v-model:selected-allowed-tools="generationAllowedTools"
+            v-model:generation-allowed-tools="generationAllowedTools"
             v-model:selected-image-journal-instruction="selectedArtistryWidgetInstruction"
             v-model:selected-text-journal-instruction="selectedTextJournalInstruction"
             v-model:selected-inject-dream-context="selectedInjectDreamContext"

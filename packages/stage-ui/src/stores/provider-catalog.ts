@@ -1,170 +1,152 @@
+import type { Ref } from 'vue'
+
 import type { ProviderCatalogProvider } from '../database/repos/providers.repo'
 
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { client } from '../composables/api'
-import { useLocalFirstRequest } from '../composables/use-local-first'
 import { providersRepo } from '../database/repos/providers.repo'
 import { getDefinedProvider, listProviders } from '../libs/providers/providers'
 
-export const useProviderCatalogStore = defineStore('provider-catalog', () => {
+export interface PatchConfigParams {
+  validated: boolean
+  validationBypassed: boolean
+}
+
+function setProviderMap(target: Record<string, ProviderCatalogProvider>, providers: Record<string, ProviderCatalogProvider>) {
+  for (const key of Object.keys(target))
+    delete target[key]
+  for (const [key, value] of Object.entries(providers))
+    target[key] = value
+}
+
+export function createProviderCatalogListQueryOptions(params?: {
+  client?: unknown
+  model?: unknown
+  service?: unknown
+}) {
+  void params
+  return {
+    key: ['inference-service-providers'],
+    query: async () => providersRepo.getAll(),
+    enabled: false,
+  }
+}
+
+export function createProviderCatalogStoreController(params: {
+  addProviderMutation?: unknown
+  configs: Ref<Record<string, ProviderCatalogProvider>>
+  commitProviderConfigMutation?: unknown
+  model?: unknown
+  providersQuery?: unknown
+  removeProviderMutation?: unknown
+  service?: unknown
+}) {
+  const { configs } = params
   const defs = computed(() => listProviders())
-  const configs = ref<Record<string, ProviderCatalogProvider>>({})
+  const isLoading = ref(false)
+  const error = ref<Error | null>(null)
+  const mutationError = ref<Error | null>(null)
 
   async function fetchList() {
-    return useLocalFirstRequest({
-      local: async () => {
-        const cached = await providersRepo.getAll()
-        if (Object.keys(cached).length > 0) {
-          configs.value = cached
-        }
-      },
-      remote: async () => {
-        const res = await client.api.providers.$get()
-        if (!res.ok) {
-          throw new Error('Failed to fetch providers')
-        }
-        const data = (await res.json()) as any[]
-
-        const newConfigs: Record<string, ProviderCatalogProvider> = {}
-        for (const item of data) {
-          newConfigs[item.id] = {
-            id: item.id,
-            definitionId: item.definitionId,
-            name: item.name,
-            config: item.config as Record<string, any>,
-            validated: item.validated,
-            validationBypassed: item.validationBypassed,
-          }
-        }
-        configs.value = newConfigs
-        await providersRepo.saveAll(newConfigs)
-      },
-    })
+    isLoading.value = true
+    error.value = null
+    try {
+      const cached = await providersRepo.getAll()
+      if (Object.keys(cached).length > 0)
+        setProviderMap(configs.value, cached)
+      return cached
+    }
+    catch (err) {
+      error.value = err as Error
+      return configs.value
+    }
+    finally {
+      isLoading.value = false
+    }
   }
 
-  async function addProvider(definitionId: string, initialConfig: Record<string, any> = {}) {
-    const definition = getDefinedProvider(definitionId)
-    if (!definition) {
-      throw new Error(`Provider definition with id "${definitionId}" not found.`)
+  async function addProvider(definitionId: string, initialConfig: Record<string, unknown> = {}) {
+    mutationError.value = null
+    try {
+      const definition = getDefinedProvider(definitionId)
+      if (!definition)
+        throw new Error(`Provider definition with id "${definitionId}" not found.`)
+
+      const provider: ProviderCatalogProvider = {
+        id: nanoid(),
+        definitionId,
+        name: definition.name,
+        config: initialConfig,
+        validated: false,
+        validationBypassed: false,
+      }
+
+      configs.value[provider.id] = provider
+      await providersRepo.upsert(provider)
+      return provider
     }
-
-    const id = nanoid()
-    const provider: ProviderCatalogProvider = {
-      id,
-      definitionId,
-      name: definition.name,
-      config: initialConfig,
-      validated: false,
-      validationBypassed: false,
+    catch (err) {
+      mutationError.value = err as Error
+      throw err
     }
-
-    return useLocalFirstRequest<ProviderCatalogProvider>({
-      local: async () => {
-        configs.value[id] = provider
-        await providersRepo.upsert(provider)
-        return provider
-      },
-      remote: async () => {
-        const res = await client.api.providers.$post({
-          json: {
-            id,
-            definitionId,
-            name: provider.name,
-            config: provider.config,
-            validated: provider.validated,
-            validationBypassed: provider.validationBypassed,
-          },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to add provider')
-        }
-        const item = await res.json() as ProviderCatalogProvider
-        const finalProvider: ProviderCatalogProvider = {
-          id: item.id,
-          definitionId: item.definitionId,
-          name: item.name,
-          config: item.config as Record<string, any>,
-          validated: item.validated,
-          validationBypassed: item.validationBypassed,
-        }
-
-        configs.value[item.id] = finalProvider
-        await providersRepo.upsert(finalProvider)
-        return item
-      },
-    })
   }
 
   async function removeProvider(providerId: string) {
-    if (!configs.value[providerId]) {
+    if (!configs.value[providerId])
       return
-    }
 
-    return useLocalFirstRequest({
-      local: async () => {
-        delete configs.value[providerId]
-        await providersRepo.remove(providerId)
-      },
-      remote: async () => {
-        const res = await client.api.providers[':id'].$delete({
-          param: { id: providerId },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to remove provider')
-        }
-      },
-    })
+    mutationError.value = null
+    try {
+      delete configs.value[providerId]
+      await providersRepo.remove(providerId)
+    }
+    catch (err) {
+      mutationError.value = err as Error
+      throw err
+    }
   }
 
-  async function commitProviderConfig(providerId: string, newConfig: Record<string, any>, options: { validated: boolean, validationBypassed: boolean }) {
+  async function commitProviderConfig(providerId: string, newConfig: Record<string, unknown>, options: PatchConfigParams) {
     const provider = configs.value[providerId]
-    if (!provider) {
+    if (!provider)
       return
-    }
 
-    return useLocalFirstRequest<ProviderCatalogProvider>({
-      local: async () => {
-        provider.config = { ...newConfig }
-        provider.validated = options.validated
-        provider.validationBypassed = options.validationBypassed
-        await providersRepo.upsert(provider)
-        return provider
-      },
-      remote: async () => {
-        const res = await client.api.providers[':id'].$patch({
-          param: { id: providerId },
-          // @ts-expect-error hono client typing misses json option for this route
-          json: {
-            config: newConfig,
-            validated: options.validated,
-            validationBypassed: options.validationBypassed,
-          },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to update provider config')
-        }
-        const item = await res.json() as ProviderCatalogProvider
-        // Sync with server response just in case
-        provider.config = { ...item.config }
-        provider.validated = item.validated
-        provider.validationBypassed = item.validationBypassed
-        await providersRepo.upsert(provider)
-        return provider
-      },
-    })
+    mutationError.value = null
+    try {
+      const localProvider: ProviderCatalogProvider = {
+        ...provider,
+        config: { ...newConfig },
+        validated: options.validated,
+        validationBypassed: options.validationBypassed,
+      }
+      configs.value[providerId] = localProvider
+      await providersRepo.upsert(localProvider)
+      return localProvider
+    }
+    catch (err) {
+      mutationError.value = err as Error
+      throw err
+    }
   }
 
   return {
     configs,
     defs,
     getDefinedProvider,
+    isLoading,
+    error,
+    mutationError,
 
     fetchList,
     addProvider,
     removeProvider,
     commitProviderConfig,
   }
+}
+
+export const useProviderCatalogStore = defineStore('provider-catalog', () => {
+  const configs = ref<Record<string, ProviderCatalogProvider>>({})
+  return createProviderCatalogStoreController({ configs })
 })

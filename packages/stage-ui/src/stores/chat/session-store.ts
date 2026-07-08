@@ -7,9 +7,6 @@ import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
-import { client } from '../../composables/api'
-import { stripMarkers } from '../../composables/response-categoriser'
-import { useLocalFirstRequest } from '../../composables/use-local-first'
 import { chatSessionsRepo } from '../../database/repos/chat-sessions.repo'
 import { echoChipsRepo } from '../../database/repos/echo-chips.repo'
 import { shortTermMemoryRepo } from '../../database/repos/short-term-memory.repo'
@@ -29,7 +26,7 @@ import { updateRecentTopics } from './recent-topics'
 import { mergeLoadedSessionMessages } from './session-message-merge'
 
 export const useChatSessionStore = defineStore('chat-session', () => {
-  const { userId, isAuthenticated } = storeToRefs(useAuthStore())
+  const { userId } = storeToRefs(useAuthStore())
   const { activeCardId, systemPrompt } = storeToRefs(useAiriCardStore())
   const { remoteSyncEnabled } = storeToRefs(useSettingsGeneral())
   const shortTermMemory = useShortTermMemoryStore()
@@ -119,77 +116,10 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     return next
   }
 
-  function buildSyncMessages(messages: ChatHistoryItem[]) {
-    return messages.map(message => ({
-      id: message.id ?? nanoid(),
-      role: message.role,
-      // NOTICE: Strip orchestration tokens before syncing to remote server.
-      // The local DB retains rawContent for LLM inference, but remote consumers
-      // should only see clean, display-friendly content.
-      content: stripMarkers(extractMessageContent(message)),
-      createdAt: message.createdAt,
-    }))
-  }
-
   async function syncSessionToRemote(sessionId: string) {
-    let cachedRecord: ChatSessionRecord | null | undefined
-    const request = useLocalFirstRequest({
-      local: async () => {
-        cachedRecord = await chatSessionsRepo.getSession(sessionId)
-        return cachedRecord
-      },
-      remote: async () => {
-        if (!cachedRecord)
-          cachedRecord = await chatSessionsRepo.getSession(sessionId)
-        if (!cachedRecord)
-          return cachedRecord
-
-        const members: Array<
-          | { type: 'user', userId: string }
-          | { type: 'character', characterId: string }
-        > = [
-          { type: 'user', userId: userId.value },
-        ]
-
-        if (cachedRecord.meta.characterId && cachedRecord.meta.characterId !== 'default') {
-          members.push({
-            type: 'character',
-            characterId: cachedRecord.meta.characterId,
-          })
-        }
-
-        const normalizedMessages = cachedRecord.messages.map(message => message.id ? message : { ...message, id: nanoid() })
-        if (normalizedMessages.some((message, index) => cachedRecord?.messages[index]?.id !== message.id)) {
-          cachedRecord = {
-            ...cachedRecord,
-            messages: normalizedMessages,
-          }
-          await chatSessionsRepo.saveSession(sessionId, cachedRecord)
-        }
-
-        const res = await client.api.chats.sync.$post({
-          json: {
-            chat: {
-              id: cachedRecord.meta.sessionId,
-              type: 'group',
-              title: cachedRecord.meta.title,
-              createdAt: cachedRecord.meta.createdAt,
-              updatedAt: cachedRecord.meta.updatedAt,
-            },
-            members,
-            messages: buildSyncMessages(cachedRecord.messages),
-          },
-        })
-
-        if (!res.ok)
-          throw new Error('Failed to sync chat session')
-        return cachedRecord
-      },
-      allowRemote: () => remoteSyncEnabled.value && isAuthenticated.value,
-      lazy: true,
-    })
-
-    await request.execute()
+    // Private chat sync is disabled in this build. Keep the entry point so
+    // callers do not need to branch, but make the operation a no-op.
+    void sessionId
   }
 
   function scheduleSync(sessionId: string) {

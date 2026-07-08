@@ -1,8 +1,10 @@
+import type { ProviderCatalogProvider } from '../database/repos/providers.repo'
+
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { providerOpenAICompatible } from '../libs/providers/providers/openai-compatible'
-import { useProviderCatalogStore } from './provider-catalog'
+import { type PatchConfigParams, useProviderCatalogStore } from './provider-catalog'
 
 vi.mock('../database/repos/providers.repo', () => ({
   providersRepo: {
@@ -13,47 +15,41 @@ vi.mock('../database/repos/providers.repo', () => ({
   },
 }))
 
-vi.mock('../composables/api', () => ({
-  client: {
-    api: {
-      providers: {
-        '$get': vi.fn(async () => ({ ok: true, json: async () => [] })),
-        '$post': vi.fn(async () => ({ ok: true, json: async () => ({ id: 'real-id', definitionId: 'openai-compatible', name: 'OpenAI Compatible', config: {}, validated: false, validationBypassed: false }) })),
-        ':id': {
-          $delete: vi.fn(async () => ({ ok: true })),
-          $patch: vi.fn(async () => ({ ok: true, json: async () => ({}) })),
-        },
-      },
-    },
-  },
-}))
+const localProvider = {
+  id: 'local-provider',
+  definitionId: providerOpenAICompatible.id,
+  name: 'OpenAI Compatible',
+  config: {},
+  validated: false,
+  validationBypassed: false,
+} satisfies ProviderCatalogProvider
 
 describe('store provider-catalog', () => {
   beforeEach(() => {
-    // creates a fresh pinia and makes it active
-    // so it's automatically picked up by any useStore() call
-    // without having to pass it to it: `useStore(pinia)`
     setActivePinia(createPinia())
   })
 
-  it('add', () => {
+  it('keeps provider catalog data local-only', async () => {
     const store = useProviderCatalogStore()
-    store.addProvider(providerOpenAICompatible.id)
+    const repo = await import('../database/repos/providers.repo')
+    vi.mocked(repo.providersRepo.getAll).mockResolvedValueOnce({ 'local-id': localProvider })
 
-    expect(Object.values(store.configs)).toHaveLength(1)
-    expect(Object.values(store.configs)[0].id).toBeDefined()
-    expect(Object.values(store.configs)[0].definitionId).toBe(providerOpenAICompatible.id)
-    expect(Object.values(store.configs)[0].name).toBe('OpenAI Compatible')
-    expect(Object.values(store.configs)[0].config).toStrictEqual({})
-  })
+    await expect(store.fetchList()).resolves.toEqual({ 'local-id': localProvider })
+    expect(store.configs['local-id']).toEqual(localProvider)
 
-  it('remove', () => {
-    const store = useProviderCatalogStore()
-    store.addProvider(providerOpenAICompatible.id)
+    await expect(store.addProvider(providerOpenAICompatible.id)).resolves.toEqual(expect.objectContaining({
+      definitionId: providerOpenAICompatible.id,
+      name: 'OpenAI Compatible',
+    }))
 
-    const providerId = Object.keys(store.configs)[0]
-    store.removeProvider(providerId)
+    const addedId = Object.keys(store.configs).find(id => id !== 'local-id')
+    expect(addedId).toBeDefined()
 
-    expect(Object.values(store.configs)).toHaveLength(0)
+    store.configs[localProvider.id] = localProvider
+    await store.commitProviderConfig(localProvider.id, { apiKey: 'sk-test' }, { validated: true, validationBypassed: false } satisfies PatchConfigParams)
+    await store.removeProvider(localProvider.id)
+
+    expect(repo.providersRepo.upsert).toHaveBeenCalled()
+    expect(repo.providersRepo.remove).toHaveBeenCalledWith(localProvider.id)
   })
 })

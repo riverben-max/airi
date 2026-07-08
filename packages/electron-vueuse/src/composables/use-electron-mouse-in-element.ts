@@ -1,7 +1,7 @@
 import type { MaybeElementRef, MouseInElementOptions } from '@vueuse/core'
 
-import { defaultWindow, tryOnMounted, useEventListener, useMutationObserver, useResizeObserver } from '@vueuse/core'
-import { computed, shallowRef, watch } from 'vue'
+import { defaultWindow, tryOnMounted, unrefElement, useEventListener, useMutationObserver, useResizeObserver } from '@vueuse/core'
+import { shallowRef, watch } from 'vue'
 
 import { useElectronRelativeMouse } from './use-electron-relative-mouse'
 
@@ -35,30 +35,12 @@ export function useElectronMouseInElement(
   const elementWidth = shallowRef(0)
   const isOutside = shallowRef(true)
 
-  function resolveElement(val: any): HTMLElement | SVGElement | null {
-    let el = val
-    while (el && typeof el === 'object') {
-      if ('value' in el) {
-        el = el.value
-      }
-      else if ('$el' in el) {
-        el = el.$el
-      }
-      else {
-        break
-      }
-    }
-    return (el instanceof HTMLElement || el instanceof SVGElement) ? el : null
-  }
-
-  const resolvedElement = computed(() => resolveElement(targetRef.value))
-
   function update() {
     if (!window)
       return
 
-    const el = resolvedElement.value
-    if (!el)
+    const el = unrefElement(targetRef)
+    if (!el || !(el instanceof Element))
       return
 
     const {
@@ -98,15 +80,15 @@ export function useElectronMouseInElement(
   if (window) {
     const {
       stop: stopResizeObserver,
-    } = useResizeObserver(resolvedElement, update)
+    } = useResizeObserver(targetRef, update)
     const {
       stop: stopMutationObserver,
-    } = useMutationObserver(resolvedElement, update, {
+    } = useMutationObserver(targetRef, update, {
       attributeFilter: ['style', 'class'],
     })
 
     const stopWatch = watch(
-      [resolvedElement, x, y],
+      [targetRef, x, y],
       update,
     )
 

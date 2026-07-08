@@ -25,6 +25,7 @@ interface ConceptData {
   description: string
   prompt: string
   isBase?: boolean
+  idleAnimations?: string[]
   artistry?: {
     provider?: string
     model?: string

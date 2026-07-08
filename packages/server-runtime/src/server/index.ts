@@ -1,11 +1,13 @@
+import type { H3CrossWsApp, H3CrossWsResponse } from '@proj-airi/better-ws/server/h3'
+
 import type { AppOptions } from '..'
 
-import { isIP, Socket } from 'node:net'
+import { isIP } from 'node:net'
 import { networkInterfaces } from 'node:os'
 
 import { useLogg } from '@guiiai/logg'
 import { merge } from '@moeru/std'
-import { plugin as ws } from 'crossws/server'
+import { createH3CrossWsPlugin } from '@proj-airi/better-ws/server/h3'
 import { serve } from 'h3'
 
 import { normalizeLoggerConfig, setupApp } from '..'
@@ -32,9 +34,29 @@ export interface Server {
   updateConfig: (newOptions: ServerOptions) => void
 }
 
+function isAddressInUseError(error: unknown) {
+  return typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && (error as NodeJS.ErrnoException).code === 'EADDRINUSE'
+}
+
+/**
+ * Collects local IP addresses that can be used to reach the server from the LAN.
+ *
+ * Use when:
+ * - Building connection hints for `0.0.0.0` listeners
+ * - Showing reachable addresses in logs or UI
+ *
+ * Expects:
+ * - Virtual interfaces should be ignored to reduce noisy or misleading addresses
+ *
+ * Returns:
+ * - A de-duplicated list of valid IP addresses discovered from the host network interfaces
+ */
 export function getLocalIPs(): string[] {
   const interfaces = networkInterfaces()
-  const addresses: string[] = []
+  const addresses = new Set<string>()
 
   const VIRTUAL_INTERFACE_PREFIXES = [
     'vboxnet',
@@ -63,13 +85,26 @@ export function getLocalIPs(): string[] {
 
       const address = rawAddress.includes('%') ? rawAddress.split('%')[0] : rawAddress
       if (isIP(address))
-        addresses.push(address)
+        addresses.add(address)
     }
   }
 
-  return addresses
+  return [...addresses]
 }
 
+/**
+ * Creates the websocket server controller for the AIRI runtime.
+ *
+ * Use when:
+ * - Starting, stopping, or restarting the standalone runtime server
+ * - Updating bind options between restarts
+ *
+ * Expects:
+ * - The returned controller to manage a single active server instance at a time
+ *
+ * Returns:
+ * - Lifecycle helpers for starting, stopping, restarting, and updating server options
+ */
 export function createServer(opts?: ServerOptions): Server {
   let options = merge<ServerOptions>({ port: 6121, hostname: '127.0.0.1' }, opts)
 
@@ -118,13 +153,15 @@ export function createServer(opts?: ServerOptions): Server {
     startTask = (async () => {
       const secureEnabled = options?.tlsConfig != null
       const h3App = setupApp(options)
+      const crossWsApp = {
+        fetch: async request => await h3App.app.fetch(request) as H3CrossWsResponse,
+      } satisfies H3CrossWsApp
 
       const port = options.port
       const hostname = options.hostname
 
       const instance = serve(h3App.app, {
-        // @ts-expect-error - the .crossws property wasn't extended in types
-        plugins: [ws({ resolve: async req => (await h3App.app.fetch(req)).crossws })],
+        plugins: [createH3CrossWsPlugin(crossWsApp)],
         port,
         hostname,
         tls: options?.tlsConfig || undefined,
@@ -137,85 +174,45 @@ export function createServer(opts?: ServerOptions): Server {
         },
       })
 
-      serverInstance = {
-        close: async (closeActiveConnections = false) => {
-          log.log('closing all peers')
-          h3App.closeAllPeers()
-          log.log('closing server instance')
-          await instance.close(closeActiveConnections)
-          log.log('server instance closed')
-        },
-      }
+      try {
+        serverInstance = {
+          close: async (closeActiveConnections = false) => {
+            h3App.dispose()
+            log.log('closing server instance')
+            await instance.close(closeActiveConnections)
+            log.log('server instance closed')
+          },
+        }
 
-      const servePromise = instance.serve()
-      if (servePromise instanceof Promise) {
-        servePromise.catch((error) => {
-          serverInstance = null
-          log.withError(error).error('Error serving WebSocket server')
-        })
-      }
+        await instance.serve()
 
-      await waitForPortReady(port!, hostname)
-
-      const protocol = secureEnabled ? 'wss' : 'ws'
-      if (hostname === '0.0.0.0') {
-        const ips = getLocalIPs().filter(ip => ip !== '127.0.0.1' && ip !== '::1')
-        const targets = ips.length > 0 ? ips.join(', ') : 'localhost'
-        log.log(`@proj-airi/server-runtime started on ${protocol}://0.0.0.0:${port} (reachable via: ${targets})`)
+        const protocol = secureEnabled ? 'wss' : 'ws'
+        if (hostname === '0.0.0.0') {
+          const ips = getLocalIPs().filter(ip => ip !== '127.0.0.1' && ip !== '::1')
+          const targets = ips.length > 0 ? ips.join(', ') : 'localhost'
+          log.log(`@proj-airi/server-runtime started on ${protocol}://0.0.0.0:${port} (reachable via: ${targets})`)
+        }
+        else {
+          log.log(`@proj-airi/server-runtime started on ${protocol}://${hostname}:${port}`)
+        }
       }
-      else {
-        log.log(`@proj-airi/server-runtime started on ${protocol}://${hostname}:${port}`)
+      catch (error) {
+        serverInstance = null
+        h3App.dispose()
+        await instance.close(true).catch(() => {})
+        if (isAddressInUseError(error)) {
+          log.withError(error).warn('WebSocket server port already in use, assuming an existing listener is available')
+          return
+        }
+        log.withError(error).error('failed to start WebSocket server')
+        throw error
       }
-    })().catch((error) => {
-      serverInstance = null
-      log.withError(error).error('failed to start WebSocket server')
-      throw error
-    }).finally(() => {
+    })().finally(() => {
       startTask = null
     })
 
     return startTask
   }
-
-  function waitForPortReady(port: number, hostname?: string) {
-    const targets = hostname && hostname !== '0.0.0.0'
-      ? [hostname]
-      : ['127.0.0.1', '::1']
-
-    return new Promise<void>((resolve, reject) => {
-      let settled = false
-      let pending = targets.length
-
-      const settle = (callback: () => void) => {
-        if (settled)
-          return
-        settled = true
-        callback()
-      }
-
-      for (const target of targets) {
-        const socket = new Socket()
-        socket.once('connect', () => {
-          socket.destroy()
-          settle(resolve)
-        })
-        socket.once('error', (error) => {
-          socket.destroy()
-          pending -= 1
-          if (pending === 0)
-            settle(() => reject(error))
-        })
-        socket.setTimeout(1500, () => {
-          socket.destroy()
-          pending -= 1
-          if (pending === 0)
-            settle(() => reject(new Error(`Timed out waiting for ${target}:${port}`)))
-        })
-        socket.connect(port, target)
-      }
-    })
-  }
-
   async function stop() {
     await closeServer(true)
   }
@@ -226,12 +223,16 @@ export function createServer(opts?: ServerOptions): Server {
     await start()
   }
 
-  async function updateConfig(newOptions: ServerOptions) {
-    options = { ...options, ...newOptions }
+  function updateConfig(newOptions: ServerOptions) {
+    options = merge<ServerOptions>(options, newOptions)
   }
 
   return {
     getConnectionHost: () => {
+      if (options.hostname && options.hostname !== '0.0.0.0' && options.hostname !== '::') {
+        return [options.hostname]
+      }
+
       return getLocalIPs()
     },
     start,

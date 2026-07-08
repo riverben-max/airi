@@ -15,20 +15,8 @@ export function createProviderRegistry(
     currentMetadata,
   )
 
-  const resolvedMetadata = { ...currentMetadata }
-
-  for (const [providerId, existing] of Object.entries(resolvedMetadata)) {
-    if (existing.category !== 'speech' && existing.category !== 'transcription' && providerId !== 'web-rwkv' && providerId !== 'blip-local') {
-      delete resolvedMetadata[providerId]
-    }
+  return {
+    ...currentMetadata,
+    ...translatedProviderMetadata,
   }
-
-  for (const [providerId, translated] of Object.entries(translatedProviderMetadata)) {
-    if (translated.category === 'speech' || translated.category === 'transcription') {
-      continue
-    }
-    resolvedMetadata[providerId] = translated
-  }
-
-  return resolvedMetadata
 }

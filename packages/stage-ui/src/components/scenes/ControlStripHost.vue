@@ -2,6 +2,7 @@
 import type { DuckDBWasmDrizzleDatabase } from '@proj-airi/drizzle-duckdb-wasm'
 import type { Live2DLipSync, Live2DLipSyncOptions } from '@proj-airi/model-driver-lipsync'
 import type { Profile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
+import type {} from '@proj-airi/stage-shared/electron-renderer'
 import type { SpeechProviderWithExtraOptions } from '@xsai-ext/providers/utils'
 import type { UnElevenLabsOptions } from 'unspeech'
 
@@ -9,7 +10,6 @@ import type { EmotionPayload } from '../../constants/emotions'
 
 import { drizzle } from '@proj-airi/drizzle-duckdb-wasm'
 import { getImportUrlBundles } from '@proj-airi/drizzle-duckdb-wasm/bundles/import-url-browser'
-import { useElectronWindowResizeStateEvent } from '@proj-airi/electron-vueuse'
 import { createLive2DLipSync } from '@proj-airi/model-driver-lipsync'
 import { wlipsyncProfile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
 import { createPlaybackManager, createSpeechPipeline } from '@proj-airi/pipelines-audio'
@@ -182,13 +182,7 @@ watch(stageModelReadySignal, (val) => {
   }
 })
 
-const resizeStateEventName = useElectronWindowResizeStateEvent()
-const isWindowResizing = ref(false)
 const isElectron = computed(() => typeof window !== 'undefined' && !!(window as any).electron)
-function handleResizeStateChange(event: Event) {
-  const customEvent = event as CustomEvent<{ active?: boolean }>
-  isWindowResizing.value = !!customEvent.detail?.active
-}
 
 useEventListener(typeof window !== 'undefined' ? window : null, 'vrm-node-visibility-toggle', (e: Event) => {
   const customEvent = e as CustomEvent<{ uuid: string, node: any }>
@@ -604,11 +598,11 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
   const pitchVal = speechStore.pitch
   const rateVal = speechStore.rate
 
-  if (item.actorId) {
-    const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(item.actorId)
-    if (resolvedSpeech) {
-      provider = resolvedSpeech.provider || provider
-      if (resolvedSpeech.voiceId) {
+    if (item.ownerId) {
+      const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(item.ownerId)
+      if (resolvedSpeech) {
+        provider = resolvedSpeech.provider || provider
+        if (resolvedSpeech.voiceId) {
         const baseVoices = speechStore.getVoicesForProvider(provider)
         const found = baseVoices.find(v => v.id === resolvedSpeech.voiceId)
         if (found) {
@@ -750,25 +744,23 @@ const speechPipeline = createSpeechPipeline<AudioBuffer>({
     let targetModel = activeSpeechModel.value
     let targetVoice = activeSpeechVoice.value
 
-    if (request.actorId) {
-      const resolved = artistryAutonomousStore.resolveSpeechConfigForActor(request.actorId)
-      if (resolved) {
-        targetProviderId = resolved.provider || targetProviderId
-        targetModel = resolved.model || targetModel
+    const resolved = artistryAutonomousStore.resolveSpeechConfigForActor(activeCardId.value)
+    if (resolved) {
+      targetProviderId = resolved.provider || targetProviderId
+      targetModel = resolved.model || targetModel
 
-        if (resolved.voiceId) {
-          const baseVoices = speechStore.getVoicesForProvider(targetProviderId)
-          const resolvedVoice = baseVoices.find(v => v.id === resolved.voiceId)
-          if (resolvedVoice) {
-            targetVoice = resolvedVoice
-          }
-          else {
-            targetVoice = {
-              id: resolved.voiceId,
-              name: resolved.voiceId,
-              provider: targetProviderId,
-              languages: [{ code: 'en', title: 'English' }],
-            }
+      if (resolved.voiceId) {
+        const baseVoices = speechStore.getVoicesForProvider(targetProviderId)
+        const resolvedVoice = baseVoices.find(v => v.id === resolved.voiceId)
+        if (resolvedVoice) {
+          targetVoice = resolvedVoice
+        }
+        else {
+          targetVoice = {
+            id: resolved.voiceId,
+            name: resolved.voiceId,
+            provider: targetProviderId,
+            languages: [{ code: 'en', title: 'English' }],
           }
         }
       }
@@ -1205,7 +1197,6 @@ if (typeof window !== 'undefined') {
   events.forEach((event) => {
     window.addEventListener(event, resumeAudioContextOnInteraction, { once: true, passive: true })
   })
-  window.addEventListener(resizeStateEventName, handleResizeStateChange as EventListener)
 }
 
 onMounted(async () => {
@@ -1237,9 +1228,6 @@ onUnmounted(() => {
   viewUpdateCleanups.forEach(dispose => dispose?.())
   modsServerCleanups.forEach(dispose => dispose?.())
   void speechRuntimeStore.unregisterHost(speechPipeline)
-  if (typeof window !== 'undefined') {
-    window.removeEventListener(resizeStateEventName, handleResizeStateChange as EventListener)
-  }
 })
 
 const controlStripRef = ref<any>()

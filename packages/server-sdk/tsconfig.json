@@ -2,11 +2,21 @@
   "compilerOptions": {
     "target": "ESNext",
     "lib": [
-      "ESNext",
-      "DOM"
+      "ESNext"
     ],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "paths": {
+      "@proj-airi/server-shared": [
+        "../server-shared/src/index.ts"
+      ],
+      "@proj-airi/server-shared/*": [
+        "../server-shared/src/*"
+      ]
+    },
+    "types": [
+      "node"
+    ],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,

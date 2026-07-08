@@ -246,6 +246,10 @@ function handleAddIdleAnimation(rec: Recommendation, val: string) {
   dropdownHighlightMap.value[rec.characterId] = 0
 }
 
+function addSelectedAnim(rec: Recommendation, anim: string) {
+  handleAddIdleAnimation(rec, anim)
+}
+
 function handleRemoveIdleAnimation(rec: Recommendation, anim: string) {
   rec.idleAnimations = rec.idleAnimations.filter(a => a !== anim)
 }

@@ -1,34 +1,38 @@
-import { PGlite } from '@electric-sql/pglite'
+import type { Env } from './env'
+
+import pg from 'pg'
+
+import { useLogger } from '@guiiai/logg'
 import { migrate } from '@proj-airi/drizzle-orm-browser-migrator/pg'
 import { migrations } from '@proj-airi/server-schema'
-import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres'
-import { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
-import { Pool } from 'pg'
+import { drizzle } from 'drizzle-orm/node-postgres'
 
 import * as fullSchema from '../schemas'
 
-export type Database = any
+const logger = useLogger('db')
 
-export function createDrizzle(dsn: string) {
-  const usePglite = !dsn || dsn.includes('@db:') || dsn.startsWith('pglite://')
+export type Database = ReturnType<typeof createDrizzle>['db']
 
-  if (usePglite) {
-    console.log('[Database] Using local embedded PGlite database (no Postgres server required)')
-    const client = new PGlite()
-    const db = drizzlePglite(client, { schema: fullSchema })
-    return {
-      db,
-      pool: {
-        end: async () => {
-          await client.close()
-        },
-      },
-    }
-  }
+type DrizzleEnv = Pick<Env, 'DATABASE_URL' | 'DB_POOL_MAX' | 'DB_POOL_IDLE_TIMEOUT_MS' | 'DB_POOL_CONNECTION_TIMEOUT_MS' | 'DB_POOL_KEEPALIVE_INITIAL_DELAY_MS'>
 
-  console.log('[Database] Connecting to external Postgres server')
-  const pool = new Pool({ connectionString: dsn })
-  const db = drizzlePg(pool, { schema: fullSchema })
+// NOTICE: pg is imported statically here. The OTEL instrumentation hooks are
+// registered via --import ./instrumentation.ts (preload) which runs before
+// tsx loads application modules, allowing require-in-the-middle to patch pg.
+export function createDrizzle(env: DrizzleEnv) {
+  const pool = new pg.Pool({
+    connectionString: env.DATABASE_URL,
+    max: env.DB_POOL_MAX,
+    idleTimeoutMillis: env.DB_POOL_IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: env.DB_POOL_CONNECTION_TIMEOUT_MS,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: env.DB_POOL_KEEPALIVE_INITIAL_DELAY_MS,
+  })
+
+  pool.on('error', (err) => {
+    logger.withError(err).error('Unexpected pool error on idle client')
+  })
+
+  const db = drizzle(pool, { schema: fullSchema })
   return { db, pool }
 }
 

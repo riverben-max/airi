@@ -1,10 +1,16 @@
+import type { OIDCFlowParams, TokenResponse } from './auth-oidc'
+
 import { createAuthClient } from 'better-auth/vue'
 
 import { useAuthStore } from '../stores/auth'
+import { OIDC_CLIENT_ID, OIDC_REDIRECT_URI } from './auth-config'
+import { buildAuthorizationURL, persistFlowState } from './auth-oidc'
+import { SERVER_URL } from './server'
+
+export { SERVER_URL } from './server'
 
 export type OAuthProvider = 'google' | 'github'
 
-export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000'
 export const REMOTE_SYNC_STORAGE_KEY = 'settings/privacy/remote-sync-enabled'
 
 export function isRemoteSyncEnabled() {
@@ -14,36 +20,77 @@ export function isRemoteSyncEnabled() {
   return localStorage.getItem(REMOTE_SYNC_STORAGE_KEY) === 'true'
 }
 
+export function getAuthToken(): string | null {
+  if (typeof localStorage === 'undefined')
+    return null
+
+  return localStorage.getItem('auth/v1/token')
+}
+
 export const authClient = createAuthClient({
   baseURL: SERVER_URL,
-  credentials: 'include',
+  fetchOptions: {
+    credentials: 'omit',
+    auth: {
+      type: 'Bearer',
+      token: () => getAuthToken() ?? '',
+    },
+  },
 })
 
+let initialized = false
+
+export async function initializeAuth() {
+  if (initialized)
+    return
+
+  initialized = true
+
+  const authStore = useAuthStore()
+
+  const hasRefreshToken = !!authStore.refreshToken
+  const hasClientId = !!authStore.oidcClientId
+  if (hasRefreshToken !== hasClientId)
+    authStore.clearAllAuthState()
+
+  authStore.onTokenRefreshed(async (accessToken) => {
+    authStore.token = accessToken
+    await fetchSession()
+  })
+
+  await authStore.restoreRefreshSchedule()
+  await fetchSession().catch(() => {})
+}
+
+/**
+ * Persist OIDC tokens locally and schedule refresh.
+ */
+export async function applyOIDCTokens(tokens: TokenResponse, clientId: string): Promise<void> {
+  const authStore = useAuthStore()
+  authStore.token = tokens.access_token
+  if (tokens.refresh_token)
+    authStore.refreshToken = tokens.refresh_token
+  if (tokens.id_token)
+    authStore.idToken = tokens.id_token
+
+  authStore.oidcClientId = clientId
+  if (tokens.expires_in)
+    authStore.tokenExpiry = Date.now() + tokens.expires_in * 1000
+
+  authStore.scheduleTokenRefresh(tokens.expires_in)
+}
+
 export async function fetchSession() {
-  if (!isRemoteSyncEnabled()) {
-    console.log('[Auth] fetchSession skipped: remote sync not enabled in localStorage')
-    return false
+  const { data } = await authClient.getSession()
+  const authStore = useAuthStore()
+
+  if (data) {
+    authStore.user = data.user
+    authStore.session = data.session
+    return true
   }
 
-  console.log('[Auth] fetchSession: calling authClient.getSession()...')
-  try {
-    const res = await authClient.getSession()
-    console.log('[Auth] fetchSession response:', res)
-    if (res.data) {
-      const authStore = useAuthStore()
-      authStore.user = res.data.user
-      authStore.session = res.data.session
-      console.log('[Auth] fetchSession successfully updated authStore with user:', res.data.user.email)
-      return true
-    }
-    else {
-      console.warn('[Auth] fetchSession returned no data (user not logged in or cookie blocked):', res)
-    }
-  }
-  catch (err) {
-    console.error('[Auth] fetchSession error during getSession call:', err)
-  }
-
+  authStore.clearAllAuthState()
   return false
 }
 
@@ -52,42 +99,61 @@ export async function listSessions() {
 }
 
 export async function signOut() {
-  await authClient.signOut()
-
   const authStore = useAuthStore()
-  authStore.user = undefined
-  authStore.session = undefined
-}
 
-export async function signIn(provider: OAuthProvider) {
-  const isElectron = typeof window !== 'undefined' && !!(window as any).electron
+  const idTokenHint = authStore.idToken
+  const clientId = authStore.oidcClientId
+  const bearerToken = authStore.token
 
-  if (isElectron) {
-    const authUrl = `${SERVER_URL}/api/auth/login/social?provider=${provider}&callbackURL=${SERVER_URL}/health`
-    const popup = window.open(authUrl, 'oauth-signin', 'width=580,height=650')
-    if (popup) {
-      return new Promise<void>((resolve) => {
-        const pollTimer = setInterval(async () => {
-          if (popup.closed) {
-            clearInterval(pollTimer)
-            await fetchSession()
-            resolve()
-          }
-          else {
-            const success = await fetchSession()
-            if (success) {
-              clearInterval(pollTimer)
-              popup.close()
-              resolve()
-            }
-          }
-        }, 1000)
+  try {
+    if (idTokenHint && clientId) {
+      const url = new URL('/api/auth/oauth2/end-session', SERVER_URL)
+      url.searchParams.set('id_token_hint', idTokenHint)
+      url.searchParams.set('client_id', clientId)
+      await fetch(url.toString(), { method: 'GET' })
+    }
+    else if (bearerToken) {
+      const url = new URL('/api/auth/sign-out', SERVER_URL)
+      await fetch(url.toString(), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${bearerToken}` },
       })
     }
   }
+  catch {
+    // Network failure: still clear local state below.
+  }
 
-  return await authClient.signIn.social({
+  authStore.clearAllAuthState()
+}
+
+/**
+ * Initiate OIDC Authorization Code + PKCE sign-in flow.
+ */
+export async function signInOIDC(params: OIDCFlowParams) {
+  const { provider, ...oidcParams } = params
+  const { url, flowState } = await buildAuthorizationURL(oidcParams)
+  persistFlowState(flowState, params)
+
+  if (!provider) {
+    window.location.href = url
+    return
+  }
+
+  await authClient.signIn.social({
     provider,
-    callbackURL: window.location.origin,
+    callbackURL: url.toString(),
   })
+}
+
+export async function triggerSignIn(opts?: { provider?: OAuthProvider }): Promise<void> {
+  await signInOIDC({
+    clientId: OIDC_CLIENT_ID,
+    redirectUri: OIDC_REDIRECT_URI,
+    ...opts,
+  })
+}
+
+export async function signIn(provider: OAuthProvider): Promise<void> {
+  await triggerSignIn({ provider })
 }

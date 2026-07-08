@@ -28,42 +28,94 @@ patchedDependencies:
   mineflayer@4.33.0: patches/mineflayer@4.33.0.patch
   node-gyp@11.5.0: patches/node-gyp@11.5.0.patch
   pixi-live2d-display: patches/pixi-live2d-display.patch
-  srvx: patches/srvx.patch
 catalog:
+  '@better-auth/cli': ^1.4.21
+  '@better-auth/drizzle-adapter': ^1.6.5
+  '@better-auth/oauth-provider': 1.5.6
   '@capacitor/android': ^8.4.0
   '@capacitor/cli': ^8.1.0
   '@capacitor/core': ^8.1.0
   '@capacitor/ios': ^8.1.0
   '@capacitor/local-notifications': ^8.0.1
   '@cryscan/web-rwkv-wasm': ^0.10.20
+  '@date-fns/utc': ^2.1.1
+  '@dotenvx/dotenvx': ^1.61.1
   '@electric-sql/pglite': ^0.3.15
   '@electron-toolkit/preload': ^3.0.2
   '@electron/notarize': ^3.1.1
+  '@fontsource-variable/nunito': ^5.2.7
+  '@formkit/auto-animate': ^0.9.0
   '@google/genai': ^1.47.0
   '@guiiai/logg': ^1.2.11
   '@histoire/plugin-vue': 1.0.0-beta.1
+  '@hono/node-server': ^1.19.14
+  '@hono/node-ws': ^1.3.0
+  '@hono/otel': ^1.1.2
+  '@huggingface/transformers': ^3.8.1
+  '@iconify-json/carbon': ^1.2.20
+  '@iconify-json/eos-icons': ^1.2.4
   '@iconify-json/logos': ^1.2.10
+  '@iconify-json/lucide': ^1.2.102
+  '@iconify-json/mingcute': ^1.2.7
+  '@iconify-json/ph': ^1.2.2
+  '@iconify-json/simple-icons': ^1.2.78
+  '@iconify-json/solar': ^1.2.5
+  '@iconify-json/svg-spinners': ^1.2.4
   '@iconify-json/tabler': ^1.2.27
+  '@iconify-json/vscode-icons': ^1.2.45
   '@intlify/core': ^11.2.8
+  '@intlify/unplugin-vue-i18n': ^11.0.7
+  '@langfuse/otel': ^5.4.0
+  '@langfuse/tracing': ^5.4.0
   '@modelcontextprotocol/sdk': ^1.27.1
   '@moeru/eslint-config': 0.1.0-beta.15
   '@moeru/eventa': ^1.0.0-beta.8
   '@moeru/std': 0.1.0-beta.17
   '@nekopaw/tempora': 0.4.0-alpha.1
+  '@opentelemetry/api': ^1.9.1
+  '@opentelemetry/api-logs': ^0.215.0
+  '@opentelemetry/exporter-logs-otlp-proto': ^0.215.0
+  '@opentelemetry/exporter-metrics-otlp-proto': ^0.215.0
+  '@opentelemetry/exporter-trace-otlp-proto': ^0.215.0
+  '@opentelemetry/instrumentation': ^0.215.0
+  '@opentelemetry/instrumentation-http': ^0.215.0
+  '@opentelemetry/instrumentation-ioredis': ^0.63.0
+  '@opentelemetry/instrumentation-pg': ^0.67.0
+  '@opentelemetry/instrumentation-runtime-node': ^0.28.0
+  '@opentelemetry/instrumentation-undici': ^0.25.0
+  '@opentelemetry/resources': ^2.7.0
+  '@opentelemetry/sdk-logs': ^0.215.0
+  '@opentelemetry/sdk-metrics': ^2.7.0
+  '@opentelemetry/sdk-node': ^0.215.0
+  '@opentelemetry/sdk-trace-node': ^2.7.0
+  '@opentelemetry/semantic-conventions': ^1.40.0
   '@orama/orama': ^3.1.18
   '@pinia/testing': ^1.0.3
   '@proj-airi/drizzle-duckdb-wasm': ^0.4.29
+  '@proj-airi/drizzle-orm-browser-migrator': ^0.1.6
   '@proj-airi/iconify-meteocons': ^0.1.4
+  '@proj-airi/lobe-icons': ^1.0.19
+  '@proj-airi/unplugin-drizzle-orm-migrations': ^0.1.6
   '@proj-airi/unplugin-fetch': ^0.2.2
+  '@shikijs/markdown-it': ^4.0.2
   '@shopify/draggable': ^1.2.1
   '@types/audioworklet': ^0.0.96
+  '@types/culori': ^4.0.1
   '@types/hast': ^3.0.4
+  '@types/nodemailer': ^8.0.1
+  '@types/nprogress': ^0.2.3
+  '@types/pg': ^8.20.0
   '@types/splitpanes': ^2.2.6
   '@types/three': ^0.183.1
   '@types/unist': ^3.0.3
   '@types/ws': ^8.18.1
+  '@unocss/reset': ^66.6.8
+  '@vitejs/plugin-vue': ^6.0.6
+  '@vue-macros/volar': ^3.1.2
   '@vueuse/core': ^14.2.1
+  '@vueuse/motion': ^3.0.3
   '@vueuse/shared': ^14.2.1
+  '@webgpu/types': ^0.1.69
   '@xsai-ext/providers': ^0.4.3
   '@xsai/embed': ^0.4.3
   '@xsai/generate-speech': 0.4.0-beta.13
@@ -77,12 +129,20 @@ catalog:
   '@xsai/utils-chat': 0.4.0-beta.13
   alien-signals: ^3.1.2
   ammojs-typed: ^1.0.6
+  animejs: ^4.3.6
   async-mutex: 0.5.0
   aws4fetch: ^1.0.20
   better-auth: ^1.4.19
   builder-util-runtime: ^9.5.1
+  cac: ^7.0.0
   capacitor-native-settings: ^8.0.0
+  clustr: ^1.0.2
+  colorjs.io: ^0.6.1
   crossws: ^0.4.4
+  culori: ^4.0.2
+  date-fns: ^4.1.0
+  drizzle-kit: ^0.31.10
+  drizzle-orm: ^0.45.2
   drizzle-valibot: ^0.4.2
   electron: 40.8.0
   electron-builder: ^26.8.1
@@ -90,27 +150,37 @@ catalog:
   electron-vite: 5.0.0
   embla-carousel-vue: ^9.0.0-rc01
   es-toolkit: 1.43.0
+  h3: 2.0.1-rc.20
   histoire: 1.0.0-beta.1
   hono: 4.11.3
+  hono-rate-limiter: ^0.5.3
   idb-keyval: ^6.2.2
   injeca: ^0.1.8
+  ioredis: ^5.10.1
   is-network-error: ^1.3.0
+  jose: ^6.2.2
   jszip: ^3.10.1
   knip: ^5.85.0
   loudness: ^0.4.2
   mkcert: ^3.2.0
   nano-staged: ^0.9.0
   nanoid: 5.1.6
+  nodemailer: ^9.0.3
+  nprogress: ^0.2.0
   ofetch: ^1.5.1
+  pg: ^8.20.0
   pinia: ^3.0.4
   posthog-js: 1.306.1
   rehype-stringify: ^10.0.1
   reka-ui: ^2.8.2
   remark-parse: ^11.0.0
   remark-rehype: ^11.1.2
+  resend: ^6.12.2
   splitpanes: ^4.0.4
+  srvx: ^0.11.15
   standard-version: ^9.5.0
   std-env: ^4.0.0-rc.1
+  stripe: ^22.0.2
   superjson: ^2.2.6
   three: ^0.183.1
   three-stdlib: ^2.36.1
@@ -119,14 +189,21 @@ catalog:
   uncrypto: ^0.1.3
   unified: ^11.0.5
   unplugin-info: ^1.2.4
+  unplugin-yaml: ^4.1.0
   unstorage: ^1.17.4
+  uuid: ^13.0.0
   valibot: 1.2.0
+  vaul-vue: ^0.4.1
   vite: 6.2.7
   vite-plugin-mkcert: ^1.17.10
+  vite-plugin-vue-devtools: ^8.1.1
+  vite-plugin-vue-layouts: ^0.11.0
   vue: ^3.5.25
   vue-i18n: ^11.2.8
+  vue-macros: ^3.1.2
   vue-router: ^4.6.4
   vue-sonner: 2.0.9
+  vue-tsc: ^3.2.6
   wlipsync: ^1.3.0
   ws: ^8.19.0
   xsschema: 0.4.0-beta.13

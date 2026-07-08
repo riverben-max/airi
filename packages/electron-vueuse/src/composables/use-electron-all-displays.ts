@@ -1,10 +1,12 @@
+import { defineInvoke } from '@moeru/eventa'
 import { electron } from '@proj-airi/electron-eventa'
 import { useAsyncState, useIntervalFn } from '@vueuse/core'
 
-import { useElectronEventaInvoke } from './use-electron-eventa-context'
+import { useElectronEventaContext } from './use-electron-eventa-context'
 
 export function useElectronAllDisplays() {
-  const getAllDisplays = useElectronEventaInvoke(electron.screen.getAllDisplays)
+  const context = useElectronEventaContext()
+  const getAllDisplays = defineInvoke(context.value, electron.screen.getAllDisplays)
   const { state: allDisplays, execute } = useAsyncState(() => getAllDisplays(), [])
 
   useIntervalFn(() => {
