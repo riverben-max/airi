@@ -32,6 +32,9 @@ const props = defineProps<{
 }>()
 
 const hearingPopoverOpen = ref(false)
+const hearingPopoverLayerStyle = {
+  zIndex: 2147483647,
+}
 const trashConfirmOpenRef = ref(false)
 const showContext = ref(false)
 const showSessions = ref(false)
@@ -232,8 +235,9 @@ onUnmounted(() => {
             <PopoverContent
               side="top"
               :side-offset="8"
+              :style="hearingPopoverLayerStyle"
               :class="[
-                'w-72 max-w-[18rem] rounded-xl border border-neutral-200/60 bg-neutral-50/90 p-4',
+                'z-[9999] w-72 max-w-[18rem] rounded-xl border border-neutral-200/60 bg-neutral-50/90 p-4',
                 'shadow-lg backdrop-blur-md dark:border-neutral-800/30 dark:bg-neutral-900/80',
                 'flex flex-col gap-3',
               ]"

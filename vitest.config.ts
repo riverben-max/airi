@@ -5,6 +5,8 @@ export default defineConfig({
     projects: [
       'apps/server',
       'apps/stage-tamagotchi',
+      'packages/electron-vueuse',
+      'packages/stage-layouts',
       'packages/stage-ui',
       'packages/plugin-sdk',
       'packages/cap-vite',
