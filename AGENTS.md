@@ -28,7 +28,7 @@
 - PowerShell 写文件必须带 `-Encoding utf8NoBOM`。
 - Python 写文件使用 `encoding='utf-8'` 和 `newline='\n'`。
 - 前端生产构建优先使用项目专用 Node 24：`D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node.exe`。
-- 本项目 pnpm 版本是 `10.33.0`；用 Node 24 自带 corepack 跑 pnpm：`D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node_modules\corepack\dist\pnpm.js`。
+- 本项目 pnpm 版本是 `10.32.1`；用 Node 24 自带 corepack 跑 pnpm：`D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node_modules\corepack\dist\pnpm.js`。
 - 不要误用 Codex runtime 的 `pnpm`，它可能触发 workspace install/postinstall，并在 mediapipe wasm 准备阶段失败。
 
 ## 项目结构速查
