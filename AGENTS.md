@@ -1,153 +1,109 @@
-# Project AIRI Agent Guide
+# AIRI Agent Guide
 
-Concise but detailed reference for contributors working across the `moeru-ai/airi` monorepo. Improve code when you touch it; avoid one-off patterns.
+这份文件只保留本项目当前私有部署最关键的执行规则。目标是让后续线程先找准代码基线，再改、提交、部署和验证。
 
-## Tech Stack (by surface)
+## 唯一可信代码基线
 
-- **Desktop (stage-tamagotchi)**: Electron, Vue, Vite, TypeScript, Pinia, VueUse, Eventa (IPC/RPC), UnoCSS, Vitest, ESLint.
-- **Web (stage-web)**: Vue 3 + Vue Router, Vite, TypeScript, Pinia, VueUse, UnoCSS, Vitest, ESLint. Backend: WIP.
-- **Mobile (stage-pocket)**: Vue 3 + Vue Router, Vite, TypeScript, Pinia, VueUse, UnoCSS, Vitest, ESLint, Kotlin, Swift, Capacitor.
-- **UI/Shared Packages**:
-  - `packages/stage-ui`: Core business components, composables, stores shared by stage-web & stage-tamagotchi (heart of stage work).
-  - `packages/stage-ui-three`: Three.js bindings + Vue components.
-  - `packages/stage-ui-pixi`: Planned Pixi bindings.
-  - `packages/stage-shared`: Shared logic across stage-ui, stage-ui-three, stage-web, stage-tamagotchi.
-  - `packages/ui`: Standardized primitives (inputs, textarea, buttons, layout) built on reka-ui; minimal business logic.
-  - `packages/i18n`: Central translations.
-  - Server channel: `packages/server-runtime`, `packages/server-sdk`, `packages/server-shared` (power `services/` and `plugins/`).
-  - Legacy: `crates/` (old Tauri desktop; current desktop is Electron).
+- 当前最新版本以 GitHub 分支为准：`riverben-max/airi` 的 `codex/dasilva-commercial-subscription`。
+- 本地主 checkout：`D:\Tools\airi`。后续修复、构建和部署都从这里开始。
+- 历史恢复源 worktree：`C:\Users\zheng\.config\superpowers\worktrees\airi\dasilva-commercial-subscription`；只用于本次同步来源，不再作为日常构建目录。
+- 本地主 checkout 必须跟踪：`fork/codex/dasilva-commercial-subscription`。
+- 最近确认的商业版源 commit：`cee66adea3b73abcb1c126c77fc2aff4925f0bff`，提交信息 `feat(commercial): migrate backend subscription flow`；后续以已 push 的最新 HEAD 为准。
+- 如果 `D:\Tools\airi` 不在 `codex/dasilva-commercial-subscription` 或 HEAD 不等于 upstream，先同步代码，不要构建或部署。
+- 每次开工先跑：`git status --short`、`git branch -vv`、`git rev-parse HEAD`、`git rev-parse '@{u}'`，确认本地 HEAD 和 GitHub upstream 一致。
 
-## Structure & Responsibilities
+## GitHub 保存规则
 
-- **Apps**
-  - `apps/stage-web`: Web app; composables/stores in `src/composables`, `src/stores`; pages in `src/pages`; devtools in `src/pages/devtools`; router config via `vite.config.ts`.
-  - `apps/stage-tamagotchi`: Electron app; renderer pages in `src/renderer/pages`; devtools in `src/renderer/pages/devtools`; settings layout at `src/renderer/layouts/settings.vue`; router config via `electron.vite.config.ts`.
-  - Settings/devtools routes rely on `<route lang="yaml"> meta: layout: settings </route>`; ensure routes/icons are registered accordingly (`apps/stage-tamagotchi/src/renderer/layouts/settings.vue`, `apps/stage-web/src/layouts/settings.vue`).
-  - Shared page bases: `packages/stage-pages`.
-  - Stage pages: `apps/stage-web/src/pages`, `apps/stage-tamagotchi/src/renderer/pages` (plus devtools folders).
-- **Stage UI internals** (`packages/stage-ui/src`)
-  - Providers: `stores/providers.ts` and `stores/providers/` (standardized provider definitions).
-  - Modules: `stores/modules/` (AIRI orchestration building blocks).
-  - Composables: `composables/` (business-oriented Vue helpers).
-  - Components: `components/`; scenarios in `components/scenarios/` for page/use-case-specific pieces.
-  - Stories: `packages/stage-ui/stories`, `packages/stage-ui/histoire.config.ts` (e.g. `components/misc/Button.story.vue`).
-- **IPC/Eventa**: Always use `@moeru/eventa` for type-safe, framework/runtime-agnostic IPC/RPC. Define contracts centrally (e.g., `apps/stage-tamagotchi/src/shared`) and follow usage patterns in `apps/stage-tamagotchi/src/main/services/electron` for main/renderer integration.
-- **Dependency Injection**: Use `injeca` for services/electron modules/plugins/frontend; see `apps/stage-tamagotchi/src/main/index.ts` for composition patterns.
-- **Build/CI/Lint**: `.github/workflows` for pipelines; `eslint.config.js` for lint rules.
-- **Bundling libs**: Use `tsdown` for new modules (see `packages/vite-plugin-warpdrive`).
-- **Styles**: UnoCSS config at `uno.config.ts`; check `apps/stage-web/src/styles` for existing animations; prefer UnoCSS over Tailwind.
+- 任何准备部署到服务器的代码，必须先提交到 GitHub，确保有可追溯 commit SHA。
+- 不允许部署只存在于本机、未 commit、未 push 的代码。
+- 提交只包含本次任务相关文件；不要把无关脏改动一起 stage。
+- Commit message 使用 Conventional Commits，例如 `fix(web): keep hearing popover above chat input` 或 `docs: pin deployment workflow`。
+- 推送目标默认是当前跟踪分支；如果需要新分支，使用 `codex/<short-description>`。
+- 推送后记录并在部署说明里写清楚：GitHub remote、branch、commit SHA、构建命令、部署时间、验证结果。
 
-## Rosetta Stone
+## 本机环境
 
-The full concept-to-file-path index lives in [`docs/rosetta-stone.md`](./docs/rosetta-stone.md) — UI surfaces, engine subsystems, data layer, provider system, modules, audio pipeline, memory, MCP, nicknames, and lessons learned. Check it first when you need to find where something lives.
+- 默认 shell 是 PowerShell 7，不是 Bash；命令优先写 PowerShell 语法。
+- 读写文本文件统一 UTF-8 无 BOM，行尾用 LF。
+- PowerShell 写文件必须带 `-Encoding utf8NoBOM`。
+- Python 写文件使用 `encoding='utf-8'` 和 `newline='\n'`。
+- 前端生产构建优先使用项目专用 Node 24：`D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node.exe`。
+- 本项目 pnpm 版本是 `10.33.0`；用 Node 24 自带 corepack 跑 pnpm：`D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node_modules\corepack\dist\pnpm.js`。
+- 不要误用 Codex runtime 的 `pnpm`，它可能触发 workspace install/postinstall，并在 mediapipe wasm 准备阶段失败。
 
-## Commands (pnpm with filters)
+## 项目结构速查
 
-> Use pnpm workspace filters to scope tasks. Examples below are generic; replace the filter with the target workspace name (e.g. `@proj-airi/stage-tamagotchi`, `@proj-airi/stage-web`, `@proj-airi/stage-ui`, etc.).
+- `apps/stage-web`：Web 端入口，Vue 3、Vite、Pinia、UnoCSS。
+- `apps/server`：后端 API、认证、计费、管理路由。
+- `apps/ui-server-auth`：服务端认证 UI，部署到主站 `/ui`。
+- `packages/stage-ui`：Web/Electron 共用核心 UI、stores、composables。
+- `packages/stage-layouts`：主交互区、聊天框、桌面/移动布局。
+- `packages/stage-pages`：设置页和页面基座。
+- `packages/i18n`：翻译集中放这里。
+- `packages/ui`：通用 UI primitive，基于 reka-ui。
 
-- **Typecheck**
-  - `pnpm -F <package.json name> typecheck`
-  - Example: `pnpm -F @proj-airi/stage-tamagotchi typecheck` (runs `tsc` + `vue-tsc`).
-- **Unit tests (Vitest)**
-  - Targeted: `pnpm exec vitest run <path/to/file>`
-    e.g. `pnpm exec vitest run apps/stage-tamagotchi/src/renderer/stores/tools/builtin/widgets.test.ts`
-  - Workspace: `pnpm -F <package.json name> exec vitest run`
-    e.g. `pnpm -F @proj-airi/stage-tamagotchi exec vitest run`
-  - Root `pnpm test:run`: runs all tests across registered projects. If no tests are found, check `vitest.config.ts` include patterns.
-  - Root `vitest.config.ts` includes `apps/stage-tamagotchi` and other projects; each app/package can have its own `vitest.config`.
-- **Lint**
-  - `pnpm lint` and `pnpm lint:fix`
-  - Formatting is handled via ESLint; `pnpm lint:fix` applies formatting.
-- **Build**
-  - `pnpm -F <package.json name> build`
-  - Example: `pnpm -F @proj-airi/stage-tamagotchi build` (typecheck + electron-vite build).
+## 代码规范
 
-## Development Practices
+- TypeScript 优先明确类型，不要随手写 `any`。
+- Vue 使用 Composition API 和 `<script setup lang="ts">`。
+- 样式优先用 UnoCSS；长 class 用数组写法。
+- 通用组件优先用 `@proj-airi/ui`，不要重复造 primitive。
+- 图标优先用 Iconify 或已有图标库。
+- 文案和翻译放 `packages/i18n`，不要散落在多个包里。
+- Web 端不能因为缺少 Electron IPC 抛出 `Electron ipcRenderer is not available`。
+- 调用 Electron-only API 前必须判断 `window.electron?.ipcRenderer`。
+- bug 修复先复现和定位根因，再改；结束前必须有新鲜验证结果。
 
-- Favor clear module boundaries; shared logic goes in `packages/`.
-- Keep runtime entrypoints lean; move heavy logic into services/modules.
-- Prefer functional patterns + DI (`injeca`) for testability.
-- Use Valibot for schema validation; keep schemas close to their consumers.
-- Use Eventa (`@moeru/eventa`) for structured IPC/RPC contracts where needed.
-- Do not add backward-compatibility guards. If extended support is required, write refactor docs and spin up another Codex or Claude Code instance via shell command to complete the implementation with clear instructions and the expected post-refactor shape.
-- If the refactor scope is small, do a progressive refactor step by step.
-- When modifying code, always check for opportunities to do small, minimal progressive refactors alongside the change.
+## 常用命令
 
-## Styling & Components
+- Web 构建：`pnpm -F @proj-airi/stage-web build`。
+- Web 类型检查：`pnpm -F @proj-airi/stage-web typecheck`。
+- Stage UI 类型检查：`pnpm -F @proj-airi/stage-ui typecheck`。
+- 指定测试：`pnpm exec vitest run <path/to/test>`。
+- 单包测试：`pnpm -F <package-name> exec vitest run`。
+- 构建前端时设置：`NODE_OPTIONS=--max-old-space-size=4096`。
 
-- Prefer Vue v-bind class arrays for readability when working with UnoCSS & tailwindcss: do `:class="['px-2 py-1','flex items-center','bg-white/50 dark:bg-black/50']"`, don't do `class="px-2 py-1 flex items-center bg-white/50 dark:bg-black/50"`, don't do `px="2" py="1" flex="~ items-center" bg="white/50 dark:black/50"`; avoid long inline `class=""`. Refactor legacy when you touch it.
-- Use/extend UnoCSS shortcuts/rules in `uno.config.ts`; add new shortcuts/rules/plugins there when standardizing styles. Prefer UnoCSS over Tailwind.
-- Check `apps/stage-web/src/styles` for existing animations; reuse or extend before adding new ones. If you need config references, see `apps/stage-web/tsconfig.json` and `uno.config.ts`.
-- Build primitives on `@proj-airi/ui` (reka-ui) instead of raw DOM; see `packages/ui/src/components/Form` for patterns.
-- Use Iconify icon sets; avoid bespoke SVGs.
-- Animations: keep intuitive, lively, and readable.
-- `useDark` (VueUse): set `disableTransition: false` or use existing composables in `packages/ui`.
+## 生产部署
 
-## Testing Practices
+生产环境是私有部署。不要把服务器 IP、密钥、token、SMTP 密码写进仓库。
 
-- Vitest per project; keep runs targeted for speed.
-- Mock IPC/services with `vi.fn`/`vi.mock`; do not rely on real Electron runtime.
-- For external providers/services, add both mock-based tests and integration-style tests (with env guards) when feasible. You can mock imports with Vitest.
-- Grow component/e2e coverage progressively (Vitest browser env where possible). Use `expect` and assert mock calls/params.
+- 连接服务器：`ssh airi-vps`。
+- 线上域名：`https://airi.aifamily.vip/`。
+- 服务器源码快照：`/root/airi`，注意它不是可靠 git 工作树，GitHub branch/commit 才是代码来源。
+- Web 静态目录：`/www/wwwroot/airi-web`。
+- Auth UI 静态目录：`/www/wwwroot/airi-web/ui`。
+- 备份目录：`/root/deploy-backups`。
+- 服务器 API/PM2 固定 Node 22.20.0：`/www/server/nvm/versions/node/v22.20.0/bin`。
+- 本地前端构建用 Node 24；服务器 API 运行用 Node 22.20.0，两者不要混淆。
 
-## TypeScript / IPC / Tools
+部署硬规则：
 
-- Keep JSON Schemas provider-compliant (explicit `type: object`, required fields; avoid unbounded records).
-- Favor functional patterns + DI (`injeca`); avoid new class hierarchies unless extending browser APIs (classes are harder to mock/test).
-- Centralize Eventa contracts; use `@moeru/eventa` for all events.
-- When a user asks to use a specific tool or dependency, first check Context7 docs with the search tool, then inspect actual usage of the dependency in this repo.
-- If multiple names are returned from Context7 without a clear distinction, ask the user to choose or confirm the desired one.
-- If docs conflict with typecheck results, inspect the dependency source under `node_modules` to diagnose root cause and fix types/bugs.
+- 部署前确认要部署的 GitHub commit SHA，且该 SHA 已 push。
+- 不要覆盖 `/root/airi/apps/server/.env` 和 `.env.local`。
+- 部署前后都跑：`sha256sum /root/airi/apps/server/.env /root/airi/apps/server/.env.local`，确认 env 没变。
+- PM2 里只动 `airi-api`；不要重启或清理 `oai-reverse-proxy`。
+- 重启 `airi-api` 必须显式带 Node 22 PATH：
+  `ssh airi-vps 'export PATH=/www/server/nvm/versions/node/v22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && /www/server/nvm/versions/node/v22.20.0/bin/pm2 restart airi-api --update-env'`
+- `apps/stage-web/.env.production` 必须有 `VITE_SERVER_URL=https://airi.aifamily.vip`。
+- 缺少 `VITE_SERVER_URL` 会导致前端请求 `api.airi.build`，进而出现 session、CORS 或空白页问题。
+- 发布主站时保留 auth UI：`rsync -a --delete --exclude=/ui/*** <dist>/ /www/wwwroot/airi-web/`。
+- 本机没有 `rsync` 时，用 `tar.gz + scp` 上传到服务器 `/tmp`，再在服务器解压并用 `rsync --delete --exclude=/ui/***` 发布。
 
-## i18n
+部署后必须验证：
 
-- Add/modify translations in `packages/i18n`; avoid scattering i18n across apps/packages.
-- **Translation File Mapping**:
-  - Key prefix `settings.` (e.g., `settings.pages.providers.provider.blip-local.title`) maps to `packages/i18n/src/locales/<locale>/settings.yaml` (strip the leading `settings.` in the file path).
-  - Key prefix `stage.` maps to `stage.yaml`.
-  - All other keys map to `base.yaml`.
-- **Large YAML Management**: For modifying translation files, use `scripts/yaml-manager.js` to avoid memory/overwrite issues and preserve file comments. Refer to [`docs/settings-yaml.md`](./docs/settings-yaml.md) for full context.
-  - Run the manager with: `npx tsx scripts/yaml-manager.js <command> <file> [args]`
-  - **Commands**:
-    - `npx tsx scripts/yaml-manager.js analyze <file>`: Show compact tree structure with line numbers.
-    - `npx tsx scripts/yaml-manager.js audit <file>`: Check for duplicate keys.
-    - `npx tsx scripts/yaml-manager.js update <file> <path.to.key> "<value>"`: Safely insert/update a value.
-    - `npx tsx scripts/yaml-manager.js sync <src> <dest>`: Find keys in source missing from destination.
+- `pm2 ls` 确认 `airi-api` online。
+- `pm2 describe airi-api` 确认 Node.js version 是 22.20.0。
+- `https://airi.aifamily.vip/` 返回 200。
+- `https://airi.aifamily.vip/api/auth/get-session` 返回 200。
+- `https://airi.aifamily.vip/ui/sign-in` 返回 200。
+- 根 HTML 引用了本次新构建的 `/assets/index-*.js`。
+- 用真实浏览器打开主站，确认页面可见、无 page error、无 `Electron ipcRenderer` 报错、无 `api.airi.build` 请求。
+- 用户说“网页端”时用桌面视口截图验证；只有移动端问题才用移动视口。
+- 如果服务器验证正常但用户浏览器还是旧页面，先提示 `Ctrl + F5` 或隐私窗口，因为 PWA/service worker 可能缓存旧包。
 
-## CSS/UNO
+## 清理旧目录
 
-- Use/extend UnoCSS shortcuts in `uno.config.ts`.
-- Prefer grouped class arrays for readability; refactor legacy inline strings when possible.
-
-## Naming & Comments
-
-- File names: kebab-case.
-- Avoid classes unless extending runtime/browser APIs; FP + DI is easier to test/mock.
-- Add clear, concise comments for utils, math, OS-interaction, algorithm, shared, and architectural functions that explain what the function does.
-- When using a workaround, add a `// NOTICE:` comment explaining why, the root cause, and any source context. If validated via `node_modules` inspection or external sources (e.g., GitHub), include relevant line references and links in code-formatted text.
-- When moving/refactoring/fixing/updating code, keep existing comments intact and move them with the code. If a comment is truly unnecessary, replace it with a comment stating it previously described X and why it was removed.
-- Avoid stubby/hacky scaffolding; prefer small refactors that leave code cleaner.
-- Use markers:
-  - `// TODO:` follow-ups
-  - `// REVIEW:` concerns/needs another eye
-  - `// NOTICE:` magic numbers, hacks, important context, external references/links
-
-## Upstream Remote Restrictions
-
-- **Never** push to upstream, rebase from upstream, or touch/look at the upstream remote unless explicitly authorized by the user.
-- The `upstream` remote and this fork are highly divergent codebases (approximately 2000 commits apart). Rebasing/merging with upstream will cause severe conflicts and break the codebase.
-- The user does not have maintainer access to the upstream repository. It exists purely as a read-only remote for reference purposes if explicitly requested.
-
-## PR / Workflow Tips
-
-- Rebase pulls; branch naming `username/feat/short-name`; clear commit messages (gitmoji optional).
-- Summarize changes, how tested (commands), and follow-ups.
-- Improve legacy you touch; avoid one-off patterns.
-- Keep changes scoped; use workspace filters (`pnpm -F <workspace> <script>`).
-- Maintain structured `README.md` documentation for each `packages/` and `apps/` entry, covering what it does, how to use it, when to use it, and when not to use it.
-- Always run `pnpm typecheck` and `pnpm lint:fix` after finishing a task.
-- **Commit & Push Etiquette**:
-  - **Never** commit or push untested changes. Verify that your specific changes work as expected in the target environment.
-  - **Strict No-Push Policy**: Never push commits to the remote repository (e.g. `git push`) unless the user explicitly requests you to push in the chat. Keep commits local to allow the user to review and test them before they go live on upstream branches.
-  - Commit messages must signify **what is actually being submitted**, not just the intent or a vague "fix". If you fixed X, say `fix: X`; if you refactored Y, say `refactor: Y`.
-- Use Conventional Commits for commit messages (e.g., `feat: add runner reconnect backoff`).
+- 不要直接删除旧目录或脏 worktree；先移到带时间戳的备份目录。
+- 要替换 `D:\Tools\airi`，必须先确认最新代码已 commit 并 push 到 GitHub，再移动旧目录并重新 clone 正确分支。
+- 删除前至少记录：目录路径、当前 branch、HEAD、`git status --short`、备份位置。
+- 本地 Node 24 目录 `.node24.local` 是机器工具，不进 Git；替换 checkout 后可以从备份目录复制回来。
