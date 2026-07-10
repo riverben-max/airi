@@ -18,5 +18,7 @@ it('keeps stage mount independent from the experimental DuckDB runtime', () => {
   expect(source).not.toContain('@proj-airi/drizzle-duckdb-wasm')
   expect(source).not.toContain('getImportUrlBundles')
   expect(source).not.toContain('memory_test')
-  expect(source).toContain("if (isElectron.value)\n    state.value = 'mounted'")
+  expect(source).toMatch(/if\s*\(isElectron\.value\)\s*state\.value\s*=\s*['"]mounted['"]/)
+  expect(source.match(/state\.value\s*=\s*['"]mounted['"]/g)).toHaveLength(1)
+  expect(source).toContain('v-model:state="state"')
 })
