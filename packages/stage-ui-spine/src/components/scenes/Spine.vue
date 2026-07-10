@@ -40,6 +40,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emits = defineEmits<{
+  (e: 'error', error: Error): void
   (e: 'hitAreaHover', value: { name: string, x: number, y: number, hovered: boolean } | null): void
   (e: 'scaleChange', value: number): void
   (e: 'offsetChange', value: { x: number, y: number }): void
@@ -176,6 +177,7 @@ defineExpose({
         :idle-animations="idleAnimations"
         :mouth-open-size="mouthOpenSize"
         @hit-area-hover="handleHitAreaHover"
+        @error="emits('error', $event)"
       />
     </SpineCanvas>
 

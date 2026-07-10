@@ -53,6 +53,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emits = defineEmits<{
+  (e: 'error', error: Error): void
   (e: 'scaleChange', value: number): void
   (e: 'offsetChange', value: { x: number, y: number }): void
   (e: 'hitAreaHover', value: { name: string, x: number, y: number, hovered: boolean } | null): void
@@ -211,6 +212,7 @@ defineExpose({
         :idle-animations="idleAnimations"
         :interaction-mode="interactionMode"
         @hit-area-hover="handleHitAreaHover"
+        @error="emits('error', $event)"
       />
     </Live2DCanvas>
 

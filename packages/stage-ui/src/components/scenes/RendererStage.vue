@@ -36,6 +36,8 @@ const props = withDefaults(defineProps<{
 })
 
 const emits = defineEmits<{
+  (e: 'modelLoaded'): void
+  (e: 'modelError', error: Error): void
   (e: 'hitAreaHover', value: { name: string, x: number, y: number, hovered: boolean } | null): void
   (e: 'scaleChange', value: number): void
   (e: 'offsetChange', value: { x: number, y: number }): void
@@ -88,10 +90,15 @@ const { post: postStageModelReady } = useBroadcastChannel<string, string>({ name
 watch(componentState, (state) => {
   console.info('[RendererStage] componentState changed:', state)
   if (state === 'mounted') {
+    emits('modelLoaded')
     console.info('[RendererStage] Model is mounted, posting ready signal to airi-stage-model-ready')
     postStageModelReady('ready')
   }
 }, { immediate: true })
+
+function emitModelError(error: unknown) {
+  emits('modelError', error instanceof Error ? error : new Error(String(error)))
+}
 
 watch(() => activeCard.value?.extensions?.airi?.active_concepts, async (newConcepts) => {
   console.info('[RendererStage] Active concepts changed:', newConcepts)
@@ -416,6 +423,7 @@ defineExpose({
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
       @hit-area-hover="(val) => emits('hitAreaHover', val)"
+      @error="emitModelError"
     />
     <ThreeScene
       v-if="stageModelRenderer === 'vrm' && stageModelSelectedUrl"
@@ -437,7 +445,7 @@ defineExpose({
       :x-offset="xOffset !== undefined ? Number(xOffset) : undefined"
       :y-offset="yOffset !== undefined ? Number(yOffset) : undefined"
       :draggable="stageViewControlsEnabled"
-      @error="console.error"
+      @error="emitModelError"
       @binary-loaded="vhackStore.setSourceArrayBuffer"
       @finished="emits('animationFinished')"
       @play-status="(status) => emits('animationPlayStatus', status)"
@@ -466,6 +474,7 @@ defineExpose({
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
       @hit-area-hover="(val) => emits('hitAreaHover', val)"
+      @error="emitModelError"
     />
     <MMDScene
       v-if="stageModelRenderer === 'mmd' && stageModelSelectedUrl"
@@ -485,7 +494,7 @@ defineExpose({
       :draggable="stageViewControlsEnabled"
       :cursor-position="focusAt"
       :preview-expression="previewExpression || undefined"
-      @error="console.error"
+      @error="emitModelError"
       @scale-change="(val) => emits('scaleChange', val)"
       @offset-change="(val) => emits('offsetChange', val)"
     />

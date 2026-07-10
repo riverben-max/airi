@@ -52,6 +52,8 @@ withDefaults(defineProps<{
 }>(), { paused: false, scale: 1 })
 
 const emits = defineEmits<{
+  (e: 'modelLoaded'): void
+  (e: 'modelError', error: Error): void
   (e: 'hitAreaHover', value: { name: string, x: number, y: number, hovered: boolean } | null): void
   (e: 'scaleChange', value: number): void
   (e: 'offsetChange', value: { x: number, y: number }): void
@@ -594,11 +596,11 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
   const pitchVal = speechStore.pitch
   const rateVal = speechStore.rate
 
-    if (item.ownerId) {
-      const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(item.ownerId)
-      if (resolvedSpeech) {
-        provider = resolvedSpeech.provider || provider
-        if (resolvedSpeech.voiceId) {
+  if (item.ownerId) {
+    const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(item.ownerId)
+    if (resolvedSpeech) {
+      provider = resolvedSpeech.provider || provider
+      if (resolvedSpeech.voiceId) {
         const baseVoices = speechStore.getVoicesForProvider(provider)
         const found = baseVoices.find(v => v.id === resolvedSpeech.voiceId)
         if (found) {
@@ -1166,7 +1168,6 @@ chatHookCleanups.push(onAssistantResponseEnd(async (message) => {
   //   ...transformersProvider.embed('Xenova/nomic-embed-text-v1'),
   //   input: message,
   // })
-
 }))
 
 // Animation finishes decoupled
@@ -1250,6 +1251,8 @@ defineExpose({
         :mouth-open-size="mouthOpenSize"
         @scale-change="emits('scaleChange', $event)"
         @offset-change="emits('offsetChange', $event)"
+        @model-loaded="emits('modelLoaded')"
+        @model-error="emits('modelError', $event)"
       />
     </div>
 

@@ -617,50 +617,36 @@ async function loadModel() {
   await until(modelLoading).not.toBeTruthy()
 
   await modelLoadMutex.acquire()
-
-  modelLoading.value = true
-  availableExpressions.value = []
-  expressionData.value = []
-  settledIdleParameterBaseline.value = []
-
-  // activeExpressions.value is NOT wiped here to preserve card state, ghost keys are cleaned up later
-  componentState.value = 'loading'
-
-  if (!pixiApp.value || !pixiApp.value.stage) {
-    try {
-      // NOTICE: shouldUpdateView can fire while the canvas (pixiApp) is being torn down/recreated.
-      // Wait briefly for the new stage instead of bailing out, otherwise we keep a blank screen.
-      await until(() => !!pixiApp.value && !!pixiApp.value.stage).toBeTruthy({ timeout: 1500 })
-    }
-    catch {
-      modelLoading.value = false
-      componentState.value = 'mounted'
-      return
-    }
-  }
-
-  // REVIEW: here as await until(...) guarded the pixiApp and stage to be valid.
-  if (model.value && pixiApp.value?.stage) {
-    try {
-      pixiApp.value.stage.removeChild(model.value)
-      model.value.destroy()
-    }
-    catch (error) {
-      console.warn('Error removing old model:', error)
-    }
-    model.value = undefined
-  }
-  if (!modelSrcRef.value) {
-    console.warn('No Live2D model source provided.')
-    modelLoading.value = false
-    componentState.value = 'mounted'
-    return
-  }
+  let loaded = false
 
   try {
+    modelLoading.value = true
+    availableExpressions.value = []
+    expressionData.value = []
+    settledIdleParameterBaseline.value = []
+
+    // activeExpressions.value is NOT wiped here to preserve card state, ghost keys are cleaned up later
+    componentState.value = 'loading'
+
+    if (!pixiApp.value || !pixiApp.value.stage)
+      await until(() => !!pixiApp.value && !!pixiApp.value.stage).toBeTruthy({ timeout: 1500 })
+
+    // REVIEW: here as await until(...) guarded the pixiApp and stage to be valid.
+    if (model.value && pixiApp.value?.stage) {
+      try {
+        pixiApp.value.stage.removeChild(model.value)
+        model.value.destroy()
+      }
+      catch (error) {
+        console.warn('Error removing old model:', error)
+      }
+      model.value = undefined
+    }
+    if (!modelSrcRef.value) {
+      throw new Error('No Live2D model source provided')
+    }
+
     if (isUnmounted) {
-      modelLoading.value = false
-      componentState.value = 'mounted'
       return
     }
 
@@ -668,11 +654,13 @@ async function loadModel() {
     await Live2DFactory.setupLive2DModel(live2DModel, { url: modelSrcRef.value, id: props.modelId, file: props.modelFile }, { autoInteract: false })
 
     // NOTICE: setupLive2DModel is async; pixiApp or stage could have been destroyed during the wait.
-    if (isUnmounted || !pixiApp.value || !pixiApp.value.stage) {
+    if (isUnmounted) {
       live2DModel.destroy()
-      modelLoading.value = false
-      componentState.value = 'mounted'
       return
+    }
+    if (!pixiApp.value || !pixiApp.value.stage) {
+      live2DModel.destroy()
+      throw new Error('Live2D canvas became unavailable during model setup')
     }
 
     availableMotions.value.forEach((motion) => {
@@ -1264,15 +1252,21 @@ async function loadModel() {
       console.error('❌ [Live2D-Alpha] Metadata parsing failure:', e)
     }
 
+    loaded = true
     emits('modelLoaded')
   }
   catch (error) {
-    console.error('[Live2D] Failed to load model:', error)
-    emits('error', error instanceof Error ? error : new Error(String(error)))
+    if (!isUnmounted) {
+      componentState.value = 'pending'
+      const normalized = error instanceof Error ? error : new Error(String(error))
+      console.error('[Live2D] Failed to load model:', normalized)
+      emits('error', normalized)
+    }
   }
   finally {
     modelLoading.value = false
-    componentState.value = 'mounted'
+    if (loaded)
+      componentState.value = 'mounted'
     modelLoadMutex.release()
   }
 }

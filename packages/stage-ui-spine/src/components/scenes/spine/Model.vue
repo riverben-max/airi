@@ -260,6 +260,7 @@ function disposeSpine() {
 
 async function loadModel() {
   await modelLoadMutex.acquire()
+  let loaded = false
   loggedBBoxThisLoad = false
   isTalkActive = false
   model0ScaleFactor = 1
@@ -268,20 +269,15 @@ async function loadModel() {
   componentState.value = 'loading'
 
   try {
-    if (!canvas.value) {
-      modelLoading.value = false
-      componentState.value = 'mounted'
-      return
-    }
-
     await nextTick()
 
+    if (!canvas.value) {
+      throw new Error('Spine canvas is not available')
+    }
+
     if (!modelSrc.value) {
-      console.warn('[Spine] No model source provided')
       disposeSpine()
-      modelLoading.value = false
-      componentState.value = 'mounted'
-      return
+      throw new Error('No Spine model source provided')
     }
 
     disposeSpine()
@@ -345,8 +341,6 @@ async function loadModel() {
 
     if (isUnmounted) {
       assetCleanup?.()
-      modelLoading.value = false
-      componentState.value = 'mounted'
       return
     }
 
@@ -510,12 +504,12 @@ async function loadModel() {
               canvas.value?.addEventListener('mousemove', onCanvasMouseMove)
             }
             spineStore.isModelLoaded = true
+            loaded = true
             emits('modelLoaded')
             resolve()
           }
           catch (err) {
             const error = err instanceof Error ? err : new Error(String(err))
-            emits('error', error)
             reject(error)
           }
         },
@@ -616,7 +610,6 @@ async function loadModel() {
         error: (_sc, errors: Record<string, string>) => {
           const message = Object.values(errors).join('; ')
           const error = new Error(message)
-          emits('error', error)
           reject(error)
         },
       }
@@ -628,13 +621,18 @@ async function loadModel() {
       })
     })
   }
-  catch (err) {
-    console.error('[Spine] Failed to load model:', err)
-    emits('error', err instanceof Error ? err : new Error(String(err)))
+  catch (error) {
+    if (!isUnmounted) {
+      componentState.value = 'pending'
+      const normalized = error instanceof Error ? error : new Error(String(error))
+      console.error('[Spine] Failed to load model:', normalized)
+      emits('error', normalized)
+    }
   }
   finally {
     modelLoading.value = false
-    componentState.value = 'mounted'
+    if (loaded)
+      componentState.value = 'mounted'
     modelLoadMutex.release()
   }
 }
