@@ -270,14 +270,14 @@ onUnmounted(() => {
                   </button>
                 </div>
                 <p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
-                  {{ enabled ? 'Microphone enabled' : 'Microphone disabled' }}
+                  {{ enabled ? '麦克风已启用' : '麦克风已禁用' }}
                 </p>
               </div>
 
               <FieldSelect
                 v-model="selectedAudioInput"
-                label="Input device"
-                description="Select the microphone you want to use."
+                label="输入设备"
+                description="选择要使用的麦克风。"
                 :options="audioInputs.map(device => ({ label: device.label || 'Unknown Device', value: device.deviceId }))"
                 layout="vertical"
                 placeholder="Select microphone"

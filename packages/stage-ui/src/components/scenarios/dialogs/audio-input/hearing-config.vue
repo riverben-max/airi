@@ -74,8 +74,8 @@ const ringEnabledClass = computed(() => enabled.value
     <div class="mt-3 w-full">
       <FieldSelect
         v-model="selectedAudioInput"
-        label="Input device"
-        description="Select the microphone you want to use."
+        label="输入设备"
+        description="选择要使用的麦克风。"
         :options="props.audioInputs.map(device => ({ label: device.label || 'Unknown Device', value: device.deviceId }))"
         placeholder="Select microphone"
         layout="vertical"

@@ -37,8 +37,8 @@ export const useSettingsGeneral = defineStore('settings-general', () => {
     let language = localStorage.getItem('settings/language')
 
     if (!language) {
-      // Fallback to browser language
-      language = navigator.language || 'en'
+      // This private deployment targets Chinese users by default. Users can still switch language in Settings.
+      language = 'zh-Hans'
     }
 
     const languages = Object.keys(messages!)

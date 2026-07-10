@@ -113,10 +113,10 @@ function isMergeable(key: string): boolean {
     <div class="h-fit w-full flex flex-col gap-4 rounded-xl bg-neutral-100 p-4 dark:bg-[rgba(0,0,0,0.3)]">
       <div>
         <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-400">
-          Cloud Sync Settings
+          云同步设置
         </h2>
         <div class="text-neutral-400 dark:text-neutral-500">
-          Configure how and when your databases, character cards, memory segments, and media assets are synchronized.
+          配置数据库、角色卡、记忆片段和媒体资源的同步方式与时间。
         </div>
       </div>
 
@@ -124,10 +124,10 @@ function isMergeable(key: string): boolean {
       <div class="flex items-center justify-between border-b border-neutral-200 py-3 dark:border-neutral-800">
         <div>
           <div class="text-neutral-700 font-medium dark:text-neutral-300">
-            Enable Cloud Sync
+            启用云同步
           </div>
           <div class="text-xs text-neutral-400 dark:text-neutral-500">
-            Automatically back up and sync your data in the background.
+            在后台自动备份并同步数据。
           </div>
         </div>
         <button

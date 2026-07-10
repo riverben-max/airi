@@ -541,13 +541,13 @@ onUnmounted(() => {
         <div>
           <FieldSelect
             v-model="selectedAudioInput"
-            label="Audio Input Device"
-            description="Select the audio input device for your hearing module."
+            label="音频输入设备"
+            description="为听觉模块选择音频输入设备。"
             :options="audioInputs.map(input => ({
               label: input.label || input.deviceId,
               value: input.deviceId,
             }))"
-            placeholder="Select an audio input device"
+            placeholder="选择音频输入设备"
             layout="vertical"
           />
         </div>
@@ -714,29 +714,29 @@ onUnmounted(() => {
         <div class="border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div class="mb-4">
             <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-500">
-              Auto-send Settings
+              自动发送设置
             </h2>
             <div text="neutral-400 dark:neutral-400">
-              Configure automatic sending of transcribed text to chat
+              配置将转录文本自动发送到聊天的行为
             </div>
           </div>
 
           <div class="space-y-4">
             <FieldCheckbox
               v-model="autoSendEnabled"
-              label="Auto-send transcribed text"
-              description="Automatically send transcribed text to chat after a delay. This may consume tokens, so disable if you want to manually review and edit transcriptions before sending."
+              label="自动发送转录文本"
+              description="延迟后自动将转录文本发送到聊天。此操作可能消耗 token；如果你想在发送前手动检查和编辑转录内容，请关闭此选项。"
             />
 
             <FieldRange
               v-if="autoSendEnabled"
               v-model="autoSendDelay"
-              label="Auto-send delay"
-              description="Delay in milliseconds before automatically sending transcribed text (0 = send immediately, recommended: 1000-3000ms)"
+              label="自动发送延迟"
+              description="自动发送转录文本前的延迟毫秒数（0 = 立即发送，建议 1000-3000 毫秒）"
               :min="0"
               :max="10000"
               :step="100"
-              :format-value="value => value === 0 ? 'Immediate' : `${(value / 1000).toFixed(1)}s`"
+              :format-value="value => value === 0 ? '立即' : `${(value / 1000).toFixed(1)} 秒`"
             />
           </div>
         </div>
@@ -745,10 +745,10 @@ onUnmounted(() => {
         <div class="border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div class="mb-4">
             <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-500">
-              Detection Mode
+              检测模式
             </h2>
             <div text="neutral-400 dark:neutral-400">
-              Choose how to detect speech and trigger recordings
+              选择检测语音并触发录音的方式
             </div>
           </div>
 
@@ -758,8 +758,8 @@ onUnmounted(() => {
               v-model="hearingDetectionMode"
               name="detection-mode"
               value="vad"
-              title="VAD (Default)"
-              description="AI-powered speech detection to automatically start and stop recordings."
+              title="VAD（默认）"
+              description="使用 AI 语音检测自动开始和停止录音。"
               class="flex-1"
             />
             <RadioCardSimple
@@ -767,8 +767,8 @@ onUnmounted(() => {
               v-model="hearingDetectionMode"
               name="detection-mode"
               value="manual"
-              title="Manual (Pure Mic)"
-              description="No automatic detection. Toggle the microphone manually to record."
+              title="手动（纯麦克风）"
+              description="不进行自动检测，手动切换麦克风来录音。"
               class="flex-1"
             />
           </div>
@@ -788,10 +788,10 @@ onUnmounted(() => {
           </div>
         </h2>
 
-        <ErrorContainer v-if="error" title="Error occurred" :error="error" mb-4 />
+        <ErrorContainer v-if="error" title="发生错误" :error="error" mb-4 />
 
         <Button class="mb-4" w-full @click="toggleMonitoring">
-          {{ isMonitoring ? 'Stop Monitoring' : 'Start Monitoring' }}
+          {{ isMonitoring ? '停止监测' : '开始监测' }}
         </Button>
 
         <div>
@@ -808,25 +808,25 @@ onUnmounted(() => {
             <!-- Audio Level Visualization -->
             <div class="space-y-3">
               <!-- Volume Meter -->
-              <LevelMeter :level="volumeLevel" label="Input Level" />
+              <LevelMeter :level="volumeLevel" label="输入音量" />
 
               <!-- VAD Probability Meter (when VAD model is active) -->
               <ThresholdMeter
                 v-if="useVADModel && loadedVAD"
                 :value="isSpeechProb"
                 :threshold="useVADThreshold"
-                label="Probability of Speech"
-                below-label="Silence"
-                above-label="Speech"
-                threshold-label="Detection threshold"
+                label="语音概率"
+                below-label="静音"
+                above-label="语音"
+                threshold-label="检测阈值"
               />
 
               <!-- Threshold Controls -->
               <div v-if="useVADModel && loadedVAD" class="space-y-3">
                 <FieldRange
                   v-model="useVADThreshold"
-                  label="Sensitivity"
-                  description="Adjust the threshold for speech detection"
+                  label="灵敏度"
+                  description="调整语音检测阈值"
                   :min="0.1"
                   :max="0.9"
                   :step="0.05"
@@ -837,7 +837,7 @@ onUnmounted(() => {
               <div v-else class="space-y-3">
                 <FieldRange
                   v-model="useVADThreshold"
-                  label="Sensitivity"
+                  label="灵敏度"
                   description="Adjust the threshold for speech detection"
                   :min="1"
                   :max="80"
@@ -853,10 +853,10 @@ onUnmounted(() => {
                   :class="speakingIndicatorClass"
                 />
                 <span class="text-sm font-medium">
-                  {{ isSpeech ? 'Speaking Detected' : 'Silence' }}
+                  {{ isSpeech ? '检测到语音' : '静音' }}
                 </span>
                 <span class="ml-auto text-xs text-neutral-500">
-                  {{ useVADModel && loadedVAD ? 'Model Based' : 'Volume Based' }}
+                  {{ useVADModel && loadedVAD ? '基于模型' : '基于音量' }}
                 </span>
               </div>
 
@@ -864,28 +864,28 @@ onUnmounted(() => {
               <div class="border-t border-neutral-200 pt-3 dark:border-neutral-700">
                 <FieldCheckbox
                   v-model="useVADModel"
-                  label="Model Based"
-                  description="Use AI models for more accurate speech detection"
+                  label="基于模型"
+                  description="使用 AI 模型进行更准确的语音检测"
                 />
 
                 <!-- VAD Model Status -->
                 <div v-if="useVADModel" class="mt-3 space-y-2">
                   <div v-if="loadingVAD" class="flex items-center gap-2 text-primary-600 dark:text-primary-400">
                     <div class="animate-spin text-sm" i-solar:spinner-line-duotone />
-                    <span class="text-sm">Loading...</span>
+                    <span class="text-sm">加载中……</span>
                   </div>
 
                   <ErrorContainer
                     v-else-if="vadModelError"
-                    title="Inference error"
+                    title="推理错误"
                     :error="vadModelError"
                   />
 
                   <div v-else-if="loadedVAD" class="flex items-center gap-2 text-green-600 dark:text-green-400">
                     <div class="text-sm" i-solar:check-circle-bold-duotone />
-                    <span class="text-sm">Activated</span>
+                    <span class="text-sm">已启用</span>
                     <span class="ml-auto text-xs text-neutral-500">
-                      Probability: {{ (isSpeechProb * 100).toFixed(1) }}%
+                      概率：{{ (isSpeechProb * 100).toFixed(1) }}%
                     </span>
                   </div>
                 </div>
@@ -947,23 +947,23 @@ onUnmounted(() => {
       <!-- Speech-to-Text Test Section -->
       <div w-full rounded-xl bg="neutral-50 dark:[rgba(0,0,0,0.3)]" p-4 flex="~ col gap-4">
         <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-400">
-          Speech-to-Text Test
+          语音转文字测试
         </h2>
         <div text="sm neutral-400 dark:neutral-500" mb-2>
-          Test your transcription provider with the selected audio device. This will help verify that STT is working correctly.
+          使用所选音频设备测试转录服务，确认语音转文字功能正常工作。
         </div>
 
         <div v-if="!activeTranscriptionProvider" class="border border-amber-200 rounded-lg bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
           <div class="flex items-center gap-2 text-amber-700 dark:text-amber-400">
             <div i-solar:warning-circle-line-duotone class="text-lg" />
-            <span class="text-sm font-medium">Please select a transcription provider above to test</span>
+            <span class="text-sm font-medium">请先在上方选择转录服务来源</span>
           </div>
         </div>
 
         <div v-else-if="!selectedAudioInput" class="border border-amber-200 rounded-lg bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
           <div class="flex items-center gap-2 text-amber-700 dark:text-amber-400">
             <div i-solar:warning-circle-line-duotone class="text-lg" />
-            <span class="text-sm font-medium">Please select an audio input device to test</span>
+            <span class="text-sm font-medium">请先选择音频输入设备</span>
           </div>
         </div>
 
@@ -983,11 +983,11 @@ onUnmounted(() => {
               <div v-else class="mr-2">
                 <div i-solar:microphone-line-duotone text-lg />
               </div>
-              {{ isTestingSTT ? 'Stop Test' : isTranscribing ? 'Transcribing...' : 'Start Speech-to-Text Test' }}
+              {{ isTestingSTT ? '停止测试' : isTranscribing ? '转录中……' : '开始语音转文字测试' }}
             </Button>
           </div>
 
-          <ErrorContainer v-if="testTranscriptionError" title="Transcription Error" :error="testTranscriptionError" />
+          <ErrorContainer v-if="testTranscriptionError" title="转录错误" :error="testTranscriptionError" />
 
           <div v-if="testStatusMessage" class="border border-primary-200 rounded-lg bg-primary-50 p-3 dark:border-primary-800 dark:bg-primary-900/20">
             <div class="flex items-center gap-2 text-primary-700 dark:text-primary-400">
@@ -1000,14 +1000,14 @@ onUnmounted(() => {
           <div v-if="shouldUseStreamInput" class="border border-blue-200 rounded-lg bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
             <div class="flex items-center gap-2 text-blue-700 dark:text-blue-400">
               <div i-solar:info-circle-line-duotone class="text-sm" />
-              <span class="text-xs">Streaming mode: Transcription will appear in real-time as you speak</span>
+              <span class="text-xs">流式模式：说话时会实时显示转录内容</span>
             </div>
           </div>
 
           <div class="space-y-3">
             <div>
               <label class="mb-1 block text-sm text-neutral-700 font-medium dark:text-neutral-300">
-                Transcription Result
+                转录结果
               </label>
               <div
                 v-if="testTranscriptionText || testStreamingText"
@@ -1015,7 +1015,7 @@ onUnmounted(() => {
               >
                 <div v-if="testStreamingText && shouldUseStreamInput" class="text-neutral-600 dark:text-neutral-400">
                   <div class="mb-2 font-medium">
-                    Current transcription (streaming):
+                    当前转录（流式）：
                   </div>
                   <div class="whitespace-pre-wrap">
                     {{ testStreamingText }}
@@ -1023,7 +1023,7 @@ onUnmounted(() => {
                 </div>
                 <div v-if="testTranscriptionText" class="text-neutral-700 dark:text-neutral-200">
                   <div v-if="testStreamingText && shouldUseStreamInput" class="mb-2 mt-3 border-t border-neutral-200 pt-2 font-medium dark:border-neutral-700">
-                    Final transcription:
+                    最终转录：
                   </div>
                   <div class="whitespace-pre-wrap">
                     {{ testTranscriptionText }}
@@ -1034,16 +1034,16 @@ onUnmounted(() => {
                 v-else
                 class="min-h-[100px] border border-neutral-300 rounded-lg border-dashed bg-neutral-50 p-3 text-sm text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900/50 dark:text-neutral-500"
               >
-                No transcription yet. Click "Start Speech-to-Text Test" and speak into your microphone.
+                尚无转录内容。点击“开始语音转文字测试”，然后对着麦克风说话。
               </div>
             </div>
 
             <div v-if="activeTranscriptionProvider" class="text-xs text-neutral-500 dark:text-neutral-400">
-              <div>Provider: <span class="font-medium">{{ configuredTranscriptionProvidersMetadata.find(p => p.id === activeTranscriptionProvider)?.localizedName || activeTranscriptionProvider }}</span></div>
+              <div>服务来源：<span class="font-medium">{{ configuredTranscriptionProvidersMetadata.find(p => p.id === activeTranscriptionProvider)?.localizedName || activeTranscriptionProvider }}</span></div>
               <div v-if="activeTranscriptionModel">
-                Model: <span class="font-medium">{{ activeTranscriptionModel }}</span>
+                模型：<span class="font-medium">{{ activeTranscriptionModel }}</span>
               </div>
-              <div>Mode: <span class="font-medium">{{ shouldUseStreamInput ? 'Streaming (real-time)' : 'Recording (file-based)' }}</span></div>
+              <div>模式：<span class="font-medium">{{ shouldUseStreamInput ? '流式（实时）' : '录音（文件）' }}</span></div>
             </div>
           </div>
         </div>

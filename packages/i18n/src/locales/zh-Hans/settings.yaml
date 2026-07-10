@@ -592,11 +592,11 @@ pages:
               description: 启用后可以输入原始 SSML 而不是纯文本
               label: 选用自定义 SSML
           voice-pack:
-            description: Select a curated voice for the active character
-            empty: No Voice Packs available
-            error: Error loading Voice Packs
-            loading: Loading Voice Packs...
-            title: Voice Pack
+            description: 为当前角色选择精选语音
+            empty: 暂无可用语音包
+            error: 加载语音包失败
+            loading: 正在加载语音包……
+            title: 语音包
       title: 发声
     title: 机体模块
     vision:
@@ -1426,6 +1426,9 @@ pages:
         title: 二维码扫描失败
         failed: 扫描或连接二维码失败。
   system:
+    user-profile:
+      title: 用户资料
+      description: 管理你的用户资料和语音配置
     color-scheme:
       description: 更改舞台的配色方案
       title: 配色方案
@@ -1601,7 +1604,7 @@ pages:
       disable: 禁用
     status:
       loading: 正在加载...
-      count: "{count} 项"
+      count: '{count} 项'
       enabled: 已启用
       disabled: 已禁用
     errors:
@@ -1733,7 +1736,7 @@ pages:
       createTitle: 新建套餐
       editTitle: 编辑套餐
       newPlan: 新套餐
-      updatedAt: "更新于 {date}"
+      updatedAt: '更新于 {date}'
       actions:
         seed: 写入默认套餐
       columns:
@@ -1875,7 +1878,7 @@ pages:
       title: 当前订阅
       loading: 正在加载订阅状态...
       emptyDescription: 选择一个订阅方案，即可在每个周期获得对应 Flux。
-      activeDescription: "{plan} 已生效，有效期至 {end}。"
+      activeDescription: '{plan} 已生效，有效期至 {end}。'
       currentPeriodStart: 当前周期开始时间
       currentPeriodEnd: 当前周期结束时间
       cancelAtPeriodEnd: 续费状态
@@ -1884,7 +1887,7 @@ pages:
       lastPaymentOrderId: 最近支付订单
       currentPeriodFluxAmount: 本周期发放 Flux
       remainingDays: 剩余天数
-      remainingDaysValue: "{days} 天"
+      remainingDaysValue: '{days} 天'
       isRenewable: 是否可续费
       cancelRenewal: 取消到期续费
       resumeRenewal: 恢复续费
@@ -1916,9 +1919,9 @@ pages:
       switch: 切换方案
       current: 当前方案
       recommended: 推荐
-      periodDays: "{days} 天"
+      periodDays: '{days} 天'
       periodUnknown: 计费周期
-      fluxPerPeriod: "每周期 {flux} Flux"
+      fluxPerPeriod: '每周期 {flux} Flux'
     audit:
       title: 使用记录
       time: 时间

@@ -30,7 +30,7 @@ const removeBeforeEach = router.beforeEach(async (_, __, next) => {
 const settingsGroups = computed(() => [
   {
     id: 'character',
-    title: 'CHARACTER & SCENE',
+    title: '角色与场景',
     items: [
       {
         title: t('settings.pages.card.title'),
@@ -57,8 +57,8 @@ const settingsGroups = computed(() => [
         to: '/settings/memory',
       },
       {
-        title: 'Dating Sim',
-        description: 'Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules',
+        title: '恋爱模拟',
+        description: '调整互动游戏模式、亲密度门槛和视觉行为规则',
         icon: 'i-solar:heart-bold-duotone',
         to: '/settings/dating-sim',
       },
@@ -66,7 +66,7 @@ const settingsGroups = computed(() => [
   },
   {
     id: 'intelligence',
-    title: 'INTELLIGENCE',
+    title: '智能',
     items: [
       {
         title: t('settings.pages.modules.title'),
@@ -84,7 +84,7 @@ const settingsGroups = computed(() => [
   },
   {
     id: 'system',
-    title: 'SYSTEM',
+    title: '系统',
     items: [
       {
         title: t('settings.pages.system.title'),
