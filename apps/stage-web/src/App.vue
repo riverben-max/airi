@@ -27,7 +27,7 @@ import PerformanceOverlay from './components/Devtools/PerformanceOverlay.vue'
 import { startCharacterFirstInitialization } from './modules/app-startup'
 import { usePWAStore } from './stores/pwa'
 
-usePWAStore()
+const pwaStore = usePWAStore()
 
 const contextBridgeStore = useContextBridgeStore()
 const i18n = useI18n()
@@ -105,6 +105,7 @@ onMounted(() => {
       { name: 'server channel', run: () => serverChannelStore.initialize({ possibleEvents: ['ui:configure'] }) },
       { name: 'context bridge', run: () => contextBridgeStore.initialize() },
       { name: 'character orchestrator', run: () => characterOrchestratorStore.initialize() },
+      { name: 'pwa', run: () => pwaStore.register() },
     ],
     onError: (name, error) => console.error(`[App] Failed to initialize ${name}:`, error),
   })

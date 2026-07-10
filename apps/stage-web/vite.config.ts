@@ -18,7 +18,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 import { runtimeOnlyLive2dArchives } from './build/live2d-runtime-archive'
-import { stageWebNavigateFallbackDenylist } from './src/modules/pwa-navigation'
+import { stageWebWorkbox } from './src/modules/pwa-cache'
 
 /**
  * Helper to retry an async function multiple times with optional backoff.
@@ -206,10 +206,7 @@ export default defineConfig({
               },
             ],
           },
-          workbox: {
-            maximumFileSizeToCacheInBytes: 64 * 1024 * 1024,
-            navigateFallbackDenylist: stageWebNavigateFallbackDenylist,
-          },
+          workbox: stageWebWorkbox,
         })]),
 
     // https://github.com/intlify/bundle-tools/tree/main/packages/unplugin-vue-i18n
