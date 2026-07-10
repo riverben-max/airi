@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { DuckDBWasmDrizzleDatabase } from '@proj-airi/drizzle-duckdb-wasm'
 import type { Live2DLipSync, Live2DLipSyncOptions } from '@proj-airi/model-driver-lipsync'
 import type { Profile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
 import type {} from '@proj-airi/stage-shared/electron-renderer'
@@ -8,8 +7,6 @@ import type { UnElevenLabsOptions } from 'unspeech'
 
 import type { EmotionPayload } from '../../constants/emotions'
 
-import { drizzle } from '@proj-airi/drizzle-duckdb-wasm'
-import { getImportUrlBundles } from '@proj-airi/drizzle-duckdb-wasm/bundles/import-url-browser'
 import { createLive2DLipSync } from '@proj-airi/model-driver-lipsync'
 import { wlipsyncProfile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
 import { createPlaybackManager, createSpeechPipeline } from '@proj-airi/pipelines-audio'
@@ -62,7 +59,6 @@ const emits = defineEmits<{
 
 const state = defineModel<'pending' | 'loading' | 'mounted'>('state', { default: 'pending' })
 
-const db = ref<DuckDBWasmDrizzleDatabase>()
 // const transformersProvider = createTransformers({ embedWorkerURL })
 
 const settingsStore = useSettings()
@@ -1171,7 +1167,6 @@ chatHookCleanups.push(onAssistantResponseEnd(async (message) => {
   //   input: message,
   // })
 
-  // await db.value?.execute(`INSERT INTO memory_test (vec) VALUES (${JSON.stringify(res.embedding)});`)
 }))
 
 // Animation finishes decoupled
@@ -1199,10 +1194,11 @@ if (typeof window !== 'undefined') {
   })
 }
 
-onMounted(async () => {
-  db.value = drizzle({ connection: { bundles: getImportUrlBundles() } })
-  await db.value.execute(`CREATE TABLE memory_test (vec FLOAT[768]);`)
-  state.value = 'mounted'
+onMounted(() => {
+  // The Electron control strip renders its model in a separate actor window.
+  if (isElectron.value)
+    state.value = 'mounted'
+
   void customVrmAnimationsStore.loadCustomAnimations()
 })
 
