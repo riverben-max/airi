@@ -5,6 +5,7 @@ import type {
   OnboardingStepGuard,
   OnboardingStepNextHandler,
   OnboardingStepPrevHandler,
+  OnboardingWelcomeStartHandler,
   ProviderConfigData,
 } from './types'
 
@@ -40,8 +41,9 @@ interface Emits {
   (e: 'skipped'): void
 }
 
-const { extraSteps = [] } = defineProps<{
+const { extraSteps = [], onWelcomeStart } = defineProps<{
   extraSteps?: OnboardingStep[]
+  onWelcomeStart?: OnboardingWelcomeStartHandler
 }>()
 const emit = defineEmits<Emits>()
 const step = ref(0)
@@ -282,6 +284,9 @@ const allSteps = computed<OnboardingStep[]>(() => {
     {
       id: 'welcome',
       component: StepWelcome,
+      props: () => ({
+        onStart: onWelcomeStart,
+      }),
     },
     {
       id: 'start-choice',

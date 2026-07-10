@@ -2,6 +2,7 @@ import type { Component } from 'vue'
 
 export type OnboardingStepGuard = (data?: any) => Promise<boolean>
 export type OnboardingStepPrevHandler = () => Promise<void> | void
+export type OnboardingWelcomeStartHandler = () => Promise<void> | void
 
 export interface ProviderConfigData {
   apiKey: string

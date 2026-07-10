@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { OnboardingStepNextHandler } from './types'
+import type { OnboardingStepNextHandler, OnboardingWelcomeStartHandler } from './types'
 
 import { Button } from '@proj-airi/ui'
 import { useI18n } from 'vue-i18n'
@@ -8,10 +8,20 @@ import onboardingLogo from '../../../../assets/onboarding.avif'
 
 interface Props {
   onNext: OnboardingStepNextHandler
+  onStart?: OnboardingWelcomeStartHandler
 }
 
 const props = defineProps<Props>()
 const { t } = useI18n()
+
+async function handleStart() {
+  if (props.onStart) {
+    await props.onStart()
+    return
+  }
+
+  await props.onNext()
+}
 </script>
 
 <template>
@@ -58,7 +68,7 @@ const { t } = useI18n()
       :delay="200"
       class="border-none from-primary-500 to-indigo-600 bg-gradient-to-r text-white shadow-lg shadow-primary-500/10 hover:from-primary-600 hover:to-indigo-700"
       :label="t('settings.dialogs.onboarding.start')"
-      @click="props.onNext"
+      @click="handleStart"
     />
   </div>
 </template>
