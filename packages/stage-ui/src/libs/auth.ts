@@ -11,6 +11,11 @@ export { SERVER_URL } from './server'
 
 export type OAuthProvider = 'google' | 'github'
 
+export interface TriggerSignInOptions {
+  provider?: OAuthProvider
+  onFlowState?: (state: string) => void
+}
+
 export const REMOTE_SYNC_STORAGE_KEY = 'settings/privacy/remote-sync-enabled'
 
 export function isRemoteSyncEnabled() {
@@ -130,10 +135,11 @@ export async function signOut() {
 /**
  * Initiate OIDC Authorization Code + PKCE sign-in flow.
  */
-export async function signInOIDC(params: OIDCFlowParams) {
+export async function signInOIDC(params: OIDCFlowParams, onFlowState?: (state: string) => void) {
   const { provider, ...oidcParams } = params
   const { url, flowState } = await buildAuthorizationURL(oidcParams)
   persistFlowState(flowState, params)
+  onFlowState?.(flowState.state)
 
   if (!provider) {
     window.location.href = url
@@ -146,12 +152,13 @@ export async function signInOIDC(params: OIDCFlowParams) {
   })
 }
 
-export async function triggerSignIn(opts?: { provider?: OAuthProvider }): Promise<void> {
+export async function triggerSignIn(opts: TriggerSignInOptions = {}): Promise<void> {
+  const { onFlowState, ...oidcOptions } = opts
   await signInOIDC({
     clientId: OIDC_CLIENT_ID,
     redirectUri: OIDC_REDIRECT_URI,
-    ...opts,
-  })
+    ...oidcOptions,
+  }, onFlowState)
 }
 
 export async function signIn(provider: OAuthProvider): Promise<void> {

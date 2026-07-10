@@ -10,6 +10,10 @@ import { useBreakpoints } from '../composables/use-breakpoints'
 import { fetchSession, triggerSignIn } from '../libs/auth'
 import { refreshAccessToken } from '../libs/auth-oidc'
 
+interface RequestLoginOptions {
+  onFlowState?: (state: string) => void
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = useLocalStorage<User | null>('auth/v1/user', null, {
     serializer: StorageSerializers.object,
@@ -30,14 +34,14 @@ export const useAuthStore = defineStore('auth', () => {
   const needsLogin = ref(false)
   const { isMobile } = useBreakpoints()
 
-  async function requestLogin(): Promise<void> {
+  async function requestLogin(options?: RequestLoginOptions): Promise<void> {
     if (isStageTamagotchi()) {
       needsLogin.value = true
       return
     }
 
     needsLogin.value = false
-    await triggerSignIn()
+    await triggerSignIn(options)
   }
 
   whenever(needsLogin, async () => {

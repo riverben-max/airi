@@ -2,14 +2,24 @@
 import { errorMessageFrom } from '@moeru/std'
 import { applyOIDCTokens, fetchSession, triggerSignIn } from '@proj-airi/stage-ui/libs/auth'
 import { consumeFlowState, exchangeCodeForTokens } from '@proj-airi/stage-ui/libs/auth-oidc'
+import { useOnboardingStore } from '@proj-airi/stage-ui/stores/onboarding'
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import {
+  consumeOnboardingLogin,
+  finalizeOnboardingLogin,
+  isOnboardingLoginPending,
+  startOnboardingLogin,
+} from '../../modules/onboarding-login'
+
 const router = useRouter()
+const onboardingStore = useOnboardingStore()
 const { t } = useI18n()
 const error = ref<string | null>(null)
+const retryOnboardingLogin = ref(false)
 
 onMounted(async () => {
   const url = new URL(window.location.href)
@@ -18,33 +28,51 @@ onMounted(async () => {
   const errorParam = url.searchParams.get('error')
 
   if (errorParam) {
+    retryOnboardingLogin.value = consumeOnboardingLogin(state)
     error.value = url.searchParams.get('error_description') ?? errorParam
     return
   }
 
   if (!code || !state) {
+    retryOnboardingLogin.value = consumeOnboardingLogin(state)
     error.value = t('server.auth.webCallback.message.missingCodeOrState')
     return
   }
 
-  const persisted = consumeFlowState()
-  if (!persisted) {
-    error.value = t('server.auth.webCallback.message.missingFlowState')
-    return
-  }
+  let expectedOnboardingState: string | null = state
 
   try {
+    const persisted = consumeFlowState()
+    if (!persisted) {
+      retryOnboardingLogin.value = consumeOnboardingLogin(expectedOnboardingState)
+      error.value = t('server.auth.webCallback.message.missingFlowState')
+      return
+    }
+
+    expectedOnboardingState = persisted.flowState.state
+    retryOnboardingLogin.value = isOnboardingLoginPending(expectedOnboardingState)
+
     const tokens = await exchangeCodeForTokens(code, persisted.flowState, persisted.params, state)
     await applyOIDCTokens(tokens, persisted.params.clientId)
-    await fetchSession()
+    await finalizeOnboardingLogin(
+      expectedOnboardingState,
+      fetchSession,
+      () => onboardingStore.markSetupCompleted(),
+    )
     router.replace('/')
   }
   catch (err) {
+    retryOnboardingLogin.value = consumeOnboardingLogin(expectedOnboardingState) || retryOnboardingLogin.value
     error.value = errorMessageFrom(err) ?? t('server.auth.webCallback.message.tokenExchangeFailed')
   }
 })
 
 async function handleTryAgain() {
+  if (retryOnboardingLogin.value) {
+    await startOnboardingLogin(onFlowState => triggerSignIn({ onFlowState }))
+    return
+  }
+
   await triggerSignIn()
 }
 </script>

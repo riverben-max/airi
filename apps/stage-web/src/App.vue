@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { OnboardingDialog, ToasterRoot } from '@proj-airi/stage-ui/components'
 import { useSharedAnalyticsStore } from '@proj-airi/stage-ui/stores/analytics'
+import { useAuthStore } from '@proj-airi/stage-ui/stores/auth'
 import { useCharacterOrchestratorStore } from '@proj-airi/stage-ui/stores/character'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
@@ -25,6 +26,7 @@ import { toast, Toaster } from 'vue-sonner'
 import PerformanceOverlay from './components/Devtools/PerformanceOverlay.vue'
 
 import { startCharacterFirstInitialization } from './modules/app-startup'
+import { clearOnboardingProgress, startOnboardingLogin } from './modules/onboarding-login'
 import { usePWAStore } from './stores/pwa'
 
 const pwaStore = usePWAStore()
@@ -35,6 +37,11 @@ const displayModelsStore = useDisplayModelsStore()
 const settingsStore = useSettings()
 const settings = storeToRefs(settingsStore)
 const onboardingStore = useOnboardingStore()
+const authStore = useAuthStore()
+
+if (onboardingStore.needsOnboarding)
+  clearOnboardingProgress()
+
 const chatSessionStore = useChatSessionStore()
 const serverChannelStore = useModsServerChannelStore()
 const characterOrchestratorStore = useCharacterOrchestratorStore()
@@ -146,6 +153,10 @@ function handleSetupConfigured() {
 function handleSetupSkipped() {
   onboardingStore.markSetupSkipped()
 }
+
+async function handleOnboardingStart() {
+  await startOnboardingLogin(onFlowState => authStore.requestLogin({ onFlowState }))
+}
 </script>
 
 <template>
@@ -170,6 +181,7 @@ function handleSetupSkipped() {
   <!-- First Time Setup Dialog -->
   <OnboardingDialog
     v-model="showingSetup"
+    :on-welcome-start="handleOnboardingStart"
     @configured="handleSetupConfigured"
     @skipped="handleSetupSkipped"
   />
