@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   variant?: 'default' | 'mobile'
 }>(), {
   showCacheStatus: false,
-  title: 'Memory & Context',
+  title: '记忆与上下文',
   variant: 'default',
 })
 
@@ -122,7 +122,7 @@ function navigateToProactivity() {
       >
         <!-- Header -->
         <div class="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
-          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Memory & Context</span>
+          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">记忆与上下文</span>
           <div class="i-solar:history-bold-duotone text-xs text-primary-500" />
         </div>
 
@@ -246,7 +246,7 @@ function navigateToProactivity() {
           >
             <div class="flex items-center gap-2">
               <div class="i-solar:trash-bin-2-bold-duotone text-red-400" />
-              <span class="text-xs text-red-500 font-medium dark:text-red-400">Clear Messages</span>
+              <span class="text-xs text-red-500 font-medium dark:text-red-400">清空消息</span>
             </div>
           </button>
         </div>

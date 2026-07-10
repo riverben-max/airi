@@ -210,20 +210,20 @@ onUnmounted(() => {
     <div mb-2>
       <FieldSelect
         v-model="selectedAudioInput"
-        label="Audio Input Device"
-        description="Select the audio input device for your hearing module."
+        label="音频输入设备"
+        description="为听觉模块选择音频输入设备。"
         :options="audioInputs.map(input => ({
           label: input.label || input.deviceId,
           value: input.deviceId,
         }))"
-        placeholder="Select an audio input device"
+        placeholder="选择音频输入设备"
         layout="vertical"
         h-fit w-full
       />
     </div>
 
     <Button class="my-4" w-full @click="toggleMonitoring">
-      {{ isMonitoring ? 'Stop Monitoring' : 'Start Monitoring' }}
+      {{ isMonitoring ? '停止监测' : '开始监测' }}
     </Button>
 
     <!-- Error message display -->
@@ -246,23 +246,23 @@ onUnmounted(() => {
     <!-- Audio Level Visualization -->
     <div class="space-y-3">
       <!-- Volume Meter -->
-      <LevelMeter :level="volumeLevel" label="Input Level" />
+      <LevelMeter :level="volumeLevel" label="输入音量" />
 
       <!-- VAD Probability Meter (when VAD model is active) -->
       <ThresholdMeter
         :value="volumeLevel / 100"
         :threshold="speakingThreshold / 100"
-        label="Probability of Speech"
-        below-label="Silence"
-        above-label="Speech"
-        threshold-label="Detection threshold"
+        label="语音概率"
+        below-label="静音"
+        above-label="语音"
+        threshold-label="检测阈值"
       />
 
       <div class="space-y-3">
         <FieldRange
           v-model="speakingThreshold"
-          label="Sensitivity"
-          description="Adjust the threshold for speech detection"
+          label="灵敏度"
+          description="调整语音检测阈值"
           :min="1"
           :max="80"
           :step="1"

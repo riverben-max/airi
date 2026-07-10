@@ -190,6 +190,10 @@ live2d:
       custom: Custom
 microphone: 麦克风
 models: 模型
+privacy:
+  remote-sync:
+    title: 启用云同步
+    description: 默认关闭。关闭后 AIRI 仅在本地运行，不会获取远程会话或同步聊天记录。
 pages:
   card:
     activate: 激活

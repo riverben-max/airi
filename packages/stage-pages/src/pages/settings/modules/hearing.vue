@@ -838,7 +838,7 @@ onUnmounted(() => {
                 <FieldRange
                   v-model="useVADThreshold"
                   label="灵敏度"
-                  description="Adjust the threshold for speech detection"
+                  description="调整语音检测阈值"
                   :min="1"
                   :max="80"
                   :step="1"

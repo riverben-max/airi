@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<{
   /** Variant of the trigger button */
   variant?: 'default' | 'mobile'
 }>(), {
-  title: 'Grounding Options',
+  title: '接地选项',
   variant: 'default',
 })
 
@@ -90,7 +90,7 @@ function handleToggleGroundingDirectorScratchpad() {
       >
         <!-- Header -->
         <div class="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
-          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Grounding Options</span>
+          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">接地选项</span>
           <div class="i-solar:cpu-bolt-bold-duotone text-xs text-primary-500" />
         </div>
 

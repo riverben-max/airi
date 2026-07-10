@@ -223,7 +223,7 @@ onUnmounted(() => {
             <button
               class="h-8 w-8 flex items-center justify-center rounded-md outline-none transition-all duration-200 active:scale-95"
               text="lg neutral-500 dark:neutral-400"
-              :title="t('settings.hearing.title')"
+              title="听觉"
             >
               <Transition name="fade" mode="out-in">
                 <IndicatorMicVolume v-if="enabled" class="h-5 w-5" />
@@ -314,7 +314,7 @@ onUnmounted(() => {
         :class="[
           sessionTokenCount > 100000 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-400 dark:text-neutral-500',
         ]"
-        title="Est. of tokens used for this chat"
+        title="当前聊天预计使用的 token 数"
       >
         <div class="i-solar:graph-bold-duotone text-xs" />
         <span>{{ formattedTokenCount }}</span>
@@ -330,7 +330,7 @@ onUnmounted(() => {
             ? 'border-amber-500/50 bg-amber-500/10 text-lg text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
             : 'border-neutral-100/60 bg-neutral-50/70 text-lg text-neutral-500 hover:text-primary-500 dark:border-neutral-800/30 dark:bg-neutral-800/70 dark:text-neutral-400 dark:hover:text-primary-400',
         ]"
-        :title="activeCard?.extensions?.airi?.groundingEnabled ? 'Grounding Active — sensor data attached to messages' : 'Attach sensor data with each message (Visit Proactivity tab to preview)'"
+        :title="activeCard?.extensions?.airi?.groundingEnabled ? '接地已启用：消息将附带传感器数据' : '为每条消息附加传感器数据（可在主动性设置中预览）'"
         @click="airiCardStore.toggleGrounding(activeCardId)"
       >
         <div :class="[activeCard?.extensions?.airi?.groundingEnabled ? 'i-solar:cpu-bolt-bold-duotone' : 'i-solar:cpu-bold-duotone']" />
@@ -359,7 +359,7 @@ onUnmounted(() => {
       <!-- Clear Messages (Safety Hook) -->
       <button
         class="max-h-[10lh] min-h-[1lh] flex items-center justify-center border-2 border-neutral-100/60 rounded-xl bg-neutral-50/70 p-2 text-lg text-neutral-500 outline-none backdrop-blur-md transition-colors transition-transform active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
-        title="Clear Messages"
+        title="清空消息"
         @click="handleTrashClick(cleanupMessages)"
       >
         <div class="i-solar:trash-bin-2-bold-duotone" />
@@ -372,7 +372,7 @@ onUnmounted(() => {
       >
         <button
           class="h-9 w-10 flex items-center justify-center outline-none transition-transform active:scale-95 hover:bg-primary-500/10"
-          title="Send Message"
+          title="发送消息"
           @click="handleSend"
         >
           <div class="i-solar:plain-2-bold-duotone text-xl text-primary-600 dark:text-primary-400" />
@@ -383,7 +383,7 @@ onUnmounted(() => {
             <button
               class="h-9 w-6 flex items-center justify-center border-l border-neutral-200/50 outline-none transition-colors dark:border-neutral-700/50 hover:bg-primary-500/10"
               text="neutral-500 dark:neutral-400"
-              title="Change Send Key Mode"
+              title="更改发送快捷键模式"
             >
               <div class="i-solar:alt-arrow-down-linear text-xs" />
             </button>

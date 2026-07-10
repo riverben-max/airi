@@ -250,7 +250,7 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
                 <div class="flex flex-col items-center gap-1">
                   <div>加载中……</div>
                   <div v-if="lastReloadReason" class="text-1rem font-normal opacity-50">
-                    Triggered by: {{ lastReloadReason }}
+                    触发原因：{{ lastReloadReason }}
                   </div>
                 </div>
               </div>
