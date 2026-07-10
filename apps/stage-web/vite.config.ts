@@ -17,6 +17,7 @@ import { LFS, SpaceCard } from 'hfup/vite'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+import { runtimeOnlyLive2dArchives } from './build/live2d-runtime-archive'
 import { stageWebNavigateFallbackDenylist } from './src/modules/pwa-navigation'
 
 /**
@@ -230,6 +231,11 @@ export default defineConfig({
           resilient(Download('https://dist.ayaka.moe/vrm-models/VRoid-Hub/AvatarSample-B/AvatarSample_B.vrm', 'AvatarSample_B.vrm', 'vrm/models/AvatarSample-B', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir })),
         ]
       : []),
+
+    runtimeOnlyLive2dArchives([
+      resolve(stageUIAssetsRoot, 'live2d/models/hiyori_free_zh.zip'),
+      resolve(stageUIAssetsRoot, 'live2d/models/hiyori_pro_zh.zip'),
+    ]),
 
     // HuggingFace Spaces
     LFS({ root: cwd(), extraGlobs: [
