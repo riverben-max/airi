@@ -303,7 +303,7 @@ pages:
       advanced: 高级 / 开发
       chronicles: 编年史
   data:
-    title: Data
+    title: 数据
     description: 管理存储 AIRI 数据、导出和重置
     sections:
       chats:
