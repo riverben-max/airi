@@ -24,6 +24,7 @@ import { toast, Toaster } from 'vue-sonner'
 
 import PerformanceOverlay from './components/Devtools/PerformanceOverlay.vue'
 
+import { startCharacterFirstInitialization } from './modules/app-startup'
 import { usePWAStore } from './stores/pwa'
 
 usePWAStore()
@@ -82,7 +83,7 @@ watch(settings.themeColorsHueDynamic, () => {
 }, { immediate: true })
 
 // Initialize first-time setup check when app mounts
-onMounted(async () => {
+onMounted(() => {
   console.log('[App] onMounted start')
   proactivityStore.startHeartbeatLoop()
 
@@ -94,18 +95,22 @@ onMounted(async () => {
     onboardingStore.showingSetup = true
   }
 
-  console.log('[App] Initializing Chat Session...')
-  await chatSessionStore.initialize()
-  console.log('[App] Initializing Server Channel...')
-  await serverChannelStore.initialize({ possibleEvents: ['ui:configure'] }).catch(err => console.error('Failed to initialize Mods Server Channel in App.vue:', err))
-  console.log('[App] Initializing Context Bridge...')
-  await contextBridgeStore.initialize()
-  console.log('[App] Initializing Character Orchestrator...')
-  characterOrchestratorStore.initialize()
+  const { characterReady, optionalReady } = startCharacterFirstInitialization({
+    characterSteps: [
+      { name: 'display models', run: () => displayModelsStore.loadDisplayModelsFromIndexedDB() },
+      { name: 'stage model', run: () => settingsStore.initializeStageModel() },
+    ],
+    optionalSteps: [
+      { name: 'chat session', run: () => chatSessionStore.initialize() },
+      { name: 'server channel', run: () => serverChannelStore.initialize({ possibleEvents: ['ui:configure'] }) },
+      { name: 'context bridge', run: () => contextBridgeStore.initialize() },
+      { name: 'character orchestrator', run: () => characterOrchestratorStore.initialize() },
+    ],
+    onError: (name, error) => console.error(`[App] Failed to initialize ${name}:`, error),
+  })
 
-  console.log('[App] Loading models...')
-  await displayModelsStore.loadDisplayModelsFromIndexedDB()
-  await settingsStore.initializeStageModel()
+  void characterReady
+  void optionalReady
 
   // Expose stores for live debugging
   const airi = {
