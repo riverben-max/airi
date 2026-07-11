@@ -72,4 +72,15 @@ describe('startCharacterFirstInitialization', () => {
     expect(characterIndex).toBeGreaterThan(-1)
     expect(optionalIndex).toBeGreaterThan(characterIndex)
   })
+
+  it('checks returning-user authentication before starting Stage services', () => {
+    const source = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
+    const authDecisionIndex = source.indexOf('const loginStarted = await startReturningUserLoginIfNeeded({')
+    const characterInitializationIndex = source.indexOf('const { characterReady, optionalReady } = startCharacterFirstInitialization')
+
+    expect(authDecisionIndex).toBeGreaterThan(-1)
+    expect(characterInitializationIndex).toBeGreaterThan(authDecisionIndex)
+    expect(source).toContain('needsOnboarding: onboardingStore.needsOnboarding')
+    expect(source).toContain('isAuthCallback: route.path === \'/auth/callback\'')
+  })
 })

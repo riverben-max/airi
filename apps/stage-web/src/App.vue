@@ -20,13 +20,14 @@ import { StageTransitionGroup } from '@proj-airi/ui-transitions'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterView } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import { toast, Toaster } from 'vue-sonner'
 
 import PerformanceOverlay from './components/Devtools/PerformanceOverlay.vue'
 
 import { startCharacterFirstInitialization } from './modules/app-startup'
 import { clearOnboardingProgress, startOnboardingLogin } from './modules/onboarding-login'
+import { startReturningUserLoginIfNeeded } from './modules/returning-user-login'
 import { usePWAStore } from './stores/pwa'
 
 const pwaStore = usePWAStore()
@@ -38,6 +39,7 @@ const settingsStore = useSettings()
 const settings = storeToRefs(settingsStore)
 const onboardingStore = useOnboardingStore()
 const authStore = useAuthStore()
+const route = useRoute()
 
 if (onboardingStore.needsOnboarding)
   clearOnboardingProgress()
@@ -90,8 +92,19 @@ watch(settings.themeColorsHueDynamic, () => {
 }, { immediate: true })
 
 // Initialize first-time setup check when app mounts
-onMounted(() => {
+onMounted(async () => {
   console.log('[App] onMounted start')
+  const loginStarted = await startReturningUserLoginIfNeeded({
+    needsOnboarding: onboardingStore.needsOnboarding,
+    isAuthCallback: route.path === '/auth/callback',
+    initializeAuth: () => authStore.initialize(),
+    isAuthenticated: () => authStore.isAuthenticated,
+    requestLogin: () => authStore.requestLogin(),
+    onError: error => console.error('[App] Failed to verify authentication:', error),
+  })
+  if (loginStarted)
+    return
+
   proactivityStore.startHeartbeatLoop()
 
   console.log('[App] Initializing Analytics & Card stores...')
