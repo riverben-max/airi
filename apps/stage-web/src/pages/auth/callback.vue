@@ -2,12 +2,14 @@
 import { errorMessageFrom } from '@moeru/std'
 import { applyOIDCTokens, fetchSession, triggerSignIn } from '@proj-airi/stage-ui/libs/auth'
 import { consumeFlowState, exchangeCodeForTokens } from '@proj-airi/stage-ui/libs/auth-oidc'
+import { useAuthStore } from '@proj-airi/stage-ui/stores/auth'
 import { useOnboardingStore } from '@proj-airi/stage-ui/stores/onboarding'
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import { prepareAuthCallbackSession } from '../../modules/auth-callback-session'
 import {
   consumeOnboardingLogin,
   finalizeOnboardingLogin,
@@ -16,6 +18,7 @@ import {
 } from '../../modules/onboarding-login'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const { t } = useI18n()
 const error = ref<string | null>(null)
@@ -52,8 +55,11 @@ onMounted(async () => {
     expectedOnboardingState = persisted.flowState.state
     retryOnboardingLogin.value = isOnboardingLoginPending(expectedOnboardingState)
 
-    const tokens = await exchangeCodeForTokens(code, persisted.flowState, persisted.params, state)
-    await applyOIDCTokens(tokens, persisted.params.clientId)
+    await prepareAuthCallbackSession({
+      initializeAuth: () => authStore.initialize(),
+      exchangeTokens: () => exchangeCodeForTokens(code, persisted.flowState, persisted.params, state),
+      applyTokens: tokens => applyOIDCTokens(tokens, persisted.params.clientId),
+    })
     await finalizeOnboardingLogin(
       expectedOnboardingState,
       fetchSession,
