@@ -12,4 +12,12 @@ describe('chatArea voice popover', () => {
     expect(source).toContain('hearingPopoverLayerStyle')
     expect(source).toContain(':style="hearingPopoverLayerStyle"')
   })
+
+  it('requests microphone permission when the hearing popover opens', () => {
+    const source = readFileSync(fileURLToPath(new URL('./ChatArea.vue', import.meta.url)), 'utf8')
+
+    expect(source).toContain('const settingsAudioDevice = useSettingsAudioDevice()')
+    expect(source).toContain('storeToRefs(settingsAudioDevice)')
+    expect(source).toMatch(/watch\(hearingPopoverOpen, async \(value\) => \{[\s\S]*?await settingsAudioDevice\.askPermission\(\)[\s\S]*?\}\)/)
+  })
 })

@@ -46,7 +46,8 @@ const { activeProvider, activeModel } = storeToRefs(useConsciousnessStore())
 const { themeColorsHueDynamic } = storeToRefs(useSettings())
 const settingsChat = useSettingsChat()
 
-const { enabled, selectedAudioInput, stream, audioInputs } = storeToRefs(useSettingsAudioDevice())
+const settingsAudioDevice = useSettingsAudioDevice()
+const { enabled, selectedAudioInput, stream, audioInputs } = storeToRefs(settingsAudioDevice)
 const chatSession = useChatSessionStore()
 const airiCardStore = useAiriCardStore()
 const { cleanupMessages } = useChatMaintenanceStore()
@@ -165,6 +166,18 @@ async function setupAnalyzer() {
   analyzerSource = audioContext.createMediaStreamSource(stream.value)
   analyzerSource.connect(analyser)
 }
+
+watch(hearingPopoverOpen, async (value) => {
+  if (!value)
+    return
+
+  try {
+    await settingsAudioDevice.askPermission()
+  }
+  catch (error) {
+    console.error('[ChatArea] Failed to refresh microphone devices:', error)
+  }
+})
 
 watch([hearingPopoverOpen, enabled, stream], () => {
   setupAnalyzer()
