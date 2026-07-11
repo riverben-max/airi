@@ -1774,7 +1774,10 @@ pages:
     logout: 登出
     fluxBalance: 剩余通量
     viewFluxDetails: 查看详情
-    signedInAs: 登录 为
+    signedInAs: 已登录为
+    activeSessions: 活跃会话
+    activeSessionsCount: '当前共有 {count} 个活跃会话。'
+    sessionListErrorFallback: 无法加载活跃会话，请稍后重试。
     profile:
       tab: 个人资料
       title: 个人资料

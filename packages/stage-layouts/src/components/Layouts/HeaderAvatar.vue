@@ -13,11 +13,12 @@ import { RouterLink } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 const authStore = useAuthStore()
-const { isAuthenticated, user } = storeToRefs(authStore)
+const { isAuthenticated, user, credits } = storeToRefs(authStore)
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
 const userName = computed(() => user.value?.name)
 const userAvatar = computed(() => user.value?.image)
+const formattedCredits = computed(() => credits.value.toLocaleString())
 const showDropdown = ref(false)
 const showAbout = ref(false)
 const dropdownRef = ref(null)
@@ -47,11 +48,11 @@ async function handleListSessions() {
   try {
     const { data: sessions } = await listSessions()
     if (sessions) {
-      toast.success(`You have ${sessions.length} active sessions.`)
+      toast.success(t('settings.pages.account.activeSessionsCount', { count: sessions.length }))
     }
   }
   catch (error) {
-    toast.error(error instanceof Error ? error.message : 'An unknown error occurred')
+    toast.error(error instanceof Error ? error.message : t('settings.pages.account.sessionListErrorFallback'))
   }
 }
 </script>
@@ -148,11 +149,15 @@ async function handleListSessions() {
         >
           <div class="px-3 py-2">
             <p class="text-xs text-neutral-500 dark:text-neutral-400">
-              Signed in as
+              {{ t('settings.pages.account.signedInAs') }}
             </p>
             <p class="truncate text-sm text-neutral-900 font-medium dark:text-white">
               {{ userName }}
             </p>
+            <div class="mt-1 flex items-center gap-1.5 text-xs text-primary-600 font-medium dark:text-primary-400">
+              <div class="i-solar:battery-charge-bold-duotone text-sm" />
+              <span>{{ formattedCredits }} Flux</span>
+            </div>
           </div>
 
           <div class="py-1">
@@ -161,8 +166,17 @@ async function handleListSessions() {
               @click="handleListSessions"
             >
               <div class="i-solar:devices-bold-duotone text-lg text-neutral-400 transition group-hover:text-primary-500" />
-              Active Sessions
+              {{ t('settings.pages.account.activeSessions') }}
             </button>
+
+            <RouterLink
+              to="/settings/flux"
+              class="group w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              @click="showDropdown = false"
+            >
+              <div class="i-solar:battery-charge-bold-duotone text-lg text-neutral-400 transition group-hover:text-primary-500" />
+              {{ t('settings.pages.flux.title') }}
+            </RouterLink>
 
             <RouterLink
               to="/settings"
@@ -170,7 +184,7 @@ async function handleListSessions() {
               @click="showDropdown = false"
             >
               <div class="i-solar:settings-minimalistic-bold-duotone text-lg text-neutral-400 transition group-hover:text-primary-500" />
-              Settings
+              {{ t('settings.title') }}
             </RouterLink>
           </div>
 
@@ -180,7 +194,7 @@ async function handleListSessions() {
               @click="handleLogout"
             >
               <div class="i-solar:logout-3-bold-duotone text-lg transition group-hover:text-red-600 dark:group-hover:text-red-400" />
-              Logout
+              {{ t('settings.pages.account.logout') }}
             </button>
           </div>
         </div>

@@ -2115,6 +2115,9 @@ pages:
     fluxBalance: Flux Balance
     viewFluxDetails: View details
     signedInAs: Signed in as
+    activeSessions: Active sessions
+    activeSessionsCount: 'You have {count} active sessions.'
+    sessionListErrorFallback: Could not load active sessions.
     profile:
       tab: Profile
       title: Profile
