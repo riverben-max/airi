@@ -150,18 +150,24 @@ export function useAudioDevice(requestPermission: boolean = false) {
     }
   }, { immediate: true })
 
-  function askPermission() {
-    return devices.ensurePermissions()
-      .then(() => nextTick())
-      .then(() => {
-        if (audioInputs.value.length > 0 && !selectedAudioInput.value) {
-          selectedAudioInput.value = findBestDevice(audioInputs.value)
-        }
-      })
-      .catch((error) => {
-        console.error('Error ensuring permissions:', error)
-        throw error // Re-throw so callers can handle the error
-      })
+  async function askPermission() {
+    try {
+      const granted = await devices.ensurePermissions()
+      if (!granted)
+        return false
+
+      devices.devices.value = await navigator.mediaDevices.enumerateDevices()
+      await nextTick()
+
+      if (audioInputs.value.length > 0 && !selectedAudioInput.value)
+        selectedAudioInput.value = findBestDevice(audioInputs.value)
+
+      return true
+    }
+    catch (error) {
+      console.error('Error ensuring permissions:', error)
+      throw error
+    }
   }
 
   return {
