@@ -16,7 +16,7 @@
 - Modify: `apps/server/src/services/domain/admin/router-config/index.ts`
 - Modify: `apps/server/src/services/domain/admin/router-config/tests/admin-router-config.test.ts`
 
-- [ ] **Step 1: Add failing plaintext-key discovery coverage**
+- [x] **Step 1: Add failing plaintext-key discovery coverage**
 
 ```ts
 const result = await service.discoverModels({
@@ -32,7 +32,7 @@ expect(fetch).toHaveBeenCalledWith(
 )
 ```
 
-- [ ] **Step 2: Run the focused test and confirm it fails**
+- [x] **Step 2: Run the focused test and confirm it fails**
 
 ```powershell
 & 'D:\\Tools\\airi\\.node24.local\\node-v24.13.0-win-x64\\node.exe' .\\node_modules\\vitest\\vitest.mjs run apps/server/src/services/domain/admin/router-config/tests/admin-router-config.test.ts
@@ -40,7 +40,7 @@ expect(fetch).toHaveBeenCalledWith(
 
 Expected: a missing `discoverModels` member.
 
-- [ ] **Step 3: Add the minimal service contract and behavior**
+- [x] **Step 3: Add the minimal service contract and behavior**
 
 ```ts
 export interface ModelDiscoveryInput {
@@ -58,11 +58,11 @@ export interface ModelDiscoveryResult {
 
 Validate a credential-free `http:` or `https:` URL, append `models`, and fetch with a 10-second timeout and Bearer authorization. Use `plaintextKey` first; otherwise find the upstream key under `LLM_ROUTER_CONFIG.llm.models[configuredModelName]` and decrypt it with the original model name and key entry ID. Reject >1 MiB responses, non-2xx responses, malformed JSON, empty IDs, and missing key inputs using stable `ApiError` values without upstream body text or secret values. Return trimmed, deduplicated, sorted `data[*].id` entries.
 
-- [ ] **Step 4: Add failing saved-key, invalid-URL, upstream-error, and deduplication tests**
+- [x] **Step 4: Add failing saved-key, invalid-URL, upstream-error, and deduplication tests**
 
 For the saved-key case, seed encrypted config, omit `plaintextKey`, and assert the upstream sees the decrypted Bearer key. Add each test before its implementation branch and re-run the command above until the file is green.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```powershell
 git add apps/server/src/services/domain/admin/router-config/index.ts apps/server/src/services/domain/admin/router-config/tests/admin-router-config.test.ts
@@ -75,7 +75,7 @@ git commit -m "feat(server): discover upstream models"
 - Modify: `apps/server/src/routes/admin/config/router/index.ts`
 - Modify: `apps/server/src/routes/admin/config/router/route.test.ts`
 
-- [ ] **Step 1: Add a failing route test**
+- [x] **Step 1: Add a failing route test**
 
 ```ts
 const response = await app.request('/api/admin/config/router/models', {
@@ -94,7 +94,7 @@ expect(await response.json()).toEqual({ models: ['gpt-5-mini'] })
 
 The fake service must assert it receives only the validated input; include an invalid-body 400 test.
 
-- [ ] **Step 2: Run the focused route test and confirm it fails**
+- [x] **Step 2: Run the focused route test and confirm it fails**
 
 ```powershell
 & 'D:\\Tools\\airi\\.node24.local\\node-v24.13.0-win-x64\\node.exe' .\\node_modules\\vitest\\vitest.mjs run apps/server/src/routes/admin/config/router/route.test.ts
@@ -102,7 +102,7 @@ The fake service must assert it receives only the validated input; include an in
 
 Expected: the new route is absent.
 
-- [ ] **Step 3: Add the route before the existing router-config POST**
+- [x] **Step 3: Add the route before the existing router-config POST**
 
 ```ts
 .post('/models', async (c) => {
@@ -116,7 +116,7 @@ Expected: the new route is absent.
 
 Use bounded Valibot strings for provider kind, Base URL, plaintext key, configured model name, and existing key entry ID. Existing auth and admin guards cover this route.
 
-- [ ] **Step 4: Re-run route tests, then commit Task 2**
+- [x] **Step 4: Re-run route tests, then commit Task 2**
 
 ```powershell
 git add apps/server/src/routes/admin/config/router/index.ts apps/server/src/routes/admin/config/router/route.test.ts
@@ -129,7 +129,7 @@ git commit -m "feat(server): expose upstream model discovery"
 - Modify: `apps/stage-web/src/pages/admin/adminApi.ts`
 - Modify: `apps/stage-web/src/pages/admin/adminApi.test.ts`
 
-- [ ] **Step 1: Add a failing mapping test**
+- [x] **Step 1: Add a failing mapping test**
 
 ```ts
 await discoverUpstreamModels({
@@ -147,7 +147,7 @@ expect(client.api.admin.config.router.models.$post).toHaveBeenCalledWith({
 })
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 ```powershell
 pnpm exec vitest run --config apps/stage-web/src/pages/admin/adminApi.vitest.config.ts apps/stage-web/src/pages/admin/adminApi.test.ts
@@ -155,7 +155,7 @@ pnpm exec vitest run --config apps/stage-web/src/pages/admin/adminApi.vitest.con
 
 Expected: the helper or `router.models` client shape is missing.
 
-- [ ] **Step 3: Add input type, nested route, and helper**
+- [x] **Step 3: Add input type, nested route, and helper**
 
 ```ts
 export async function discoverUpstreamModels(input: UpstreamModelDiscoveryInput, remoteClient: AdminRemoteClient = adminClient, signal?: AbortSignal): Promise<string[]> {
@@ -167,7 +167,7 @@ export async function discoverUpstreamModels(input: UpstreamModelDiscoveryInput,
 }
 ```
 
-- [ ] **Step 4: Confirm GREEN and commit Task 3**
+- [x] **Step 4: Confirm GREEN and commit Task 3**
 
 ```powershell
 git add apps/stage-web/src/pages/admin/adminApi.ts apps/stage-web/src/pages/admin/adminApi.test.ts
@@ -181,11 +181,11 @@ git commit -m "feat(web): add upstream model discovery client"
 - Modify: `packages/i18n/src/locales/zh-Hans/settings.yaml`
 - Modify: `packages/i18n/src/locales/en/settings.yaml`
 
-- [ ] **Step 1: Add state and request behavior**
+- [x] **Step 1: Add state and request behavior**
 
 Use `discoverUpstreamModels` with current provider, Base URL, plaintext key, selected router model ID, and saved key entry ID. Keep `form.upstreamModel` unchanged after errors. Clear fetched models on provider, Base URL, API Key, router model, or key-entry changes.
 
-- [ ] **Step 2: Add a compact button and native editable datalist**
+- [x] **Step 2: Add a compact button and native editable datalist**
 
 ```vue
 <input v-model="form.upstreamModel" list="official-gateway-upstream-models" required>
@@ -201,7 +201,7 @@ Use `discoverUpstreamModels` with current provider, Base URL, plaintext key, sel
 
 Add localizations for `actions.fetchModels`, `messages.modelsFetched`, and `messages.noModelsFound` in Chinese and English. No display strings are hard-coded.
 
-- [ ] **Step 3: Run focused web verification and commit Task 4**
+- [x] **Step 3: Run focused web verification and commit Task 4**
 
 ```powershell
 pnpm -F @proj-airi/stage-web typecheck
@@ -216,7 +216,7 @@ git commit -m "feat(web): select discovered upstream models"
 - Modify: `docs/superpowers/README.md`
 - Modify: `docs/superpowers/plans/2026-07-11-admin-upstream-model-discovery.md`
 
-- [ ] **Step 1: Run all directly affected checks**
+- [x] **Step 1: Run all directly affected checks**
 
 ```powershell
 & 'D:\\Tools\\airi\\.node24.local\\node-v24.13.0-win-x64\\node.exe' .\\node_modules\\vitest\\vitest.mjs run apps/server/src/services/domain/admin/router-config/tests/admin-router-config.test.ts apps/server/src/routes/admin/config/router/route.test.ts
@@ -228,6 +228,6 @@ git diff --check
 
 Expected: every command exits 0.
 
-- [ ] **Step 2: Mark plan/index done, commit, and push**
+- [x] **Step 2: Mark plan/index done, commit, and push**
 
-Check every completed step, set the index row to `done` with the final implementation commit SHA, commit documentation, push `main` to `fork`, and confirm the worktree is clean.
+Completed. Implementation commit: `141b3eee5`. Documentation closure is recorded in the superpowers index; the final push is performed after this documentation commit.
