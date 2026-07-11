@@ -1,6 +1,48 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { startReturningUserLoginIfNeeded } from './returning-user-login'
+import {
+  createReturningUserLoginGate,
+  isAuthCallbackLocation,
+  startReturningUserLoginIfNeeded,
+} from './returning-user-login'
+
+describe('returning user login lifecycle', () => {
+  it('detects the callback from the browser location before the router is ready', () => {
+    expect(isAuthCallbackLocation('/', '/auth/callback')).toBe(true)
+    expect(isAuthCallbackLocation('/auth/callback', '/')).toBe(true)
+    expect(isAuthCallbackLocation('/', '/settings')).toBe(false)
+  })
+
+  it('shares an in-flight check and reruns it only for a persisted page restore', async () => {
+    let finishFirstCheck!: (loginStarted: boolean) => void
+    const checkLogin = vi.fn<() => Promise<boolean>>()
+      .mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+        finishFirstCheck = resolve
+      }))
+      .mockResolvedValue(false)
+    const gate = createReturningUserLoginGate(checkLogin)
+
+    const first = gate.check()
+    const second = gate.check()
+
+    expect(first).toBe(second)
+    await vi.waitFor(() => expect(checkLogin).toHaveBeenCalledOnce())
+
+    gate.handlePageShow({ persisted: true })
+    await Promise.resolve()
+    expect(checkLogin).toHaveBeenCalledOnce()
+
+    finishFirstCheck(true)
+    await Promise.all([first, second])
+
+    gate.handlePageShow({ persisted: false })
+    await Promise.resolve()
+    expect(checkLogin).toHaveBeenCalledOnce()
+
+    gate.handlePageShow({ persisted: true })
+    await vi.waitFor(() => expect(checkLogin).toHaveBeenCalledTimes(2))
+  })
+})
 
 describe('startReturningUserLoginIfNeeded', () => {
   it('keeps first-time users in onboarding without checking authentication', async () => {

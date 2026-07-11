@@ -75,12 +75,18 @@ describe('startCharacterFirstInitialization', () => {
 
   it('checks returning-user authentication before starting Stage services', () => {
     const source = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
-    const authDecisionIndex = source.indexOf('const loginStarted = await startReturningUserLoginIfNeeded({')
+    const pageShowListenerIndex = source.indexOf('window.addEventListener(\'pageshow\', handlePageShow)')
+    const authDecisionIndex = source.indexOf('const loginStarted = await returningUserLoginGate.check()')
+    const earlyReturnIndex = source.indexOf('if (loginStarted)')
     const characterInitializationIndex = source.indexOf('const { characterReady, optionalReady } = startCharacterFirstInitialization')
 
+    expect(pageShowListenerIndex).toBeGreaterThan(-1)
+    expect(authDecisionIndex).toBeGreaterThan(pageShowListenerIndex)
     expect(authDecisionIndex).toBeGreaterThan(-1)
-    expect(characterInitializationIndex).toBeGreaterThan(authDecisionIndex)
+    expect(earlyReturnIndex).toBeGreaterThan(authDecisionIndex)
+    expect(characterInitializationIndex).toBeGreaterThan(earlyReturnIndex)
     expect(source).toContain('needsOnboarding: onboardingStore.needsOnboarding')
-    expect(source).toContain('isAuthCallback: route.path === \'/auth/callback\'')
+    expect(source).toContain('isAuthCallback: isAuthCallbackLocation(route.path, window.location.pathname)')
+    expect(source).toContain('window.removeEventListener(\'pageshow\', handlePageShow)')
   })
 })

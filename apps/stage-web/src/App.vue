@@ -27,7 +27,11 @@ import PerformanceOverlay from './components/Devtools/PerformanceOverlay.vue'
 
 import { startCharacterFirstInitialization } from './modules/app-startup'
 import { clearOnboardingProgress, startOnboardingLogin } from './modules/onboarding-login'
-import { startReturningUserLoginIfNeeded } from './modules/returning-user-login'
+import {
+  createReturningUserLoginGate,
+  isAuthCallbackLocation,
+  startReturningUserLoginIfNeeded,
+} from './modules/returning-user-login'
 import { usePWAStore } from './stores/pwa'
 
 const pwaStore = usePWAStore()
@@ -40,6 +44,18 @@ const settings = storeToRefs(settingsStore)
 const onboardingStore = useOnboardingStore()
 const authStore = useAuthStore()
 const route = useRoute()
+const returningUserLoginGate = createReturningUserLoginGate(() => startReturningUserLoginIfNeeded({
+  needsOnboarding: onboardingStore.needsOnboarding,
+  isAuthCallback: isAuthCallbackLocation(route.path, window.location.pathname),
+  initializeAuth: () => authStore.initialize(),
+  isAuthenticated: () => authStore.isAuthenticated,
+  requestLogin: () => authStore.requestLogin(),
+  onError: error => console.error('[App] Failed to verify authentication:', error),
+}))
+
+function handlePageShow(event: PageTransitionEvent) {
+  returningUserLoginGate.handlePageShow(event)
+}
 
 if (onboardingStore.needsOnboarding)
   clearOnboardingProgress()
@@ -94,14 +110,8 @@ watch(settings.themeColorsHueDynamic, () => {
 // Initialize first-time setup check when app mounts
 onMounted(async () => {
   console.log('[App] onMounted start')
-  const loginStarted = await startReturningUserLoginIfNeeded({
-    needsOnboarding: onboardingStore.needsOnboarding,
-    isAuthCallback: route.path === '/auth/callback',
-    initializeAuth: () => authStore.initialize(),
-    isAuthenticated: () => authStore.isAuthenticated,
-    requestLogin: () => authStore.requestLogin(),
-    onError: error => console.error('[App] Failed to verify authentication:', error),
-  })
+  window.addEventListener('pageshow', handlePageShow)
+  const loginStarted = await returningUserLoginGate.check()
   if (loginStarted)
     return
 
@@ -154,6 +164,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('pageshow', handlePageShow)
   contextBridgeStore.dispose()
   proactivityStore.stopHeartbeatLoop()
 })
