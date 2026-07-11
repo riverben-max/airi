@@ -205,27 +205,35 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initialized = ref(false)
-  async function initialize() {
-    if (initialized.value)
-      return
+  let initializationPromise: Promise<void> | null = null
+  function initialize(): Promise<void> {
+    if (initializationPromise)
+      return initializationPromise
 
-    initialized.value = true
+    initializationPromise = (async () => {
+      try {
+        const hasRefreshToken = !!refreshToken.value
+        const hasClientId = !!oidcClientId.value
+        if (hasRefreshToken !== hasClientId)
+          clearAllAuthState()
 
-    const hasRefreshToken = !!refreshToken.value
-    const hasClientId = !!oidcClientId.value
-    if (hasRefreshToken !== hasClientId)
-      clearAllAuthState()
+        onTokenRefreshed(async (accessToken) => {
+          token.value = accessToken
+          await fetchSession()
+        })
 
-    onTokenRefreshed(async (accessToken) => {
-      token.value = accessToken
-      await fetchSession()
-    })
+        await restoreRefreshSchedule()
+        await fetchSession().catch(() => {})
+      }
+      finally {
+        initialized.value = true
+      }
+    })()
 
-    await restoreRefreshSchedule()
-    await fetchSession().catch(() => {})
+    return initializationPromise
   }
 
-  initialize()
+  void initialize()
 
   watch(isAuthenticated, async (val) => {
     if (val) {
@@ -260,5 +268,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshTokenNow,
     clearAllAuthState,
     onTokenRefreshed,
+    initialize,
+    initialized,
   }
 })
