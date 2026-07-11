@@ -4,7 +4,7 @@ import type { ConfigKVService } from '../../../../adapters/config-kv'
 
 import { randomBytes } from 'node:crypto'
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   buildAliyunNlsAsrSlice,
@@ -419,6 +419,93 @@ describe('createAdminRouterConfigService', () => {
     captured = []
     redis = fakeRedis(captured)
     envelope = freshEnvelope()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('discovers sorted unique models with a submitted key', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      data: [
+        { id: 'gpt-5-pro' },
+        { id: 'gpt-5-mini' },
+        { id: 'gpt-5-pro' },
+        { id: '   ' },
+      ],
+    })))
+    vi.stubGlobal('fetch', fetchMock)
+    const service = createAdminRouterConfigService({ configKV: kv.service, envelope, redis })
+
+    await expect(service.discoverModels({
+      providerKind: 'openai-compatible',
+      baseURL: 'https://gateway.example/v1',
+      plaintextKey: 'sk-new',
+    })).resolves.toEqual({ models: ['gpt-5-mini', 'gpt-5-pro'] })
+
+    const firstCall = fetchMock.mock.calls[0] as unknown as [string, RequestInit] | undefined
+    expect(firstCall?.[0]).toBe('https://gateway.example/v1/models')
+    expect(firstCall?.[1]).toMatchObject({
+      headers: { authorization: 'Bearer sk-new' },
+    })
+  })
+
+  it('uses the selected saved key when no replacement key is submitted', async () => {
+    const saved = buildOpenRouterSlice({
+      kind: 'openrouter',
+      modelName: 'chat-live',
+      overrideModel: 'openai/gpt-5-mini',
+      plaintextKey: 'sk-saved',
+      keyEntryId: 'key-live',
+    }, envelope)
+    kv.store.set('LLM_ROUTER_CONFIG', {
+      llm: { models: { 'chat-live': saved.model } },
+      tts: { models: {} },
+      asr: { models: {} },
+      defaults: { perAttemptTimeoutMs: 30000, fullChainTimeoutMs: 60000, fallbackHttpCodes: [500] },
+    })
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [{ id: 'gpt-5-mini' }] })))
+    vi.stubGlobal('fetch', fetchMock)
+    const service = createAdminRouterConfigService({ configKV: kv.service, envelope, redis })
+
+    await expect(service.discoverModels({
+      providerKind: 'openrouter',
+      baseURL: 'https://gateway.example/v1',
+      configuredModelName: 'chat-live',
+      existingKeyEntryId: 'key-live',
+    })).resolves.toEqual({ models: ['gpt-5-mini'] })
+
+    const firstCall = fetchMock.mock.calls[0] as unknown as [string, RequestInit] | undefined
+    expect(firstCall?.[1]).toMatchObject({
+      headers: { authorization: 'Bearer sk-saved' },
+    })
+  })
+
+  it('rejects upstream model lists larger than one mebibyte', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [{ id: 'gpt-5-mini' }] }), {
+      headers: { 'content-length': String(1024 * 1024 + 1) },
+    })))
+    const service = createAdminRouterConfigService({ configKV: kv.service, envelope, redis })
+
+    await expect(service.discoverModels({
+      providerKind: 'openai-compatible',
+      baseURL: 'https://gateway.example/v1',
+      plaintextKey: 'sk-new',
+    })).rejects.toMatchObject({ errorCode: 'UPSTREAM_MODELS_TOO_LARGE' })
+  })
+
+  it('rejects invalid upstream URLs before making a network request', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const service = createAdminRouterConfigService({ configKV: kv.service, envelope, redis })
+
+    await expect(service.discoverModels({
+      providerKind: 'openai-compatible',
+      baseURL: 'https://token@gateway.example/v1',
+      plaintextKey: 'sk-new',
+    })).rejects.toMatchObject({ errorCode: 'INVALID_BODY' })
+
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('dry-run returns redacted preview without touching the store or pub/sub', async () => {

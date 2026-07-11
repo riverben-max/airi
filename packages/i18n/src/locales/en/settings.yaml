@@ -1948,7 +1948,7 @@ pages:
       disable: Disable
     status:
       loading: Loading...
-      count: "{count} item(s)"
+      count: '{count} item(s)'
       enabled: Enabled
       disabled: Disabled
     errors:
@@ -2037,6 +2037,7 @@ pages:
         openrouter: OpenRouter
       actions:
         reloadConfig: Reload config
+        fetchModels: Fetch models
         saveGateway: Save and sync
       columns:
         provider: Provider
@@ -2068,6 +2069,8 @@ pages:
         noKeyEntry: Not recorded
       messages:
         saved: Official chat gateway saved; auto alias and billable model synced.
+        modelsFetched: Fetched {count} upstream models. Select one to use.
+        noModelsFound: The upstream returned no available models.
       empty:
         routerSlices:
           title: No upstream routes configured
@@ -2080,7 +2083,7 @@ pages:
       createTitle: Create plan
       editTitle: Edit plan
       newPlan: New plan
-      updatedAt: "Updated {date}"
+      updatedAt: 'Updated {date}'
       actions:
         seed: Seed defaults
       columns:
@@ -2232,7 +2235,7 @@ pages:
       title: Current subscription
       loading: Loading subscription...
       emptyDescription: Choose a subscription plan to receive Flux for each billing period.
-      activeDescription: "{plan} is active until {end}."
+      activeDescription: '{plan} is active until {end}.'
       currentPeriodStart: Current period starts
       currentPeriodEnd: Current period ends
       cancelAtPeriodEnd: Renewal status
@@ -2241,7 +2244,7 @@ pages:
       lastPaymentOrderId: Last payment order
       currentPeriodFluxAmount: Flux granted this period
       remainingDays: Remaining days
-      remainingDaysValue: "{days} days"
+      remainingDaysValue: '{days} days'
       isRenewable: Renewable
       cancelRenewal: Cancel renewal at period end
       resumeRenewal: Resume renewal
@@ -2275,9 +2278,9 @@ pages:
       switch: Switch plan
       current: Current
       recommended: Recommended
-      periodDays: "{days} days"
+      periodDays: '{days} days'
       periodUnknown: billing period
-      fluxPerPeriod: "{flux} Flux each period"
+      fluxPerPeriod: '{flux} Flux each period'
     audit:
       title: Transaction History
       time: Time

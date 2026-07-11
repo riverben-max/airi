@@ -30,6 +30,7 @@ describe('admin router config route', () => {
         preview: {},
       })),
       current: vi.fn(),
+      discoverModels: vi.fn(),
     }
     const app = createTestApp(service)
     const body = {
@@ -57,5 +58,32 @@ describe('admin router config route', () => {
         plaintextKey: expect.stringMatching(/^bedrock-api-key-/u),
       })],
     }))
+  })
+
+  it('forwards a validated upstream model discovery request', async () => {
+    const service: AdminRouterConfigService = {
+      apply: vi.fn(),
+      current: vi.fn(),
+      discoverModels: vi.fn(async () => ({ models: ['gpt-5-mini'] })),
+    }
+    const app = createTestApp(service)
+
+    const res = await app.request('/api/admin/config/router/models', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerKind: 'openai-compatible',
+        baseURL: 'https://gateway.example/v1',
+        plaintextKey: 'sk-test',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ models: ['gpt-5-mini'] })
+    expect(service.discoverModels).toHaveBeenCalledWith({
+      providerKind: 'openai-compatible',
+      baseURL: 'https://gateway.example/v1',
+      plaintextKey: 'sk-test',
+    })
   })
 })

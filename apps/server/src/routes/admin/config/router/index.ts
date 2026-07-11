@@ -189,6 +189,14 @@ const BodySchema = object({
   })),
 })
 
+const ModelDiscoveryBodySchema = object({
+  providerKind: picklist(['openai-compatible', 'openrouter']),
+  baseURL: pipe(string(), nonEmpty('baseURL is required'), maxLength(2048), url('baseURL must be a valid URL')),
+  plaintextKey: optional(pipe(string(), nonEmpty('plaintextKey must not be empty when provided'), maxLength(MAX_KEY_LENGTH))),
+  configuredModelName: optional(pipe(string(), nonEmpty('configuredModelName must not be empty when provided'), maxLength(200), NO_PIPE)),
+  existingKeyEntryId: optional(pipe(string(), nonEmpty('existingKeyEntryId must not be empty when provided'), maxLength(200), NO_PIPE)),
+})
+
 /**
  * Admin route for seeding / patching the LLM router config tree. Mounted
  * at `POST /api/admin/config/router`; the only supported way to write
@@ -266,6 +274,25 @@ export function createAdminRouterConfigRoutes(
     .use('*', adminGuard)
     .get('/', async (c) => {
       return c.json(await service.current())
+    })
+    .post('/models', async (c) => {
+      const raw = await c.req.json().catch(() => null)
+      if (raw == null)
+        throw createBadRequestError('Request body must be JSON', 'INVALID_BODY')
+
+      const parsed = safeParse(ModelDiscoveryBodySchema, raw)
+      if (!parsed.success) {
+        throw createBadRequestError(
+          'Invalid request body',
+          'INVALID_BODY',
+          parsed.issues.map(i => ({
+            path: i.path?.map(p => p.key).join('.'),
+            message: i.message,
+          })),
+        )
+      }
+
+      return c.json(await service.discoverModels(parsed.output))
     })
     .post('/', async (c) => {
       const user = c.get('user')!

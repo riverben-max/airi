@@ -114,6 +114,14 @@ export interface AdminRouterConfigApplyResult {
   preview: Record<string, unknown>
 }
 
+export interface UpstreamModelDiscoveryInput {
+  providerKind: OfficialGatewayProviderKind
+  baseURL: string
+  plaintextKey?: string
+  configuredModelName?: string
+  existingKeyEntryId?: string
+}
+
 export interface AdminCapabilityAlias {
   id: string
   surface: AdminCapabilityAliasSurface
@@ -248,6 +256,9 @@ export interface AdminRemoteClient {
         router: {
           $get: (params?: undefined, options?: RequestOptions) => Promise<JsonResponse<AdminRouterConfigCurrent>>
           $post: (params: { json: AdminRouterConfigApplyInput }, options?: RequestOptions) => Promise<JsonResponse<AdminRouterConfigApplyResult>>
+          models: {
+            $post: (params: { json: UpstreamModelDiscoveryInput }, options?: RequestOptions) => Promise<JsonResponse<{ models: string[] }>>
+          }
         }
       }
       'capability-aliases': {
@@ -460,6 +471,14 @@ export async function applyRouterConfig(input: AdminRouterConfigApplyInput, remo
     ? await remoteClient.api.admin.config.router.$post({ json: input }, options)
     : await remoteClient.api.admin.config.router.$post({ json: input })
   return await readJson(response, 'Failed to apply admin router config')
+}
+
+export async function discoverUpstreamModels(input: UpstreamModelDiscoveryInput, remoteClient: AdminRemoteClient = adminClient, signal?: AbortSignal): Promise<string[]> {
+  const options = requestOptions(signal)
+  const response = options
+    ? await remoteClient.api.admin.config.router.models.$post({ json: input }, options)
+    : await remoteClient.api.admin.config.router.models.$post({ json: input })
+  return (await readJson(response, 'Failed to discover upstream models')).models
 }
 
 export async function syncCapabilityAliases(surface: AdminCapabilityAliasSurface, remoteClient: AdminRemoteClient = adminClient, signal?: AbortSignal): Promise<AdminCapabilityAlias[]> {

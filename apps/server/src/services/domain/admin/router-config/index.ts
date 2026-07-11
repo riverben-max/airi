@@ -4,6 +4,8 @@ import type { InferOutput } from 'valibot'
 import type { EnvelopeCrypto } from '../../../../utils/envelope-crypto'
 import type { asrModelSchema, ConfigKVService, llmModelSchema, llmRouterConfigSchema, ttsModelSchema, unspeechUpstreamSchema } from '../../../adapters/config-kv'
 
+import { Buffer } from 'node:buffer'
+
 import { useLogger } from '@guiiai/logg'
 
 import { createBadRequestError } from '../../../../utils/error'
@@ -16,6 +18,7 @@ import { createBadRequestError } from '../../../../utils/error'
  * `DECRYPT_FAILED` at session start.
  */
 const STREAMING_TTS_AAD_MODEL_NAME = 'streaming-tts'
+const MAX_MODEL_DISCOVERY_RESPONSE_BYTES = 1024 * 1024
 
 /** Default key entry id per provider. Operator can override per request. */
 const DEFAULT_KEY_ENTRY_IDS = {
@@ -822,6 +825,91 @@ export interface CurrentRouterConfigResult {
   missingKeys: string[]
 }
 
+export interface ModelDiscoveryInput {
+  providerKind: 'openai-compatible' | 'openrouter'
+  baseURL: string
+  plaintextKey?: string
+  configuredModelName?: string
+  existingKeyEntryId?: string
+}
+
+export interface ModelDiscoveryResult {
+  models: string[]
+}
+
+function modelsURL(baseURL: string): URL {
+  let url: URL
+  try {
+    url = new URL(baseURL.trim())
+  }
+  catch {
+    throw createBadRequestError('Invalid upstream Base URL', 'INVALID_BODY')
+  }
+
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username || url.password)
+    throw createBadRequestError('Invalid upstream Base URL', 'INVALID_BODY')
+
+  if (!url.pathname.endsWith('/'))
+    url.pathname += '/'
+  return new URL('models', url)
+}
+
+function modelIdsFromResponse(value: unknown): string[] {
+  if (!value || typeof value !== 'object' || !Array.isArray((value as { data?: unknown }).data))
+    throw createBadRequestError('Upstream returned an invalid model list', 'INVALID_UPSTREAM_RESPONSE')
+
+  const ids = (value as { data: unknown[] }).data.flatMap((item) => {
+    if (!item || typeof item !== 'object' || typeof (item as { id?: unknown }).id !== 'string')
+      return []
+    const id = (item as { id: string }).id.trim()
+    return id ? [id] : []
+  })
+
+  if (ids.length === 0)
+    throw createBadRequestError('Upstream returned no models', 'NO_UPSTREAM_MODELS')
+
+  return [...new Set(ids)].sort((a, b) => a.localeCompare(b))
+}
+
+async function modelIdsFromUpstreamResponse(response: Response): Promise<string[]> {
+  const contentLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > MAX_MODEL_DISCOVERY_RESPONSE_BYTES)
+    throw createBadRequestError('Upstream model list is too large', 'UPSTREAM_MODELS_TOO_LARGE')
+
+  const reader = response.body?.getReader()
+  if (!reader)
+    throw createBadRequestError('Upstream returned an invalid model list', 'INVALID_UPSTREAM_RESPONSE')
+
+  const chunks: Uint8Array[] = []
+  let byteLength = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done)
+        break
+
+      byteLength += value.byteLength
+      if (byteLength > MAX_MODEL_DISCOVERY_RESPONSE_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        throw createBadRequestError('Upstream model list is too large', 'UPSTREAM_MODELS_TOO_LARGE')
+      }
+      chunks.push(value)
+    }
+  }
+  finally {
+    reader.releaseLock()
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(Buffer.concat(chunks.map(chunk => Buffer.from(chunk))).toString('utf8'))
+  }
+  catch {
+    throw createBadRequestError('Upstream returned an invalid model list', 'INVALID_UPSTREAM_RESPONSE')
+  }
+  return modelIdsFromResponse(parsed)
+}
+
 function sliceNeedsExistingKey(slice: SliceInput): boolean {
   if (slice.kind === 'unspeech')
     return slice.streaming != null && !slice.streaming.plaintextKey?.trim()
@@ -1079,6 +1167,57 @@ export function createAdminRouterConfigService(deps: AdminRouterConfigDeps) {
     }
   }
 
+  async function discoverModels(input: ModelDiscoveryInput): Promise<ModelDiscoveryResult> {
+    let plaintextKey = input.plaintextKey?.trim()
+    if (!plaintextKey) {
+      const configuredModelName = input.configuredModelName?.trim()
+      const existingKeyEntryId = input.existingKeyEntryId?.trim()
+      if (!configuredModelName || !existingKeyEntryId)
+        throw createBadRequestError('An API Key is required to fetch upstream models', 'MISSING_UPSTREAM_KEY')
+
+      const routerConfig = await deps.configKV.getOptional('LLM_ROUTER_CONFIG')
+      const upstream = routerConfig?.llm.models[configuredModelName]?.upstreams[0]
+      const key = upstream?.keys.find(item => item.id === existingKeyEntryId)
+      if (!key)
+        throw createBadRequestError('Saved API Key was not found', 'MISSING_UPSTREAM_KEY')
+
+      let decrypted: Buffer | undefined
+      try {
+        decrypted = deps.envelope.decryptKey(key.ciphertext, {
+          modelName: configuredModelName,
+          keyEntryId: existingKeyEntryId,
+        })
+        plaintextKey = decrypted.toString('utf8').trim()
+      }
+      catch {
+        throw createBadRequestError('Saved API Key could not be read', 'INVALID_UPSTREAM_KEY')
+      }
+      finally {
+        decrypted?.fill(0)
+      }
+
+      if (!plaintextKey)
+        throw createBadRequestError('Saved API Key was empty', 'MISSING_UPSTREAM_KEY')
+    }
+
+    const upstreamModelsURL = modelsURL(input.baseURL).toString()
+    let response: Response
+    try {
+      response = await fetch(upstreamModelsURL, {
+        headers: { authorization: `Bearer ${plaintextKey}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+    }
+    catch {
+      throw createBadRequestError('Unable to fetch upstream models', 'UPSTREAM_MODELS_UNAVAILABLE')
+    }
+
+    if (!response.ok)
+      throw createBadRequestError(`Upstream model request failed (${response.status})`, 'UPSTREAM_MODELS_UNAVAILABLE')
+
+    return { models: await modelIdsFromUpstreamResponse(response) }
+  }
+
   /**
    * Applies an admin request, returning the redacted preview either way.
    *
@@ -1210,7 +1349,7 @@ export function createAdminRouterConfigService(deps: AdminRouterConfigDeps) {
     return { applied, invalidatedKeys, preview }
   }
 
-  return { apply, current }
+  return { apply, current, discoverModels }
 }
 
 export type AdminRouterConfigService = ReturnType<typeof createAdminRouterConfigService>

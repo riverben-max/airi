@@ -10,6 +10,7 @@ import {
   createPlan,
   disableModel,
   disablePlan,
+  discoverUpstreamModels,
   formatDate,
   formatFen,
   formatPeriodDays,
@@ -311,6 +312,26 @@ describe('admin API adapter', () => {
       },
     })
     expect(client.api.admin['capability-aliases'].sync.$post).toHaveBeenCalledWith({ json: { surface: 'llm' } })
+  })
+
+  it('maps upstream model discovery to the router config route', async () => {
+    const client = createMockClient()
+    const models = { $post: vi.fn(async () => okJson({ models: ['gpt-5-mini'] })) }
+    ;(client.api.admin.config.router as { models?: typeof models }).models = models
+
+    await expect(discoverUpstreamModels({
+      providerKind: 'openai-compatible',
+      baseURL: 'https://gateway.example/v1',
+      plaintextKey: 'sk-test',
+    }, client)).resolves.toEqual(['gpt-5-mini'])
+
+    expect(models.$post).toHaveBeenCalledWith({
+      json: {
+        providerKind: 'openai-compatible',
+        baseURL: 'https://gateway.example/v1',
+        plaintextKey: 'sk-test',
+      },
+    })
   })
 
   it('maps official chat gateway setup to router config, alias sync, and billable model upsert', async () => {

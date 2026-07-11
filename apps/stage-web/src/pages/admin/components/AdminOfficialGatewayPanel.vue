@@ -11,7 +11,7 @@ import { Button } from '@proj-airi/ui'
 import { computed, onMounted, reactive, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { applyOfficialChatGateway, formatDate, getRouterConfig } from '../adminApi'
+import { applyOfficialChatGateway, discoverUpstreamModels, formatDate, getRouterConfig } from '../adminApi'
 
 const props = defineProps<{
   models: AdminModel[]
@@ -31,6 +31,8 @@ const routerLoading = shallowRef(false)
 const actionLoading = shallowRef(false)
 const formError = shallowRef<string | null>(null)
 const formMessage = shallowRef<string | null>(null)
+const modelDiscoveryLoading = shallowRef(false)
+const discoveredModels = shallowRef<string[]>([])
 
 const form = reactive({
   providerKind: 'openai-compatible' as OfficialGatewayProviderKind,
@@ -129,6 +131,7 @@ function resetForm() {
   form.priceEnabled = true
   formError.value = null
   formMessage.value = null
+  discoveredModels.value = []
 }
 
 function applySliceToForm(slice: AdminRouterConfigLlmSlice | null) {
@@ -144,6 +147,7 @@ function applySliceToForm(slice: AdminRouterConfigLlmSlice | null) {
 }
 
 function editModel(model: AdminModel) {
+  discoveredModels.value = []
   selectedRouterModelId.value = model.routerModelId
   form.routerModelId = model.routerModelId
   form.upstreamModel = model.routerModelId
@@ -161,6 +165,7 @@ function editModel(model: AdminModel) {
 }
 
 function editSlice(slice: AdminRouterConfigLlmSlice) {
+  discoveredModels.value = []
   selectedRouterModelId.value = slice.modelName
   const model = chatModels.value.find(item => item.routerModelId === slice.modelName)
   if (model) {
@@ -233,10 +238,49 @@ async function saveGateway() {
   }
 }
 
+async function discoverModels() {
+  modelDiscoveryLoading.value = true
+  formError.value = null
+  formMessage.value = null
+
+  try {
+    const models = await discoverUpstreamModels({
+      providerKind: form.providerKind,
+      baseURL: form.baseURL.trim(),
+      plaintextKey: form.apiKey.trim() || undefined,
+      configuredModelName: selectedRouterModelId.value ?? undefined,
+      existingKeyEntryId: form.existingKeyEntryId.trim() || form.keyEntryId.trim() || undefined,
+    })
+    discoveredModels.value = models
+    formMessage.value = models.length > 0
+      ? t('settings.pages.admin.officialGateway.messages.modelsFetched', { count: models.length })
+      : t('settings.pages.admin.officialGateway.messages.noModelsFound')
+  }
+  catch (err) {
+    discoveredModels.value = []
+    formError.value = messageFromError(err)
+  }
+  finally {
+    modelDiscoveryLoading.value = false
+  }
+}
+
 watch(() => form.providerKind, (providerKind, previousProviderKind) => {
   const previousDefault = previousProviderKind ? defaultBaseURL(previousProviderKind) : ''
   if (!form.baseURL || form.baseURL === previousDefault)
     form.baseURL = defaultBaseURL(providerKind)
+})
+
+watch(() => [
+  form.providerKind,
+  form.baseURL,
+  form.apiKey,
+  form.routerModelId,
+  form.keyEntryId,
+  form.existingKeyEntryId,
+  selectedRouterModelId.value,
+], () => {
+  discoveredModels.value = []
 })
 
 watch(() => props.models, (models) => {
@@ -481,13 +525,29 @@ onMounted(() => {
         </label>
 
         <label :class="['grid gap-1 text-sm']">
-          <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.upstreamModel') }}</span>
+          <span :class="['flex items-center justify-between gap-2 font-medium']">
+            <span>{{ t('settings.pages.admin.officialGateway.fields.upstreamModel') }}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              icon="i-solar:refresh-bold-duotone"
+              :loading="modelDiscoveryLoading"
+              @click="discoverModels"
+            >
+              {{ t('settings.pages.admin.officialGateway.actions.fetchModels') }}
+            </Button>
+          </span>
           <input
             v-model="form.upstreamModel"
+            list="official-gateway-upstream-models"
             required
             :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']"
             placeholder="gpt-5-mini"
           >
+          <datalist id="official-gateway-upstream-models">
+            <option v-for="model in discoveredModels" :key="model" :value="model" />
+          </datalist>
         </label>
 
         <label :class="['grid gap-1 text-sm']">
