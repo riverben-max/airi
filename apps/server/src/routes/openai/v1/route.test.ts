@@ -1087,6 +1087,183 @@ describe('v1CompletionsRoutes', () => {
       expect(billingService.consumeFluxForLLM).not.toHaveBeenCalled()
       expect(requestLogService.logRequest).not.toHaveBeenCalled()
     })
+
+    it('does not charge when an HTTP 200 stream reports an SSE error event', async () => {
+      const errorEvent = {
+        error: {
+          message: 'Reverse proxy could not connect to the upstream service.',
+          type: 'proxy_network_error',
+          code: 'ECONNREFUSED',
+        },
+      }
+      const errorStream = `data: ${JSON.stringify(errorEvent)}\n\ndata: [DONE]\n\n`
+      const splitAt = errorStream.indexOf('proxy_network_error') + 'proxy_net'.length
+      globalThis.fetch = vi.fn(async () => new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            const encoder = new TextEncoder()
+            controller.enqueue(encoder.encode(errorStream.slice(0, splitAt)))
+            controller.enqueue(encoder.encode(errorStream.slice(splitAt)))
+            controller.close()
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        },
+      ))
+
+      const billingService = createMockBillingService(100)
+      const requestLogService = createMockRequestLogService()
+      const llmTracing = createMockLlmTracing()
+      const productEventService = createMockProductEventService()
+      const app = createTestApp(
+        createMockFluxService(100),
+        createMockConfigKV(),
+        billingService,
+        requestLogService,
+        undefined,
+        undefined,
+        llmTracing,
+        productEventService,
+      )
+
+      const res = await app.fetch(
+        new Request('http://localhost/api/v1/openai/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'auto', stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+        }),
+        { user: testUser } as any,
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.text()).resolves.toContain('proxy_network_error')
+      await vi.waitFor(() => expect(productEventService.track).toHaveBeenLastCalledWith(expect.objectContaining({
+        action: 'completion_failed',
+        status: 'failed',
+      })))
+
+      expect(billingService.consumeFluxForLLM).not.toHaveBeenCalled()
+      expect(requestLogService.logRequest).not.toHaveBeenCalled()
+      const trace = vi.mocked(llmTracing.startChatGeneration).mock.results[0]?.value
+      expect(trace?.fail).toHaveBeenCalledWith('Gateway stream reported an error')
+      expect(trace?.succeed).not.toHaveBeenCalled()
+    })
+
+    it('fails closed without charging when one SSE line exceeds the inspection limit', async () => {
+      const errorEvent = {
+        error: {
+          message: 'x'.repeat(70 * 1024),
+          type: 'proxy_network_error',
+          code: 'ECONNREFUSED',
+        },
+      }
+      const errorStream = `data: ${JSON.stringify(errorEvent)}\n\ndata: [DONE]\n\n`
+      const splitAt = errorStream.indexOf('\n') - 8
+      expect(splitAt).toBeGreaterThan(64 * 1024)
+      globalThis.fetch = vi.fn(async () => new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            const encoder = new TextEncoder()
+            controller.enqueue(encoder.encode(errorStream.slice(0, splitAt)))
+            controller.enqueue(encoder.encode(errorStream.slice(splitAt)))
+            controller.close()
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        },
+      ))
+
+      const billingService = createMockBillingService(100)
+      const requestLogService = createMockRequestLogService()
+      const llmTracing = createMockLlmTracing()
+      const productEventService = createMockProductEventService()
+      const app = createTestApp(
+        createMockFluxService(100),
+        createMockConfigKV(),
+        billingService,
+        requestLogService,
+        undefined,
+        undefined,
+        llmTracing,
+        productEventService,
+      )
+
+      const res = await app.fetch(
+        new Request('http://localhost/api/v1/openai/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'auto', stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+        }),
+        { user: testUser } as any,
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.text()).resolves.toContain('proxy_network_error')
+      await vi.waitFor(() => expect(productEventService.track).toHaveBeenCalledTimes(2))
+
+      expect(billingService.consumeFluxForLLM).not.toHaveBeenCalled()
+      expect(requestLogService.logRequest).not.toHaveBeenCalled()
+      expect(productEventService.track).toHaveBeenLastCalledWith(expect.objectContaining({
+        action: 'completion_failed',
+        status: 'failed',
+        reason: 'stream_inspection_limit_exceeded',
+      }))
+      const trace = vi.mocked(llmTracing.startChatGeneration).mock.results[0]?.value
+      expect(trace?.fail).toHaveBeenCalledWith('Gateway stream inspection exceeded line limit')
+      expect(trace?.succeed).not.toHaveBeenCalled()
+    })
+
+    it('still settles a normal short SSE completion', async () => {
+      const completionStream = 'data: {"choices":[{"delta":{"content":"hello"}}]}\n\ndata: [DONE]\n\n'
+      globalThis.fetch = vi.fn(async () => new Response(completionStream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      }))
+
+      const billingService = createMockBillingService(100)
+      const requestLogService = createMockRequestLogService()
+      const llmTracing = createMockLlmTracing()
+      const productEventService = createMockProductEventService()
+      const app = createTestApp(
+        createMockFluxService(100),
+        createMockConfigKV(),
+        billingService,
+        requestLogService,
+        undefined,
+        undefined,
+        llmTracing,
+        productEventService,
+      )
+
+      const res = await app.fetch(
+        new Request('http://localhost/api/v1/openai/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'auto', stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+        }),
+        { user: testUser } as any,
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.text()).resolves.toContain('hello')
+      await vi.waitFor(() => expect(productEventService.track).toHaveBeenLastCalledWith(expect.objectContaining({
+        action: 'completion_succeeded',
+        status: 'succeeded',
+      })))
+
+      expect(billingService.consumeFluxForLLM).toHaveBeenCalledWith(expect.objectContaining({ amount: 1 }))
+      expect(requestLogService.logRequest).toHaveBeenCalledWith(expect.objectContaining({
+        status: 200,
+        fluxConsumed: 1,
+      }))
+      const trace = vi.mocked(llmTracing.startChatGeneration).mock.results[0]?.value
+      expect(trace?.succeed).toHaveBeenCalledWith(expect.objectContaining({ fluxConsumed: 1 }))
+      expect(trace?.fail).not.toHaveBeenCalled()
+    })
   })
 
   describe('legacy audio paths under /openai/', () => {

@@ -317,6 +317,43 @@ function streamChatCompletion(input: {
   let tailBuffer = ''
   let streamCompleted = false
   let streamInterrupted = false
+  let streamFailureReason: 'stream_error_event' | 'stream_inspection_limit_exceeded' | null = null
+  let partialSseLine = ''
+  const inspectSseChunk = (chunk: string, flush = false) => {
+    if (streamFailureReason != null)
+      return
+
+    const lines = (partialSseLine + chunk).split('\n')
+    const trailingLine = flush ? '' : (lines.pop() ?? '')
+    if (trailingLine.length > 64 * 1024 || lines.some(line => line.length > 64 * 1024)) {
+      streamFailureReason = 'stream_inspection_limit_exceeded'
+      partialSseLine = ''
+      return
+    }
+    partialSseLine = trailingLine
+
+    for (const line of lines) {
+      const trimmed = line.trimStart()
+      if (!trimmed.startsWith('data:'))
+        continue
+
+      const payload = trimmed.slice(5).trim()
+      if (!payload || payload === '[DONE]')
+        continue
+
+      try {
+        const event: unknown = JSON.parse(payload)
+        if (event != null && typeof event === 'object' && 'error' in event && event.error != null) {
+          streamFailureReason = 'stream_error_event'
+          partialSseLine = ''
+          return
+        }
+      }
+      catch {
+        // A malformed SSE line is forwarded unchanged and inspected no further.
+      }
+    }
+  }
   // First-chunk timestamp for gen_ai.client.first_token.duration. Latched
   // on the first byte from upstream — captures perceived "time to first
   // token" for streaming clients. NaN until the first chunk lands so
@@ -329,6 +366,13 @@ function streamChatCompletion(input: {
       while (true) {
         const { done, value } = await reader.read()
         if (done) {
+          const finalText = decoder.decode()
+          if (finalText) {
+            tailBuffer = (tailBuffer + finalText).slice(-2048)
+            input.generationTrace.appendStreamChunk(finalText)
+            inspectSseChunk(finalText)
+          }
+          inspectSseChunk('', true)
           streamCompleted = true
           break
         }
@@ -344,6 +388,7 @@ function streamChatCompletion(input: {
         await writer.write(value)
         const text = decoder.decode(value, { stream: true })
         tailBuffer = (tailBuffer + text).slice(-2048)
+        inspectSseChunk(text)
         // Accumulate the assistant completion for the Langfuse trace output
         // (no-op when tracing is off). Module owns SSE parsing + the cap.
         input.generationTrace.appendStreamChunk(text)
@@ -394,6 +439,43 @@ function streamChatCompletion(input: {
         }
         catch (err) {
           input.logger.withError(err).warn('Failed to close stream writer')
+        }
+
+        if (streamFailureReason != null) {
+          const inspectionLimitExceeded = streamFailureReason === 'stream_inspection_limit_exceeded'
+          const failureMessage = inspectionLimitExceeded
+            ? 'Gateway stream inspection exceeded line limit'
+            : 'Gateway stream reported an error'
+          input.telemetry.failSpan(input.span, failureMessage)
+          input.generationTrace.fail(failureMessage)
+          input.telemetry.recordMetrics({ model: input.requestModel, status: 502, type: 'chat', provider: input.routeCtxProvider, durationMs: input.durationMs, fluxConsumed: 0 })
+          void input.deps.productEventService.track({
+            userId: input.userId,
+            feature: 'gen_ai_chat',
+            action: 'completion_failed',
+            status: 'failed',
+            source: 'openai.chat.completions',
+            model: input.requestModel,
+            provider: input.routeCtxProvider,
+            reason: streamFailureReason,
+            metadata: {
+              http_status: input.response.status,
+              duration_ms: input.durationMs,
+              stream: true,
+            },
+          })
+          input.logger.withFields({
+            requestId: input.requestId,
+            userId: input.userId,
+            model: input.requestModel,
+            status: input.response.status,
+            durationMs: input.durationMs,
+            stream: true,
+            reason: streamFailureReason,
+          }).warn(inspectionLimitExceeded
+            ? 'chat completion stream inspection exceeded line limit'
+            : 'chat completion stream reported an upstream error')
+          return
         }
 
         let usage: UsageInfo = {}
