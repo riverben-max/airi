@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 const props = defineProps<{
@@ -32,6 +33,8 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'imported', cardId: string): void
 }>()
+
+const { t } = useI18n()
 
 const cardStore = useAiriCardStore()
 const consciousnessStore = useConsciousnessStore()
@@ -169,7 +172,7 @@ const speechVoiceOptions = computed(() => {
 watch(() => [props.modelValue, props.cardData], () => {
   if (props.modelValue && props.cardData) {
     currentStep.value = 1
-    name.value = props.cardData.name || 'Imported Card'
+    name.value = props.cardData.name || t('settings.pages.card.creation.import.default-name')
     userName.value = userProfileStore.name || ''
     selectedDisplayModelId.value = defaultDisplayModelId.value || ''
     selectedConsciousnessProvider.value = consciousnessProvider.value || ''
@@ -211,7 +214,7 @@ async function generateVisualDescription() {
   const modelId = selectedConsciousnessModel.value || defaultConsciousnessModel.value
 
   if (!providerId || !modelId) {
-    toast.error('Please configure the consciousness provider and model in Step 3 first.')
+    toast.error(t('settings.pages.card.creation.import.errors.configure-model'))
     return
   }
 
@@ -219,7 +222,7 @@ async function generateVisualDescription() {
   try {
     const activeProvider = await providersStore.getProviderInstance(providerId) as any
     if (!activeProvider) {
-      throw new Error(`Failed to instantiate provider: ${providerId}`)
+      throw new Error(t('settings.pages.card.creation.import.errors.provider', { provider: providerId }))
     }
 
     const cardContext = {
@@ -257,15 +260,15 @@ async function generateVisualDescription() {
     const resultText = llmResponse.text?.trim() || ''
     if (resultText) {
       description.value = resultText
-      toast.success('Visual description generated successfully!')
+      toast.success(t('settings.pages.card.creation.import.success.visual-description'))
     }
     else {
-      throw new Error('Empty response received from LLM.')
+      throw new Error(t('settings.pages.card.creation.import.errors.empty-response'))
     }
   }
   catch (err: any) {
     console.error('[ImportWizard] Description generation failed:', err)
-    toast.error(err.message || 'Failed to generate visual description.')
+    toast.error(err.message || t('settings.pages.card.creation.import.errors.visual-description'))
   }
   finally {
     generatingDescription.value = false
@@ -277,7 +280,7 @@ async function generateImagePrompt() {
   const modelId = selectedConsciousnessModel.value || defaultConsciousnessModel.value
 
   if (!providerId || !modelId) {
-    toast.error('Please configure the consciousness provider and model in Step 3 first.')
+    toast.error(t('settings.pages.card.creation.import.errors.configure-model'))
     return
   }
 
@@ -285,7 +288,7 @@ async function generateImagePrompt() {
   try {
     const activeProvider = await providersStore.getProviderInstance(providerId) as any
     if (!activeProvider) {
-      throw new Error(`Failed to instantiate provider: ${providerId}`)
+      throw new Error(t('settings.pages.card.creation.import.errors.provider', { provider: providerId }))
     }
 
     const cardContext = {
@@ -357,15 +360,15 @@ Critical Filtering Instructions:
     const resultText = llmResponse.text?.trim() || ''
     if (resultText) {
       artistryPromptPrefix.value = resultText
-      toast.success('Artistry prompt prefix generated successfully!')
+      toast.success(t('settings.pages.card.creation.import.success.image-prompt'))
     }
     else {
-      throw new Error('Empty response received from LLM.')
+      throw new Error(t('settings.pages.card.creation.import.errors.empty-response'))
     }
   }
   catch (err: any) {
     console.error('[ImportWizard] Prefix generation failed:', err)
-    toast.error(err.message || 'Failed to generate image prompt prefix.')
+    toast.error(err.message || t('settings.pages.card.creation.import.errors.image-prompt'))
   }
   finally {
     generatingPrefix.value = false
@@ -376,11 +379,11 @@ Critical Filtering Instructions:
 function nextStep() {
   if (currentStep.value === 1) {
     if (!name.value.trim()) {
-      toast.error('Character name is required.')
+      toast.error(t('settings.pages.card.creation.import.errors.name-required'))
       return
     }
     if (hasUserPattern.value && !userName.value.trim()) {
-      toast.error('Your name is required by this card.')
+      toast.error(t('settings.pages.card.creation.import.errors.user-name-required'))
       return
     }
   }
@@ -483,11 +486,11 @@ async function finalizeImport() {
     const newId = await cardStore.addCard(finalCard)
     emit('imported', newId)
     emit('update:modelValue', false)
-    toast.success('Companion successfully configured and saved!')
+    toast.success(t('settings.pages.card.creation.import.success.saved'))
   }
   catch (error) {
     console.error('[ImportWizard] Error saving card:', error)
-    toast.error('Failed to save imported card.')
+    toast.error(t('settings.pages.card.creation.import.errors.save'))
   }
 }
 </script>
@@ -502,10 +505,10 @@ async function finalizeImport() {
           <div class="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-700">
             <div>
               <DialogTitle class="from-primary-500 to-primary-400 bg-gradient-to-r bg-clip-text text-xl text-transparent font-bold">
-                Configure Imported Companion
+                {{ t('settings.pages.card.creation.import.title') }}
               </DialogTitle>
               <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                Finetune your new companion before introducing them to the stage.
+                {{ t('settings.pages.card.creation.import.description') }}
               </p>
             </div>
             <div class="flex gap-1">
@@ -525,42 +528,42 @@ async function finalizeImport() {
             <!-- STEP 1: Identity & Prompts -->
             <div v-if="currentStep === 1" class="flex flex-col gap-5">
               <div class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Name</label>
+                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.name') }}</label>
                 <input
                   v-model="name"
                   type="text"
-                  placeholder="Companion name"
+                  :placeholder="t('settings.pages.card.creation.import.name-placeholder')"
                   class="w-full border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
                 >
               </div>
 
               <div v-if="hasUserPattern" class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Your Name (Required by Card)</label>
+                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.user-name') }}</label>
                 <input
                   v-model="userName"
                   type="text"
-                  placeholder="Enter your name (replacing {{user}})"
+                  :placeholder="t('settings.pages.card.creation.import.user-name-placeholder', { pattern: '{{user}}' })"
                   class="w-full border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
                 >
               </div>
 
               <div class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Greetings</label>
+                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.greetings') }}</label>
                 <div class="max-h-[100px] overflow-y-auto border border-neutral-200 rounded-xl bg-neutral-50/40 p-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950/40">
                   <div v-for="(greet, i) in props.cardData?.greetings" :key="i" class="mb-2 last:mb-0">
-                    <strong>Greeting {{ Number(i) + 1 }}:</strong> {{ greet }}
+                    <strong>{{ t('settings.pages.card.creation.import.greeting-number', { number: Number(i) + 1 }) }}</strong> {{ greet }}
                   </div>
                   <div v-if="!props.cardData?.greetings?.length" class="italic">
-                    No greetings imported.
+                    {{ t('settings.pages.card.creation.import.no-greetings') }}
                   </div>
                 </div>
               </div>
 
               <div class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Personality & Context (Read-Only)</label>
+                <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.personality-context') }}</label>
                 <textarea
                   readonly
-                  :value="props.cardData?.personality || props.cardData?.description || 'No personality prompt found.'"
+                  :value="props.cardData?.personality || props.cardData?.description || t('settings.pages.card.creation.import.no-personality')"
                   rows="4"
                   class="w-full resize-none border border-neutral-200 rounded-xl bg-neutral-50/40 p-3 text-xs text-neutral-500 outline-none dark:border-neutral-700 dark:bg-neutral-950/40"
                 />
@@ -570,7 +573,7 @@ async function finalizeImport() {
             <!-- STEP 2: Visual Avatar -->
             <div v-if="currentStep === 2" class="flex flex-col gap-4">
               <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                Choose the visual model to represent this companion on stage.
+                {{ t('settings.pages.card.creation.import.model-description') }}
               </p>
               <!-- Search Input -->
               <div class="relative">
@@ -578,7 +581,7 @@ async function finalizeImport() {
                 <input
                   v-model="importModelSearch"
                   type="text"
-                  placeholder="Search avatars..."
+                  :placeholder="t('settings.pages.card.creation.import.search-avatars')"
                   class="w-full border border-neutral-200/10 rounded-xl bg-neutral-200/40 py-1 pl-7 pr-2.5 text-[11px] text-neutral-700 dark:border-neutral-800/10 dark:bg-neutral-800/40 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-sky-500/50"
                 >
               </div>
@@ -614,24 +617,24 @@ async function finalizeImport() {
             <div v-if="currentStep === 3" class="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div class="flex flex-col gap-4 border border-neutral-100 rounded-2xl bg-neutral-50/50 p-4 dark:border-neutral-700/55 dark:bg-neutral-900/30">
                 <h4 class="flex items-center gap-2 text-sm text-neutral-700 font-bold dark:text-neutral-200">
-                  <div i-lucide:brain class="text-primary-500" /> Consciousness (LLM)
+                  <div i-lucide:brain class="text-primary-500" /> {{ t('settings.pages.card.creation.import.consciousness') }}
                 </h4>
                 <div class="flex flex-col gap-3">
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-neutral-400">Provider</label>
+                    <label class="text-xs text-neutral-400">{{ t('settings.pages.card.creation.import.provider') }}</label>
                     <Select
                       v-model="selectedConsciousnessProvider"
                       :options="consciousnessProviderOptions"
-                      placeholder="Use default provider"
+                      :placeholder="t('settings.pages.card.creation.import.default-provider')"
                       class="w-full"
                     />
                   </div>
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-neutral-400">Model</label>
+                    <label class="text-xs text-neutral-400">{{ t('settings.pages.card.creation.import.model') }}</label>
                     <Select
                       v-model="selectedConsciousnessModel"
                       :options="consciousnessModelOptions"
-                      placeholder="Use default model"
+                      :placeholder="t('settings.pages.card.creation.import.default-model')"
                       :disabled="!selectedConsciousnessProvider"
                       class="w-full"
                     />
@@ -641,34 +644,34 @@ async function finalizeImport() {
 
               <div class="flex flex-col gap-4 border border-neutral-100 rounded-2xl bg-neutral-50/50 p-4 dark:border-neutral-700/55 dark:bg-neutral-900/30">
                 <h4 class="flex items-center gap-2 text-sm text-neutral-700 font-bold dark:text-neutral-200">
-                  <div i-lucide:mic class="text-primary-500" /> Speech (TTS)
+                  <div i-lucide:mic class="text-primary-500" /> {{ t('settings.pages.card.creation.import.speech') }}
                 </h4>
                 <div class="flex flex-col gap-3">
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-neutral-400">Provider</label>
+                    <label class="text-xs text-neutral-400">{{ t('settings.pages.card.creation.import.provider') }}</label>
                     <Select
                       v-model="selectedSpeechProvider"
                       :options="speechProviderOptions"
-                      placeholder="Use default provider"
+                      :placeholder="t('settings.pages.card.creation.import.default-provider')"
                       class="w-full"
                     />
                   </div>
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-neutral-400">Model</label>
+                    <label class="text-xs text-neutral-400">{{ t('settings.pages.card.creation.import.model') }}</label>
                     <Select
                       v-model="selectedSpeechModel"
                       :options="speechModelOptions"
-                      placeholder="Use default model"
+                      :placeholder="t('settings.pages.card.creation.import.default-model')"
                       :disabled="!selectedSpeechProvider"
                       class="w-full"
                     />
                   </div>
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-neutral-400">Voice</label>
+                    <label class="text-xs text-neutral-400">{{ t('settings.pages.card.creation.import.voice') }}</label>
                     <Select
                       v-model="selectedSpeechVoiceId"
                       :options="speechVoiceOptions"
-                      placeholder="Use default voice"
+                      :placeholder="t('settings.pages.card.creation.import.default-voice')"
                       :disabled="!selectedSpeechProvider"
                       class="w-full"
                     />
@@ -680,15 +683,15 @@ async function finalizeImport() {
             <!-- STEP 4: Quick Toggles -->
             <div v-if="currentStep === 4" class="flex flex-col gap-4">
               <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                Set final initial preferences for your companion's extra behaviors.
+                {{ t('settings.pages.card.creation.import.preferences-description') }}
               </p>
 
               <div class="flex flex-col gap-3">
                 <div class="flex items-center justify-between border border-neutral-100 rounded-xl bg-neutral-50/30 p-4 dark:border-neutral-700/40 dark:bg-neutral-900/20">
                   <div class="flex flex-col gap-1">
-                    <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Dream State (Journaling)</label>
+                    <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.dream-state') }}</label>
                     <p class="max-w-md text-xs text-neutral-400">
-                      Let the companion periodically write thoughts, reflect on logs, and write down journals.
+                      {{ t('settings.pages.card.creation.import.dream-state-description') }}
                     </p>
                   </div>
                   <input v-model="dreamStateEnabled" type="checkbox" class="h-5 w-5 cursor-pointer accent-primary-500">
@@ -696,9 +699,9 @@ async function finalizeImport() {
 
                 <div class="flex items-center justify-between border border-neutral-100 rounded-xl bg-neutral-50/30 p-4 dark:border-neutral-700/40 dark:bg-neutral-900/20">
                   <div class="flex flex-col gap-1">
-                    <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Autonomous Artistry</label>
+                    <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.artistry') }}</label>
                     <p class="max-w-md text-xs text-neutral-400">
-                      Allow the companion to autonomously trigger emotes and manners without direct instructions.
+                      {{ t('settings.pages.card.creation.import.artistry-description') }}
                     </p>
                   </div>
                   <input v-model="artistryAutonomousEnabled" type="checkbox" class="h-5 w-5 cursor-pointer accent-primary-500">
@@ -706,9 +709,9 @@ async function finalizeImport() {
 
                 <div class="flex items-center justify-between border border-neutral-100 rounded-xl bg-neutral-50/30 p-4 dark:border-neutral-700/40 dark:bg-neutral-900/20">
                   <div class="flex flex-col gap-1">
-                    <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Active Proactivity</label>
+                    <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.proactivity') }}</label>
                     <p class="max-w-md text-xs text-neutral-400">
-                      Allow companion to initiate conversations periodically without user prompts.
+                      {{ t('settings.pages.card.creation.import.proactivity-description') }}
                     </p>
                   </div>
                   <input v-model="proactivityEnabled" type="checkbox" class="h-5 w-5 cursor-pointer accent-primary-500">
@@ -719,15 +722,15 @@ async function finalizeImport() {
             <!-- STEP 5: Visual Description & Artistry -->
             <div v-if="currentStep === 5" class="flex flex-col gap-4">
               <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                Finetune your companion's visual description and prompt prefix to keep them self-aware and visually consistent.
+                {{ t('settings.pages.card.creation.import.visual-description-help') }}
               </p>
 
               <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Visual Description</label>
+                  <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.visual-description') }}</label>
                   <textarea
                     v-model="description"
-                    placeholder="Enter visual/physical details in prose..."
+                    :placeholder="t('settings.pages.card.creation.import.visual-description-placeholder')"
                     rows="4"
                     class="w-full resize-none border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
                   />
@@ -739,15 +742,15 @@ async function finalizeImport() {
                   >
                     <div v-if="generatingDescription" class="i-solar:refresh-bold animate-spin" />
                     <div v-else class="i-solar:sparkles-bold-duotone text-violet-500" />
-                    {{ generatingDescription ? 'Generating description...' : 'Generate Visual Description of Model' }}
+                    {{ generatingDescription ? t('settings.pages.card.creation.import.generating-description') : t('settings.pages.card.creation.import.generate-description') }}
                   </Button>
                 </div>
 
                 <div v-if="artistryAutonomousEnabled" class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-700/50">
-                  <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Artistry Prompt Prefix</label>
+                  <label class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.pages.card.creation.import.artistry-prompt') }}</label>
                   <textarea
                     v-model="artistryPromptPrefix"
-                    placeholder="Enter Stable Diffusion prompt tags (e.g. blonde hair, blue eyes)..."
+                    :placeholder="t('settings.pages.card.creation.import.artistry-prompt-placeholder')"
                     rows="3"
                     class="w-full resize-none border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm outline-none dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:focus:border-primary-400"
                   />
@@ -759,7 +762,7 @@ async function finalizeImport() {
                   >
                     <div v-if="generatingPrefix" class="i-solar:refresh-bold animate-spin" />
                     <div v-else class="i-solar:sparkles-bold-duotone text-violet-500" />
-                    {{ generatingPrefix ? 'Generating image prompt...' : 'Generate Image Prompt of Model' }}
+                    {{ generatingPrefix ? t('settings.pages.card.creation.import.generating-prompt') : t('settings.pages.card.creation.import.generate-prompt') }}
                   </Button>
                 </div>
               </div>
@@ -771,7 +774,7 @@ async function finalizeImport() {
             <Button
               variant="secondary"
               icon="i-solar:arrow-left-bold-duotone"
-              label="Back"
+              :label="t('settings.pages.card.creation.actions.back')"
               :disabled="currentStep === 1"
               @click="prevStep"
             />
@@ -779,14 +782,14 @@ async function finalizeImport() {
               v-if="currentStep < 5"
               variant="primary"
               icon="i-solar:arrow-right-bold-duotone"
-              label="Next"
+              :label="t('settings.pages.card.creation.actions.next')"
               @click="nextStep"
             />
             <Button
               v-else
               variant="primary"
               icon="i-solar:check-circle-bold-duotone"
-              label="Complete Setup"
+              :label="t('settings.pages.card.creation.import.complete')"
               @click="finalizeImport"
             />
           </div>

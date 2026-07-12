@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FieldCheckbox, FieldInput, FieldTextArea, Select } from '@proj-airi/ui'
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 defineProps<{
@@ -27,6 +27,11 @@ const cardPostHistoryInstructions = defineModel<string>('cardPostHistoryInstruct
 const compactionStrategy = defineModel<string>('compactionStrategy', { required: true })
 const compactionMinKeepTurns = defineModel<number | undefined>('compactionMinKeepTurns', { required: true })
 const { t } = useI18n()
+const compactionOptions = computed(() => [
+  { value: 'none', label: t('settings.pages.card.creation.generation-settings.compaction-options.none') },
+  { value: 'prune', label: t('settings.pages.card.creation.generation-settings.compaction-options.prune') },
+  { value: 'distill', label: t('settings.pages.card.creation.generation-settings.compaction-options.distill') },
+])
 
 function updateGlobalContextMap() {
   if (!generationContextWidth.value || !generationProvider.value || !generationModel.value)
@@ -56,23 +61,23 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
 <template>
   <div class="tab-content ml-auto mr-auto w-95%">
     <p class="mb-3">
-      Tune per-character response generation without changing the rest of the app. This first pass focuses on the most common chat controls and saves them with the AIRI card.
+      {{ t('settings.pages.card.creation.generation-settings.description') }}
     </p>
 
     <div class="mx-auto mb-6 w-90% border border-amber-200 rounded-xl bg-amber-50/80 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-      Keys that work for one provider or model may be ignored or rejected by another. Start simple, and treat these as character-specific generation defaults rather than guaranteed cross-provider behavior.
+      {{ t('settings.pages.card.creation.generation-settings.warning') }}
     </div>
 
     <div class="mx-auto mb-6 w-90% flex flex-col gap-4">
       <FieldCheckbox
         v-model="generationEnabled"
-        label="Use character-specific generation settings"
-        description="When disabled, this card inherits the global chat generation defaults."
+        :label="t('settings.pages.card.creation.generation-settings.enabled')"
+        :description="t('settings.pages.card.creation.generation-settings.enabled-description')"
       />
       <FieldCheckbox
         v-model="generationReasoningFallback"
-        label="Fall back to reasoning on empty speech"
-        description="If the model outputs everything inside reasoning tags (leaving speech empty), use the reasoning text as the spoken content."
+        :label="t('settings.pages.card.creation.generation-settings.reasoning-fallback')"
+        :description="t('settings.pages.card.creation.generation-settings.reasoning-fallback-description')"
         :disabled="!generationEnabled"
       />
     </div>
@@ -81,7 +86,7 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <div class="field-block">
         <label class="mb-2 flex flex-row items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
           <div i-lucide:brain />
-          Provider
+          {{ t('settings.pages.card.creation.generation-settings.provider') }}
         </label>
         <Select
           v-model="generationProvider"
@@ -94,7 +99,7 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <div class="field-block">
         <label class="mb-2 flex flex-row items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
           <div i-lucide:ghost />
-          Model
+          {{ t('settings.pages.card.creation.generation-settings.model') }}
         </label>
         <Select
           v-if="modelOptions && modelOptions.length > 0"
@@ -115,8 +120,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <FieldInput
         v-model="generationMaxTokens"
         class="field-block"
-        label="Max Tokens"
-        description="Cap the model's reply length for this character."
+        :label="t('settings.pages.card.creation.generation-settings.max-tokens')"
+        :description="t('settings.pages.card.creation.generation-settings.max-tokens-description')"
         type="number"
         placeholder="500"
       />
@@ -124,8 +129,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <FieldInput
         v-model="generationTemperature"
         class="field-block"
-        label="Temperature"
-        description="Higher values are more random; lower values are more deterministic."
+        :label="t('settings.pages.card.creation.generation-settings.temperature')"
+        :description="t('settings.pages.card.creation.generation-settings.temperature-description')"
         type="number"
         placeholder="0.8"
       />
@@ -133,8 +138,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <FieldInput
         v-model="generationTopP"
         class="field-block"
-        label="Top P"
-        description="Nucleus sampling cutoff for this character's replies."
+        :label="t('settings.pages.card.creation.generation-settings.top-p')"
+        :description="t('settings.pages.card.creation.generation-settings.top-p-description')"
         type="number"
         placeholder="0.9"
       />
@@ -142,8 +147,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <FieldInput
         v-model="generationContextWidth"
         class="field-block"
-        label="Context Width (Compaction Threshold)"
-        description="The token threshold that triggers history compaction and drives the visual context meter."
+        :label="t('settings.pages.card.creation.generation-settings.context-width')"
+        :description="t('settings.pages.card.creation.generation-settings.context-width-description')"
         type="number"
         placeholder="4096"
       />
@@ -151,15 +156,11 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <div class="field-block">
         <label class="mb-2 flex flex-row items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
           <div i-solar:tuning-square-bold-duotone />
-          Compaction Strategy
+          {{ t('settings.pages.card.creation.generation-settings.compaction-strategy') }}
         </label>
         <Select
           v-model="compactionStrategy"
-          :options="[
-            { value: 'none', label: 'None (Disabled)' },
-            { value: 'prune', label: 'Prune History Only' },
-            { value: 'distill', label: 'Distill & Summarize (Premium)' },
-          ]"
+          :options="compactionOptions"
           class="w-full"
         />
       </div>
@@ -167,8 +168,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <FieldInput
         v-model="compactionMinKeepTurns"
         class="field-block"
-        label="Compaction Preservation Window"
-        description="The number of recent messages to always keep un-compacted."
+        :label="t('settings.pages.card.creation.generation-settings.preservation-window')"
+        :description="t('settings.pages.card.creation.generation-settings.preservation-window-description')"
         type="number"
         placeholder="15"
       />
@@ -195,7 +196,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
               type="button"
               style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
               class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-              title="Optimize with AI"
+              :title="t('settings.pages.card.creation.actions.optimize-with-ai')"
+              :aria-label="t('settings.pages.card.creation.actions.optimize-with-ai')"
               @click.prevent="emit('sparkle-click', 'postHistoryInstructions')"
             >
               <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
@@ -207,8 +209,8 @@ watch([generationContextWidth, generationProvider, generationModel], () => {
       <FieldTextArea
         v-model="generationAdvancedJson"
         class="advanced-block"
-        label="Advanced JSON"
-        description="Optional raw request fields for provider-specific tuning. These keys are merged into the outbound request when Generation is enabled."
+        :label="t('settings.pages.card.creation.generation-settings.advanced-json')"
+        :description="t('settings.pages.card.creation.generation-settings.advanced-json-description')"
         placeholder="{&#10;  &quot;thinking&quot;: { &quot;type&quot;: &quot;disabled&quot; }&#10;}"
         :rows="8"
       />

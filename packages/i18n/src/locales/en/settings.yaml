@@ -1,5 +1,164 @@
 common:
   save: Save
+model-settings:
+  common:
+    sections:
+      character-customizations: Character Customizations
+      scene: Scene
+      advanced: Advanced
+    tabs:
+      expressions: Expressions
+      motions: Motions
+      face: Face
+      placement: Placement
+      lighting: Lighting
+    actions:
+      all: All
+      none: None
+      show: Show
+      hide: Hide
+      showing-hidden: Showing Hidden
+      hide-hidden: Hide Hidden
+      renamed-only: Renamed Only
+      rename: Rename
+      rename-item: 'Rename {name}'
+      remove: Remove
+      add-to-idle-cycle: Add to Idle Cycle
+      remove-from-idle-cycle: Remove from Idle Cycle
+      remove-custom-motion: Remove Custom Motion
+      remove-custom-motion-item: 'Remove custom motion {name}'
+      reset-value: Reset value to default
+      reset-parameter: 'Reset {name} to default'
+      add-item-to-idle-cycle: 'Add {name} to idle cycle'
+      remove-item-from-idle-cycle: 'Remove {name} from idle cycle'
+      show-item: 'Show {name}'
+      hide-item: 'Hide {name}'
+      save-rename: 'Save renamed value for {name}'
+      cancel-rename: 'Cancel renaming {name}'
+      reset-all: Reset All
+      show-all: Show All
+      show-renamed: Show Renamed
+    states:
+      no-expressions: No expressions match filters
+      no-motions: No motions match filters
+      no-animations: No animations match filters
+      custom-vmd-motion: Custom VMD Motion
+      has-associated-audio: Has associated audio
+      motion-count: '{count} motions'
+      expression-count: '{count} expressions'
+      motions-available: '{count} motions available'
+      animation-count: '{count} animations'
+    scene:
+      directional-light: Directional Light
+      ambient-light: Ambient Light
+      environment: Environment
+      hemisphere: Hemisphere
+      skybox: SkyBox
+      rotation-x: Rotation X
+      rotation-y: Rotation Y
+      color: Color
+      intensity: Intensity
+      sky-color: Sky Color
+      ground-color: Ground Color
+      skybox-intensity: Skybox Intensity
+  audio-studio:
+    title: Audio Studio
+    library: Voice Library
+    new-profile: New Profile
+    new-profile-name: New Custom Voice
+    copy-suffix: '{name} (Copy)'
+    not-bound: Not bound
+    delete-profile: 'Delete voice profile {name}'
+    duplicate-profile: 'Duplicate voice profile {name}'
+    profile:
+      title: Voice Settings Profile
+      description: Link this profile to a base provider engine and define a custom name.
+      name: Profile Name
+      name-description: Give your virtual voice profile a recognizable name.
+      name-placeholder: e.g. Neuro Ashley
+      base-provider: Base Provider
+      no-provider: None (No-op)
+      model: Model
+      loading-models: Loading models...
+      select-model: Select a model
+      voice: Voice
+      loading-voices: Loading voices...
+      select-voice: Select a voice
+      manual-voice-placeholder: Enter voice name manually (e.g. Abigail)
+    effects:
+      title: Audio Transformation Effects (DSP)
+      description: Adjust Web Audio API synthesis effects in real time.
+      pitch:
+        label: Pitch Tuning
+        description: Scales sample pitch via playback rate.
+      speed:
+        label: Speech Speed
+        description: Adjust general speech rate multiplier.
+      asmr:
+        label: ASMR Intimacy / Softness
+        description: Dampens high sibilants and adds voice compression.
+      radio:
+        label: Retro Radio Filter
+        description: Applies telephone bandpass frequency cuts.
+      robot:
+        label: Robotic Comb Delay
+        description: Feedback metallic echo droid ring modulation.
+      reverb:
+        label: Cathedral Reverb / Space Echo
+        description: 350ms multi-tap delay acoustics decay.
+      panning:
+        label: Stereo Panning
+        description: Shift voice placement left to right.
+    pan:
+      center: Center
+      left: 'Left {value}%'
+      right: 'Right {value}%'
+    transformer:
+      title: Universal Speech Transformer
+      description: Granular per-profile text stripping filters.
+      bracket-rules: Bracket Rules
+      asterisks: Asterisks (*...*)
+      asterisks-description: Used for italics, actions, or emotes.
+      square-brackets: Square Brackets ([...])
+      square-brackets-description: Used for emotions, states, or labels.
+      parentheses: Parentheses ((...))
+      parentheses-description: Used for whispers or background info.
+      angle-brackets: Angle Brackets (<...>)
+      angle-brackets-description: Used for speech indicators or tags.
+      enable-custom-bracket: Enable Custom Bracket
+      start-symbol: Start Symbol
+      end-symbol: End Symbol
+      action: Action
+      actions:
+        mute: Mute
+        flatten: Flatten
+        ignore: Ignore
+        convert-to-token: Convert to Token
+      strip-emojis: Strip Emojis
+      strip-emojis-description: Wipes Unicode pictographs so TTS does not create pauses.
+      strip-symbols: Strip Symbols & Kaomoji
+      strip-symbols-description: Wipes non-alphanumeric symbols and kaomoji (Extreme Cleaning).
+      tilde-replacement: Tilde (~) Replacement String
+      tilde-replacement-description: Word to read when tildes are spoken (e.g. 'nyan'). Leave blank to strip.
+      custom-rules: Custom Replacement Rules
+      add-rule: Add replacement rule
+      rule-type-text: Plain Text
+      rule-type-regex: Regex Match
+      remove-rule: 'Remove replacement rule {index}'
+      search-pattern: Search Pattern
+      replacement: Replacement
+      case-sensitive: Case Sensitive
+      whole-word: Whole Word Only
+      empty: No custom replacement rules defined yet.
+    playground:
+      title: Audio Studio Sandbox Playground
+      description: Synthesize and listen to your custom effects stack immediately.
+      placeholder: Enter some text here to test your effects...
+      default-text: Hello, I am testing my new custom voice in the Audio Studio playground!
+      generating: Generating Audio...
+      test: Test Custom Voice
+      stop: Stop Playback
+      generated-file: 'Generated Sample File (Raw TTS):'
 animations:
   stage-transitions:
     title: Disable Stage Transitions
@@ -194,9 +353,11 @@ live2d:
     auto-blink:
       title: Auto
       description: Use default blinking animation of the model
+      label: Auto Blink
     force-auto-blink:
       title: Force
       description: Force blinking animation with external timer
+      label: Force Auto Blink (fallback)
     blink-mode:
       title: Blink mode
       description: Choose the model built-in blink or AIRI's forced blink timer.
@@ -208,6 +369,15 @@ live2d:
       disable-motion-description: Disable idle animation
   parameters:
     title: Model Parameters
+    head-rotation: Head Rotation
+    facial-features: Facial Features
+    angle-x: Angle X
+    angle-y: Angle Y
+    angle-z: Angle Z
+    left-eye-open: Left Eye Open/Close
+    right-eye-open: Right Eye Open/Close
+    mouth-open: Mouth Open/Close
+    cheek: Cheek
     render-scale:
       title: Render scale
     fps:
@@ -218,6 +388,16 @@ live2d:
     shadow: Drop shadow
     reset-parameters: Reset to default parameters
   clear-model-cache: Clear model cache
+  clearing-model-cache: Clearing...
+  advanced:
+    mouse-tracking: Mouse Tracking
+    follow-speed: Follow Speed
+    disable-parameter-replay: Disable Custom Parameter Replay
+    disable-parameter-replay-description: Bypasses raw parameter overrides to prevent conflicts during motion animations (recommended for Juewa).
+    theme-extraction: Theme Extraction
+    hacker-description: Open the Live2D Hacker Inspector for surgical drawable and atlas modding.
+    hacker-editor: L-HACK Editor
+    hacker-dashboard: L-HACK Dashboard
   expressions:
     title: Expressions
     override-toggle: Expression system
@@ -286,6 +466,353 @@ pages:
       version: Version
       create: Create
       proactivity: Proactivity
+      generation: Generation
+      acting: Acting
+      tools: Tools
+      studio: Studio
+      actions:
+        optimize-with-ai: Optimize with AI
+        back: Back
+        next: Next
+        cancel: Cancel
+        save-changes: Save Changes
+        create: Create
+      generator-fields:
+        model-expressions: ACT / Model Expressions
+        speech-expressions: Speech Tags / Audio Expressions
+        artistry-prefix: Artistry Prompt Default Prefix
+      guided:
+        title: AnimaDex Wizard
+        steps:
+          cast: '1. Cast Selection'
+          roster: '2. Roster Settings'
+          story: '3. Story Prompts'
+          synthesis: '4. LLM Synthesis'
+        loading: Loading catalog database...
+        search-placeholder: Search characters by name, series, or tags (e.g. 'blonde hair')...
+        result-types:
+          tag: 'Tag:'
+          series: 'Series:'
+          character: 'Character:'
+        active-filters: 'Active filters:'
+        gender: 'Gender:'
+        genders:
+          all: All
+          female: Female
+          male: Male
+          ambiguous: Ambiguous
+          non-human: Non-Human
+        has-model: 'Has Model ({count})'
+        clear-search: Clear character search
+        remove-filter: 'Remove {type} filter {value}'
+        no-matches: No matching characters found in catalog.
+        add-to-world: Add to World
+        remove: Remove
+        preview-toggle: Preview Toggle
+        unbind-model: Unbind Model
+        world-cast: World Cast
+        selected-count: '{count} characters selected'
+        original: Original
+        remove-character: 'Remove {name}'
+        added-to-cast: Added {name} to cast.
+        model-removed: Model association removed.
+        unbind-failed: 'Failed to unbind model: {error}'
+        next-align-roster: 'Next: Align Roster'
+        roster-title: Actor Alignment (Visual & Audio Settings)
+        auto-assign: Auto-Assign Voices & Motions
+        bind-model-hint: Tap the avatar to bind a 3D model.
+        bind-voice-hint: Tap the voice button to set a TTS voice.
+        bind: Bind
+        set-voice: Set Voice
+        select-model: Select Model / Avatar
+        configure-voice: Configure Voice
+        configure-voice-character: 'Configure voice for {name}'
+        select-model-character: 'Select model or avatar for {name}'
+        default-voice: Default Voice
+        inherit-default: Inherit Default
+        next-configure-story: 'Next: Configure Story'
+        story-title: Outline Your Story Settings
+        suggest-description: Suggest story ideas from your cast
+        thinking: Thinking...
+        suggest: Suggest
+        guidance-placeholder: Add guidance to refine ideas (e.g. I'm a girl, call me Betsie, slice-of-life AU)
+        refine: Refine
+        user-name: What should the characters call you?
+        user-name-placeholder: Leave blank for the AI to choose a name (e.g. 'Master', 'Detective', 'Stranger').
+        user-looks: Your looks
+        user-looks-placeholder: Describe your appearance, attire, or gender representation.
+        user-image-prompt: Your Image Prompt Looks
+        user-image-prompt-placeholder: Detailed Stable Diffusion-style prompt tags for your appearance (e.g. '1guy, brown hair, henley shirt, suspenders').
+        include-self: Include Myself As Concept
+        include-self-description: Enable this if your roleplay includes your own character in scenes. This creates a dedicated background concept for you ({actorKey}) with your visual description, ensuring the AI Director can render you with a consistent look across generated images.
+        location: Where does this take place?
+        location-placeholder: Leave blank to let the AI suggest a fitting location (e.g. 'A rainy cafe in Tokyo', 'A fantasy medieval tavern').
+        lore: Lore & Behavior Rules
+        lore-placeholder: Describe custom personality overrides or AU rules (e.g. 'Make them tsundere', 'Set in a school AU', 'Characters are rival musicians').
+        provider-note: 'Note: This request will be processed by {provider} / {model}. Please ensure this is a high-quality model because the next step is complex and requires strong reasoning.'
+        unavailable: None
+        generate-world: Generate Roleplay World
+        proposal-title: 'Step 4: Roleplay World Proposal'
+        proposal-description: Review the synthesized world details, request refinements, or confirm card generation.
+        edit-settings: Edit Settings
+        hide-payload: Hide Payload
+        show-payload: Show Payload
+        synthesizing: Synthesizing Roleplay World...
+        synthesizing-description: Our LLM is orchestrating the prompt mappings, dialog presets, and outfits.
+        raw-payload: Raw Ingestion Payload (Sent to LLM)
+        draft: Synthesized Character Card Spec V3 Draft
+        premise: Premise & Scenario
+        cast-outfits: Synthesized Cast & Outfits
+        default-greeting: Default Greeting
+        outfit: 'Outfit: {description}'
+        locations-backgrounds: Locations & Backgrounds
+        corrections: Request Story Corrections (Optional)
+        corrections-placeholder: Provide correction feedback (e.g. 'Make Gura more snarky', 'Add a beach place', 'Make Chii quieter').
+        regenerate: Regenerate
+        confirm: Confirm
+        confirm-create: Confirm & Create
+        errors:
+          no-llm: No active LLM configured.
+          provider-unavailable: Failed to retrieve provider instance.
+          story-ideas: Could not generate story ideas. Check your LLM provider.
+          synthesis: 'Synthesis failed: {error}. Compiling mock placeholder proposal.'
+          create: 'Failed to create card: {error}'
+        success:
+          synthesized: World synthesized successfully!
+          created: Card created and set active!
+      import:
+        title: Configure Imported Companion
+        description: Fine-tune your new companion before introducing them to the stage.
+        name: Name
+        name-placeholder: Companion name
+        user-name: Your Name (Required by Card)
+        user-name-placeholder: Enter your name (replacing {pattern})
+        greetings: Greetings
+        greeting-number: 'Greeting {number}:'
+        no-greetings: No greetings imported.
+        personality-context: Personality & Context (Read-Only)
+        no-personality: No personality prompt found.
+        model-description: Choose the visual model to represent this companion on stage.
+        search-avatars: Search avatars...
+        provider: Provider
+        consciousness: Consciousness (LLM)
+        speech: Speech (TTS)
+        model: Model
+        voice: Voice
+        default-provider: Use default provider
+        default-model: Use default model
+        default-voice: Use default voice
+        preferences-description: Set final initial preferences for your companion's extra behaviors.
+        dream-state: Dream State (Journaling)
+        dream-state-description: Let the companion periodically write thoughts, reflect on logs, and write down journals.
+        artistry: Autonomous Artistry
+        artistry-description: Allow the companion to autonomously trigger emotes and mannerisms without direct instructions.
+        proactivity: Active Proactivity
+        proactivity-description: Allow the companion to initiate conversations periodically without user prompts.
+        visual-description-help: Fine-tune your companion's visual description and prompt prefix to keep them self-aware and visually consistent.
+        visual-description: Visual Description
+        visual-description-placeholder: Enter visual or physical details in prose...
+        generating-description: Generating description...
+        generate-description: Generate Visual Description of Model
+        artistry-prompt: Artistry Prompt Prefix
+        artistry-prompt-placeholder: Enter Stable Diffusion prompt tags (e.g. blonde hair, blue eyes)...
+        generating-prompt: Generating image prompt...
+        generate-prompt: Generate Image Prompt of Model
+        complete: Complete Setup
+        default-name: Imported Card
+        errors:
+          configure-model: Please configure the consciousness provider and model in Step 3 first.
+          provider: 'Failed to instantiate provider: {provider}'
+          empty-response: Empty response received from LLM.
+          visual-description: Failed to generate visual description.
+          image-prompt: Failed to generate image prompt prefix.
+          name-required: Character name is required.
+          user-name-required: Your name is required by this card.
+          save: Failed to save imported card.
+        success:
+          visual-description: Visual description generated successfully!
+          image-prompt: Artistry prompt prefix generated successfully!
+          saved: Companion successfully configured and saved!
+      concept:
+        edit-title: Concept Studio
+        create-title: New Concept
+        tabs:
+          identity: Identity
+          artistry: Artistry
+          manifestation: Manifestation
+          scene: Scene
+          speech: Speech
+        id: Concept ID
+        id-description: A unique identifier the Director will use to trigger this state.
+        narrative: Narrative Description
+        narrative-placeholder: When should this be used?
+        narrative-description: Helps the Director understand the context for this concept.
+        prompt-snippet: Prompt Snippet
+        prompt-snippet-description: Keywords or modifiers to inject into the final image prompt.
+        extract-tags: Extract tags from model preview (WD14)
+        add-user-profile: Add global user profile description and prompt tags
+        user-profile: + User Profile
+        base-concept: Base Concept (Exclusionary)
+        base-concept-description: When active, clears the stack first. Use for outfits, character swaps, or any state that cannot overlap.
+        generation-provider: Generation Provider
+        generation-provider-description: The visual engine used for this concept.
+        workflow: Select Workflow
+        workflow-description: Choose from your registered ComfyUI templates.
+        model-id: Model ID
+        advanced-options: Advanced Options (JSON)
+        advanced-options-description: Custom parameters for the specific provider.
+        physical-model: Physical Model Override
+        search-models: Search models...
+        all-formats: All Formats
+        inherit-default: Inherit Default
+        missing-model: Missing Model
+        model-override-description: Forces a base model swap (Live2D/VRM/Spine/MMD) when this concept is active.
+        idle-animations: Idle Loop / Cycle Animations (Optional override)
+        idle-animations-description: Pick from the animations available for this model to cycle through automatically.
+        search-animation: Search and add animation name...
+        remove-animation: 'Remove animation {name}'
+        quick-add: 'Quick Add:'
+        expressions: Active Expressions / Outfits
+        no-expressions: No expressions available for the active model.
+        expressions-description: Toggles facial expressions or outfit presets (e.g. preset2 for black dress) to layer onto the base state.
+        speech-provider: Speech Provider Override
+        speech-provider-description: Forces a specific TTS provider for this concept.
+        vocal-model: Vocal Model
+        vocal-model-description: Choose the TTS engine version.
+        persona-voice: Persona Voice
+        create-voice-title: Create custom voice profile
+        create-voice: Create Custom Voice
+        persona-voice-description: The unique voice assigned to this concept or actor.
+        scene-disabled: Scene Control Disabled
+        scene-disabled-description: The Autonomous Director is currently active for this character. Scene overrides defined here will be ignored while the Director manages the visual environment. Disable the Director in the Artistry settings to enable manual scene control.
+        scene-help: How Scene Overrides Work
+        scene-help-description: This lets each character or costume maintain its own unique stage set.
+        scene-token-description: 'When the {token} token is triggered during a conversation, the background automatically switches to the one selected below.'
+        background: Stage Background
+        background-description: Choose a background from your gallery. Add more via the Image Gallery.
+        preview-unavailable: Preview unavailable; the background may still be loading.
+        preview: Background preview
+        save: Save Changes
+        create: Create Concept
+        provider-options:
+          inherit: Inherit Global
+          disable-artistry: Disable Artistry
+          disable-speech: Disable Speech
+          no-override: No Override
+      voice:
+        title: Configure Custom Voice
+        providers:
+          kokoro-local: Kokoro TTS (Local)
+          audio-studio: Audio Studio (Saved Profiles)
+        provider: Voice Provider
+        loading: Fetching speech voices and model details...
+        profile-name: Voice Profile Name
+        preset: Select Voice Preset
+        gender-filter: 'Gender Filter:'
+        pitch: Pitch Shift
+        speed: Speech Speed
+        model: Speech Model
+        select-model: Select model
+        voice-id: Speech Voice ID / Profile
+        select-voice: Select voice
+        playground: Voice Playground
+        preview-text: Hello! This is a preview of my new voice. How does it sound?
+        play: Play
+        save: Save Voice Profile
+        created: 'Voice profile "{name}" created!'
+        synthesizing: Synthesizing audio preview...
+        errors:
+          studio-inactive: Virtual Audio Studio provider is not active.
+          provider-inactive: 'Provider "{provider}" is not active or configured. Please enable it in Settings > Providers.'
+          preview: Failed to play voice preview.
+      generation-settings:
+        description: Tune per-character response generation without changing the rest of the app. These common chat controls are saved with the AIRI card.
+        warning: Keys that work for one provider or model may be ignored or rejected by another. Start simple and treat these as character-specific generation defaults rather than guaranteed cross-provider behavior.
+        enabled: Use character-specific generation settings
+        enabled-description: When disabled, this card inherits the global chat generation defaults.
+        reasoning-fallback: Fall back to reasoning on empty speech
+        reasoning-fallback-description: If the model outputs everything inside reasoning tags, leaving speech empty, use the reasoning text as the spoken content.
+        provider: Provider
+        model: Model
+        max-tokens: Max Tokens
+        max-tokens-description: Cap the model's reply length for this character.
+        temperature: Temperature
+        temperature-description: Higher values are more random; lower values are more deterministic.
+        top-p: Top P
+        top-p-description: Nucleus sampling cutoff for this character's replies.
+        context-width: Context Width (Compaction Threshold)
+        context-width-description: The token threshold that triggers history compaction and drives the visual context meter.
+        compaction-strategy: Compaction Strategy
+        compaction-options:
+          none: None (Disabled)
+          prune: Prune History Only
+          distill: Distill & Summarize (Premium)
+        preservation-window: Compaction Preservation Window
+        preservation-window-description: The number of recent messages to always keep uncompacted.
+        advanced-json: Advanced JSON
+        advanced-json-description: Optional raw request fields for provider-specific tuning. These keys are merged into the outbound request when Generation is enabled.
+      proactivity-settings:
+        description: Configure how often AIRI will proactively speak to you without being prompted.
+        enable-heartbeats: Enable Proactive Heartbeats
+        interval: Interval (Minutes)
+        interval-description: How often to tick the heartbeat polling.
+        schedule: Schedule Options
+        to: to
+        respect-schedule: Only trigger heartbeats between these hours.
+        require-inactivity: Require Keyboard/Mouse Inactivity
+        require-inactivity-description: Only trigger the LLM if the user is currently idle (mouse/keyboard).
+        enable-dream-state: Enable Dream State
+        dream-state-description: Allows idle-time memory consolidation to generate chips for this character.
+        strict-afk: Strict AFK Gating (Dream State)
+        strict-afk-description: Only allow Dream State synthesis once the user has been away long enough.
+        heartbeat-prompt: Stealth Heartbeat Prompt
+        heartbeat-prompt-description: The hidden instruction sent to the LLM during a heartbeat tick.
+        heartbeat-prompt-placeholder: You are evaluating a proactive heartbeat. Provide a fun comment, or output NO_REPLY to remain silent.
+        attach-sensors: Attach sensor data with each message
+        attach-sensors-description: Injects real-time context into every manual chat message. Linked to the chatbox toggle.
+        awareness: Situational Awareness (Rich Context)
+        current-payload: 'Current Sensor Payload:'
+        awareness-description: Enable real-time sensor polling (idle time, active window, system load) for proactivity and manual grounding.
+        window-history: Window History
+        system-load: System Load
+        usage-metrics: Usage Metrics
+      tools-settings:
+        description: Configure the tools, presentation formats, and introspective awareness systems available to your character.
+        capabilities: Allowed Tools & Capabilities
+        capabilities-description: Toggle which system capabilities this character is allowed to use. Disabling tools prevents context pollution on smaller local models.
+        text-journal: Text Journal
+        text-journal-description: Allows the character to write, search, and recall text journal entries (text_journal).
+        image-journal: Image/Artistry Journal
+        image-journal-description: Allows the character to trigger ComfyUI/Replicate image generations and update the background (image_journal).
+        external-tools: External Tools (MCP)
+        external-tools-description: Allows the character to call connected Model Context Protocol (MCP) servers/APIs.
+        presentation: Tool Presentation Formats
+        presentation-description: Load the templates and specify system instructions for enabled tools to guide the character on how and when to invoke them.
+        integration: '{tool} Integration'
+        load-tool-template: Load Tool Call Template
+        load-token-template: Load Token Template
+        system-instructions: '{tool} System Instructions'
+        image-instructions-description: Contextual instructions added to guide the model on how and when to use image journaling.
+        text-instructions-description: Contextual instructions added to guide the model on how and when to use text journaling.
+        conflict: 'Instruction Conflict:'
+        image-conflict-missing: 'Image Journal is enabled in the registry, but the instructions are missing required keyword(s): {keywords}.'
+        image-conflict-token: 'Image Journal Zod calls are disabled. Your instructions must include the token format syntax: "<|image_journal".'
+        text-conflict-missing: 'Text Journal is enabled in the registry, but the instructions are missing required keyword(s): {keywords}.'
+        text-conflict-token: 'Text Journal Zod calls are disabled. Your instructions must include the token format syntax: "<|text_journal".'
+        introspective: Introspective Context Injections
+        introspective-description: Allows out-of-band background events to trigger one-time awareness clues on the next user turn.
+        dream-intrusion: Enable Dream Intrusion
+        dream-intrusion-description: Inject offline consolidated dreams (Echo Chips) into the character's thoughts when resuming the chat.
+        dream-prompt: Dream Intrusion Prompt Template
+        dream-prompt-description: 'Instructions injected when a dream occurred. Variables: {timeToDream}, {insertEchoChips}.'
+        journal-intrusion: Enable Journal Intrusion
+        journal-intrusion-description: Prompt the character to reference their latest journal entry in their next reply.
+        journal-prompt: Journal Intrusion Prompt Template
+        journal-prompt-description: 'Instructions injected when a journal entry is written. Variables: {timeSinceJournal}, {journalEntryText}.'
+        artistry-intrusion: Enable Artistry Intrusion
+        artistry-intrusion-description: Allow the character to bring up their latest image journal creations in their next response.
+        artistry-prompt: Artistry Intrusion Prompt Template
+        artistry-prompt-description: 'Instructions injected when an image artwork is generated. Variables: {imagePrompt}.'
       defaults:
         name: ReLU
         personality: You are ReLU (Refined Electronic Life Unit), an emergent
@@ -354,6 +881,8 @@ pages:
         systemprompt: 'Error: Please, provide a system prompt.'
         posthistoryinstructions: 'Error: Post history prompt is required.'
         invalid_artistry_json: 'Error: Artistry provider options contains invalid JSON.'
+        invalid_generation_json: Generation Advanced JSON must be valid JSON before saving.
+        invalid_artistry_config: Artistry Config must be valid JSON before saving.
     modules: Modules
     name_asc: Name (A-Z)
     name_desc: Name (Z-A)
@@ -2750,6 +3279,11 @@ vrm:
   skybox:
     skybox-intensity: SkyBox Intensity
     skybox-specular-mix: Specular Mix
+  physics:
+    enable: Enable Physics
+    enable-ik: Enable IK Solvers
+    enable-append-bone: Enable Append-Bone (Grant)
+    gravity-strength: Gravity Strength
 wip:
   title: Work in Progress
   description: This feature is currently under development and not yet publicly
@@ -2828,6 +3362,11 @@ spine:
     title: Rendering
     max-fps: Maximum FPS
     render-scale: Render Scale
+  customization:
+    independent-overlays: Independent Overlays
+    base-idle-animation: Base Idle Animation
+    extraction-disabled: Disabled for Phase 1
+    rendering-disabled: Rendering controls disabled for Phase 1
   fps:
     options:
       unlimited: Unlimited

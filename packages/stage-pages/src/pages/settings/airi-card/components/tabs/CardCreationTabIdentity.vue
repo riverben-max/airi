@@ -46,7 +46,8 @@ const { t } = useI18n()
               type="button"
               style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
               class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-              title="Optimize with AI"
+              :title="t('settings.pages.card.creation.actions.optimize-with-ai')"
+              :aria-label="t('settings.pages.card.creation.actions.optimize-with-ai')"
               @click.prevent="emit('sparkle-click', 'description')"
             >
               <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
@@ -85,7 +86,8 @@ const { t } = useI18n()
                 type="button"
                 style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
                 class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-                title="Optimize with AI"
+                :title="t('settings.pages.card.creation.actions.optimize-with-ai')"
+                :aria-label="t('settings.pages.card.creation.actions.optimize-with-ai')"
                 @click.prevent="emit('sparkle-click', 'systemPrompt')"
               >
                 <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />

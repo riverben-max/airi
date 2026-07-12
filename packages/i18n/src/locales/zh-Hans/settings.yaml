@@ -1,5 +1,164 @@
 common:
   save: 保存
+model-settings:
+  common:
+    sections:
+      character-customizations: 角色自定义
+      scene: 场景
+      advanced: 高级
+    tabs:
+      expressions: 表情
+      motions: 动作
+      face: 面部
+      placement: 位置
+      lighting: 灯光
+    actions:
+      all: 全部
+      none: 无
+      show: 显示
+      hide: 隐藏
+      showing-hidden: 正在显示隐藏项
+      hide-hidden: 隐藏已隐藏项
+      renamed-only: 仅已重命名
+      rename: 重命名
+      rename-item: 重命名 {name}
+      remove: 移除
+      add-to-idle-cycle: 添加到待机循环
+      remove-from-idle-cycle: 从待机循环移除
+      remove-custom-motion: 移除自定义动作
+      remove-custom-motion-item: 移除自定义动作 {name}
+      reset-value: 重置为默认值
+      reset-parameter: 将 {name} 重置为默认值
+      add-item-to-idle-cycle: 将 {name} 添加到待机循环
+      remove-item-from-idle-cycle: 将 {name} 从待机循环移除
+      show-item: 显示 {name}
+      hide-item: 隐藏 {name}
+      save-rename: 保存 {name} 的新名称
+      cancel-rename: 取消重命名 {name}
+      reset-all: 全部重置
+      show-all: 显示全部
+      show-renamed: 显示已重命名项
+    states:
+      no-expressions: 没有符合筛选条件的表情
+      no-motions: 没有符合筛选条件的动作
+      no-animations: 没有符合筛选条件的动画
+      custom-vmd-motion: 自定义 VMD 动作
+      has-associated-audio: 带有关联音频
+      motion-count: '{count} 个动作'
+      expression-count: '{count} 个表情'
+      motions-available: '{count} 个可用动作'
+      animation-count: '{count} 个动画'
+    scene:
+      directional-light: 平行光
+      ambient-light: 环境光
+      environment: 环境
+      hemisphere: 半球光
+      skybox: 天空盒
+      rotation-x: X 轴旋转
+      rotation-y: Y 轴旋转
+      color: 颜色
+      intensity: 强度
+      sky-color: 天空颜色
+      ground-color: 地面颜色
+      skybox-intensity: 天空盒强度
+  audio-studio:
+    title: 音频工作室
+    library: 音色库
+    new-profile: 新建配置
+    new-profile-name: 新建自定义音色
+    copy-suffix: '{name}（副本）'
+    not-bound: 未绑定
+    delete-profile: 删除音色配置 {name}
+    duplicate-profile: 复制音色配置 {name}
+    profile:
+      title: 音色设置配置
+      description: 将此配置关联到基础提供商引擎，并设置自定义名称。
+      name: 配置名称
+      name-description: 为虚拟音色配置设置一个易于识别的名称。
+      name-placeholder: 例如 Neuro Ashley
+      base-provider: 基础提供商
+      no-provider: 无（不执行）
+      model: 模型
+      loading-models: 正在加载模型...
+      select-model: 选择模型
+      voice: 音色
+      loading-voices: 正在加载音色...
+      select-voice: 选择音色
+      manual-voice-placeholder: 手动输入音色名称（例如 Abigail）
+    effects:
+      title: 音频变换效果（DSP）
+      description: 实时调整 Web Audio API 合成效果。
+      pitch:
+        label: 音高调节
+        description: 通过播放速率缩放样本音高。
+      speed:
+        label: 语速
+        description: 调整整体语速倍率。
+      asmr:
+        label: ASMR 亲密感 / 柔和度
+        description: 减弱高频齿音并增加人声压缩。
+      radio:
+        label: 复古收音机滤镜
+        description: 应用电话频段带通削减。
+      robot:
+        label: 机器人梳状延迟
+        description: 添加带反馈的金属回声机器人环形调制。
+      reverb:
+        label: 教堂混响 / 空间回声
+        description: 350 毫秒多抽头延迟声学衰减。
+      panning:
+        label: 立体声声像
+        description: 在左右声道之间移动声音位置。
+    pan:
+      center: 中央
+      left: '左侧 {value}%'
+      right: '右侧 {value}%'
+    transformer:
+      title: 通用语音转换器
+      description: 针对每个配置精细设置文本过滤规则。
+      bracket-rules: 括号规则
+      asterisks: 星号（*...*）
+      asterisks-description: 用于斜体、动作或情绪表达。
+      square-brackets: 方括号（[...]）
+      square-brackets-description: 用于情绪、状态或标签。
+      parentheses: 圆括号（(...)）
+      parentheses-description: 用于低语或背景信息。
+      angle-brackets: 尖括号（<...>）
+      angle-brackets-description: 用于语音指示或标签。
+      enable-custom-bracket: 启用自定义括号
+      start-symbol: 起始符号
+      end-symbol: 结束符号
+      action: 操作
+      actions:
+        mute: 静音
+        flatten: 展平
+        ignore: 忽略
+        convert-to-token: 转换为 Token
+      strip-emojis: 移除表情符号
+      strip-emojis-description: 移除 Unicode 图形字符，避免 TTS 产生停顿。
+      strip-symbols: 移除符号与颜文字
+      strip-symbols-description: 移除非字母数字符号和颜文字（强力清理）。
+      tilde-replacement: 波浪号（~）替换文本
+      tilde-replacement-description: 朗读波浪号时使用的词语（例如“nyan”）；留空则移除。
+      custom-rules: 自定义替换规则
+      add-rule: 添加替换规则
+      rule-type-text: 纯文本
+      rule-type-regex: 正则匹配
+      remove-rule: 移除第 {index} 条替换规则
+      search-pattern: 搜索模式
+      replacement: 替换内容
+      case-sensitive: 区分大小写
+      whole-word: 仅匹配完整单词
+      empty: 尚未定义自定义替换规则。
+    playground:
+      title: 音频工作室沙盒
+      description: 立即合成并试听自定义效果组合。
+      placeholder: 在此输入文本以测试效果...
+      default-text: 你好，我正在音频工作室中测试新的自定义音色！
+      generating: 正在生成音频...
+      test: 测试自定义音色
+      stop: 停止播放
+      generated-file: '生成的样本文件（原始 TTS）：'
 animations:
   stage-transitions:
     title: 是否开启舞台动画
@@ -155,7 +314,7 @@ live2d:
       expressions: 表情
       animations: 动作
   animation:
-    title: Animation
+    title: 动画
     focus:
       title: Enable mouse tracking
       description: Look at the cursor while it is moving. Idle eye movement resumes
@@ -168,11 +327,13 @@ live2d:
       title: Enable blink
       description: Let the model blink.
     auto-blink:
-      title: Auto
-      description: Use default blinking animation of the model
+      title: 自动
+      description: 使用模型的默认眨眼动画
+      label: 自动眨眼
     force-auto-blink:
-      title: Force
-      description: Force blinking animation with external timer
+      title: 强制
+      description: 使用外部计时器强制播放眨眼动画
+      label: 强制自动眨眼（回退）
     blink-mode:
       title: Blink mode
       description: Choose the model built-in blink or AIRI's forced blink timer.
@@ -183,7 +344,16 @@ live2d:
       disable-motion: Disabled
       disable-motion-description: Disable idle animation
   parameters:
-    title: Model Parameters
+    title: 模型参数
+    head-rotation: 头部旋转
+    facial-features: 面部特征
+    angle-x: X 轴角度
+    angle-y: Y 轴角度
+    angle-z: Z 轴角度
+    left-eye-open: 左眼开合
+    right-eye-open: 右眼开合
+    mouth-open: 嘴部开合
+    cheek: 脸颊
     render-scale:
       title: 渲染比例
     fps:
@@ -191,9 +361,19 @@ live2d:
       description: Limit rendering frame rate
       options:
         unlimited: '∞'
-    shadow: Drop shadow
-    reset-parameters: Reset to default parameters
-  clear-model-cache: Clear model cache
+    shadow: 投射阴影
+    reset-parameters: 重置为默认参数
+  clear-model-cache: 清除模型缓存
+  clearing-model-cache: 正在清除...
+  advanced:
+    mouse-tracking: 鼠标跟踪
+    follow-speed: 跟随速度
+    disable-parameter-replay: 禁用自定义参数重放
+    disable-parameter-replay-description: 绕过原始参数覆盖，防止动作动画期间发生冲突（建议 Juewa 模型启用）。
+    theme-extraction: 主题色提取
+    hacker-description: 打开 Live2D Hacker 检查器，对可绘制对象和图集进行精细修改。
+    hacker-editor: L-HACK 编辑器
+    hacker-dashboard: L-HACK 控制台
   expressions:
     title: Expressions
     override-toggle: Expression system
@@ -259,6 +439,353 @@ pages:
       version: 版本
       create: 创建
       proactivity: 主动性
+      generation: 生成
+      acting: 表演
+      tools: 工具
+      studio: 工作室
+      actions:
+        optimize-with-ai: 使用 AI 优化
+        back: 返回
+        next: 下一步
+        cancel: 取消
+        save-changes: 保存更改
+        create: 创建
+      generator-fields:
+        model-expressions: ACT / 模型表情
+        speech-expressions: 语音标签 / 音频表情
+        artistry-prefix: 绘图提示词默认前缀
+      guided:
+        title: AnimaDex 向导
+        steps:
+          cast: '1. 选择角色'
+          roster: '2. 阵容设置'
+          story: '3. 故事提示词'
+          synthesis: '4. LLM 合成'
+        loading: 正在加载角色目录数据库...
+        search-placeholder: 按名称、作品或标签搜索角色（例如“金发”）...
+        result-types:
+          tag: '标签：'
+          series: '作品：'
+          character: '角色：'
+        active-filters: '当前筛选：'
+        gender: '性别：'
+        genders:
+          all: 全部
+          female: 女性
+          male: 男性
+          ambiguous: 不明确
+          non-human: 非人类
+        has-model: '有模型（{count}）'
+        clear-search: 清空角色搜索
+        remove-filter: '移除 {type} 筛选条件 {value}'
+        no-matches: 角色目录中没有匹配项。
+        add-to-world: 添加到世界
+        remove: 移除
+        preview-toggle: 切换预览
+        unbind-model: 解除模型绑定
+        world-cast: 世界角色阵容
+        selected-count: 已选择 {count} 个角色
+        original: 原创
+        remove-character: 移除 {name}
+        added-to-cast: 已将 {name} 添加到阵容。
+        model-removed: 已移除模型关联。
+        unbind-failed: '解除模型绑定失败：{error}'
+        next-align-roster: 下一步：调整阵容
+        roster-title: 角色校准（视觉与音频设置）
+        auto-assign: 自动分配音色与动作
+        bind-model-hint: 点击头像绑定 3D 模型。
+        bind-voice-hint: 点击音色按钮设置 TTS 音色。
+        bind: 绑定
+        set-voice: 设置音色
+        select-model: 选择模型 / 虚拟形象
+        configure-voice: 配置音色
+        configure-voice-character: 为 {name} 配置音色
+        select-model-character: 为 {name} 选择模型或虚拟形象
+        default-voice: 默认音色
+        inherit-default: 继承默认值
+        next-configure-story: 下一步：配置故事
+        story-title: 规划故事设置
+        suggest-description: 根据角色阵容推荐故事创意
+        thinking: 正在思考...
+        suggest: 推荐
+        guidance-placeholder: 添加要求以完善创意（例如“我是女生，叫我 Betsie，日常 AU”）
+        refine: 完善
+        user-name: 角色应该如何称呼您？
+        user-name-placeholder: 留空则由 AI 选择称呼（例如“主人”“侦探”“陌生人”）。
+        user-looks: 您的外观
+        user-looks-placeholder: 描述您的外貌、服装或性别呈现。
+        user-image-prompt: 您的图像提示词外观
+        user-image-prompt-placeholder: 详细的 Stable Diffusion 风格外观标签（例如“1guy, brown hair, henley shirt, suspenders”）。
+        include-self: 将自己纳入概念
+        include-self-description: 如果角色扮演场景中包括您自己的角色，请启用此项。系统会使用您的视觉描述创建专属背景概念（{actorKey}），确保 AI 导演在生成的图像中保持您的外观一致。
+        location: 故事发生在哪里？
+        location-placeholder: 留空则由 AI 推荐合适地点（例如“东京雨天的咖啡馆”“奇幻中世纪酒馆”）。
+        lore: 设定与行为规则
+        lore-placeholder: 描述自定义性格覆盖或 AU 规则（例如“让她们表现得傲娇”“设定为校园 AU”“角色是竞争对手乐手”）。
+        provider-note: '注意：此请求将由 {provider} / {model} 处理。下一步较为复杂且需要较强推理能力，请确保使用高质量模型。'
+        unavailable: 无
+        generate-world: 生成角色扮演世界
+        proposal-title: 第 4 步：角色扮演世界提案
+        proposal-description: 查看合成的世界详情、请求调整，或确认生成角色卡。
+        edit-settings: 编辑设置
+        hide-payload: 隐藏负载
+        show-payload: 显示负载
+        synthesizing: 正在合成角色扮演世界...
+        synthesizing-description: LLM 正在编排提示词映射、对话预设和服装。
+        raw-payload: 原始输入负载（发送给 LLM）
+        draft: 合成的角色卡规范 V3 草稿
+        premise: 前提与场景
+        cast-outfits: 合成的角色阵容与服装
+        default-greeting: 默认问候语
+        outfit: '服装：{description}'
+        locations-backgrounds: 地点与背景
+        corrections: 请求故事修正（可选）
+        corrections-placeholder: 提供修正反馈（例如“让 Gura 更毒舌”“添加海滩地点”“让 Chii 更安静”）。
+        regenerate: 重新生成
+        confirm: 确认
+        confirm-create: 确认并创建
+        errors:
+          no-llm: 未配置可用的 LLM。
+          provider-unavailable: 无法获取提供商实例。
+          story-ideas: 无法生成故事创意，请检查 LLM 提供商。
+          synthesis: '合成失败：{error}。正在编译模拟占位提案。'
+          create: '创建角色卡失败：{error}'
+        success:
+          synthesized: 世界合成成功！
+          created: 角色卡已创建并设为当前角色！
+      import:
+        title: 配置导入的伙伴
+        description: 在伙伴登上舞台前完成细节调整。
+        name: 名称
+        name-placeholder: 伙伴名称
+        user-name: 您的姓名（角色卡要求）
+        user-name-placeholder: 输入您的姓名（替换 {pattern}）
+        greetings: 问候语
+        greeting-number: '问候语 {number}：'
+        no-greetings: 未导入问候语。
+        personality-context: 性格与上下文（只读）
+        no-personality: 未找到性格提示词。
+        model-description: 选择用于在舞台上呈现此伙伴的视觉模型。
+        search-avatars: 搜索虚拟形象...
+        provider: 提供商
+        consciousness: 意识（LLM）
+        speech: 语音（TTS）
+        model: 模型
+        voice: 音色
+        default-provider: 使用默认提供商
+        default-model: 使用默认模型
+        default-voice: 使用默认音色
+        preferences-description: 设置伙伴额外行为的初始偏好。
+        dream-state: 梦境状态（日记）
+        dream-state-description: 让伙伴定期记录想法、回顾日志并撰写日记。
+        artistry: 自主绘图
+        artistry-description: 允许伙伴在没有直接指示时自主触发表情和动作。
+        proactivity: 主动对话
+        proactivity-description: 允许伙伴在没有用户提示时定期发起对话。
+        visual-description-help: 调整伙伴的视觉描述和提示词前缀，使其保持自我认知与视觉一致性。
+        visual-description: 视觉描述
+        visual-description-placeholder: 用自然语言输入视觉或外形细节...
+        generating-description: 正在生成描述...
+        generate-description: 生成模型视觉描述
+        artistry-prompt: 绘图提示词前缀
+        artistry-prompt-placeholder: 输入 Stable Diffusion 提示词标签（例如 blonde hair, blue eyes）...
+        generating-prompt: 正在生成图像提示词...
+        generate-prompt: 生成模型图像提示词
+        complete: 完成设置
+        default-name: 导入的角色卡
+        errors:
+          configure-model: 请先在第 3 步配置意识提供商和模型。
+          provider: '无法实例化提供商：{provider}'
+          empty-response: LLM 返回了空响应。
+          visual-description: 生成视觉描述失败。
+          image-prompt: 生成图像提示词前缀失败。
+          name-required: 必须填写角色名称。
+          user-name-required: 此角色卡要求填写您的姓名。
+          save: 保存导入的角色卡失败。
+        success:
+          visual-description: 视觉描述生成成功！
+          image-prompt: 绘图提示词前缀生成成功！
+          saved: 伙伴配置并保存成功！
+      concept:
+        edit-title: 概念工作室
+        create-title: 新建概念
+        tabs:
+          identity: 身份
+          artistry: 绘图
+          manifestation: 呈现
+          scene: 场景
+          speech: 语音
+        id: 概念 ID
+        id-description: 导演用于触发此状态的唯一标识符。
+        narrative: 叙事描述
+        narrative-placeholder: 应在什么情况下使用？
+        narrative-description: 帮助导演理解此概念的上下文。
+        prompt-snippet: 提示词片段
+        prompt-snippet-description: 注入最终图像提示词的关键词或修饰词。
+        extract-tags: 从模型预览提取标签（WD14）
+        add-user-profile: 填入全局用户资料描述和提示词标签
+        user-profile: + 用户资料
+        base-concept: 基础概念（互斥）
+        base-concept-description: 激活时会先清空概念栈。适用于服装、角色切换或其他不能叠加的状态。
+        generation-provider: 生成提供商
+        generation-provider-description: 此概念使用的视觉引擎。
+        workflow: 选择工作流
+        workflow-description: 从已注册的 ComfyUI 模板中选择。
+        model-id: 模型 ID
+        advanced-options: 高级选项（JSON）
+        advanced-options-description: 针对特定提供商的自定义参数。
+        physical-model: 物理模型覆盖
+        search-models: 搜索模型...
+        all-formats: 所有格式
+        inherit-default: 继承默认值
+        missing-model: 模型缺失
+        model-override-description: 此概念激活时强制切换基础模型（Live2D/VRM/Spine/MMD）。
+        idle-animations: 待机循环动画（可选覆盖）
+        idle-animations-description: 从此模型可用动画中选择要自动循环播放的项目。
+        search-animation: 搜索并添加动画名称...
+        remove-animation: 移除动画 {name}
+        quick-add: '快速添加：'
+        expressions: 当前表情 / 服装
+        no-expressions: 当前模型没有可用表情。
+        expressions-description: 在基础状态上叠加面部表情或服装预设（例如黑色连衣裙对应的 preset2）。
+        speech-provider: 语音提供商覆盖
+        speech-provider-description: 强制此概念使用特定 TTS 提供商。
+        vocal-model: 语音模型
+        vocal-model-description: 选择 TTS 引擎版本。
+        persona-voice: 角色音色
+        create-voice-title: 创建自定义音色配置
+        create-voice: 创建自定义音色
+        persona-voice-description: 分配给此概念或角色的独特音色。
+        scene-disabled: 场景控制已禁用
+        scene-disabled-description: 此角色的自主导演当前处于启用状态。导演管理视觉环境期间，此处定义的场景覆盖将被忽略。请在绘图设置中禁用导演以启用手动场景控制。
+        scene-help: 场景覆盖的工作方式
+        scene-help-description: 可让每个角色或服装维持自己独特的舞台布景。
+        scene-token-description: '对话中触发 {token} Token 时，背景会自动切换为下方选择的背景。'
+        background: 舞台背景
+        background-description: 从图库中选择背景。可通过图像图库添加更多背景。
+        preview-unavailable: 暂时无法预览；背景可能仍在加载。
+        preview: 背景预览
+        save: 保存更改
+        create: 创建概念
+        provider-options:
+          inherit: 继承全局设置
+          disable-artistry: 禁用绘图
+          disable-speech: 禁用语音
+          no-override: 不覆盖
+      voice:
+        title: 配置自定义音色
+        providers:
+          kokoro-local: Kokoro TTS（本地）
+          audio-studio: 音频工作室（已保存配置）
+        provider: 音色提供商
+        loading: 正在获取语音模型和音色详情...
+        profile-name: 音色配置名称
+        preset: 选择音色预设
+        gender-filter: '性别筛选：'
+        pitch: 音高偏移
+        speed: 语速
+        model: 语音模型
+        select-model: 选择模型
+        voice-id: 语音音色 ID / 配置
+        select-voice: 选择音色
+        playground: 音色试听
+        preview-text: 你好！这是我的新音色预览，听起来怎么样？
+        play: 播放
+        save: 保存音色配置
+        created: '音色配置“{name}”已创建！'
+        synthesizing: 正在合成音频预览...
+        errors:
+          studio-inactive: 虚拟音频工作室提供商未启用。
+          provider-inactive: '提供商“{provider}”未启用或未配置。请在“设置 > 提供商”中启用。'
+          preview: 播放音色预览失败。
+      generation-settings:
+        description: 调整此角色的回复生成设置，不影响应用其他部分。这些常用聊天控制会随 AIRI 角色卡保存。
+        warning: 某些键可能只适用于特定提供商或模型，其他提供商可能忽略或拒绝它们。建议从简单设置开始，并将其视为角色专属的生成默认值，而不是跨提供商保证一致的行为。
+        enabled: 使用角色专属生成设置
+        enabled-description: 禁用后，此角色卡会继承全局聊天生成默认值。
+        reasoning-fallback: 语音为空时回退到推理文本
+        reasoning-fallback-description: 如果模型将所有输出放在推理标签内而导致语音为空，则使用推理文本作为朗读内容。
+        provider: 提供商
+        model: 模型
+        max-tokens: 最大 Token 数
+        max-tokens-description: 限制此角色回复的最大长度。
+        temperature: 温度
+        temperature-description: 值越高越随机，值越低越确定。
+        top-p: Top P（核采样）
+        top-p-description: 此角色回复的核采样截止值。
+        context-width: 上下文宽度（压缩阈值）
+        context-width-description: 触发历史压缩并驱动可视化上下文计量器的 Token 阈值。
+        compaction-strategy: 压缩策略
+        compaction-options:
+          none: 无（禁用）
+          prune: 仅裁剪历史
+          distill: 提炼并总结（高级）
+        preservation-window: 压缩保留窗口
+        preservation-window-description: 始终保留、不参与压缩的最近消息数量。
+        advanced-json: 高级 JSON
+        advanced-json-description: 用于提供商专属调节的可选原始请求字段。启用生成设置后，这些键会合并到外发请求中。
+      proactivity-settings:
+        description: 配置 AIRI 在没有提示时主动与您交谈的频率。
+        enable-heartbeats: 启用主动心跳
+        interval: 间隔（分钟）
+        interval-description: 心跳轮询的触发频率。
+        schedule: 时间范围
+        to: 至
+        respect-schedule: 仅在这些时间之间触发心跳。
+        require-inactivity: 要求键盘 / 鼠标无活动
+        require-inactivity-description: 仅当用户当前处于空闲状态（鼠标 / 键盘）时触发 LLM。
+        enable-dream-state: 启用梦境状态
+        dream-state-description: 允许空闲时的记忆整合为此角色生成记忆片段。
+        strict-afk: 严格离开门控（梦境状态）
+        strict-afk-description: 仅当用户离开足够长时间后才允许合成梦境状态。
+        heartbeat-prompt: 隐式心跳提示词
+        heartbeat-prompt-description: 心跳触发时发送给 LLM 的隐藏指令。
+        heartbeat-prompt-placeholder: 您正在评估一次主动心跳。请给出一句有趣的评论，或输出 NO_REPLY 保持安静。
+        attach-sensors: 在每条消息中附加传感器数据
+        attach-sensors-description: 将实时上下文注入每条手动聊天消息，并与聊天框开关联动。
+        awareness: 情境感知（丰富上下文）
+        current-payload: '当前传感器负载：'
+        awareness-description: 启用实时传感器轮询（空闲时间、活动窗口、系统负载），用于主动性和手动上下文定位。
+        window-history: 窗口历史
+        system-load: 系统负载
+        usage-metrics: 使用指标
+      tools-settings:
+        description: 配置角色可用的工具、呈现格式和内省感知系统。
+        capabilities: 允许的工具与能力
+        capabilities-description: 切换此角色可使用的系统能力。禁用工具可防止较小本地模型的上下文受到干扰。
+        text-journal: 文本日记
+        text-journal-description: 允许角色写入、搜索和回忆文本日记条目（text_journal）。
+        image-journal: 图像 / 绘图日记
+        image-journal-description: 允许角色触发 ComfyUI/Replicate 图像生成并更新背景（image_journal）。
+        external-tools: 外部工具（MCP）
+        external-tools-description: 允许角色调用已连接的模型上下文协议（MCP）服务器 / API。
+        presentation: 工具呈现格式
+        presentation-description: 加载模板并为已启用工具指定系统指令，指导角色何时以及如何调用工具。
+        integration: '{tool} 集成'
+        load-tool-template: 加载工具调用模板
+        load-token-template: 加载 Token 模板
+        system-instructions: '{tool} 系统指令'
+        image-instructions-description: 用于指导模型何时以及如何使用图像日记的上下文指令。
+        text-instructions-description: 用于指导模型何时以及如何使用文本日记的上下文指令。
+        conflict: '指令冲突：'
+        image-conflict-missing: '图像日记已在注册表中启用，但指令缺少必要关键词：{keywords}。'
+        image-conflict-token: '图像日记 Zod 调用已禁用。指令必须包含 Token 格式语法：“<|image_journal”。'
+        text-conflict-missing: '文本日记已在注册表中启用，但指令缺少必要关键词：{keywords}。'
+        text-conflict-token: '文本日记 Zod 调用已禁用。指令必须包含 Token 格式语法：“<|text_journal”。'
+        introspective: 内省上下文注入
+        introspective-description: 允许带外后台事件在下一次用户对话时触发一次性感知线索。
+        dream-intrusion: 启用梦境注入
+        dream-intrusion-description: 恢复聊天时，将离线整合的梦境（Echo Chips）注入角色的思绪。
+        dream-prompt: 梦境注入提示词模板
+        dream-prompt-description: '发生梦境时注入的指令。变量：{timeToDream}、{insertEchoChips}。'
+        journal-intrusion: 启用日记注入
+        journal-intrusion-description: 提示角色在下一次回复中引用最新日记条目。
+        journal-prompt: 日记注入提示词模板
+        journal-prompt-description: '写入日记条目时注入的指令。变量：{timeSinceJournal}、{journalEntryText}。'
+        artistry-intrusion: 启用绘图注入
+        artistry-intrusion-description: 允许角色在下一次回复中提及最新图像日记作品。
+        artistry-prompt: 绘图注入提示词模板
+        artistry-prompt-description: '生成图像作品时注入的指令。变量：{imagePrompt}。'
       defaults:
         name: 名字
         personality: 你是一个普通人，对一切都充满好奇。
@@ -299,6 +826,8 @@ pages:
         systemprompt: '错误：请提供系统提示。'
         posthistoryinstructions: '错误：必须提供消息历史后的提示。'
         invalid_artistry_json: 'Error: Artistry provider options contains invalid JSON.'
+        invalid_generation_json: 保存前必须确保生成高级 JSON 有效。
+        invalid_artistry_config: 保存前必须确保绘图配置 JSON 有效。
       none: None
     modules: 模块
     name_asc: 名称 (A-Z)
@@ -2483,6 +3012,11 @@ vrm:
   skybox:
     skybox-intensity: 天空盒光照强度
     skybox-specular-mix: 漫反射/镜面反射混合系数
+  physics:
+    enable: 启用物理效果
+    enable-ik: 启用 IK 解算器
+    enable-append-bone: 启用附加骨骼（Grant）
+    gravity-strength: 重力强度
 wip:
   title: 正在开发中
   description: "此功能正在开发中，尚未公开发布。请在未来的更新中再次查看此功能。
@@ -2560,33 +3094,38 @@ model-select:
     remove: Remove
     confirm: Confirm
 spine:
-  title: Spine Settings
+  title: Spine 设置
   scale-and-position:
     title: Scale And Position
     scale: 缩放
     x: X
     'y': 'Y'
   theme-color-from-model:
-    title: Extract colors from model
+    title: 从模型提取颜色
     button-extract:
       title: 提取
   animation:
-    title: Animation
-    idle-animation: Idle Animation
-    mix-duration: Mix Duration (seconds)
-    speed: Animation Speed
+    title: 动画
+    idle-animation: 待机动画
+    mix-duration: 混合时长（秒）
+    speed: 动画速度
   appearance:
-    title: Appearance
+    title: 外观
   variant:
-    title: Variant
-    current-variant: Active Variant
+    title: 变体
+    current-variant: 当前变体
   skin:
-    title: Skin
-    current-skin: Current Skin
+    title: 皮肤
+    current-skin: 当前皮肤
   rendering:
-    title: Rendering
+    title: 渲染
     max-fps: 最大帧率
     render-scale: 渲染比例
+  customization:
+    independent-overlays: 独立叠加动画
+    base-idle-animation: 基础待机动画
+    extraction-disabled: 第一阶段暂不可用
+    rendering-disabled: 第一阶段暂不开放渲染控制
   fps:
     options:
       unlimited: 不限

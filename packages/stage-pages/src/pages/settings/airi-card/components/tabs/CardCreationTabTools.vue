@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { FieldCheckbox, FieldInput } from '@proj-airi/ui'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // Allowed tools model from parent CardCreationDialog
 const generationAllowedTools = defineModel<string[] | undefined>('generationAllowedTools', { required: true })
@@ -124,13 +127,13 @@ const imageJournalConflictWarning = computed(() => {
     if (!lowerContent.includes('prompt'))
       missing.push('prompt')
     if (missing.length > 0) {
-      return `Image Journal is enabled in the registry, but the instructions are missing required keyword(s): ${missing.map(m => `"${m}"`).join(', ')}.`
+      return t('settings.pages.card.creation.tools-settings.image-conflict-missing', { keywords: missing.map(m => `"${m}"`).join(', ') })
     }
   }
   else {
     // Zod disabled: check for <|image_journal
     if (!lowerContent.includes('<|image_journal')) {
-      return 'Image Journal Zod calls are disabled. Your instructions must include the token format syntax: "<|image_journal".'
+      return t('settings.pages.card.creation.tools-settings.image-conflict-token')
     }
   }
   return null
@@ -153,13 +156,13 @@ const textJournalConflictWarning = computed(() => {
     if (!lowerContent.includes('title'))
       missing.push('title')
     if (missing.length > 0) {
-      return `Text Journal is enabled in the registry, but the instructions are missing required keyword(s): ${missing.map(m => `"${m}"`).join(', ')}.`
+      return t('settings.pages.card.creation.tools-settings.text-conflict-missing', { keywords: missing.map(m => `"${m}"`).join(', ') })
     }
   }
   else {
     // Zod disabled: check for <|text_journal
     if (!lowerContent.includes('<|text_journal')) {
-      return 'Text Journal Zod calls are disabled. Your instructions must include the token format syntax: "<|text_journal".'
+      return t('settings.pages.card.creation.tools-settings.text-conflict-token')
     }
   }
   return null
@@ -169,34 +172,34 @@ const textJournalConflictWarning = computed(() => {
 <template>
   <div class="tab-content ml-auto mr-auto w-95% pb-8 space-y-8">
     <p class="text-sm text-neutral-500 dark:text-neutral-400">
-      Configure the tools, presentation formats, and introspective awareness systems available to your character.
+      {{ t('settings.pages.card.creation.tools-settings.description') }}
     </p>
 
     <!-- Group A: Tool Capability Registry -->
     <section class="border border-neutral-200 rounded-2xl bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900/40">
       <h3 class="mb-2 flex items-center gap-2 text-lg text-neutral-800 font-bold dark:text-neutral-100">
         <div class="i-solar:widget-bold-duotone text-primary-500" />
-        Allowed Tools & Capabilities
+        {{ t('settings.pages.card.creation.tools-settings.capabilities') }}
       </h3>
       <p class="mb-6 text-xs text-neutral-400 dark:text-neutral-500">
-        Toggle which system capabilities this character is allowed to use. Disabling tools prevents context pollution on smaller local models.
+        {{ t('settings.pages.card.creation.tools-settings.capabilities-description') }}
       </p>
 
       <div class="flex flex-col gap-4">
         <FieldCheckbox
           v-model="hasTextJournal"
-          label="Text Journal"
-          description="Allows the character to write, search, and recall text journal entries (text_journal)."
+          :label="t('settings.pages.card.creation.tools-settings.text-journal')"
+          :description="t('settings.pages.card.creation.tools-settings.text-journal-description')"
         />
         <FieldCheckbox
           v-model="hasImageJournal"
-          label="Image/Artistry Journal"
-          description="Allows the character to trigger ComfyUI/Replicate image generations and update the background (image_journal)."
+          :label="t('settings.pages.card.creation.tools-settings.image-journal')"
+          :description="t('settings.pages.card.creation.tools-settings.image-journal-description')"
         />
         <FieldCheckbox
           v-model="hasMcp"
-          label="External Tools (MCP)"
-          description="Allows the character to call connected Model Context Protocol (MCP) servers/APIs."
+          :label="t('settings.pages.card.creation.tools-settings.external-tools')"
+          :description="t('settings.pages.card.creation.tools-settings.external-tools-description')"
         />
       </div>
     </section>
@@ -205,38 +208,38 @@ const textJournalConflictWarning = computed(() => {
     <section class="border border-neutral-200 rounded-2xl bg-white p-6 space-y-6 dark:border-neutral-800 dark:bg-neutral-900/40">
       <h3 class="flex items-center gap-2 text-lg text-neutral-800 font-bold dark:text-neutral-100">
         <div class="i-solar:tuning-square-bold-duotone text-primary-500" />
-        Tool Presentation Formats
+        {{ t('settings.pages.card.creation.tools-settings.presentation') }}
       </h3>
       <p class="text-xs text-neutral-400 dark:text-neutral-500">
-        Load the templates and specify system instructions for enabled tools to guide the character on how and when to invoke them.
+        {{ t('settings.pages.card.creation.tools-settings.presentation-description') }}
       </p>
 
       <!-- Image Journal Configuration -->
       <div class="border-neutral-150 border-t pt-6 space-y-4 dark:border-neutral-800">
         <div class="flex items-center justify-between">
-          <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">image_journal Integration</label>
+          <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.tools-settings.integration', { tool: 'image_journal' }) }}</label>
           <div class="flex gap-2">
             <button
               type="button"
               class="dark:hover:bg-neutral-750 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-600 font-medium transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300"
               @click="loadTemplate('image', 'tool')"
             >
-              Load Tool Call Template
+              {{ t('settings.pages.card.creation.tools-settings.load-tool-template') }}
             </button>
             <button
               type="button"
               class="dark:hover:bg-neutral-750 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-600 font-medium transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300"
               @click="loadTemplate('image', 'token')"
             >
-              Load Token Template
+              {{ t('settings.pages.card.creation.tools-settings.load-token-template') }}
             </button>
           </div>
         </div>
 
         <FieldInput
           v-model="selectedImageJournalInstruction"
-          label="image_journal System Instructions"
-          description="Contextual instructions added to guide the model on how and when to use image journaling."
+          :label="t('settings.pages.card.creation.tools-settings.system-instructions', { tool: 'image_journal' })"
+          :description="t('settings.pages.card.creation.tools-settings.image-instructions-description')"
           :single-line="false"
           :rows="6"
         />
@@ -245,7 +248,7 @@ const textJournalConflictWarning = computed(() => {
         <div v-if="imageJournalConflictWarning" class="animate-in fade-in flex items-start gap-2 border border-amber-500/20 rounded-xl bg-amber-500/10 p-3 text-xs text-amber-600 duration-200 dark:text-amber-400">
           <div class="i-solar:info-circle-bold-duotone shrink-0 text-lg" />
           <div>
-            <strong>Instruction Conflict:</strong> {{ imageJournalConflictWarning }}
+            <strong>{{ t('settings.pages.card.creation.tools-settings.conflict') }}</strong> {{ imageJournalConflictWarning }}
           </div>
         </div>
       </div>
@@ -253,29 +256,29 @@ const textJournalConflictWarning = computed(() => {
       <!-- Text Journal Configuration -->
       <div class="border-neutral-150 border-t pt-6 space-y-4 dark:border-neutral-800">
         <div class="flex items-center justify-between">
-          <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">text_journal Integration</label>
+          <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.tools-settings.integration', { tool: 'text_journal' }) }}</label>
           <div class="flex gap-2">
             <button
               type="button"
               class="dark:hover:bg-neutral-750 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-600 font-medium transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300"
               @click="loadTemplate('text', 'tool')"
             >
-              Load Tool Call Template
+              {{ t('settings.pages.card.creation.tools-settings.load-tool-template') }}
             </button>
             <button
               type="button"
               class="dark:hover:bg-neutral-750 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-600 font-medium transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300"
               @click="loadTemplate('text', 'token')"
             >
-              Load Token Template
+              {{ t('settings.pages.card.creation.tools-settings.load-token-template') }}
             </button>
           </div>
         </div>
 
         <FieldInput
           v-model="selectedTextJournalInstruction"
-          label="text_journal System Instructions"
-          description="Contextual instructions added to guide the model on how and when to use text journaling."
+          :label="t('settings.pages.card.creation.tools-settings.system-instructions', { tool: 'text_journal' })"
+          :description="t('settings.pages.card.creation.tools-settings.text-instructions-description')"
           :single-line="false"
           :rows="6"
         />
@@ -284,7 +287,7 @@ const textJournalConflictWarning = computed(() => {
         <div v-if="textJournalConflictWarning" class="animate-in fade-in flex items-start gap-2 border border-amber-500/20 rounded-xl bg-amber-500/10 p-3 text-xs text-amber-600 duration-200 dark:text-amber-400">
           <div class="i-solar:info-circle-bold-duotone shrink-0 text-lg" />
           <div>
-            <strong>Instruction Conflict:</strong> {{ textJournalConflictWarning }}
+            <strong>{{ t('settings.pages.card.creation.tools-settings.conflict') }}</strong> {{ textJournalConflictWarning }}
           </div>
         </div>
       </div>
@@ -294,10 +297,10 @@ const textJournalConflictWarning = computed(() => {
     <section class="border border-neutral-200 rounded-2xl bg-white p-6 space-y-6 dark:border-neutral-800 dark:bg-neutral-900/40">
       <h3 class="mb-2 flex items-center gap-2 text-lg text-neutral-800 font-bold dark:text-neutral-100">
         <div class="i-solar:bolt-bold-duotone text-primary-500" />
-        Introspective Context Injections
+        {{ t('settings.pages.card.creation.tools-settings.introspective') }}
       </h3>
       <p class="text-xs text-neutral-400 dark:text-neutral-500">
-        Allows out-of-band background events to trigger one-time awareness clues on the next user turn.
+        {{ t('settings.pages.card.creation.tools-settings.introspective-description') }}
       </p>
 
       <div class="space-y-6">
@@ -305,8 +308,8 @@ const textJournalConflictWarning = computed(() => {
         <div class="border-neutral-150 dark:border-neutral-850 flex flex-col gap-4 border-t pt-4">
           <div class="flex items-center justify-between">
             <div class="flex flex-col gap-1 pr-4">
-              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">Enable Dream Intrusion</span>
-              <span class="text-xs text-neutral-400 dark:text-neutral-500">Inject offline consolidated dreams (Echo Chips) into the character's thoughts when resuming the chat.</span>
+              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">{{ t('settings.pages.card.creation.tools-settings.dream-intrusion') }}</span>
+              <span class="text-xs text-neutral-400 dark:text-neutral-500">{{ t('settings.pages.card.creation.tools-settings.dream-intrusion-description') }}</span>
             </div>
             <button
               type="button"
@@ -328,8 +331,8 @@ const textJournalConflictWarning = computed(() => {
           <div v-if="selectedInjectDreamContext" class="animate-in fade-in border-l-2 border-primary-500/30 pl-2 duration-200">
             <FieldInput
               v-model="selectedDreamIntrusionPrompt"
-              label="Dream Intrusion Prompt Template"
-              description="Instructions injected when a dream occurred. Variables: {timeToDream}, {insertEchoChips}."
+              :label="t('settings.pages.card.creation.tools-settings.dream-prompt')"
+              :description="t('settings.pages.card.creation.tools-settings.dream-prompt-description', { timeToDream: '{timeToDream}', insertEchoChips: '{insertEchoChips}' })"
               :single-line="false"
               :rows="4"
             />
@@ -340,8 +343,8 @@ const textJournalConflictWarning = computed(() => {
         <div v-if="hasTextJournal" class="border-neutral-150 dark:border-neutral-850 flex flex-col gap-4 border-t pt-4">
           <div class="flex items-center justify-between">
             <div class="flex flex-col gap-1 pr-4">
-              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">Enable Journal Intrusion</span>
-              <span class="text-xs text-neutral-400 dark:text-neutral-500">Prompt the character to reference their latest journal entry in their next reply.</span>
+              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">{{ t('settings.pages.card.creation.tools-settings.journal-intrusion') }}</span>
+              <span class="text-xs text-neutral-400 dark:text-neutral-500">{{ t('settings.pages.card.creation.tools-settings.journal-intrusion-description') }}</span>
             </div>
             <button
               type="button"
@@ -363,8 +366,8 @@ const textJournalConflictWarning = computed(() => {
           <div v-if="selectedInjectJournalContext" class="animate-in fade-in border-l-2 border-primary-500/30 pl-2 duration-200">
             <FieldInput
               v-model="selectedJournalIntrusionPrompt"
-              label="Journal Intrusion Prompt Template"
-              description="Instructions injected when a journal entry is written. Variables: {timeSinceJournal}, {journalEntryText}."
+              :label="t('settings.pages.card.creation.tools-settings.journal-prompt')"
+              :description="t('settings.pages.card.creation.tools-settings.journal-prompt-description', { timeSinceJournal: '{timeSinceJournal}', journalEntryText: '{journalEntryText}' })"
               :single-line="false"
               :rows="4"
             />
@@ -375,8 +378,8 @@ const textJournalConflictWarning = computed(() => {
         <div v-if="hasImageJournal" class="border-neutral-150 dark:border-neutral-850 flex flex-col gap-4 border-t pt-4">
           <div class="flex items-center justify-between">
             <div class="flex flex-col gap-1 pr-4">
-              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">Enable Artistry Intrusion</span>
-              <span class="text-xs text-neutral-400 dark:text-neutral-500">Allow the character to bring up their latest image journal creations on their next response.</span>
+              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">{{ t('settings.pages.card.creation.tools-settings.artistry-intrusion') }}</span>
+              <span class="text-xs text-neutral-400 dark:text-neutral-500">{{ t('settings.pages.card.creation.tools-settings.artistry-intrusion-description') }}</span>
             </div>
             <button
               type="button"
@@ -398,8 +401,8 @@ const textJournalConflictWarning = computed(() => {
           <div v-if="selectedInjectArtistryContext" class="animate-in fade-in border-l-2 border-primary-500/30 pl-2 duration-200">
             <FieldInput
               v-model="selectedArtistryIntrusionPrompt"
-              label="Artistry Intrusion Prompt Template"
-              description="Instructions injected when an image artwork is generated. Variables: {imagePrompt}."
+              :label="t('settings.pages.card.creation.tools-settings.artistry-prompt')"
+              :description="t('settings.pages.card.creation.tools-settings.artistry-prompt-description', { imagePrompt: '{imagePrompt}' })"
               :single-line="false"
               :rows="4"
             />

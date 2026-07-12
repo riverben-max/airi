@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 interface Props {
@@ -25,9 +26,12 @@ const emit = defineEmits<{
   (e: 'save', payload: { baseProvider: string, baseModel: string, baseVoice: string }): void
 }>()
 
+const { t } = useI18n()
+
 const providersStore = useProvidersStore()
 const speechStore = useSpeechStore()
 
+const translatedDefaultTestText = computed(() => t('settings.pages.card.creation.voice.preview-text'))
 const voiceForm = ref({
   name: '',
   baseProvider: 'kokoro-local',
@@ -36,13 +40,18 @@ const voiceForm = ref({
   pitch: 1.0,
   rate: 1.0,
   filterByGender: true,
-  testText: 'Hello! This is a preview of my new voice. How does it sound?',
+  testText: translatedDefaultTestText.value,
+})
+
+watch(translatedDefaultTestText, (nextDefault, previousDefault) => {
+  if (voiceForm.value.testText === previousDefault)
+    voiceForm.value.testText = nextDefault
 })
 
 const speechProviders = computed(() => {
   const list = [
-    { value: 'kokoro-local', label: 'Kokoro TTS (Local)' },
-    { value: 'virtual-audio-studio', label: 'Audio Studio (Saved Profiles)' },
+    { value: 'kokoro-local', label: t('settings.pages.card.creation.voice.providers.kokoro-local') },
+    { value: 'virtual-audio-studio', label: t('settings.pages.card.creation.voice.providers.audio-studio') },
   ]
   providersStore.configuredSpeechProvidersMetadata.forEach((meta) => {
     if (meta.id !== 'kokoro-local' && meta.id !== 'virtual-audio-studio' && meta.id !== 'speech-noop') {
@@ -195,7 +204,7 @@ function handleSave() {
   }
 
   speechStore.saveVoiceProfile(newProfile as any)
-  toast.success(`Voice profile "${voiceForm.value.name}" created!`)
+  toast.success(t('settings.pages.card.creation.voice.created', { name: voiceForm.value.name }))
   emit('save', {
     baseProvider: 'virtual-audio-studio',
     baseModel: 'virtual',
@@ -206,11 +215,11 @@ function handleSave() {
 
 async function playVoicePreview() {
   try {
-    toast.info('Synthesizing audio preview...')
+    toast.info(t('settings.pages.card.creation.voice.synthesizing'))
     if (voiceForm.value.baseProvider === 'virtual-audio-studio') {
       const provider = await providersStore.getProviderInstance('virtual-audio-studio')
       if (!provider) {
-        throw new Error('Virtual Audio Studio provider is not active.')
+        throw new Error(t('settings.pages.card.creation.voice.errors.studio-inactive'))
       }
       const audioData = await speechStore.speech(
         provider as any,
@@ -226,7 +235,7 @@ async function playVoicePreview() {
 
     const provider = await providersStore.getProviderInstance(voiceForm.value.baseProvider)
     if (!provider) {
-      throw new Error(`Provider "${voiceForm.value.baseProvider}" is not active or configured. Please enable it in Settings > Providers.`)
+      throw new Error(t('settings.pages.card.creation.voice.errors.provider-inactive', { provider: voiceForm.value.baseProvider }))
     }
     const model = voiceForm.value.baseProvider === 'kokoro-local'
       ? ((providersStore.getProviderConfig('kokoro-local')?.model as string) || 'q4')
@@ -244,7 +253,7 @@ async function playVoicePreview() {
   }
   catch (err: any) {
     console.error('[VoiceCreatorModal] Play preview error:', err)
-    toast.error(err.message || 'Failed to play voice preview.')
+    toast.error(err.message || t('settings.pages.card.creation.voice.errors.preview'))
   }
 }
 </script>
@@ -264,7 +273,7 @@ async function playVoicePreview() {
               <div class="i-solar:music-notes-bold-duotone text-xl" />
             </div>
             <DialogTitle class="text-base text-neutral-800 font-bold dark:text-neutral-100">
-              Configure Custom Voice
+              {{ t('settings.pages.card.creation.voice.title') }}
             </DialogTitle>
           </div>
         </div>
@@ -272,20 +281,20 @@ async function playVoicePreview() {
         <!-- Form fields -->
         <div class="flex flex-1 flex-col gap-5 overflow-y-auto p-6 sm:p-8">
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Voice Provider</label>
+            <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.provider') }}</label>
             <Select v-model="voiceForm.baseProvider" :options="speechProviders" />
           </div>
           <!-- Loading indicator -->
           <div v-if="isLoadingProviderData" class="flex items-center gap-2 border border-primary-500/20 rounded-xl bg-primary-500/5 px-4 py-2 text-xs text-primary-600 dark:text-primary-400">
             <span class="i-solar:restart-square-outline animate-spin text-base" />
-            <span>Fetching speech voices and models details...</span>
+            <span>{{ t('settings.pages.card.creation.voice.loading') }}</span>
           </div>
 
           <!-- Kokoro Specialized Controls -->
           <div v-if="voiceForm.baseProvider === 'kokoro-local'" class="flex flex-col gap-5">
             <!-- Voice Name -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Voice Profile Name</label>
+              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.profile-name') }}</label>
               <input
                 v-model="voiceForm.name"
                 type="text"
@@ -296,9 +305,9 @@ async function playVoicePreview() {
             <!-- Kokoro Preset Voice Grid -->
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
-                <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Select Voice Preset</label>
+                <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.preset') }}</label>
                 <div class="flex items-center gap-2">
-                  <span class="text-[10px] text-neutral-500 font-semibold">Gender Filter:</span>
+                  <span class="text-[10px] text-neutral-500 font-semibold">{{ t('settings.pages.card.creation.voice.gender-filter') }}</span>
                   <input
                     v-model="voiceForm.filterByGender"
                     type="checkbox"
@@ -341,7 +350,7 @@ async function playVoicePreview() {
               <!-- Pitch -->
               <div class="flex flex-col gap-1.5">
                 <div class="flex items-center justify-between">
-                  <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Pitch Shift</label>
+                  <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.pitch') }}</label>
                   <span class="text-xs text-primary-500 font-semibold">{{ voiceForm.pitch.toFixed(1) }}x</span>
                 </div>
                 <input
@@ -357,7 +366,7 @@ async function playVoicePreview() {
               <!-- Speed -->
               <div class="flex flex-col gap-1.5">
                 <div class="flex items-center justify-between">
-                  <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Speech Speed</label>
+                  <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.speed') }}</label>
                   <span class="text-xs text-primary-500 font-semibold">{{ voiceForm.rate.toFixed(1) }}x</span>
                 </div>
                 <input
@@ -376,7 +385,7 @@ async function playVoicePreview() {
           <div v-else class="flex flex-col gap-4">
             <!-- Voice Name -->
             <div v-if="voiceForm.baseProvider !== 'virtual-audio-studio'" class="flex flex-col gap-1.5">
-              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Voice Profile Name</label>
+              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.profile-name') }}</label>
               <input
                 v-model="voiceForm.name"
                 type="text"
@@ -386,12 +395,12 @@ async function playVoicePreview() {
 
             <!-- Model Select -->
             <div v-if="voiceForm.baseProvider !== 'virtual-audio-studio'" class="flex flex-col gap-1.5">
-              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Speech Model</label>
+              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.model') }}</label>
               <Select
                 v-if="selectedProviderModels.length > 0"
                 v-model="voiceForm.baseModel"
                 :options="selectedProviderModels.map(m => ({ value: m.id, label: m.name || m.id }))"
-                placeholder="Select model"
+                :placeholder="t('settings.pages.card.creation.voice.select-model')"
               />
               <input
                 v-else
@@ -404,12 +413,12 @@ async function playVoicePreview() {
 
             <!-- Voice ID Select -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Speech Voice ID / Profile</label>
+              <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.voice-id') }}</label>
               <Select
                 v-if="selectedProviderVoices.length > 0"
                 v-model="voiceForm.baseVoice"
                 :options="selectedProviderVoices.map(v => ({ value: v.id, label: v.gender === 'saved profile' ? v.name : `${v.name} (${v.gender})` }))"
-                placeholder="Select voice"
+                :placeholder="t('settings.pages.card.creation.voice.select-voice')"
               />
               <input
                 v-else
@@ -423,7 +432,7 @@ async function playVoicePreview() {
 
           <!-- Playground -->
           <div class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800/60">
-            <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">Voice Playground</label>
+            <label class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase dark:text-neutral-500">{{ t('settings.pages.card.creation.voice.playground') }}</label>
             <div class="flex gap-2">
               <input
                 v-model="voiceForm.testText"
@@ -436,7 +445,7 @@ async function playVoicePreview() {
                 @click="playVoicePreview"
               >
                 <div i-solar:play-circle-bold-duotone class="text-sm" />
-                Play
+                {{ t('settings.pages.card.creation.voice.play') }}
               </Button>
             </div>
           </div>
@@ -449,14 +458,14 @@ async function playVoicePreview() {
             class="h-[36px] border border-neutral-200 rounded-xl px-4 text-xs font-bold dark:border-neutral-800"
             @click="emit('update:modelValue', false)"
           >
-            Cancel
+            {{ t('settings.pages.card.creation.actions.cancel') }}
           </Button>
           <Button
             variant="primary"
             class="h-[36px] border border-primary-500/20 rounded-xl px-5 text-xs font-bold shadow-lg shadow-primary-500/10"
             @click="handleSave"
           >
-            Save Voice Profile
+            {{ t('settings.pages.card.creation.voice.save') }}
           </Button>
         </div>
       </DialogContent>

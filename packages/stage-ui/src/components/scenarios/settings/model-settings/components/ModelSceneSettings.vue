@@ -23,13 +23,13 @@ const { t } = useI18n()
 const activeTab = ref('placement')
 
 const tabOptions = computed(() => [
-  { value: 'placement', label: 'Placement', icon: 'i-solar:square-academic-cap-bold-duotone' },
-  { value: 'lighting', label: 'Lighting', icon: 'i-solar:lightbulb-bold-duotone' },
+  { value: 'placement', label: t('settings.model-settings.common.tabs.placement'), icon: 'i-solar:square-academic-cap-bold-duotone' },
+  { value: 'lighting', label: t('settings.model-settings.common.tabs.lighting'), icon: 'i-solar:lightbulb-bold-duotone' },
 ])
 
 const envOptions = computed(() => [
-  { value: 'hemisphere', label: 'Hemisphere', icon: 'i-solar:globus-bold-duotone' },
-  { value: 'skyBox', label: 'SkyBox', icon: 'i-solar:panorama-bold-duotone' },
+  { value: 'hemisphere', label: t('settings.model-settings.common.scene.hemisphere'), icon: 'i-solar:globus-bold-duotone' },
+  { value: 'skyBox', label: t('settings.model-settings.common.scene.skybox'), icon: 'i-solar:panorama-bold-duotone' },
 ])
 
 const settingsLockClass = computed(() => props.sceneMutationLocked ? 'pointer-events-none opacity-50' : '')
@@ -138,8 +138,8 @@ const computedScale = computed({
           />
           <PropertyNumber
             v-model="computedScale"
-            :config="{ min: props.positioningStore ? 0.1 : props.modelSize.z || 0.1, max: props.positioningStore ? 5 : (props.modelSize.z || 1) * 20, step: 0.01, label: props.positioningStore ? 'Scale' : t('settings.vrm.scale-and-position.camera-distance'), formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
-            :label="props.positioningStore ? 'Scale' : t('settings.vrm.scale-and-position.camera-distance')"
+            :config="{ min: props.positioningStore ? 0.1 : props.modelSize.z || 0.1, max: props.positioningStore ? 5 : (props.modelSize.z || 1) * 20, step: 0.01, label: props.positioningStore ? t('settings.vrm.scale-and-position.scale') : t('settings.vrm.scale-and-position.camera-distance'), formatValue: val => val?.toFixed(4), disabled: sceneMutationLocked }"
+            :label="props.positioningStore ? t('settings.vrm.scale-and-position.scale') : t('settings.vrm.scale-and-position.camera-distance')"
           />
           <PropertyNumber
             v-model="props.store.cameraFOV"
@@ -154,28 +154,28 @@ const computedScale = computed({
         <!-- Directional Light -->
         <div flex="~ col gap-2">
           <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            Directional Light
+            {{ t('settings.model-settings.common.scene.directional-light') }}
           </div>
           <div grid="~ cols-5 gap-y-2 gap-x-1" items-center>
             <PropertyNumber
               v-model="props.store.directionalLightRotation.x"
               :config="{ min: -180, max: 180, step: 1, label: 'X°', formatValue: val => val?.toFixed(0), disabled: sceneMutationLocked }"
-              label="Rotation X"
+              :label="t('settings.model-settings.common.scene.rotation-x')"
             />
             <PropertyNumber
               v-model="props.store.directionalLightRotation.y"
               :config="{ min: -180, max: 180, step: 1, label: 'Y°', formatValue: val => val?.toFixed(0), disabled: sceneMutationLocked }"
-              label="Rotation Y"
+              :label="t('settings.model-settings.common.scene.rotation-y')"
             />
             <PropertyColor
               v-model="props.store.directionalLightColor"
               :disabled="sceneMutationLocked"
-              label="Color"
+              :label="t('settings.model-settings.common.scene.color')"
             />
             <PropertyNumber
               v-model="props.store.directionalLightIntensity"
-              :config="{ min: 0, max: 10, step: 0.01, label: 'Intensity', disabled: sceneMutationLocked }"
-              label="Intensity"
+              :config="{ min: 0, max: 10, step: 0.01, label: t('settings.model-settings.common.scene.intensity'), disabled: sceneMutationLocked }"
+              :label="t('settings.model-settings.common.scene.intensity')"
             />
           </div>
         </div>
@@ -183,18 +183,18 @@ const computedScale = computed({
         <!-- Ambient Light -->
         <div flex="~ col gap-2">
           <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            Ambient Light
+            {{ t('settings.model-settings.common.scene.ambient-light') }}
           </div>
           <div grid="~ cols-5 gap-y-2 gap-x-1" items-center>
             <PropertyColor
               v-model="props.store.ambientLightColor"
               :disabled="sceneMutationLocked"
-              label="Color"
+              :label="t('settings.model-settings.common.scene.color')"
             />
             <PropertyNumber
               v-model="props.store.ambientLightIntensity"
-              :config="{ min: 0, max: 10, step: 0.01, label: 'Intensity', disabled: sceneMutationLocked }"
-              label="Intensity"
+              :config="{ min: 0, max: 10, step: 0.01, label: t('settings.model-settings.common.scene.intensity'), disabled: sceneMutationLocked }"
+              :label="t('settings.model-settings.common.scene.intensity')"
             />
           </div>
         </div>
@@ -202,7 +202,7 @@ const computedScale = computed({
         <!-- Environment -->
         <div flex="~ col gap-2">
           <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            Environment
+            {{ t('settings.model-settings.common.scene.environment') }}
           </div>
           <div class="mb-1">
             <SelectTab v-model="props.store.envSelect" :options="envOptions" :disabled="sceneMutationLocked" size="sm" />
@@ -212,24 +212,24 @@ const computedScale = computed({
             <PropertyColor
               v-model="props.store.hemisphereSkyColor"
               :disabled="sceneMutationLocked"
-              label="Sky Color"
+              :label="t('settings.model-settings.common.scene.sky-color')"
             />
             <PropertyColor
               v-model="props.store.hemisphereGroundColor"
               :disabled="sceneMutationLocked"
-              label="Ground Color"
+              :label="t('settings.model-settings.common.scene.ground-color')"
             />
             <PropertyNumber
               v-model="props.store.hemisphereLightIntensity"
-              :config="{ min: 0, max: 10, step: 0.01, label: 'Intensity', disabled: sceneMutationLocked }"
-              label="Intensity"
+              :config="{ min: 0, max: 10, step: 0.01, label: t('settings.model-settings.common.scene.intensity'), disabled: sceneMutationLocked }"
+              :label="t('settings.model-settings.common.scene.intensity')"
             />
           </div>
           <div v-else grid="~ cols-5 gap-y-2 gap-x-1" items-center>
             <PropertyNumber
               v-model="props.store.skyBoxIntensity"
-              :config="{ min: 0, max: 1, step: 0.01, label: 'Intensity', disabled: sceneMutationLocked }"
-              label="Skybox Intensity"
+              :config="{ min: 0, max: 1, step: 0.01, label: t('settings.model-settings.common.scene.intensity'), disabled: sceneMutationLocked }"
+              :label="t('settings.model-settings.common.scene.skybox-intensity')"
             />
           </div>
         </div>

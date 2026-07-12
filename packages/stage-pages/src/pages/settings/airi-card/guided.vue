@@ -11,11 +11,21 @@ import { useSettingsUserProfile } from '@proj-airi/stage-ui/stores/settings/user
 import { Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import AutoVoiceConfigModal from './components/AutoVoiceConfigModal.vue'
 import VoiceCreatorModal from './components/VoiceCreatorModal.vue'
+
+const { t } = useI18n()
+const genderOptions = computed(() => [
+  { value: null, label: t('settings.pages.card.creation.guided.genders.all') },
+  { value: 'Female', label: t('settings.pages.card.creation.guided.genders.female') },
+  { value: 'Male', label: t('settings.pages.card.creation.guided.genders.male') },
+  { value: 'Ambiguous', label: t('settings.pages.card.creation.guided.genders.ambiguous') },
+  { value: 'Non-Human', label: t('settings.pages.card.creation.guided.genders.non-human') },
+])
 
 const router = useRouter()
 const wizardStore = useAnimaDexWizardStore()
@@ -155,7 +165,7 @@ function selectSuggestion(item: any) {
     const char = wizardStore.characters.find(c => c.name === item.label)
     if (char) {
       wizardStore.addCharacterToBasket(char)
-      toast.success(`Added ${char.name} to cast`)
+      toast.success(t('settings.pages.card.creation.guided.added-to-cast', { name: char.name }))
     }
   }
   else {
@@ -228,14 +238,14 @@ function unbindModel(trigger: string) {
         console.error('Failed to update blacklist:', e)
       }
 
-      toast.success('Model association removed.')
+      toast.success(t('settings.pages.card.creation.guided.model-removed'))
       // Force trigger reactivity update on wizardStore's filteredCharacters computed
       showOnlyModels.value = !showOnlyModels.value
       showOnlyModels.value = !showOnlyModels.value
     }
   }
   catch (e: any) {
-    toast.error(`Failed to unbind model: ${e.message}`)
+    toast.error(t('settings.pages.card.creation.guided.unbind-failed', { error: e.message }))
   }
 }
 
@@ -352,11 +362,11 @@ async function fetchStoryIdeas(guidance = '') {
     const activeModel = consciousnessStore.activeModel
     const activeProviderName = consciousnessStore.activeProvider
     if (!activeModel || !activeProviderName) {
-      throw new Error('No active LLM configured.')
+      throw new Error(t('settings.pages.card.creation.guided.errors.no-llm'))
     }
     const providerInstance = await providersStore.getProviderInstance(activeProviderName)
     if (!providerInstance) {
-      throw new Error('Failed to retrieve provider instance.')
+      throw new Error(t('settings.pages.card.creation.guided.errors.provider-unavailable'))
     }
     const castInfo = selectedCharacters.value.map((c) => {
       const series = wizardStore.copyrights[c.copyrightIndex] || 'Unknown'
@@ -390,7 +400,7 @@ Return ONLY a raw JSON array (no markdown, no wrapping text). Each element must 
   }
   catch (e) {
     console.error('[Story Suggester] Error:', e)
-    toast.error('Could not generate story ideas. Check your LLM provider.')
+    toast.error(t('settings.pages.card.creation.guided.errors.story-ideas'))
   }
   finally {
     isSuggestingIdeas.value = false
@@ -480,11 +490,11 @@ async function handleGenerate(guidance = '') {
     const activeModel = consciousnessStore.activeModel
     const activeProviderName = consciousnessStore.activeProvider
     if (!activeModel || !activeProviderName) {
-      throw new Error('No active LLM configured.')
+      throw new Error(t('settings.pages.card.creation.guided.errors.no-llm'))
     }
     const providerInstance = await providersStore.getProviderInstance(activeProviderName)
     if (!providerInstance) {
-      throw new Error('Failed to retrieve provider instance.')
+      throw new Error(t('settings.pages.card.creation.guided.errors.provider-unavailable'))
     }
 
     const systemMsg = `You are a professional character card writer. Based on the cast payload, synthesize a single cohesive roleplay card.
@@ -527,11 +537,11 @@ Return ONLY a raw JSON block.`
 
     const cleaned = response.text?.trim().replace(/^```json\s*/i, '').replace(/```$/, '').trim()
     synthesisProposal.value = JSON.parse(cleaned || '{}')
-    toast.success('World synthesized successfully!')
+    toast.success(t('settings.pages.card.creation.guided.success.synthesized'))
   }
   catch (error: any) {
     console.error('[AnimaDexWizard] Synthesis error:', error)
-    toast.error(`Synthesis failed: ${error.message}. Compiling mock placeholder proposal.`)
+    toast.error(t('settings.pages.card.creation.guided.errors.synthesis', { error: error.message }))
 
     // Fallback to high-fidelity mock proposal matching selected characters so the UI is always usable
     const firstChar = selectedCharacters.value[0]?.name || 'World'
@@ -780,12 +790,12 @@ async function doCreateCard(): Promise<boolean> {
 
     const newCardId = await airiCardStore.addCard(newCard)
     await airiCardStore.activateCard(newCardId)
-    toast.success('Card created and set active!')
+    toast.success(t('settings.pages.card.creation.guided.success.created'))
     return true
   }
   catch (e: any) {
     console.error('[AnimaDexWizard] Error creating card:', e)
-    toast.error(`Failed to create card: ${e.message}`)
+    toast.error(t('settings.pages.card.creation.guided.errors.create', { error: e.message }))
     return false
   }
 }
@@ -812,6 +822,7 @@ async function confirmCreateCard() {
         <Button
           variant="ghost"
           class="border border-neutral-800 rounded-xl p-2 hover:bg-neutral-800/50"
+          :aria-label="t('settings.pages.card.creation.actions.back')"
           @click="handleBack"
         >
           <div i-solar:arrow-left-outline class="text-lg" />
@@ -819,27 +830,27 @@ async function confirmCreateCard() {
         <div class="flex items-center gap-2">
           <div i-solar:magic-stick-3-line-duotone class="text-base text-primary-500" />
           <h2 class="text-sm text-neutral-100 font-bold leading-none">
-            AnimaDex Wizard
+            {{ t('settings.pages.card.creation.guided.title') }}
           </h2>
         </div>
       </div>
 
       <!-- Step Indicator -->
       <div class="mr-4 flex items-center gap-2 text-xs font-semibold">
-        <span :class="[currentStep >= 1 ? 'text-primary-500' : 'text-neutral-600']">1. Cast Selection</span>
+        <span :class="[currentStep >= 1 ? 'text-primary-500' : 'text-neutral-600']">{{ t('settings.pages.card.creation.guided.steps.cast') }}</span>
         <div i-solar:alt-arrow-right-line-duotone class="text-neutral-700" />
-        <span :class="[currentStep >= 2 ? 'text-primary-500' : 'text-neutral-600']">2. Roster Settings</span>
+        <span :class="[currentStep >= 2 ? 'text-primary-500' : 'text-neutral-600']">{{ t('settings.pages.card.creation.guided.steps.roster') }}</span>
         <div i-solar:alt-arrow-right-line-duotone class="text-neutral-700" />
-        <span :class="[currentStep >= 3 ? 'text-primary-500' : 'text-neutral-600']">3. Story Prompts</span>
+        <span :class="[currentStep >= 3 ? 'text-primary-500' : 'text-neutral-600']">{{ t('settings.pages.card.creation.guided.steps.story') }}</span>
         <div i-solar:alt-arrow-right-line-duotone class="text-neutral-700" />
-        <span :class="[currentStep >= 4 ? 'text-primary-500' : 'text-neutral-600']">4. LLM Synthesis</span>
+        <span :class="[currentStep >= 4 ? 'text-primary-500' : 'text-neutral-600']">{{ t('settings.pages.card.creation.guided.steps.synthesis') }}</span>
       </div>
     </header>
 
     <!-- Content loading state -->
     <div v-if="!catalogLoaded" class="flex flex-1 flex-col items-center justify-center gap-3">
       <div class="h-8 w-8 animate-spin border-2 border-primary-500 border-t-transparent rounded-full" />
-      <span class="text-sm text-neutral-500">Loading catalog database...</span>
+      <span class="text-sm text-neutral-500">{{ t('settings.pages.card.creation.guided.loading') }}</span>
     </div>
 
     <!-- main workspace -->
@@ -854,7 +865,7 @@ async function confirmCreateCard() {
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search characters by name, series, or tags (e.g. 'blonde hair')..."
+                :placeholder="t('settings.pages.card.creation.guided.search-placeholder')"
                 class="flex-1 border-none bg-transparent py-3 text-sm text-neutral-200 outline-none placeholder-neutral-500"
                 @focus="isSearchFocused = true"
                 @keydown.enter="handleSearchEnter"
@@ -862,6 +873,7 @@ async function confirmCreateCard() {
               <button
                 v-if="searchQuery"
                 class="p-1 text-neutral-500 hover:text-neutral-300"
+                :aria-label="t('settings.pages.card.creation.guided.clear-search')"
                 @click="searchQuery = ''"
               >
                 <div i-solar:close-circle-bold class="text-base" />
@@ -881,9 +893,9 @@ async function confirmCreateCard() {
                   @mousedown="selectSuggestion(item)"
                 >
                   <div class="flex items-center gap-2">
-                    <span v-if="item.type === 'tag'" class="text-xs text-neutral-500">🏷️ Tag:</span>
-                    <span v-else-if="item.type === 'copyright'" class="text-xs text-neutral-500">🎬 Series:</span>
-                    <span v-else-if="item.type === 'character'" class="text-xs text-neutral-500">👤 Character:</span>
+                    <span v-if="item.type === 'tag'" class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.guided.result-types.tag') }}</span>
+                    <span v-else-if="item.type === 'copyright'" class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.guided.result-types.series') }}</span>
+                    <span v-else-if="item.type === 'character'" class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.guided.result-types.character') }}</span>
                     <span class="text-sm text-neutral-200 font-medium">{{ item.label }}</span>
                   </div>
                   <span v-if="item.extra" class="text-xs text-neutral-500 font-normal italic">
@@ -896,7 +908,7 @@ async function confirmCreateCard() {
 
           <!-- Active Chip Filters -->
           <div v-if="selectedChips.length > 0" class="mx-auto max-w-2xl w-full flex flex-wrap items-center gap-2">
-            <span class="mr-1 text-xs text-neutral-500 font-bold tracking-wider uppercase">Active filters:</span>
+            <span class="mr-1 text-xs text-neutral-500 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.active-filters') }}</span>
             <div
               v-for="(chip, index) in selectedChips"
               :key="index"
@@ -904,7 +916,7 @@ async function confirmCreateCard() {
             >
               <span class="text-[10px] capitalize opacity-70">{{ chip.type }}:</span>
               <span>{{ chip.value }}</span>
-              <button class="ml-1 hover:text-white" @click="wizardStore.removeChip(index)">
+              <button class="ml-1 hover:text-white" :aria-label="t('settings.pages.card.creation.guided.remove-filter', { type: chip.type, value: chip.value })" @click="wizardStore.removeChip(index)">
                 <div i-solar:close-circle-bold class="text-xs" />
               </button>
             </div>
@@ -912,15 +924,15 @@ async function confirmCreateCard() {
 
           <!-- Root Gender Selector Row -->
           <div class="mt-1 flex items-center justify-center gap-2.5">
-            <span class="mr-2 text-xs text-neutral-500 font-bold tracking-wider uppercase">Gender:</span>
+            <span class="mr-2 text-xs text-neutral-500 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.gender') }}</span>
             <Button
-              v-for="g in ['All', 'Female', 'Male', 'Ambiguous', 'Non-Human']"
-              :key="g"
-              :variant="selectedGender === (g === 'All' ? null : g) ? 'primary' : 'secondary'"
+              v-for="gender in genderOptions"
+              :key="gender.label"
+              :variant="selectedGender === gender.value ? 'primary' : 'secondary'"
               class="h-[30px] border border-neutral-800 rounded-lg px-3.5 text-xs"
-              @click="wizardStore.setGender(g === 'All' ? null : g)"
+              @click="wizardStore.setGender(gender.value)"
             >
-              {{ g }}
+              {{ gender.label }}
             </Button>
             <span class="mx-2 text-neutral-800">|</span>
             <Button
@@ -928,7 +940,7 @@ async function confirmCreateCard() {
               class="h-[30px] flex items-center gap-1 border border-neutral-800 rounded-lg px-3.5 text-xs"
               @click="showOnlyModels = !showOnlyModels"
             >
-              <span>🎭 Has Model ({{ boundCharactersCount }})</span>
+              <span>{{ t('settings.pages.card.creation.guided.has-model', { count: boundCharactersCount }) }}</span>
             </Button>
           </div>
         </div>
@@ -937,7 +949,7 @@ async function confirmCreateCard() {
         <div class="flex-1 overflow-y-auto p-6" @scroll="handleScroll">
           <div v-if="filteredCharacters.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-500">
             <div i-solar:sad-ellipse-line-duotone class="mb-2 text-5xl text-neutral-700" />
-            <span class="text-sm">No matching characters found in catalog.</span>
+            <span class="text-sm">{{ t('settings.pages.card.creation.guided.no-matches') }}</span>
           </div>
 
           <div v-else class="grid grid-cols-2 gap-5 lg:grid-cols-5 md:grid-cols-4 sm:grid-cols-3 xl:grid-cols-6">
@@ -974,7 +986,7 @@ async function confirmCreateCard() {
                       @click="wizardStore.addCharacterToBasket(char)"
                     >
                       <div i-solar:add-square-line-duotone class="text-sm" />
-                      Add to World
+                      {{ t('settings.pages.card.creation.guided.add-to-world') }}
                     </Button>
                     <Button
                       v-else
@@ -983,7 +995,7 @@ async function confirmCreateCard() {
                       @click="wizardStore.removeCharacterFromBasket(char.id)"
                     >
                       <div i-solar:trash-bin-trash-outline class="text-sm" />
-                      Remove
+                      {{ t('settings.pages.card.creation.guided.remove') }}
                     </Button>
                     <!-- Secondary Model Actions (Visible if a model is bound - stacked vertically to prevent horizontal overflow) -->
                     <div v-if="hasBoundModel(char.trigger)" class="mt-1 w-full flex flex-col gap-1">
@@ -994,7 +1006,7 @@ async function confirmCreateCard() {
                         @click="showModelPreviews[char.id] = !showModelPreviews[char.id]"
                       >
                         <div i-solar:eye-bold-duotone class="text-[10px]" />
-                        Preview Toggle
+                        {{ t('settings.pages.card.creation.guided.preview-toggle') }}
                       </Button>
                       <Button
                         variant="danger"
@@ -1002,7 +1014,7 @@ async function confirmCreateCard() {
                         @click="unbindModel(char.trigger)"
                       >
                         <div i-solar:broken-link-outline class="text-[10px]" />
-                        Unbind Model
+                        {{ t('settings.pages.card.creation.guided.unbind-model') }}
                       </Button>
                     </div>
                   </div>
@@ -1015,7 +1027,7 @@ async function confirmCreateCard() {
                   {{ char.name }}
                 </h4>
                 <p class="line-clamp-1 mt-0.5 text-[10px] text-neutral-500 italic">
-                  {{ wizardStore.copyrights[char.copyrightIndex] || 'Original' }}
+                  {{ wizardStore.copyrights[char.copyrightIndex] || t('settings.pages.card.creation.guided.original') }}
                 </p>
               </div>
             </div>
@@ -1030,8 +1042,8 @@ async function confirmCreateCard() {
           >
             <div class="flex items-center gap-4">
               <div class="flex flex-col">
-                <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">World Cast</span>
-                <span class="text-[10px] text-neutral-500">{{ selectedCharacters.length }} characters selected</span>
+                <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.world-cast') }}</span>
+                <span class="text-[10px] text-neutral-500">{{ t('settings.pages.card.creation.guided.selected-count', { count: selectedCharacters.length }) }}</span>
               </div>
 
               <!-- Cast avatars -->
@@ -1040,7 +1052,7 @@ async function confirmCreateCard() {
                   v-for="char in selectedCharacters"
                   :key="char.id"
                   class="group relative h-10 w-10 flex-shrink-0 cursor-pointer overflow-hidden border border-neutral-800 rounded-full transition-colors hover:border-red-500"
-                  :title="`Remove ${char.name}`"
+                  :title="t('settings.pages.card.creation.guided.remove-character', { name: char.name })"
                   @click="wizardStore.removeCharacterFromBasket(char.id)"
                 >
                   <img :src="getThumbUrl(char.trigger)" alt="" class="h-full w-full object-cover">
@@ -1057,7 +1069,7 @@ async function confirmCreateCard() {
               class="h-[40px] flex items-center gap-1.5 border border-primary-500/20 rounded-xl px-5 text-xs font-bold shadow-lg shadow-primary-500/10"
               @click="handleNext"
             >
-              Next: Align Roster
+              {{ t('settings.pages.card.creation.guided.next-align-roster') }}
               <div i-solar:alt-arrow-right-bold class="text-base" />
             </Button>
           </div>
@@ -1070,7 +1082,7 @@ async function confirmCreateCard() {
           <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
             <h3 class="flex items-center gap-2 text-lg text-neutral-200 font-bold">
               <div i-solar:user-circle-bold-duotone class="text-primary-500" />
-              Actor Alignment (Visual & Audio Settings)
+              {{ t('settings.pages.card.creation.guided.roster-title') }}
             </h3>
 
             <Button
@@ -1080,7 +1092,7 @@ async function confirmCreateCard() {
               @click="autoVoiceModalOpen = true"
             >
               <div i-solar:magic-stick-3-bold-duotone class="text-sm" />
-              Auto-Assign Voices & Motions
+              {{ t('settings.pages.card.creation.guided.auto-assign') }}
             </Button>
           </div>
 
@@ -1088,12 +1100,12 @@ async function confirmCreateCard() {
           <div class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 border border-neutral-800/50 rounded-xl bg-neutral-900/60 px-4 py-2.5">
             <div class="flex items-center gap-1.5">
               <div i-solar:gallery-bold class="shrink-0 text-xs text-neutral-500" />
-              <span class="text-xs text-neutral-500">Tap the avatar to bind a 3D model</span>
+              <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.guided.bind-model-hint') }}</span>
             </div>
             <span class="text-xs text-neutral-700">·</span>
             <div class="flex items-center gap-1.5">
               <div i-solar:user-speak-linear class="shrink-0 text-xs text-neutral-500" />
-              <span class="text-xs text-neutral-500">Tap the voice button to set a TTS voice</span>
+              <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.guided.bind-voice-hint') }}</span>
             </div>
           </div>
 
@@ -1112,7 +1124,7 @@ async function confirmCreateCard() {
                 <div class="min-w-0 flex flex-col">
                   <span class="truncate text-sm text-neutral-100 font-bold">{{ char.name }}</span>
                   <span class="truncate text-xs text-neutral-500 italic">
-                    {{ copyrights[char.copyrightIndex] || 'Original' }}
+                    {{ copyrights[char.copyrightIndex] || t('settings.pages.card.creation.guided.original') }}
                   </span>
                 </div>
               </div>
@@ -1122,10 +1134,10 @@ async function confirmCreateCard() {
                 <!-- Micro-labels row -->
                 <div class="flex items-center gap-3">
                   <div class="w-11 shrink-0 text-center text-[9px] text-primary-400 font-black tracking-wider uppercase">
-                    Bind
+                    {{ t('settings.pages.card.creation.guided.bind') }}
                   </div>
                   <div class="flex-1 text-[9px] text-primary-400 font-black tracking-wider uppercase">
-                    Set Voice
+                    {{ t('settings.pages.card.creation.guided.set-voice') }}
                   </div>
                   <div class="w-[38px] shrink-0" />
                 </div>
@@ -1135,7 +1147,7 @@ async function confirmCreateCard() {
                   <!-- Avatar circle -->
                   <div
                     class="relative shrink-0 cursor-pointer transition-transform hover:scale-105"
-                    title="Select Model / Avatar"
+                    :title="t('settings.pages.card.creation.guided.select-model-character', { name: char.name })"
                     @click="openModelSelector(char.id)"
                   >
                     <div class="h-11 w-11 flex items-center justify-center overflow-hidden border border-neutral-800 rounded-full bg-neutral-900">
@@ -1158,7 +1170,7 @@ async function confirmCreateCard() {
                   <div class="min-w-0 flex flex-1 items-center gap-2 border border-neutral-800 rounded-xl bg-neutral-950/40 px-3 py-2">
                     <div i-solar:music-bold class="shrink-0 text-sm text-neutral-600" />
                     <span class="truncate text-xs text-neutral-300">
-                      {{ boundVoices[char.id] ? (boundVoices[char.id].baseProvider === 'virtual-audio-studio' ? (speechStore.savedVoiceProfiles.find(p => p.id === boundVoices[char.id].baseVoice)?.name || 'Default Voice') : boundVoices[char.id].baseVoice) : 'Inherit Default' }}
+                      {{ boundVoices[char.id] ? (boundVoices[char.id].baseProvider === 'virtual-audio-studio' ? (speechStore.savedVoiceProfiles.find(p => p.id === boundVoices[char.id].baseVoice)?.name || t('settings.pages.card.creation.guided.default-voice')) : boundVoices[char.id].baseVoice) : t('settings.pages.card.creation.guided.inherit-default') }}
                     </span>
                   </div>
 
@@ -1167,7 +1179,8 @@ async function confirmCreateCard() {
                     type="button"
                     variant="ghost"
                     class="h-[38px] w-[38px] shrink-0 border border-neutral-800 rounded-xl p-0 hover:bg-neutral-800/40"
-                    title="Configure Voice"
+                    :title="t('settings.pages.card.creation.guided.configure-voice-character', { name: char.name })"
+                    :aria-label="t('settings.pages.card.creation.guided.configure-voice-character', { name: char.name })"
                     @click="voiceCreatorOpen = true; voiceTargetCharacterId = char.id"
                   >
                     <div i-solar:user-speak-linear class="text-sm text-neutral-400" />
@@ -1185,7 +1198,7 @@ async function confirmCreateCard() {
               @click="currentStep = 1"
             >
               <div i-solar:alt-arrow-left-bold class="text-base" />
-              Back
+              {{ t('settings.pages.card.creation.actions.back') }}
             </Button>
 
             <Button
@@ -1193,7 +1206,7 @@ async function confirmCreateCard() {
               class="h-[38px] flex items-center gap-1.5 border border-primary-500/20 rounded-xl px-5 text-xs font-bold shadow-lg shadow-primary-500/10"
               @click="handleNext"
             >
-              Next: Configure Story
+              {{ t('settings.pages.card.creation.guided.next-configure-story') }}
               <div i-solar:alt-arrow-right-bold class="text-base" />
             </Button>
           </div>
@@ -1205,7 +1218,7 @@ async function confirmCreateCard() {
         <div class="max-w-xl w-full border border-neutral-900 rounded-2xl bg-neutral-900/20 p-8 shadow-xl">
           <h3 class="mb-6 flex items-center gap-2 text-lg text-neutral-200 font-bold">
             <div i-solar:clipboard-text-line-duotone class="text-primary-500" />
-            Outline Your Story Settings
+            {{ t('settings.pages.card.creation.guided.story-title') }}
           </h3>
 
           <div class="flex flex-col gap-5">
@@ -1213,7 +1226,7 @@ async function confirmCreateCard() {
             <div class="flex items-center justify-between border border-primary-500/20 rounded-xl bg-primary-500/5 px-4 py-2.5">
               <div class="flex items-center gap-2">
                 <div i-solar:stars-bold-duotone class="shrink-0 text-sm text-primary-400" />
-                <span class="text-xs text-primary-300 font-semibold">Suggest story ideas from your cast</span>
+                <span class="text-xs text-primary-300 font-semibold">{{ t('settings.pages.card.creation.guided.suggest-description') }}</span>
               </div>
               <button
                 class="h-[28px] flex items-center gap-1.5 border border-primary-500/40 rounded-lg bg-primary-500/10 px-3 text-[10px] text-primary-300 font-bold tracking-wide transition-all hover:bg-primary-500/20 disabled:opacity-50"
@@ -1224,7 +1237,7 @@ async function confirmCreateCard() {
                   :class="isSuggestingIdeas ? 'i-solar:refresh-bold animate-spin' : 'i-solar:magic-stick-3-bold'"
                   class="text-xs"
                 />
-                {{ isSuggestingIdeas ? 'Thinking...' : 'Suggest' }}
+                {{ isSuggestingIdeas ? t('settings.pages.card.creation.guided.thinking') : t('settings.pages.card.creation.guided.suggest') }}
               </button>
             </div>
 
@@ -1266,7 +1279,7 @@ async function confirmCreateCard() {
                 <input
                   v-model="suggestionGuidance"
                   type="text"
-                  placeholder="Add guidance to refine ideas (e.g. I'm a girl, call me Betsie, slice-of-life AU)"
+                  :placeholder="t('settings.pages.card.creation.guided.guidance-placeholder')"
                   class="flex-1 border border-neutral-800 rounded-xl bg-neutral-900/60 px-3 py-2 text-xs text-neutral-300 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
                 >
                 <button
@@ -1275,38 +1288,38 @@ async function confirmCreateCard() {
                   @click="fetchStoryIdeas(suggestionGuidance)"
                 >
                   <div i-solar:refresh-bold class="text-xs" />
-                  Refine
+                  {{ t('settings.pages.card.creation.guided.refine') }}
                 </button>
               </div>
             </div>
 
             <!-- User Nickname -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">What should the characters call you?</label>
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.user-name') }}</label>
               <input
                 v-model="storyPrompt.nickname"
                 type="text"
-                placeholder="Leave blank for the AI to choose a name (e.g., 'Master', 'Detective', 'Stranger')."
+                :placeholder="t('settings.pages.card.creation.guided.user-name-placeholder')"
                 class="w-full border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               >
             </div>
 
             <!-- Your looks -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Your looks</label>
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.user-looks') }}</label>
               <textarea
                 v-model="userDescriptionInput"
-                placeholder="Describe your appearance, attire, or gender representation."
+                :placeholder="t('settings.pages.card.creation.guided.user-looks-placeholder')"
                 class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
             </div>
 
             <!-- Your image prompt looks -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Your Image Prompt Looks</label>
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.user-image-prompt') }}</label>
               <textarea
                 v-model="userImagePromptInput"
-                placeholder="Detailed stable diffusion style prompt tags for your appearance (e.g. '1guy, brown hair, henley shirt, suspenders')."
+                :placeholder="t('settings.pages.card.creation.guided.user-image-prompt-placeholder')"
                 class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
             </div>
@@ -1321,30 +1334,30 @@ async function confirmCreateCard() {
               >
               <div class="flex flex-col gap-0.5">
                 <label for="includeSelfConcept" class="cursor-pointer text-xs text-neutral-200 font-bold">
-                  Include Myself As Concept
+                  {{ t('settings.pages.card.creation.guided.include-self') }}
                 </label>
                 <span class="text-[10px] text-neutral-500 leading-normal">
-                  Enable this if your roleplay includes your own character in scenes. This creates a dedicated background concept for you (<code class="rounded bg-neutral-800 px-1 text-[9px] font-mono">actor_[name]</code>) with your visual description, ensuring the AI Director can render you with a consistent look across generated images.
+                  {{ t('settings.pages.card.creation.guided.include-self-description', { actorKey: 'actor_[name]' }) }}
                 </span>
               </div>
             </div>
 
             <!-- Setting / Location -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Where does this take place?</label>
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.location') }}</label>
               <textarea
                 v-model="storyPrompt.setting"
-                placeholder="Leave blank to let the AI suggest a fitting location (e.g., 'A rainy cafe in Tokyo', 'A fantasy medieval tavern')."
+                :placeholder="t('settings.pages.card.creation.guided.location-placeholder')"
                 class="h-[60px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
             </div>
 
             <!-- Lore / Rule overrides -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Lore & Behavior Rules</label>
+              <label class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.lore') }}</label>
               <textarea
                 v-model="storyPrompt.lore"
-                placeholder="Describe custom personality overrides or AU rules (e.g., 'Make them tsundere', 'Set in a school AU', 'Characters are rival musicians')."
+                :placeholder="t('settings.pages.card.creation.guided.lore-placeholder')"
                 class="h-[80px] w-full resize-none border border-neutral-800 rounded-xl bg-neutral-900/60 px-4 py-2.5 text-sm text-neutral-200 outline-none transition-all focus:border-primary-500 placeholder-neutral-600"
               />
             </div>
@@ -1354,7 +1367,7 @@ async function confirmCreateCard() {
           <div class="mt-5 flex items-start gap-2 border border-neutral-800/40 rounded-xl bg-neutral-900/30 p-3.5">
             <div i-solar:info-circle-bold class="mt-0.5 shrink-0 text-sm text-neutral-500" />
             <p class="text-[10px] text-neutral-400 leading-relaxed">
-              <span class="text-neutral-300 font-bold">Note:</span> This request will be processed by <span class="text-primary-400 font-semibold">{{ consciousnessStore.activeProvider || 'None' }}</span> / <span class="text-primary-400 font-semibold">{{ consciousnessStore.activeModel || 'None' }}</span>. Please ensure this is a high-quality model as the next step is somewhat complex and requires high reasoning to generate properly.
+              {{ t('settings.pages.card.creation.guided.provider-note', { provider: consciousnessStore.activeProvider || t('settings.pages.card.creation.guided.unavailable'), model: consciousnessStore.activeModel || t('settings.pages.card.creation.guided.unavailable') }) }}
             </p>
           </div>
 
@@ -1366,7 +1379,7 @@ async function confirmCreateCard() {
               @click="currentStep = 2"
             >
               <div i-solar:alt-arrow-left-bold class="text-base" />
-              Back
+              {{ t('settings.pages.card.creation.actions.back') }}
             </Button>
 
             <Button
@@ -1374,7 +1387,7 @@ async function confirmCreateCard() {
               class="h-[38px] flex items-center gap-1.5 border border-primary-500/20 rounded-xl px-5 text-xs font-bold shadow-lg shadow-primary-500/10"
               @click="handleGenerate"
             >
-              Generate Roleplay World
+              {{ t('settings.pages.card.creation.guided.generate-world') }}
               <div i-solar:magic-stick-3-bold class="text-base" />
             </Button>
           </div>
@@ -1388,10 +1401,10 @@ async function confirmCreateCard() {
             <div>
               <h3 class="text-md flex items-center gap-2 text-neutral-200 font-bold">
                 <div i-solar:magic-stick-3-bold-duotone class="text-primary-500" />
-                Step 4: Roleplay World Proposal
+                {{ t('settings.pages.card.creation.guided.proposal-title') }}
               </h3>
               <p class="mt-0.5 text-[10px] text-neutral-500">
-                Review the synthesized world details, request refinements, or confirm card generation.
+                {{ t('settings.pages.card.creation.guided.proposal-description') }}
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -1401,7 +1414,7 @@ async function confirmCreateCard() {
                 @click="currentStep = 3"
               >
                 <div i-solar:alt-arrow-left-bold class="text-sm" />
-                Edit Settings
+                {{ t('settings.pages.card.creation.guided.edit-settings') }}
               </Button>
               <Button
                 variant="secondary"
@@ -1409,7 +1422,7 @@ async function confirmCreateCard() {
                 @click="showDeveloperPayload = !showDeveloperPayload"
               >
                 <div i-solar:code-bold class="text-sm" />
-                {{ showDeveloperPayload ? 'Hide Payload' : 'Show Payload' }}
+                {{ showDeveloperPayload ? t('settings.pages.card.creation.guided.hide-payload') : t('settings.pages.card.creation.guided.show-payload') }}
               </Button>
             </div>
           </div>
@@ -1422,17 +1435,17 @@ async function confirmCreateCard() {
             </div>
             <div class="text-center">
               <h4 class="text-sm text-neutral-300 font-bold">
-                Synthesizing Roleplay World...
+                {{ t('settings.pages.card.creation.guided.synthesizing') }}
               </h4>
               <p class="mt-1 text-xs text-neutral-500">
-                Our LLM is orchestrating the prompt mappings, dialog presets, and outfits.
+                {{ t('settings.pages.card.creation.guided.synthesizing-description') }}
               </p>
             </div>
           </div>
 
           <!-- Developer Payload View -->
           <div v-else-if="showDeveloperPayload" class="min-h-0 flex flex-1 flex-col gap-3">
-            <span class="text-xs text-neutral-400 font-bold tracking-wide uppercase">Raw Ingestion Payload (Sent to LLM)</span>
+            <span class="text-xs text-neutral-400 font-bold tracking-wide uppercase">{{ t('settings.pages.card.creation.guided.raw-payload') }}</span>
             <textarea
               readonly
               class="flex-1 select-text resize-none border border-neutral-800 rounded-xl bg-neutral-900/80 p-4 text-xs text-neutral-300 font-mono outline-none"
@@ -1450,11 +1463,11 @@ async function confirmCreateCard() {
                 </div>
                 <div class="flex flex-col">
                   <span class="text-lg text-neutral-100 font-bold">{{ synthesisProposal.name }}</span>
-                  <span class="text-xs text-neutral-500">Synthesized Character Card Spec V3 Draft</span>
+                  <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.guided.draft') }}</span>
                 </div>
               </div>
               <div class="border-t border-neutral-800/60 pt-3">
-                <span class="mb-1 block text-[10px] text-neutral-500 font-black tracking-wider uppercase">Premise & Scenario</span>
+                <span class="mb-1 block text-[10px] text-neutral-500 font-black tracking-wider uppercase">{{ t('settings.pages.card.creation.guided.premise') }}</span>
                 <p class="border-l-2 border-primary-500 rounded-r bg-neutral-950/40 py-1.5 pl-3 text-xs text-neutral-300 leading-relaxed italic">
                   "{{ synthesisProposal.scenario }}"
                 </p>
@@ -1463,7 +1476,7 @@ async function confirmCreateCard() {
 
             <!-- Cast List -->
             <div class="flex flex-col gap-3">
-              <span class="text-xs text-neutral-400 font-bold tracking-wide uppercase">Synthesized Cast & Outfits</span>
+              <span class="text-xs text-neutral-400 font-bold tracking-wide uppercase">{{ t('settings.pages.card.creation.guided.cast-outfits') }}</span>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div
                   v-for="(actor, key) in synthesisProposal.actors"
@@ -1478,13 +1491,13 @@ async function confirmCreateCard() {
                       </div>
                       <div class="flex flex-col">
                         <span class="text-xs text-neutral-200 font-bold capitalize">{{ String(key).replace('actor_', '').replace(/_/g, ' ') }}</span>
-                        <span class="text-[9px] text-neutral-500">Outfit: {{ actor.short_description }}</span>
+                        <span class="text-[9px] text-neutral-500">{{ t('settings.pages.card.creation.guided.outfit', { description: actor.short_description }) }}</span>
                       </div>
                     </div>
                   </div>
 
                   <div class="border border-neutral-800/40 rounded-lg bg-neutral-950/30 p-2.5 text-[10px] text-neutral-400">
-                    <span class="mb-1 block text-[8px] text-neutral-500 font-bold uppercase">Default Greeting</span>
+                    <span class="mb-1 block text-[8px] text-neutral-500 font-bold uppercase">{{ t('settings.pages.card.creation.guided.default-greeting') }}</span>
                     <p class="leading-normal italic">
                       {{ actor.greeting || synthesisProposal.first_mes }}
                     </p>
@@ -1495,7 +1508,7 @@ async function confirmCreateCard() {
 
             <!-- Locations / Places -->
             <div class="flex flex-col gap-3">
-              <span class="text-xs text-neutral-400 font-bold tracking-wide uppercase">Locations & Backgrounds</span>
+              <span class="text-xs text-neutral-400 font-bold tracking-wide uppercase">{{ t('settings.pages.card.creation.guided.locations-backgrounds') }}</span>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div
                   v-for="(place, key) in synthesisProposal.places"
@@ -1516,11 +1529,11 @@ async function confirmCreateCard() {
             <!-- Refinement Prompt Loop -->
             <div class="mt-auto flex flex-col gap-3 border-t border-neutral-800/60 pt-5">
               <div class="flex flex-col gap-1.5">
-                <label class="text-[10px] text-neutral-400 font-bold tracking-wide uppercase">Request Story Corrections (Optional)</label>
+                <label class="text-[10px] text-neutral-400 font-bold tracking-wide uppercase">{{ t('settings.pages.card.creation.guided.corrections') }}</label>
                 <div class="flex gap-2">
                   <textarea
                     v-model="refinementGuidance"
-                    placeholder="Provide correction feedback (e.g. 'Make Gura more snarky', 'Add a beach place', 'Make Chii quieter')."
+                    :placeholder="t('settings.pages.card.creation.guided.corrections-placeholder')"
                     class="h-[48px] flex-1 resize-none border border-neutral-800 rounded-xl bg-neutral-950/60 px-3 py-2 text-xs text-neutral-200 outline-none focus:border-primary-500 placeholder-neutral-600"
                   />
                   <Button
@@ -1529,7 +1542,7 @@ async function confirmCreateCard() {
                     @click="handleGenerate(refinementGuidance)"
                   >
                     <div i-solar:refresh-bold class="text-sm" />
-                    Regenerate
+                    {{ t('settings.pages.card.creation.guided.regenerate') }}
                   </Button>
                 </div>
               </div>
@@ -1543,7 +1556,7 @@ async function confirmCreateCard() {
                   @click="doConfirm"
                 >
                   <div i-solar:close-circle-outline class="text-base" />
-                  Confirm
+                  {{ t('settings.pages.card.creation.guided.confirm') }}
                 </Button>
 
                 <div class="flex items-center gap-2">
@@ -1554,7 +1567,7 @@ async function confirmCreateCard() {
                     @click="doCreateCard"
                   >
                     <div i-solar:card-send-outline class="text-base" />
-                    Create
+                    {{ t('settings.pages.card.creation.actions.create') }}
                   </Button>
 
                   <!-- Confirm & Create: save card then close -->
@@ -1563,7 +1576,7 @@ async function confirmCreateCard() {
                     class="h-[38px] flex items-center gap-1.5 border border-primary-500/20 rounded-xl px-5 text-xs font-bold shadow-lg shadow-primary-500/15"
                     @click="confirmCreateCard"
                   >
-                    Confirm & Create
+                    {{ t('settings.pages.card.creation.guided.confirm-create') }}
                     <div i-solar:check-circle-bold class="text-base" />
                   </Button>
                 </div>

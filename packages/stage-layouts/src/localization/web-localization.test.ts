@@ -13,6 +13,33 @@ const sourceRoots = [
   'packages/stage-ui/src',
 ]
 const forbiddenEnglishByFile: Record<string, string[]> = {
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/audio-studio.vue': [
+    'New Profile',
+    'Profile Name',
+    'Base Provider',
+    'Pitch Tuning',
+    'Custom Replacement Rules',
+    'Stop Playback',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/live2d.vue': [
+    'Character Customizations',
+    'Auto Blink',
+    'Force Auto Blink (fallback)',
+    'Reset value to default',
+    'Mouse Tracking',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/mmd.vue': [
+    'Character Customizations',
+    'Enable Physics',
+    'Enable IK Solvers',
+    'Gravity Strength',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/guided.vue': [
+    'Confirm & Create',
+    'Roster Settings',
+    'Model Preview',
+    'Auto-Assign Voices',
+  ],
   'packages/stage-pages/src/pages/settings/modules/speech.vue': [
     'Add Provider',
     'No Speech Providers Configured',

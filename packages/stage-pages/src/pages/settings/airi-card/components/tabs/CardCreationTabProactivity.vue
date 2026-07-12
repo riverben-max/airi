@@ -6,6 +6,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from 'reka-ui'
+import { useI18n } from 'vue-i18n'
 
 defineProps<{
   sensorPayload?: string
@@ -28,80 +29,82 @@ const heartbeatsRespectSchedule = defineModel<boolean>('heartbeatsRespectSchedul
 const dreamStateEnabled = defineModel<boolean>('dreamStateEnabled', { required: true })
 const dreamStateStrictAfkGating = defineModel<boolean>('dreamStateStrictAfkGating', { required: true })
 const groundingEnabled = defineModel<boolean>('groundingEnabled', { required: true })
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="tab-content ml-auto mr-auto w-95%">
     <p class="mb-3 text-sm text-neutral-500">
-      Configure how often AIRI will proactively speak to you without being prompted.
+      {{ t('settings.pages.card.creation.proactivity-settings.description') }}
     </p>
     <div class="input-list ml-auto mr-auto w-90% flex flex-col flex-wrap justify-center gap-6">
       <div class="flex flex-col gap-4">
         <div class="flex items-center gap-2">
           <input id="heartbeats-enabled" v-model="heartbeatsEnabled" type="checkbox" class="h-4 w-4 border-gray-300 rounded text-primary-600">
-          <label for="heartbeats-enabled" class="font-medium">Enable Proactive Heartbeats</label>
+          <label for="heartbeats-enabled" class="font-medium">{{ t('settings.pages.card.creation.proactivity-settings.enable-heartbeats') }}</label>
         </div>
 
         <div v-if="heartbeatsEnabled" class="grid grid-cols-1 ml-6 gap-4 border-l-2 border-neutral-100 pl-4 sm:grid-cols-2 dark:border-neutral-700">
           <div class="flex flex-col gap-2">
-            <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Interval (Minutes)</label>
+            <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.card.creation.proactivity-settings.interval') }}</label>
             <input v-model="heartbeatsIntervalMinutes" type="number" min="1" max="1440" class="border border-neutral-200 rounded-lg bg-transparent px-3 py-2 dark:border-neutral-700">
-            <span class="text-xs text-neutral-500">How often to tick the heartbeat polling.</span>
+            <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.proactivity-settings.interval-description') }}</span>
           </div>
 
           <div class="flex flex-col gap-2">
-            <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Schedule Options</label>
+            <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.card.creation.proactivity-settings.schedule') }}</label>
             <div class="flex items-center gap-2">
               <input v-model="heartbeatsScheduleStart" type="time" class="flex-1 border border-neutral-200 rounded-lg bg-transparent px-2 py-1 dark:border-neutral-700">
-              <span>to</span>
+              <span>{{ t('settings.pages.card.creation.proactivity-settings.to') }}</span>
               <input v-model="heartbeatsScheduleEnd" type="time" class="flex-1 border border-neutral-200 rounded-lg bg-transparent px-2 py-1 dark:border-neutral-700">
             </div>
             <div class="mt-1 flex items-center gap-2">
               <input id="heartbeats-respectSchedule" v-model="heartbeatsRespectSchedule" type="checkbox" class="h-4 w-4 border-gray-300 rounded text-primary-600">
-              <label for="heartbeats-respectSchedule" class="text-xs text-neutral-500">Only trigger heartbeats between these hours.</label>
+              <label for="heartbeats-respectSchedule" class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.proactivity-settings.respect-schedule') }}</label>
             </div>
           </div>
 
           <div class="col-span-1 mt-2 flex items-center gap-2 sm:col-span-2">
             <input id="heartbeats-localGate" v-model="heartbeatsUseAsLocalGate" type="checkbox" class="h-4 w-4">
-            <label for="heartbeats-localGate" class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Require Keyboard/Mouse Inactivity</label>
+            <label for="heartbeats-localGate" class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.card.creation.proactivity-settings.require-inactivity') }}</label>
           </div>
-          <span class="col-span-1 pl-6 text-xs text-neutral-500 sm:col-span-2">Only trigger the LLM if the user is currently idle (mouse/keyboard).</span>
+          <span class="col-span-1 pl-6 text-xs text-neutral-500 sm:col-span-2">{{ t('settings.pages.card.creation.proactivity-settings.require-inactivity-description') }}</span>
 
           <div class="col-span-1 mt-2 flex items-center gap-2 sm:col-span-2">
             <input id="dream-state-enabled" v-model="dreamStateEnabled" type="checkbox" class="h-4 w-4 border-gray-300 rounded text-primary-600">
-            <label for="dream-state-enabled" class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Enable Dream State</label>
+            <label for="dream-state-enabled" class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.card.creation.proactivity-settings.enable-dream-state') }}</label>
           </div>
-          <span class="col-span-1 pl-6 text-xs text-neutral-500 sm:col-span-2">Allows idle-time memory consolidation to generate chips for this character.</span>
+          <span class="col-span-1 pl-6 text-xs text-neutral-500 sm:col-span-2">{{ t('settings.pages.card.creation.proactivity-settings.dream-state-description') }}</span>
 
           <div class="col-span-1 mt-2 flex items-center gap-2 sm:col-span-2">
             <input id="dream-state-afk" v-model="dreamStateStrictAfkGating" type="checkbox" class="h-4 w-4 border-gray-300 rounded text-primary-600">
-            <label for="dream-state-afk" class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Strict AFK Gating (Dream State)</label>
+            <label for="dream-state-afk" class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.card.creation.proactivity-settings.strict-afk') }}</label>
           </div>
-          <span class="col-span-1 pl-6 text-xs text-neutral-500 sm:col-span-2">Only allow Dream State synthesis once the user has been away long enough.</span>
+          <span class="col-span-1 pl-6 text-xs text-neutral-500 sm:col-span-2">{{ t('settings.pages.card.creation.proactivity-settings.strict-afk-description') }}</span>
 
           <div class="col-span-1 mt-2 max-w-full sm:col-span-2">
             <label class="flex flex-col gap-4">
               <div>
                 <div class="flex items-center gap-1 text-sm font-medium">
-                  Stealth Heartbeat Prompt
+                  {{ t('settings.pages.card.creation.proactivity-settings.heartbeat-prompt') }}
                 </div>
                 <div class="text-xs text-neutral-500 dark:text-neutral-400">
-                  The hidden instruction sent to the LLM during a heartbeat tick.
+                  {{ t('settings.pages.card.creation.proactivity-settings.heartbeat-prompt-description') }}
                 </div>
               </div>
               <div class="relative w-full">
                 <textarea
                   v-model="heartbeatsPrompt"
                   rows="6"
-                  placeholder="You are evaluating a proactive heartbeat. Provide a fun comment, or output NO_REPLY to remain silent."
+                  :placeholder="t('settings.pages.card.creation.proactivity-settings.heartbeat-prompt-placeholder')"
                   class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
                 />
                 <button
                   type="button"
                   style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
                   class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-                  title="Optimize with AI"
+                  :title="t('settings.pages.card.creation.actions.optimize-with-ai')"
+                  :aria-label="t('settings.pages.card.creation.actions.optimize-with-ai')"
                   @click.prevent="emit('sparkle-click', 'heartbeatsPrompt')"
                 >
                   <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
@@ -116,10 +119,10 @@ const groundingEnabled = defineModel<boolean>('groundingEnabled', { required: tr
         <div class="flex items-center gap-2">
           <input id="grounding-enabled" v-model="groundingEnabled" type="checkbox" class="h-4 w-4 border-gray-300 rounded text-primary-600">
           <label for="grounding-enabled" class="text-sm text-neutral-700 font-semibold dark:text-neutral-300">
-            Attach sensor data with each message
+            {{ t('settings.pages.card.creation.proactivity-settings.attach-sensors') }}
           </label>
         </div>
-        <span class="text-xs text-neutral-500">Injects real-time context into every manual chat message. Linked to the chatbox toggle.</span>
+        <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.proactivity-settings.attach-sensors-description') }}</span>
       </div>
 
       <!-- Situational Awareness / Rich Context -->
@@ -127,7 +130,7 @@ const groundingEnabled = defineModel<boolean>('groundingEnabled', { required: tr
         <div class="flex items-center gap-2">
           <input id="heartbeats-injectContext" v-model="heartbeatsInjectIntoPrompt" type="checkbox" class="h-4 w-4">
           <label for="heartbeats-injectContext" class="group relative flex items-center gap-1 text-sm font-semibold dark:text-neutral-200">
-            Situational Awareness (Rich Context)
+            {{ t('settings.pages.card.creation.proactivity-settings.awareness') }}
             <TooltipProvider :delay-duration="0">
               <TooltipRoot>
                 <TooltipTrigger as-child>
@@ -138,7 +141,7 @@ const groundingEnabled = defineModel<boolean>('groundingEnabled', { required: tr
                   :side-offset="8"
                   side="right"
                 >
-                  <p class="mb-2 border-b border-white/20 pb-1 text-primary-400 font-bold">Current Sensor Payload:</p>
+                  <p class="mb-2 border-b border-white/20 pb-1 text-primary-400 font-bold">{{ t('settings.pages.card.creation.proactivity-settings.current-payload') }}</p>
                   <pre class="max-h-60 overflow-y-auto whitespace-pre-wrap font-mono opacity-90">{{ sensorPayload || staticSamplePayload }}</pre>
                   <TooltipArrow class="fill-neutral-900" />
                 </TooltipContent>
@@ -146,20 +149,20 @@ const groundingEnabled = defineModel<boolean>('groundingEnabled', { required: tr
             </TooltipProvider>
           </label>
         </div>
-        <span class="text-xs text-neutral-500">Enable real-time sensor polling (Idle time, active window, system load) for proactivity and manual grounding.</span>
+        <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.proactivity-settings.awareness-description') }}</span>
 
         <div v-if="heartbeatsInjectIntoPrompt" class="grid grid-cols-1 ml-6 mt-2 gap-2 sm:grid-cols-3">
           <div class="flex items-center gap-2">
             <input id="ctx-window" v-model="heartbeatsContextWindowHistory" type="checkbox" class="h-3.5 w-3.5">
-            <label for="ctx-window" class="text-xs text-neutral-600 dark:text-neutral-400">Window History</label>
+            <label for="ctx-window" class="text-xs text-neutral-600 dark:text-neutral-400">{{ t('settings.pages.card.creation.proactivity-settings.window-history') }}</label>
           </div>
           <div class="flex items-center gap-2">
             <input id="ctx-load" v-model="heartbeatsContextSystemLoad" type="checkbox" class="h-3.5 w-3.5">
-            <label for="ctx-load" class="text-xs text-neutral-600 dark:text-neutral-400">System Load</label>
+            <label for="ctx-load" class="text-xs text-neutral-600 dark:text-neutral-400">{{ t('settings.pages.card.creation.proactivity-settings.system-load') }}</label>
           </div>
           <div class="flex items-center gap-2">
             <input id="ctx-metrics" v-model="heartbeatsContextUsageMetrics" type="checkbox" class="h-3.5 w-3.5">
-            <label for="ctx-metrics" class="text-xs text-neutral-600 dark:text-neutral-400">Usage Metrics</label>
+            <label for="ctx-metrics" class="text-xs text-neutral-600 dark:text-neutral-400">{{ t('settings.pages.card.creation.proactivity-settings.usage-metrics') }}</label>
           </div>
         </div>
       </div>

@@ -226,14 +226,14 @@ const fpsOptions = computed(() => [
 ])
 
 const customizationTabs = computed(() => [
-  { value: 'expressions', label: 'Expressions', icon: 'i-solar:face-scan-circle-bold-duotone' },
-  { value: 'animations', label: 'Motions', icon: 'i-solar:play-bold-duotone' },
-  { value: 'headFace', label: 'Face', icon: 'i-solar:user-bold-duotone' },
+  { value: 'expressions', label: t('settings.model-settings.common.tabs.expressions'), icon: 'i-solar:face-scan-circle-bold-duotone' },
+  { value: 'animations', label: t('settings.model-settings.common.tabs.motions'), icon: 'i-solar:play-bold-duotone' },
+  { value: 'headFace', label: t('settings.model-settings.common.tabs.face'), icon: 'i-solar:user-bold-duotone' },
 ])
 const activeCustomizationTab = ref('expressions')
 
 const sceneTabs = computed(() => [
-  { value: 'placement', label: 'Placement', icon: 'i-solar:minimalistic-magnifer-zoom-in-bold-duotone' },
+  { value: 'placement', label: t('settings.model-settings.common.tabs.placement'), icon: 'i-solar:minimalistic-magnifer-zoom-in-bold-duotone' },
 ])
 const activeSceneTab = ref('placement')
 
@@ -447,7 +447,7 @@ onUnmounted(() => {
 <template>
   <!-- 1. Character Customizations -->
   <Section
-    title="Character Customizations"
+    :title="t('settings.model-settings.common.sections.character-customizations')"
     icon="i-solar:user-bold-duotone"
     :class="['rounded-xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     size="sm"
@@ -475,7 +475,7 @@ onUnmounted(() => {
                 <template #icon>
                   <div :class="showHiddenMotions ? 'i-solar:eye-bold-duotone' : 'i-solar:eye-closed-bold-duotone'" />
                 </template>
-                {{ showHiddenMotions ? 'Showing Hidden' : 'Hide Hidden' }}
+                {{ showHiddenMotions ? t('settings.model-settings.common.actions.showing-hidden') : t('settings.model-settings.common.actions.hide-hidden') }}
               </Button>
               <Button
                 size="sm"
@@ -485,18 +485,18 @@ onUnmounted(() => {
                 <template #icon>
                   <div class="i-solar:pen-bold-duotone" />
                 </template>
-                {{ filterRenamedOnly ? 'Renamed Only' : 'All' }}
+                {{ filterRenamedOnly ? t('settings.model-settings.common.actions.renamed-only') : t('settings.model-settings.common.actions.all') }}
               </Button>
             </div>
             <div :class="['text-xs', 'text-neutral-500']">
-              {{ filteredMotions.length }} motions
+              {{ t('settings.model-settings.common.states.motion-count', { count: filteredMotions.length }) }}
             </div>
           </div>
 
           <!-- Fixed Height Scrollable List -->
           <div :class="['max-h-[300px]', 'w-full', 'min-w-0', 'overflow-y-auto', 'border border-neutral-200 rounded-lg bg-white dark:border-neutral-700 dark:bg-neutral-900']">
             <div v-if="filteredMotions.length === 0" :class="['p-4', 'text-center', 'text-sm', 'text-neutral-500', 'dark:text-neutral-400']">
-              No motions match filters
+              {{ t('settings.model-settings.common.states.no-motions') }}
             </div>
             <div
               v-for="motion in filteredMotions"
@@ -526,10 +526,10 @@ onUnmounted(() => {
                       @keydown.enter="saveMotionName(motion.fullPath)"
                       @keydown.esc="cancelEditing"
                     >
-                    <button :class="['text-xs', 'text-green-500', 'hover:text-green-600', 'shrink-0']" @click="saveMotionName(motion.fullPath)">
+                    <button :class="['text-xs', 'text-green-500', 'hover:text-green-600', 'shrink-0']" :aria-label="t('settings.model-settings.common.actions.save-rename', { name: getDisplayName(motion) })" @click="saveMotionName(motion.fullPath)">
                       <div class="i-solar:check-circle-bold-duotone text-lg" />
                     </button>
-                    <button :class="['text-xs', 'text-red-500', 'hover:text-red-600', 'shrink-0']" @click="cancelEditing">
+                    <button :class="['text-xs', 'text-red-500', 'hover:text-red-600', 'shrink-0']" :aria-label="t('settings.model-settings.common.actions.cancel-rename', { name: getDisplayName(motion) })" @click="cancelEditing">
                       <div class="i-solar:close-circle-bold-duotone text-lg" />
                     </button>
                   </div>
@@ -541,7 +541,7 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div :class="['ml-4', 'truncate', 'text-xs', 'text-neutral-500', 'dark:text-neutral-400', 'flex', 'items-center', 'gap-1']">
-                  <div v-if="motion.sound" class="i-lucide:volume-2 shrink-0 text-primary-500" title="Has associated audio" />
+                  <div v-if="motion.sound" class="i-lucide:volume-2 shrink-0 text-primary-500" :title="t('settings.model-settings.common.states.has-associated-audio')" />
                   <span>{{ motion.displayPath }}</span>
                 </div>
               </div>
@@ -556,7 +556,8 @@ onUnmounted(() => {
                       ? 'text-primary-500 hover:text-primary-600 bg-primary-500/10'
                       : 'text-neutral-400 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800',
                   ]"
-                  :title="isMotionInCycle(motion) ? 'Remove from Idle Cycle' : 'Add to Idle Cycle'"
+                  :title="isMotionInCycle(motion) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: getDisplayName(motion) }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: getDisplayName(motion) })"
+                  :aria-label="isMotionInCycle(motion) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: getDisplayName(motion) }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: getDisplayName(motion) })"
                   @click="toggleMotionInCycle(motion)"
                 >
                   <div class="i-solar:infinity-bold-duotone text-sm" />
@@ -565,7 +566,8 @@ onUnmounted(() => {
                 <!-- Edit Button -->
                 <button
                   :class="['rounded', 'p-1', 'text-neutral-500', 'hover:bg-neutral-100', 'dark:text-neutral-400', 'hover:text-neutral-700', 'dark:hover:bg-neutral-700', 'dark:hover:text-neutral-200']"
-                  title="Rename"
+                  :title="t('settings.model-settings.common.actions.rename-item', { name: getDisplayName(motion) })"
+                  :aria-label="t('settings.model-settings.common.actions.rename-item', { name: getDisplayName(motion) })"
                   @click="startEditing(motion)"
                 >
                   <div class="i-solar:pen-bold-duotone text-sm" />
@@ -574,7 +576,8 @@ onUnmounted(() => {
                 <!-- Visibility Toggle -->
                 <button
                   :class="['rounded', 'p-1', 'text-neutral-500', 'hover:bg-neutral-100', 'dark:text-neutral-400', 'hover:text-neutral-700', 'dark:hover:bg-neutral-700', 'dark:hover:text-neutral-200']"
-                  :title="isHidden(motion.fullPath) ? 'Show' : 'Hide'"
+                  :title="isHidden(motion.fullPath) ? t('settings.model-settings.common.actions.show-item', { name: getDisplayName(motion) }) : t('settings.model-settings.common.actions.hide-item', { name: getDisplayName(motion) })"
+                  :aria-label="isHidden(motion.fullPath) ? t('settings.model-settings.common.actions.show-item', { name: getDisplayName(motion) }) : t('settings.model-settings.common.actions.hide-item', { name: getDisplayName(motion) })"
                   @click="toggleVisibility(motion.fullPath)"
                 >
                   <div :class="isHidden(motion.fullPath) ? 'i-solar:eye-closed-bold-duotone' : 'i-solar:eye-bold-duotone'" class="text-sm" />
@@ -589,48 +592,48 @@ onUnmounted(() => {
     <!-- Head & Face Tab -->
     <div v-else-if="activeCustomizationTab === 'headFace'" :class="['space-y-4']">
       <div :class="['flex', 'items-center', 'justify-between']">
-        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Auto Blink</span>
+        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">{{ t('settings.live2d.animation.auto-blink.label') }}</span>
         <Checkbox v-model="live2dAutoBlinkEnabled" />
       </div>
 
       <div :class="['flex', 'items-center', 'justify-between']">
-        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Force Auto Blink (fallback)</span>
+        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">{{ t('settings.live2d.animation.force-auto-blink.label') }}</span>
         <Checkbox v-model="live2dForceAutoBlinkEnabled" />
       </div>
 
       <div :class="['flex', 'items-center', 'justify-between']">
-        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Shadow</span>
+        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">{{ t('settings.live2d.parameters.shadow') }}</span>
         <Checkbox v-model="live2dShadowEnabled" />
       </div>
 
       <div :class="['mb-2', 'mt-4', 'text-xs', 'text-neutral-500', 'font-semibold', 'dark:text-neutral-400', 'uppercase', 'tracking-wider', 'opacity-50']">
-        Head Rotation
+        {{ t('settings.live2d.parameters.head-rotation') }}
       </div>
-      <FieldRange v-model="modelParameters.angleX" as="div" :min="-30" :max="30" :step="0.1" label="Angle X">
+      <FieldRange v-model="modelParameters.angleX" as="div" :min="-30" :max="30" :step="0.1" :label="t('settings.live2d.parameters.angle-x')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Angle X</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.angleX = 0">
+            <div>{{ t('settings.live2d.parameters.angle-x') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-x') })" @click="() => modelParameters.angleX = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="modelParameters.angleY" as="div" :min="-30" :max="30" :step="0.1" label="Angle Y">
+      <FieldRange v-model="modelParameters.angleY" as="div" :min="-30" :max="30" :step="0.1" :label="t('settings.live2d.parameters.angle-y')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Angle Y</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.angleY = 0">
+            <div>{{ t('settings.live2d.parameters.angle-y') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-y') })" @click="() => modelParameters.angleY = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="modelParameters.angleZ" as="div" :min="-30" :max="30" :step="0.1" label="Angle Z">
+      <FieldRange v-model="modelParameters.angleZ" as="div" :min="-30" :max="30" :step="0.1" :label="t('settings.live2d.parameters.angle-z')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Angle Z</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.angleZ = 0">
+            <div>{{ t('settings.live2d.parameters.angle-z') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-z') })" @click="() => modelParameters.angleZ = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -638,43 +641,43 @@ onUnmounted(() => {
       </FieldRange>
 
       <div :class="['mb-2', 'mt-4', 'text-xs', 'text-neutral-500', 'font-semibold', 'dark:text-neutral-400', 'uppercase', 'tracking-wider', 'opacity-50']">
-        Facial Features
+        {{ t('settings.live2d.parameters.facial-features') }}
       </div>
-      <FieldRange v-model="modelParameters.leftEyeOpen" as="div" :min="0" :max="1" :step="0.01" label="Left Eye Open/Close">
+      <FieldRange v-model="modelParameters.leftEyeOpen" as="div" :min="0" :max="1" :step="0.01" :label="t('settings.live2d.parameters.left-eye-open')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Left Eye Open/Close</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.leftEyeOpen = 1">
+            <div>{{ t('settings.live2d.parameters.left-eye-open') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.left-eye-open') })" @click="() => modelParameters.leftEyeOpen = 1">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="modelParameters.rightEyeOpen" as="div" :min="0" :max="1" :step="0.01" label="Right Eye Open/Close">
+      <FieldRange v-model="modelParameters.rightEyeOpen" as="div" :min="0" :max="1" :step="0.01" :label="t('settings.live2d.parameters.right-eye-open')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Right Eye Open/Close</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.rightEyeOpen = 1">
+            <div>{{ t('settings.live2d.parameters.right-eye-open') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.right-eye-open') })" @click="() => modelParameters.rightEyeOpen = 1">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="modelParameters.mouthOpen" as="div" :min="0" :max="1" :step="0.01" label="Mouth Open/Close">
+      <FieldRange v-model="modelParameters.mouthOpen" as="div" :min="0" :max="1" :step="0.01" :label="t('settings.live2d.parameters.mouth-open')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Mouth Open/Close</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.mouthOpen = 0">
+            <div>{{ t('settings.live2d.parameters.mouth-open') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.mouth-open') })" @click="() => modelParameters.mouthOpen = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
         </template>
       </FieldRange>
-      <FieldRange v-model="modelParameters.cheek" as="div" :min="0" :max="1" :step="0.01" label="Cheek">
+      <FieldRange v-model="modelParameters.cheek" as="div" :min="0" :max="1" :step="0.01" :label="t('settings.live2d.parameters.cheek')">
         <template #label>
           <div :class="['flex', 'items-center']">
-            <div>Cheek</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => modelParameters.cheek = 0">
+            <div>{{ t('settings.live2d.parameters.cheek') }}</div>
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.cheek') })" @click="() => modelParameters.cheek = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -685,7 +688,7 @@ onUnmounted(() => {
 
   <!-- 2. Scene -->
   <Section
-    title="Scene"
+    :title="t('settings.model-settings.common.sections.scene')"
     icon="i-solar:clapperboard-edit-bold-duotone"
     :class="['rounded-xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     size="sm"
@@ -698,7 +701,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.scale') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => scale = 1">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.scale') })" @click="() => scale = 1">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -708,7 +711,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.x') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => positionX = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.x') })" @click="() => positionX = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -718,7 +721,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.y') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" title="Reset value to default" @click="() => positionY = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.y') })" @click="() => positionY = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -729,7 +732,7 @@ onUnmounted(() => {
 
   <!-- 3. Advanced -->
   <Section
-    title="Advanced"
+    :title="t('settings.model-settings.common.sections.advanced')"
     icon="i-solar:settings-bold-duotone"
     :class="['rounded-xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     size="sm"
@@ -738,7 +741,7 @@ onUnmounted(() => {
     <div :class="['space-y-6']">
       <!-- Mouse Tracking -->
       <div :class="['flex', 'items-center', 'justify-between']">
-        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Mouse Tracking</span>
+        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">{{ t('settings.live2d.advanced.mouse-tracking') }}</span>
         <Checkbox v-model="mouseTrackingEnabled" />
       </div>
 
@@ -749,11 +752,11 @@ onUnmounted(() => {
           :min="0.01"
           :max="1"
           :step="0.01"
-          label="Follow Speed"
+          :label="t('settings.live2d.advanced.follow-speed')"
         >
           <template #label>
             <div :class="['flex', 'items-center', 'justify-between', 'w-full']">
-              <div>Follow Speed</div>
+              <div>{{ t('settings.live2d.advanced.follow-speed') }}</div>
               <div class="text-xs font-bold font-mono">
                 {{ live2dFollowSpeed.toFixed(2) }}
               </div>
@@ -774,15 +777,15 @@ onUnmounted(() => {
       <!-- Disable Custom Parameter Replay -->
       <div :class="['flex', 'items-center', 'justify-between']">
         <div :class="['flex', 'flex-col', 'gap-1']">
-          <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Disable Custom Parameter Replay</span>
-          <span :class="['text-xs', 'text-neutral-500', 'dark:text-neutral-400']">Bypasses raw parameter overrides to prevent conflicts during motion animations (recommended for Juewa).</span>
+          <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">{{ t('settings.live2d.advanced.disable-parameter-replay') }}</span>
+          <span :class="['text-xs', 'text-neutral-500', 'dark:text-neutral-400']">{{ t('settings.live2d.advanced.disable-parameter-replay-description') }}</span>
         </div>
         <Checkbox v-model="isReplayDisabledForModel" />
       </div>
 
       <!-- Extract Colors -->
       <div :class="['flex', 'flex-col', 'gap-2']">
-        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">Theme Extraction</span>
+        <span :class="['text-sm', 'text-neutral-600', 'dark:text-neutral-400']">{{ t('settings.live2d.advanced.theme-extraction') }}</span>
         <ColorPalette :colors="palette.map(hex => ({ hex, name: hex }))" :class="['mx-auto', 'mb-2']" />
         <Button variant="secondary" @click="$emit('extractColorsFromModel')">
           {{ t('settings.live2d.theme-color-from-model.button-extract.title') }}
@@ -792,7 +795,7 @@ onUnmounted(() => {
       <!-- L-HACK Editor -->
       <div flex="~ col gap-2">
         <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-widest uppercase">
-          L-HACK Editor
+          {{ t('settings.live2d.advanced.hacker-editor') }}
         </div>
         <Button
           :variant="lhackStore.isHackerModeActive ? 'primary' : 'secondary'"
@@ -801,10 +804,10 @@ onUnmounted(() => {
           <template #icon>
             <div i-solar:mask-h-bold-duotone />
           </template>
-          L-HACK Dashboard
+          {{ t('settings.live2d.advanced.hacker-dashboard') }}
         </Button>
         <p class="mb-2 px-1 text-[10px] text-neutral-400">
-          Open the Live2D Hacker Inspector for surgical drawable and atlas modding.
+          {{ t('settings.live2d.advanced.hacker-description') }}
         </p>
       </div>
 
@@ -814,7 +817,7 @@ onUnmounted(() => {
           :class="['w-full', 'border', 'rounded', 'bg-neutral-100', 'px-4', 'py-2', 'text-sm', 'text-neutral-700', 'font-medium', 'transition-colors', 'dark:border-neutral-700', 'dark:bg-neutral-800', 'hover:bg-neutral-200', 'dark:text-neutral-300', 'dark:hover:bg-neutral-700']"
           @click="resetToDefaultParameters"
         >
-          Reset To Default Parameters
+          {{ t('settings.live2d.parameters.reset-parameters') }}
         </button>
 
         <button
@@ -822,7 +825,7 @@ onUnmounted(() => {
           :disabled="clearingCache"
           @click="clearModelCache"
         >
-          {{ clearingCache ? 'Clearing...' : 'Clear Model Cache' }}
+          {{ clearingCache ? t('settings.live2d.clearing-model-cache') : t('settings.live2d.clear-model-cache') }}
         </button>
       </div>
     </div>

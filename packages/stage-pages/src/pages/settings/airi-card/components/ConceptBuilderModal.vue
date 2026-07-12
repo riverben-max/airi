@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import ImageTagExtractorModal from './ImageTagExtractorModal.vue'
 import VoiceCreatorModal from './VoiceCreatorModal.vue'
@@ -55,6 +56,12 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'save', payload: { id: string, data: ConceptData }): void
 }>()
+
+const { t } = useI18n()
+const conceptTabs = computed(() => ['identity', 'artistry', 'manifestation', 'scene', 'speech'].map(value => ({
+  value,
+  label: t(`settings.pages.card.creation.concept.tabs.${value}`),
+})))
 
 const artistryStore = useArtistryStore()
 const displayModelsStore = useDisplayModelsStore()
@@ -373,16 +380,16 @@ const isSelectedModelMissing = computed(() => {
   return !displayModelsStore.displayModels.some(m => m.id === selectedModelId.value)
 })
 
-const providerOptions = [
-  { value: 'inherit', label: 'Inherit Global' },
+const providerOptions = computed(() => [
+  { value: 'inherit', label: t('settings.pages.card.creation.concept.provider-options.inherit') },
   { value: 'replicate', label: 'Replicate' },
   { value: 'comfyui', label: 'ComfyUI' },
-  { value: 'none', label: 'Disable Artistry' },
-]
+  { value: 'none', label: t('settings.pages.card.creation.concept.provider-options.disable-artistry') },
+])
 
 const speechProviderOptions = computed(() => [
-  { value: 'inherit', label: 'Inherit Global' },
-  { value: 'none', label: 'Disable Speech' },
+  { value: 'inherit', label: t('settings.pages.card.creation.concept.provider-options.inherit') },
+  { value: 'none', label: t('settings.pages.card.creation.concept.provider-options.disable-speech') },
   ...providersStore.configuredSpeechProvidersMetadata.map(p => ({
     value: p.id,
     label: p.localizedName || p.name,
@@ -412,7 +419,7 @@ const speechVoiceOptions = computed(() => {
 const backgroundOptions = computed(() => {
   const bgs = backgroundStore.availableBackgrounds || []
   return [
-    { value: 'inherit', label: 'No Override' },
+    { value: 'inherit', label: t('settings.pages.card.creation.concept.provider-options.no-override') },
     ...bgs.map(bg => ({
       value: bg.id,
       label: bg.title || bg.id,
@@ -491,7 +498,7 @@ function handleSave() {
             </div>
             <div>
               <DialogTitle class="text-xl text-neutral-800 font-bold dark:text-neutral-100">
-                {{ conceptId ? 'Concept Studio' : 'New Concept' }}
+                {{ conceptId ? t('settings.pages.card.creation.concept.edit-title') : t('settings.pages.card.creation.concept.create-title') }}
               </DialogTitle>
               <code v-if="conceptId" class="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500 font-mono dark:bg-black/40">
                 ID: {{ conceptId }}
@@ -502,13 +509,13 @@ function handleSave() {
           <!-- Tab Navigation -->
           <div class="mt-6 flex gap-1">
             <button
-              v-for="t in ['identity', 'artistry', 'manifestation', 'scene', 'speech']"
-              :key="t"
+              v-for="tab in conceptTabs"
+              :key="tab.value"
               class="rounded-lg px-4 py-2 text-xs font-bold transition-all"
-              :class="activeTab === t ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'"
-              @click="activeTab = t"
+              :class="activeTab === tab.value ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'"
+              @click="activeTab = tab.value"
             >
-              {{ t.charAt(0).toUpperCase() + t.slice(1) }}
+              {{ tab.label }}
             </button>
           </div>
         </div>
@@ -519,17 +526,17 @@ function handleSave() {
           <div v-if="activeTab === 'identity'" class="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
             <FieldInput
               v-model="id"
-              label="Concept ID"
+              :label="t('settings.pages.card.creation.concept.id')"
               placeholder="e.g. silver_performance"
-              description="A unique identifier the Director will use to trigger this state."
+              :description="t('settings.pages.card.creation.concept.id-description')"
               :disabled="!!conceptId"
             />
 
             <FieldInput
               v-model="description"
-              label="Narrative Description"
-              placeholder="When should this be used?"
-              description="Helps the Director understand the context for this concept."
+              :label="t('settings.pages.card.creation.concept.narrative')"
+              :placeholder="t('settings.pages.card.creation.concept.narrative-placeholder')"
+              :description="t('settings.pages.card.creation.concept.narrative-description')"
               :single-line="false"
               :rows="3"
             />
@@ -538,10 +545,10 @@ function handleSave() {
               <label class="flex flex-col gap-4">
                 <div>
                   <div class="flex items-center gap-1 text-sm font-medium">
-                    Prompt Snippet
+                    {{ t('settings.pages.card.creation.concept.prompt-snippet') }}
                   </div>
                   <div class="text-xs text-neutral-500 dark:text-neutral-400">
-                    Keywords or modifiers to inject into the final image prompt.
+                    {{ t('settings.pages.card.creation.concept.prompt-snippet-description') }}
                   </div>
                 </div>
                 <div class="relative w-full">
@@ -555,7 +562,8 @@ function handleSave() {
                     v-if="hasManifestationModel"
                     type="button"
                     class="absolute right-2 top-2 h-8 w-8 flex items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-                    title="Extract tags from model preview (WD14)"
+                    :title="t('settings.pages.card.creation.concept.extract-tags')"
+                    :aria-label="t('settings.pages.card.creation.concept.extract-tags')"
                     @click.prevent="showTagExtractorModal = true"
                   >
                     <span i-solar:tag-bold-duotone class="text-lg" />
@@ -567,11 +575,11 @@ function handleSave() {
                 <button
                   type="button"
                   class="flex items-center gap-1 rounded-lg bg-neutral-100 px-2 py-1 text-[10px] text-neutral-600 font-bold transition-all dark:bg-neutral-800 hover:bg-primary-500 dark:text-neutral-300 hover:text-white dark:hover:bg-primary-500"
-                  title="Autofill with global user profile description and prompt tags"
+                  :title="t('settings.pages.card.creation.concept.add-user-profile')"
                   @click.prevent="handleLoadUserProfile"
                 >
                   <span class="i-solar:user-bold" />
-                  + User Profile
+                  {{ t('settings.pages.card.creation.concept.user-profile') }}
                 </button>
                 <button
                   v-for="cid in conceptIds"
@@ -589,12 +597,14 @@ function handleSave() {
             <!-- Base vs Layer toggle -->
             <div class="flex items-center justify-between border border-neutral-200 rounded-xl bg-neutral-50/50 p-4 dark:border-neutral-700 dark:bg-black/20">
               <div>
-                <span class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Base Concept (Exclusionary)</span>
+                <span class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.base-concept') }}</span>
                 <p class="mt-0.5 text-[10px] text-neutral-500 leading-relaxed">
-                  When active, clears the stack first. Use for outfits, character swaps, or any state that can't overlap.
+                  {{ t('settings.pages.card.creation.concept.base-concept-description') }}
                 </p>
               </div>
               <button
+                type="button"
+                :aria-label="t('settings.pages.card.creation.concept.base-concept')"
                 :class="[
                   'relative h-6 w-11 rounded-full transition-colors duration-200',
                   isBase ? 'bg-primary-500' : 'bg-neutral-300 dark:bg-neutral-600',
@@ -614,36 +624,36 @@ function handleSave() {
           <!-- Artistry Tab -->
           <div v-if="activeTab === 'artistry'" class="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
             <div class="flex flex-col gap-2">
-              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Generation Provider</label>
+              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.generation-provider') }}</label>
               <Select v-model="selectedProvider" :options="providerOptions" />
               <p class="text-[10px] text-neutral-500 italic">
-                The visual engine used for this concept.
+                {{ t('settings.pages.card.creation.concept.generation-provider-description') }}
               </p>
             </div>
 
             <div v-if="selectedProvider !== 'inherit' && selectedProvider !== 'none'" class="border-t border-neutral-100 pt-4 space-y-6 dark:border-neutral-800">
               <div v-if="selectedProvider === 'comfyui'" class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Select Workflow</label>
+                <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.workflow') }}</label>
                 <Select
                   v-model="selectedModel"
                   :options="artistryStore.comfyuiSavedWorkflows.map(w => ({ value: w.id, label: w.name || w.id }))"
                 />
                 <p class="text-[10px] text-neutral-500 italic">
-                  Choose from your registered ComfyUI templates.
+                  {{ t('settings.pages.card.creation.concept.workflow-description') }}
                 </p>
               </div>
 
               <FieldInput
                 v-else
                 v-model="selectedModel"
-                label="Model ID"
+                :label="t('settings.pages.card.creation.concept.model-id')"
                 placeholder="e.g. black-forest-labs/flux-schnell"
               />
 
               <FieldInput
                 v-model="selectedOptionsStr"
-                label="Advanced Options (JSON)"
-                description="Custom parameters for the specific provider."
+                :label="t('settings.pages.card.creation.concept.advanced-options')"
+                :description="t('settings.pages.card.creation.concept.advanced-options-description')"
                 :single-line="false"
                 :rows="6"
               />
@@ -653,7 +663,7 @@ function handleSave() {
           <!-- Manifestation Tab -->
           <div v-if="activeTab === 'manifestation'" class="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
             <div class="flex flex-col gap-2">
-              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Physical Model Override</label>
+              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.physical-model') }}</label>
 
               <!-- Search & Filter Controls -->
               <div class="flex items-center gap-2">
@@ -662,7 +672,7 @@ function handleSave() {
                   <input
                     v-model="manifestationSearch"
                     type="text"
-                    placeholder="Search models..."
+                    :placeholder="t('settings.pages.card.creation.concept.search-models')"
                     class="w-full border border-neutral-200 rounded-lg bg-neutral-50 py-1.5 pl-8 pr-2.5 text-[11px] text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
                   >
                 </div>
@@ -671,7 +681,7 @@ function handleSave() {
                   class="cursor-pointer border border-neutral-200 rounded-lg bg-neutral-50 px-2 py-1.5 text-[11px] font-medium outline-none dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
                 >
                   <option value="all">
-                    All Formats
+                    {{ t('settings.pages.card.creation.concept.all-formats') }}
                   </option>
                   <option value="live2d">
                     Live2D
@@ -702,7 +712,7 @@ function handleSave() {
                     @click="selectedModelId = 'inherit'"
                   >
                     <span class="i-solar:restart-bold-duotone mb-1 text-2xl text-neutral-400" />
-                    <span class="text-[9px] text-neutral-600 font-bold dark:text-neutral-300">Inherit Default</span>
+                    <span class="text-[9px] text-neutral-600 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.inherit-default') }}</span>
                   </div>
 
                   <!-- Missing Model Card -->
@@ -713,7 +723,7 @@ function handleSave() {
                     ]"
                   >
                     <span class="i-solar:danger-triangle-bold-duotone mb-1 text-2xl text-red-500" />
-                    <span class="text-[9px] text-red-600 font-bold dark:text-red-400">Missing Model</span>
+                    <span class="text-[9px] text-red-600 font-bold dark:text-red-400">{{ t('settings.pages.card.creation.concept.missing-model') }}</span>
                     <span class="absolute bottom-0 left-0 right-0 truncate bg-red-950/80 px-1 py-0.5 text-center text-[7px] text-white font-mono">
                       {{ selectedModelId }}
                     </span>
@@ -753,17 +763,17 @@ function handleSave() {
               </div>
 
               <p class="mt-1 text-[10px] text-neutral-500 italic">
-                Forces a base model swap (Live2D/VRM/Spine/MMD) when this concept is active.
+                {{ t('settings.pages.card.creation.concept.model-override-description') }}
               </p>
             </div>
 
             <!-- Idle Loop / Cycle Animations -->
             <div class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
               <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">
-                Idle Loop / Cycle Animations (Optional override)
+                {{ t('settings.pages.card.creation.concept.idle-animations') }}
               </label>
               <div class="text-[10px] text-neutral-500">
-                Pick from the animations available for this model to cycle through automatically.
+                {{ t('settings.pages.card.creation.concept.idle-animations-description') }}
               </div>
 
               <!-- Autocomplete Input -->
@@ -771,7 +781,7 @@ function handleSave() {
                 <input
                   v-model="newIdleAnimInput"
                   type="text"
-                  placeholder="Search and add animation name..."
+                  :placeholder="t('settings.pages.card.creation.concept.search-animation')"
                   class="w-full border border-neutral-200 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
                   @focus="isAnimDropdownOpen = true"
                   @blur="onAnimInputBlur"
@@ -807,7 +817,7 @@ function handleSave() {
                   class="flex items-center gap-1 border border-primary-500/20 rounded-full bg-primary-500/10 px-3 py-1 text-[10px] text-primary-600 font-medium dark:text-primary-400"
                 >
                   {{ anim }}
-                  <button type="button" class="ml-1 text-[12px] text-neutral-400 leading-none hover:text-red-400 focus:outline-none" @click="removeIdleAnimation(anim)">
+                  <button type="button" class="ml-1 text-[12px] text-neutral-400 leading-none hover:text-red-400 focus:outline-none" :aria-label="t('settings.pages.card.creation.concept.remove-animation', { name: anim })" @click="removeIdleAnimation(anim)">
                     &times;
                   </button>
                 </span>
@@ -815,7 +825,7 @@ function handleSave() {
 
               <!-- Quick Helper Buttons -->
               <div v-if="availableMotionsForSelectedModel.length > 0" class="flex flex-wrap items-center gap-1">
-                <span class="mr-1 text-[9px] text-neutral-500">Quick Add:</span>
+                <span class="mr-1 text-[9px] text-neutral-500">{{ t('settings.pages.card.creation.concept.quick-add') }}</span>
                 <button
                   v-for="preset in availableMotionsForSelectedModel.slice(0, 6)"
                   :key="preset"
@@ -830,10 +840,10 @@ function handleSave() {
 
             <!-- Active Expressions Override -->
             <div class="flex flex-col gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
-              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Active Expressions / Outfits</label>
+              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.expressions') }}</label>
 
               <div v-if="availableExpressions.length === 0" class="text-xs text-neutral-400 italic">
-                No expressions available for the active model.
+                {{ t('settings.pages.card.creation.concept.no-expressions') }}
               </div>
               <div v-else class="max-h-48 flex flex-wrap gap-1.5 overflow-y-auto p-1">
                 <button
@@ -852,7 +862,7 @@ function handleSave() {
                 </button>
               </div>
               <p class="text-[10px] text-neutral-500 italic">
-                Toggles facial expressions or outfit presets (e.g. preset2 for black dress) to layer onto the base state.
+                {{ t('settings.pages.card.creation.concept.expressions-description') }}
               </p>
             </div>
           </div>
@@ -860,39 +870,39 @@ function handleSave() {
           <!-- Speech Tab -->
           <div v-if="activeTab === 'speech'" class="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
             <div class="flex flex-col gap-2">
-              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Speech Provider Override</label>
+              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.speech-provider') }}</label>
               <Select v-model="selectedSpeechProvider" :options="speechProviderOptions" />
               <p class="text-[10px] text-neutral-500 italic">
-                Forces a specific TTS provider for this concept.
+                {{ t('settings.pages.card.creation.concept.speech-provider-description') }}
               </p>
             </div>
 
             <div v-if="selectedSpeechProvider !== 'none' && (selectedSpeechProvider !== 'inherit' || activeSpeechProvider)" class="border-t border-neutral-100 pt-4 space-y-6 dark:border-neutral-800">
               <div class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Vocal Model</label>
+                <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.vocal-model') }}</label>
                 <Select v-model="selectedSpeechModel" :options="speechModelOptions" />
                 <p class="text-[10px] text-neutral-500 italic">
-                  Choose the TTS engine version.
+                  {{ t('settings.pages.card.creation.concept.vocal-model-description') }}
                 </p>
               </div>
 
               <div class="flex flex-col gap-2">
-                <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Persona Voice</label>
+                <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.persona-voice') }}</label>
                 <div class="flex items-center gap-2">
                   <Select v-model="selectedSpeechVoiceId" :options="speechVoiceOptions" class="flex-1" />
                   <Button
                     variant="secondary"
                     type="button"
                     class="h-[38px] flex items-center gap-1.5 border border-neutral-200 px-3 text-xs font-bold dark:border-neutral-800"
-                    title="Create custom voice profile"
+                    :title="t('settings.pages.card.creation.concept.create-voice-title')"
                     @click.prevent="showVoiceCreator = true"
                   >
                     <span class="i-solar:music-notes-bold-duotone text-sm" />
-                    Create Custom Voice
+                    {{ t('settings.pages.card.creation.concept.create-voice') }}
                   </Button>
                 </div>
                 <p class="text-[10px] text-neutral-500 italic">
-                  The unique voice assigned to this concept/actress.
+                  {{ t('settings.pages.card.creation.concept.persona-voice-description') }}
                 </p>
               </div>
             </div>
@@ -904,9 +914,9 @@ function handleSave() {
             <div v-if="isDirectorActive" class="flex items-start gap-3 border border-amber-300/40 rounded-xl bg-amber-50/80 p-4 dark:border-amber-600/30 dark:bg-amber-900/20">
               <div class="i-solar:danger-triangle-bold mt-0.5 shrink-0 text-lg text-amber-500" />
               <div>
-                <span class="text-sm text-amber-800 font-bold dark:text-amber-300">Scene Control Disabled</span>
+                <span class="text-sm text-amber-800 font-bold dark:text-amber-300">{{ t('settings.pages.card.creation.concept.scene-disabled') }}</span>
                 <p class="mt-1 text-[11px] text-amber-700 leading-relaxed dark:text-amber-400">
-                  The Autonomous Director is currently active for this character. Scene overrides defined here will be ignored while the Director manages the visual environment. Disable the Director in the Artistry settings to enable manual scene control.
+                  {{ t('settings.pages.card.creation.concept.scene-disabled-description') }}
                 </p>
               </div>
             </div>
@@ -915,20 +925,20 @@ function handleSave() {
             <div class="flex items-start gap-3 border border-neutral-200 rounded-xl bg-neutral-50/50 p-4 dark:border-neutral-700 dark:bg-black/20">
               <div class="i-solar:clapperboard-open-play-bold-duotone mt-0.5 shrink-0 text-lg text-primary-500" />
               <div>
-                <span class="text-sm text-neutral-700 font-bold dark:text-neutral-300">How Scene Overrides Work</span>
+                <span class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.scene-help') }}</span>
                 <p class="mt-1 text-[11px] text-neutral-500 leading-relaxed">
-                  When the <code class="rounded bg-neutral-200 px-1 py-0.5 text-[10px] font-mono dark:bg-neutral-700">&lt;|ACTOR:{{ id || 'ID' }}|&gt;</code> token is triggered during a conversation, the background will automatically switch to the one selected below.
-                  This lets each character or costume maintain their own unique stage set.
+                  {{ t('settings.pages.card.creation.concept.scene-token-description', { token: `<|ACTOR:${id || 'ID'}|>` }) }}
+                  {{ t('settings.pages.card.creation.concept.scene-help-description') }}
                 </p>
               </div>
             </div>
 
             <!-- Background Selector -->
             <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': isDirectorActive }">
-              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Stage Background</label>
+              <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.pages.card.creation.concept.background') }}</label>
               <Select v-model="selectedBackgroundId" :options="backgroundOptions" />
               <p class="text-[10px] text-neutral-500 italic">
-                Choose a background from your gallery. Add more via the Image Gallery.
+                {{ t('settings.pages.card.creation.concept.background-description') }}
               </p>
             </div>
 
@@ -940,7 +950,7 @@ function handleSave() {
               >
                 <img
                   :src="backgroundStore.getBackgroundUrl(selectedBackgroundId)!"
-                  :alt="backgroundOptions.find(o => o.value === selectedBackgroundId)?.label || 'Preview'"
+                  :alt="backgroundOptions.find(o => o.value === selectedBackgroundId)?.label || t('settings.pages.card.creation.concept.preview')"
                   class="h-40 w-full object-cover"
                 >
                 <div class="bg-neutral-50/80 px-3 py-2 dark:bg-black/30">
@@ -952,7 +962,7 @@ function handleSave() {
               <div v-else class="border border-neutral-200 rounded-xl border-dashed bg-neutral-50/50 p-6 text-center dark:border-neutral-700 dark:bg-black/20">
                 <div class="i-solar:gallery-broken mx-auto mb-2 text-2xl text-neutral-300" />
                 <p class="text-xs text-neutral-400">
-                  Preview unavailable — background may still be loading.
+                  {{ t('settings.pages.card.creation.concept.preview-unavailable') }}
                 </p>
               </div>
             </div>
@@ -963,12 +973,12 @@ function handleSave() {
         <div class="flex items-center justify-end gap-3 border-t border-neutral-100 bg-neutral-50/50 p-6 pt-4 dark:border-neutral-800 dark:bg-black/20 sm:p-8">
           <Button
             variant="secondary"
-            label="Cancel"
+            :label="t('settings.pages.card.creation.actions.cancel')"
             @click="emit('update:modelValue', false)"
           />
           <Button
             variant="primary"
-            :label="conceptId ? 'Save Changes' : 'Create Concept'"
+            :label="conceptId ? t('settings.pages.card.creation.concept.save') : t('settings.pages.card.creation.concept.create')"
             icon="i-solar:check-read-linear"
             :disabled="!id.trim()"
             @click="handleSave"

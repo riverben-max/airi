@@ -83,8 +83,8 @@ function toggleMotion(motion: string) {
 
 // Tabs State
 const customizationTabs = computed(() => [
-  { value: 'expressions', label: 'Expressions', icon: 'i-solar:face-scan-circle-bold-duotone' },
-  { value: 'motions', label: 'Motions', icon: 'i-solar:play-bold-duotone' },
+  { value: 'expressions', label: t('settings.model-settings.common.tabs.expressions'), icon: 'i-solar:face-scan-circle-bold-duotone' },
+  { value: 'motions', label: t('settings.model-settings.common.tabs.motions'), icon: 'i-solar:play-bold-duotone' },
 ])
 const activeCustomizationTab = ref('expressions')
 
@@ -184,7 +184,7 @@ function handleMotionSelect(motion: string) {
 <template>
   <!-- Block 1: Character Customizations -->
   <Section
-    title="Character Customizations"
+    :title="t('settings.model-settings.common.sections.character-customizations')"
     icon="i-solar:user-bold-duotone"
     :class="['rounded-xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     size="sm"
@@ -207,7 +207,7 @@ function handleMotionSelect(motion: string) {
               <template #icon>
                 <div :class="showHiddenMorphs ? 'i-solar:eye-bold-duotone' : 'i-solar:eye-closed-bold-duotone'" />
               </template>
-              {{ showHiddenMorphs ? 'Showing Hidden' : 'Hide Hidden' }}
+              {{ showHiddenMorphs ? t('settings.model-settings.common.actions.showing-hidden') : t('settings.model-settings.common.actions.hide-hidden') }}
             </Button>
             <Button
               size="sm"
@@ -217,18 +217,18 @@ function handleMotionSelect(motion: string) {
               <template #icon>
                 <div class="i-solar:pen-bold-duotone" />
               </template>
-              {{ filterRenamedOnly ? 'Renamed Only' : 'All' }}
+              {{ filterRenamedOnly ? t('settings.model-settings.common.actions.renamed-only') : t('settings.model-settings.common.actions.all') }}
             </Button>
           </div>
           <div class="text-xs text-neutral-500">
-            {{ filteredMorphs.length }} expressions
+            {{ t('settings.model-settings.common.states.expression-count', { count: filteredMorphs.length }) }}
           </div>
         </div>
 
         <!-- Fixed Height Scrollable List -->
         <div class="max-h-[300px] overflow-y-auto border border-neutral-200 rounded-lg bg-white dark:border-neutral-700 dark:bg-neutral-900">
           <div v-if="filteredMorphs.length === 0" class="p-4 text-center text-sm text-neutral-500 dark:text-neutral-400">
-            No expressions match filters
+            {{ t('settings.model-settings.common.states.no-expressions') }}
           </div>
           <div
             v-for="morph in filteredMorphs"
@@ -254,10 +254,10 @@ function handleMotionSelect(motion: string) {
                     @keydown.enter="saveMorphName(morph)"
                     @keydown.esc="cancelEditing"
                   >
-                  <button class="text-xs text-green-500 hover:text-green-600" @click="saveMorphName(morph)">
+                  <button class="text-xs text-green-500 hover:text-green-600" :aria-label="t('settings.model-settings.common.actions.save-rename', { name: getDisplayName(morph) })" @click="saveMorphName(morph)">
                     <div class="i-solar:check-circle-bold-duotone text-lg" />
                   </button>
-                  <button class="text-xs text-red-500 hover:text-red-600" @click="cancelEditing">
+                  <button class="text-xs text-red-500 hover:text-red-600" :aria-label="t('settings.model-settings.common.actions.cancel-rename', { name: getDisplayName(morph) })" @click="cancelEditing">
                     <div class="i-solar:close-circle-bold-duotone text-lg" />
                   </button>
                 </div>
@@ -275,7 +275,8 @@ function handleMotionSelect(motion: string) {
               <!-- Edit Button -->
               <button
                 class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                title="Rename"
+                :title="t('settings.model-settings.common.actions.rename-item', { name: getDisplayName(morph) })"
+                :aria-label="t('settings.model-settings.common.actions.rename-item', { name: getDisplayName(morph) })"
                 @click="startEditing(morph)"
               >
                 <div class="i-solar:pen-bold-duotone text-sm" />
@@ -284,7 +285,8 @@ function handleMotionSelect(motion: string) {
               <!-- Visibility Toggle -->
               <button
                 class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                :title="isHidden(morph) ? 'Show' : 'Hide'"
+                :title="isHidden(morph) ? t('settings.model-settings.common.actions.show-item', { name: getDisplayName(morph) }) : t('settings.model-settings.common.actions.hide-item', { name: getDisplayName(morph) })"
+                :aria-label="isHidden(morph) ? t('settings.model-settings.common.actions.show-item', { name: getDisplayName(morph) }) : t('settings.model-settings.common.actions.hide-item', { name: getDisplayName(morph) })"
                 @click="toggleVisibility(morph)"
               >
                 <div :class="isHidden(morph) ? 'i-solar:eye-closed-bold-duotone' : 'i-solar:eye-bold-duotone'" class="text-sm" />
@@ -299,7 +301,7 @@ function handleMotionSelect(motion: string) {
         <!-- Controls Bar -->
         <div class="mb-2 flex items-center justify-between gap-2">
           <div class="text-xs text-neutral-500">
-            {{ availableMotions.length }} motions available
+            {{ t('settings.model-settings.common.states.motions-available', { count: availableMotions.length }) }}
           </div>
         </div>
 
@@ -316,7 +318,7 @@ function handleMotionSelect(motion: string) {
             <div class="flex items-center gap-2">
               <div v-if="!currentMotion" class="h-2 w-2 rounded-full bg-primary-500" />
               <div class="text-sm text-neutral-900 font-medium dark:text-neutral-100">
-                None
+                {{ t('settings.model-settings.common.actions.none') }}
               </div>
             </div>
           </div>
@@ -355,7 +357,8 @@ function handleMotionSelect(motion: string) {
                     ? 'text-primary-500 hover:text-primary-600 bg-primary-500/10'
                     : 'text-neutral-400 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800',
                 ]"
-                :title="isMotionSelected(motion) ? 'Remove from Idle Cycle' : 'Add to Idle Cycle'"
+                :title="isMotionSelected(motion) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: motion }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: motion })"
+                :aria-label="isMotionSelected(motion) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: motion }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: motion })"
                 @click="toggleMotion(motion)"
               >
                 <div class="i-solar:infinity-bold-duotone text-sm" />
@@ -383,7 +386,7 @@ function handleMotionSelect(motion: string) {
                 </div>
               </div>
               <div class="ml-4 max-w-[230px] truncate text-xs text-neutral-500 dark:text-neutral-400">
-                Custom VMD Motion
+                {{ t('settings.model-settings.common.states.custom-vmd-motion') }}
               </div>
             </div>
 
@@ -398,14 +401,16 @@ function handleMotionSelect(motion: string) {
                     ? 'text-primary-500 hover:text-primary-600 bg-primary-500/10'
                     : 'text-neutral-400 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800',
                 ]"
-                :title="isMotionSelected(motion.name) ? 'Remove from Idle Cycle' : 'Add to Idle Cycle'"
+                :title="isMotionSelected(motion.name) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: motion.name }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: motion.name })"
+                :aria-label="isMotionSelected(motion.name) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: motion.name }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: motion.name })"
                 @click="toggleMotion(motion.name)"
               >
                 <div class="i-solar:infinity-bold-duotone text-sm" />
               </button>
               <button
                 class="rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-950"
-                title="Remove Custom Motion"
+                :title="t('settings.model-settings.common.actions.remove-custom-motion')"
+                :aria-label="t('settings.model-settings.common.actions.remove-custom-motion-item', { name: motion.name })"
                 @click="mmdStore.removeMotion(motion.id)"
               >
                 <div class="i-solar:trash-bin-minimalistic-bold-duotone text-sm" />
@@ -428,7 +433,7 @@ function handleMotionSelect(motion: string) {
 
   <!-- Block 3: Advanced -->
   <Section
-    title="Advanced"
+    :title="t('settings.model-settings.common.sections.advanced')"
     icon="i-solar:settings-bold-duotone"
     :class="['rounded-xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     size="sm"
@@ -470,15 +475,15 @@ function handleMotionSelect(motion: string) {
       <!-- Physics Solver Toggles -->
       <div flex="~ col gap-4" class="mb-2 border-b border-neutral-100 pb-4 dark:border-neutral-800">
         <div flex="~ items-center justify-between">
-          <span class="text-sm text-neutral-600 dark:text-neutral-400">Enable Physics</span>
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">{{ t('settings.vrm.physics.enable') }}</span>
           <Checkbox v-model="physicsEnabled" />
         </div>
         <div flex="~ items-center justify-between">
-          <span class="text-sm text-neutral-600 dark:text-neutral-400">Enable IK Solvers</span>
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">{{ t('settings.vrm.physics.enable-ik') }}</span>
           <Checkbox v-model="ikEnabled" />
         </div>
         <div flex="~ items-center justify-between">
-          <span class="text-sm text-neutral-600 dark:text-neutral-400">Enable Append-Bone (Grant)</span>
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">{{ t('settings.vrm.physics.enable-append-bone') }}</span>
           <Checkbox v-model="grantEnabled" />
         </div>
         <div flex="~ col gap-2">
@@ -487,12 +492,12 @@ function handleMotionSelect(motion: string) {
             :min="0"
             :max="200"
             :step="1"
-            label="Gravity Strength"
+            :label="t('settings.vrm.physics.gravity-strength')"
           >
             <template #label>
               <div flex="~ items-center justify-between" class="w-full">
                 <div class="text-sm text-neutral-600 dark:text-neutral-400">
-                  Gravity Strength
+                  {{ t('settings.vrm.physics.gravity-strength') }}
                 </div>
                 <div class="text-xs text-neutral-600 font-bold font-mono dark:text-neutral-400">
                   {{ physicsGravity }}

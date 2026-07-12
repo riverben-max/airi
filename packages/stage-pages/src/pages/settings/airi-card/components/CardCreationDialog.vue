@@ -282,7 +282,7 @@ const consciousnessProviderOptions = computed(() => {
 
 const artistryProviderOptions = computed(() => {
   return [
-    { value: 'none', label: 'None (Disabled)' },
+    { value: 'none', label: t('settings.pages.card.creation.generation-settings.compaction-options.none') },
     { value: 'replicate', label: 'Replicate' },
     { value: 'comfyui', label: 'ComfyUI' },
   ]
@@ -692,23 +692,23 @@ interface Tab {
 const activeTabId = ref('')
 
 // Tabs for card details
-const tabs: Tab[] = [
+const tabs = computed<Tab[]>(() => [
   { id: 'identity', label: t('settings.pages.card.creation.identity'), icon: 'i-solar:emoji-funny-square-bold-duotone' },
   { id: 'behavior', label: t('settings.pages.card.creation.behavior'), icon: 'i-solar:chat-round-line-bold-duotone' },
-  { id: 'generation', label: 'Generation', icon: 'i-solar:tuning-square-bold-duotone' },
-  { id: 'acting', label: 'Acting', icon: 'i-solar:mask-happly-bold-duotone' },
+  { id: 'generation', label: t('settings.pages.card.creation.generation'), icon: 'i-solar:tuning-square-bold-duotone' },
+  { id: 'acting', label: t('settings.pages.card.creation.acting'), icon: 'i-solar:mask-happly-bold-duotone' },
   { id: 'modules', label: t('settings.pages.card.modules'), icon: 'i-solar:widget-4-bold-duotone' },
   { id: 'artistry', label: t('settings.pages.modules.artistry.title'), icon: 'i-solar:gallery-bold-duotone' },
-  { id: 'proactivity', label: t('settings.pages.card.creation.proactivity', 'Proactivity'), icon: 'i-solar:heart-pulse-bold-duotone' },
-  { id: 'tools', label: 'Tools', icon: 'i-solar:widget-bold-duotone' },
-]
+  { id: 'proactivity', label: t('settings.pages.card.creation.proactivity'), icon: 'i-solar:heart-pulse-bold-duotone' },
+  { id: 'tools', label: t('settings.pages.card.creation.tools'), icon: 'i-solar:widget-bold-duotone' },
+])
 
 // Active tab state - set to first available tab by default
 const activeTab = computed({
   get: () => {
     // If current active tab is not in available tabs, reset to first tab
-    if (!tabs.find(tab => tab.id === activeTabId.value))
-      return tabs[0]?.id || ''
+    if (!tabs.value.find(tab => tab.id === activeTabId.value))
+      return tabs.value[0]?.id || ''
     return activeTabId.value
   },
   set: (value: string) => {
@@ -789,7 +789,7 @@ async function saveCard(card: Card): Promise<boolean> {
   }
   catch {
     showError.value = true
-    errorMessage.value = 'Generation Advanced JSON must be valid JSON before saving.'
+    errorMessage.value = t('settings.pages.card.creation.errors.invalid_generation_json')
     return false
   }
 
@@ -801,7 +801,7 @@ async function saveCard(card: Card): Promise<boolean> {
   }
   catch {
     showError.value = true
-    errorMessage.value = 'Artistry Config must be valid JSON before saving.'
+    errorMessage.value = t('settings.pages.card.creation.errors.invalid_artistry_config')
     return false
   }
 
@@ -1201,19 +1201,19 @@ function openSparkleGenerator(fieldId: string) {
     generatorFieldValue.value = cardGreetings.value.join('\n')
   }
   else if (fieldId === 'actingModelExpression') {
-    generatorFieldLabel.value = 'ACT / Model Expressions'
+    generatorFieldLabel.value = t('settings.pages.card.creation.generator-fields.model-expressions')
     generatorFieldValue.value = selectedActingModelExpressionPrompt.value
   }
   else if (fieldId === 'actingSpeechExpression') {
-    generatorFieldLabel.value = 'Speech Tags / Audio Expressions'
+    generatorFieldLabel.value = t('settings.pages.card.creation.generator-fields.speech-expressions')
     generatorFieldValue.value = selectedActingSpeechExpressionPrompt.value
   }
   else if (fieldId === 'artistryPromptPrefix') {
-    generatorFieldLabel.value = 'Artistry Prompt Default Prefix'
+    generatorFieldLabel.value = t('settings.pages.card.creation.generator-fields.artistry-prefix')
     generatorFieldValue.value = selectedArtistryPromptPrefix.value
   }
   else if (fieldId === 'heartbeatsPrompt') {
-    generatorFieldLabel.value = 'Stealth Heartbeat Prompt'
+    generatorFieldLabel.value = t('settings.pages.card.creation.proactivity-settings.heartbeat-prompt')
     generatorFieldValue.value = heartbeatsPrompt.value
   }
   showGeneratorModal.value = true
@@ -1270,7 +1270,7 @@ function handleGeneratorSave(newValue: string) {
               <Button
                 variant="secondary"
                 icon="i-solar:clapperboard-play-bold-duotone"
-                label="Studio"
+                :label="t('settings.pages.card.creation.studio')"
                 @click="emit('studio', props.cardId)"
               />
             </div>

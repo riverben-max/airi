@@ -272,7 +272,7 @@ const activeCustomizationTab = ref('expressions')
 <template>
   <!-- Block 1: Character Customizations -->
   <Section
-    title="Character Customizations"
+    :title="t('settings.model-settings.common.sections.character-customizations')"
     icon="i-solar:user-bold-duotone"
     :class="[
       'rounded-xl',
@@ -288,19 +288,19 @@ const activeCustomizationTab = ref('expressions')
     <div v-if="activeCustomizationTab === 'expressions'">
       <!-- Independent Animations (Grid) -->
       <div class="mb-2 flex items-center justify-between px-1">
-        <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Independent Overlays</span>
+        <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">{{ t('settings.spine.customization.independent-overlays') }}</span>
         <div class="flex gap-1">
           <button
             class="rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
             @click="showRenamedOnlyForOverlays = !showRenamedOnlyForOverlays"
           >
-            {{ showRenamedOnlyForOverlays ? 'Show All' : 'Show Renamed' }}
+            {{ showRenamedOnlyForOverlays ? t('settings.model-settings.common.actions.show-all') : t('settings.model-settings.common.actions.show-renamed') }}
           </button>
           <button
             class="rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
             @click="resetAllAnimations"
           >
-            Reset All
+            {{ t('settings.model-settings.common.actions.reset-all') }}
           </button>
         </div>
       </div>
@@ -346,7 +346,7 @@ const activeCustomizationTab = ref('expressions')
     <div v-else-if="activeCustomizationTab === 'animations'" :class="['w-full', 'min-w-0']">
       <!-- Base Idle Animation -->
       <div class="mb-2 px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-        Base Idle Animation
+        {{ t('settings.spine.customization.base-idle-animation') }}
       </div>
       <!-- Controls Bar -->
       <div class="mb-2 flex items-center justify-between gap-2">
@@ -359,7 +359,7 @@ const activeCustomizationTab = ref('expressions')
             <template #icon>
               <div :class="showHiddenAnimations ? 'i-solar:eye-bold-duotone' : 'i-solar:eye-closed-bold-duotone'" />
             </template>
-            {{ showHiddenAnimations ? 'Showing Hidden' : 'Hide Hidden' }}
+            {{ showHiddenAnimations ? t('settings.model-settings.common.actions.showing-hidden') : t('settings.model-settings.common.actions.hide-hidden') }}
           </Button>
           <Button
             size="sm"
@@ -369,11 +369,11 @@ const activeCustomizationTab = ref('expressions')
             <template #icon>
               <div class="i-solar:pen-bold-duotone" />
             </template>
-            {{ filterRenamedOnly ? 'Renamed Only' : 'All' }}
+            {{ filterRenamedOnly ? t('settings.model-settings.common.actions.renamed-only') : t('settings.model-settings.common.actions.all') }}
           </Button>
         </div>
         <div class="text-xs text-neutral-500">
-          {{ filteredAnimations.length }} animations
+          {{ t('settings.model-settings.common.states.animation-count', { count: filteredAnimations.length }) }}
         </div>
       </div>
       <!-- Fixed Height Scrollable List -->
@@ -389,13 +389,13 @@ const activeCustomizationTab = ref('expressions')
           <div class="flex items-center gap-2">
             <div v-if="!currentAnimation.name" class="h-2 w-2 rounded-full bg-primary-500" />
             <div class="text-sm text-neutral-900 font-medium dark:text-neutral-100">
-              None
+              {{ t('settings.model-settings.common.actions.none') }}
             </div>
           </div>
         </div>
 
         <div v-if="filteredAnimations.length === 0" class="p-4 text-center text-sm text-neutral-500 dark:text-neutral-400">
-          No animations match filters
+          {{ t('settings.model-settings.common.states.no-animations') }}
         </div>
         <div
           v-for="animation in filteredAnimations"
@@ -421,10 +421,10 @@ const activeCustomizationTab = ref('expressions')
                   @keydown.enter="saveAnimationName(animation.name)"
                   @keydown.esc="cancelEditing"
                 >
-                <button class="text-xs text-green-500 hover:text-green-600" @click="saveAnimationName(animation.name)">
+                <button class="text-xs text-green-500 hover:text-green-600" :aria-label="t('settings.model-settings.common.actions.save-rename', { name: animationMappings[animation.name] || animation.name })" @click="saveAnimationName(animation.name)">
                   <div class="i-solar:check-circle-bold-duotone text-lg" />
                 </button>
-                <button class="text-xs text-red-500 hover:text-red-600" @click="cancelEditing">
+                <button class="text-xs text-red-500 hover:text-red-600" :aria-label="t('settings.model-settings.common.actions.cancel-rename', { name: animationMappings[animation.name] || animation.name })" @click="cancelEditing">
                   <div class="i-solar:close-circle-bold-duotone text-lg" />
                 </button>
               </div>
@@ -448,7 +448,8 @@ const activeCustomizationTab = ref('expressions')
                   ? 'text-primary-500 hover:text-primary-600 bg-primary-500/10'
                   : 'text-neutral-400 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800',
               ]"
-              :title="isAnimationInCycle(animation.name) ? 'Remove from Idle Cycle' : 'Add to Idle Cycle'"
+              :title="isAnimationInCycle(animation.name) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: animationMappings[animation.name] || animation.name }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: animationMappings[animation.name] || animation.name })"
+              :aria-label="isAnimationInCycle(animation.name) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: animationMappings[animation.name] || animation.name }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: animationMappings[animation.name] || animation.name })"
               @click="toggleAnimationInCycle(animation.name)"
             >
               <div class="i-solar:infinity-bold-duotone text-sm" />
@@ -457,7 +458,8 @@ const activeCustomizationTab = ref('expressions')
             <!-- Edit Button -->
             <button
               class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-              title="Rename"
+              :title="t('settings.model-settings.common.actions.rename-item', { name: animationMappings[animation.name] || animation.name })"
+              :aria-label="t('settings.model-settings.common.actions.rename-item', { name: animationMappings[animation.name] || animation.name })"
               @click="startEditing(animation)"
             >
               <div class="i-solar:pen-bold-duotone text-sm" />
@@ -466,7 +468,8 @@ const activeCustomizationTab = ref('expressions')
             <!-- Visibility Toggle -->
             <button
               class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-              :title="hiddenAnimations.includes(animation.name) ? 'Show' : 'Hide'"
+              :title="hiddenAnimations.includes(animation.name) ? t('settings.model-settings.common.actions.show-item', { name: animationMappings[animation.name] || animation.name }) : t('settings.model-settings.common.actions.hide-item', { name: animationMappings[animation.name] || animation.name })"
+              :aria-label="hiddenAnimations.includes(animation.name) ? t('settings.model-settings.common.actions.show-item', { name: animationMappings[animation.name] || animation.name }) : t('settings.model-settings.common.actions.hide-item', { name: animationMappings[animation.name] || animation.name })"
               @click="toggleVisibility(animation.name)"
             >
               <div :class="hiddenAnimations.includes(animation.name) ? 'i-solar:eye-closed-bold-duotone' : 'i-solar:eye-bold-duotone'" class="text-sm" />
@@ -482,7 +485,7 @@ const activeCustomizationTab = ref('expressions')
 
   <!-- Block 2: Scene -->
   <Section
-    title="Scene"
+    :title="t('settings.model-settings.common.sections.scene')"
     icon="i-solar:clapperboard-edit-bold-duotone"
     :class="[
       'rounded-xl',
@@ -499,7 +502,7 @@ const activeCustomizationTab = ref('expressions')
 
   <!-- Block 3: Advanced -->
   <Section
-    title="Advanced"
+    :title="t('settings.model-settings.common.sections.advanced')"
     icon="i-solar:settings-bold-duotone"
     :class="[
       'rounded-xl',
@@ -512,21 +515,21 @@ const activeCustomizationTab = ref('expressions')
     <!-- Theme Extraction -->
     <div flex="~ col gap-2" class="mb-4">
       <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-        Theme Extraction
+        {{ t('settings.spine.theme-color-from-model.title') }}
       </div>
       <ColorPalette class="mb-2 mt-2" :colors="palette.map(hex => ({ hex, name: hex }))" mx-auto />
       <Button variant="secondary" :disabled="true" @click="$emit('extractColorsFromModel')">
         {{ t('settings.spine.theme-color-from-model.button-extract.title') }}
       </Button>
       <p class="px-1 text-[10px] text-neutral-400">
-        (Disabled for Phase 1)
+        {{ t('settings.spine.customization.extraction-disabled') }}
       </p>
     </div>
 
     <!-- Rendering -->
     <div flex="~ col gap-2">
       <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-        Rendering
+        {{ t('settings.spine.rendering.title') }}
       </div>
       <div :class="['flex', 'items-center', 'justify-between', 'gap-2']">
         <div :class="['text-sm', 'font-medium']">
@@ -538,7 +541,7 @@ const activeCustomizationTab = ref('expressions')
         <FieldRange v-model="spineRenderScale" as="div" :min="0.5" :max="3" :step="0.1" :default-value="1" :label="t('settings.spine.rendering.render-scale')" />
       </div>
       <p class="px-1 text-[10px] text-neutral-400">
-        (Rendering controls disabled for Phase 1)
+        {{ t('settings.spine.customization.rendering-disabled') }}
       </p>
     </div>
   </Section>

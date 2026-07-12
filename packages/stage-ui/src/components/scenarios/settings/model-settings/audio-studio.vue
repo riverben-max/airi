@@ -10,11 +10,14 @@ import {
 import { generateSpeech } from '@xsai/generate-speech'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { applyVoiceProfileEffects } from '../../../../composables/audio/audio-effects'
 import { useAudioContext } from '../../../../stores/audio'
 import { useSpeechStore } from '../../../../stores/modules/speech'
 import { useProvidersStore } from '../../../../stores/providers'
+
+const { t } = useI18n()
 
 const providersStore = useProvidersStore()
 const speechStore = useSpeechStore()
@@ -141,7 +144,7 @@ function createNewProfile() {
   const id = `voice_profile_${Date.now()}`
   const newProfile: VoiceProfile = {
     id,
-    name: 'New Custom Voice',
+    name: t('settings.model-settings.audio-studio.new-profile-name'),
     baseProvider: 'speech-noop',
     baseModel: '',
     baseVoice: '',
@@ -217,13 +220,18 @@ function deleteProfile(id: string) {
 function duplicateProfile(profile: VoiceProfile) {
   const duplicated: VoiceProfile = JSON.parse(JSON.stringify(profile))
   duplicated.id = `voice_profile_${Date.now()}`
-  duplicated.name = `${profile.name} (Copy)`
+  duplicated.name = t('settings.model-settings.audio-studio.copy-suffix', { name: profile.name })
   speechStore.saveVoiceProfile(duplicated)
   activeProfileId.value = duplicated.id
 }
 
 // Playground Logic
-const testText = ref('Hello, I am testing my new custom voice in the Audio Studio playground!')
+const translatedDefaultTestText = computed(() => t('settings.model-settings.audio-studio.playground.default-text'))
+const testText = ref(translatedDefaultTestText.value)
+watch(translatedDefaultTestText, (nextDefault, previousDefault) => {
+  if (testText.value === previousDefault)
+    testText.value = nextDefault
+})
 const isGenerating = ref(false)
 const audioUrl = ref('')
 let currentPlayNode: AudioBufferSourceNode | null = null
@@ -315,6 +323,19 @@ function stopTestAudio(clearUrl = true) {
   }
 }
 
+function formatPan(value: number) {
+  if (value === 0)
+    return t('settings.model-settings.audio-studio.pan.center')
+  return value < 0
+    ? t('settings.model-settings.audio-studio.pan.left', { value: Math.abs(value) })
+    : t('settings.model-settings.audio-studio.pan.right', { value })
+}
+
+function formatBracketAction(action: string) {
+  const key = action === 'token' ? 'convert-to-token' : action
+  return t(`settings.model-settings.audio-studio.transformer.actions.${key}`)
+}
+
 onUnmounted(() => {
   if (audioUrl.value) {
     URL.revokeObjectURL(audioUrl.value)
@@ -328,14 +349,14 @@ onUnmounted(() => {
     <div class="min-w-[240px] flex flex-col gap-4 rounded-2xl bg-neutral-100/50 p-4 lg:w-[30%] dark:bg-neutral-900/30">
       <div flex="~ row items-center justify-between">
         <h3 class="text-base text-neutral-500 font-bold dark:text-neutral-400">
-          Voice Library
+          {{ t('settings.model-settings.audio-studio.library') }}
         </h3>
         <button
           class="flex items-center gap-1 border border-neutral-300 rounded-lg bg-neutral-200/50 px-2 py-1 text-xs text-neutral-700 font-medium dark:border-neutral-800 dark:bg-neutral-800/40 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800"
           @click="createNewProfile"
         >
           <div i-solar:add-circle-bold-duotone />
-          <span>New Profile</span>
+          <span>{{ t('settings.model-settings.audio-studio.new-profile') }}</span>
         </button>
       </div>
 
@@ -353,18 +374,20 @@ onUnmounted(() => {
         >
           <div flex="~ col gap-0.5">
             <span class="font-semibold">{{ profile.name }}</span>
-            <span class="text-xs opacity-60">{{ profile.baseProvider !== 'speech-noop' ? `${profile.baseProvider} / ${profile.baseVoice}` : 'Not bound' }}</span>
+            <span class="text-xs opacity-60">{{ profile.baseProvider !== 'speech-noop' ? `${profile.baseProvider} / ${profile.baseVoice}` : t('settings.model-settings.audio-studio.not-bound') }}</span>
           </div>
 
           <div class="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               class="rounded p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700/60"
+              :aria-label="t('settings.model-settings.audio-studio.duplicate-profile', { name: profile.name })"
               @click.stop="duplicateProfile(profile)"
             >
               <div i-solar:copy-bold-duotone class="text-sm text-neutral-400 dark:text-neutral-500" />
             </button>
             <button
               class="rounded p-1 hover:bg-red-500/10"
+              :aria-label="t('settings.model-settings.audio-studio.delete-profile', { name: profile.name })"
               @click.stop="deleteProfile(profile.id)"
             >
               <div i-solar:trash-bin-trash-bold-duotone class="text-sm text-red-500" />
@@ -380,31 +403,31 @@ onUnmounted(() => {
       <div class="flex flex-col gap-6 rounded-2xl bg-neutral-100/50 p-6 dark:bg-neutral-900/30">
         <div>
           <h3 class="text-base text-neutral-500 font-bold dark:text-neutral-400">
-            Voice Settings Profile
+            {{ t('settings.model-settings.audio-studio.profile.title') }}
           </h3>
           <p class="text-xs text-neutral-400 dark:text-neutral-500">
-            Link this profile to a base provider engine and define custom name
+            {{ t('settings.model-settings.audio-studio.profile.description') }}
           </p>
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FieldInput
             v-model="form.name"
-            label="Profile Name"
-            description="Give your virtual voice profile a recognizable name"
-            placeholder="e.g. Neuro Ashley"
+            :label="t('settings.model-settings.audio-studio.profile.name')"
+            :description="t('settings.model-settings.audio-studio.profile.name-description')"
+            :placeholder="t('settings.model-settings.audio-studio.profile.name-placeholder')"
             @update:model-value="saveProfile"
           />
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-sm text-neutral-500 font-medium dark:text-neutral-400">Base Provider</label>
+            <label class="text-sm text-neutral-500 font-medium dark:text-neutral-400">{{ t('settings.model-settings.audio-studio.profile.base-provider') }}</label>
             <select
               v-model="form.baseProvider"
               class="w-full border border-neutral-300 rounded-xl bg-white px-3 py-2 text-sm outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-900"
               @change="saveProfile"
             >
               <option value="speech-noop">
-                None (No-op)
+                {{ t('settings.model-settings.audio-studio.profile.no-provider') }}
               </option>
               <option
                 v-for="provider in allAudioSpeechProvidersMetadata.filter(p => p.id !== 'virtual-audio-studio' && p.id !== 'speech-noop')"
@@ -417,9 +440,9 @@ onUnmounted(() => {
           </div>
 
           <div v-if="form.baseProvider !== 'speech-noop'" class="flex flex-col gap-1.5">
-            <label class="text-sm text-neutral-500 font-medium dark:text-neutral-400">Model</label>
+            <label class="text-sm text-neutral-500 font-medium dark:text-neutral-400">{{ t('settings.model-settings.audio-studio.profile.model') }}</label>
             <div v-if="isLoadingModels" class="animate-pulse text-xs text-neutral-400">
-              Loading models...
+              {{ t('settings.model-settings.audio-studio.profile.loading-models') }}
             </div>
             <select
               v-else
@@ -428,7 +451,7 @@ onUnmounted(() => {
               @change="saveProfile"
             >
               <option value="">
-                Select a model
+                {{ t('settings.model-settings.audio-studio.profile.select-model') }}
               </option>
               <option
                 v-for="model in availableModels"
@@ -441,9 +464,9 @@ onUnmounted(() => {
           </div>
 
           <div v-if="form.baseProvider !== 'speech-noop'" class="flex flex-col gap-1.5">
-            <label class="text-sm text-neutral-500 font-medium dark:text-neutral-400">Voice</label>
+            <label class="text-sm text-neutral-500 font-medium dark:text-neutral-400">{{ t('settings.model-settings.audio-studio.profile.voice') }}</label>
             <div v-if="isLoadingVoices" class="animate-pulse text-xs text-neutral-400">
-              Loading voices...
+              {{ t('settings.model-settings.audio-studio.profile.loading-voices') }}
             </div>
             <template v-else>
               <!-- Dropdown when the provider can list voices -->
@@ -454,7 +477,7 @@ onUnmounted(() => {
                 @change="saveProfile"
               >
                 <option value="">
-                  Select a voice
+                  {{ t('settings.model-settings.audio-studio.profile.select-voice') }}
                 </option>
                 <option
                   v-for="voice in availableVoices"
@@ -469,7 +492,7 @@ onUnmounted(() => {
                 v-else
                 v-model="form.baseVoice"
                 type="text"
-                placeholder="Enter voice name manually (e.g. Abigail)"
+                :placeholder="t('settings.model-settings.audio-studio.profile.manual-voice-placeholder')"
                 class="w-full border border-neutral-300 rounded-xl bg-white px-3 py-2 text-sm outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-900"
                 @change="saveProfile"
               >
@@ -482,18 +505,18 @@ onUnmounted(() => {
       <div class="flex flex-col gap-6 rounded-2xl bg-neutral-100/50 p-6 dark:bg-neutral-900/30">
         <div>
           <h3 class="text-base text-neutral-500 font-bold dark:text-neutral-400">
-            Audio Transformation Effects (DSP)
+            {{ t('settings.model-settings.audio-studio.effects.title') }}
           </h3>
           <p class="text-xs text-neutral-400 dark:text-neutral-500">
-            Adjust Web Audio API synthesis effects in real time
+            {{ t('settings.model-settings.audio-studio.effects.description') }}
           </p>
         </div>
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
           <FieldRange
             v-model="form.effects.pitch"
-            label="Pitch Tuning"
-            description="Scales sample pitch via playback rate"
+            :label="t('settings.model-settings.audio-studio.effects.pitch.label')"
+            :description="t('settings.model-settings.audio-studio.effects.pitch.description')"
             :min="-100"
             :max="100"
             :step="1"
@@ -503,8 +526,8 @@ onUnmounted(() => {
 
           <FieldRange
             v-model="form.effects.rate"
-            label="Speech Speed"
-            description="Adjust general speech rate multiplier"
+            :label="t('settings.model-settings.audio-studio.effects.speed.label')"
+            :description="t('settings.model-settings.audio-studio.effects.speed.description')"
             :min="0.5"
             :max="2.5"
             :step="0.05"
@@ -514,8 +537,8 @@ onUnmounted(() => {
 
           <FieldRange
             v-model="form.effects.asmr"
-            label="ASMR Intimacy / Softness"
-            description="Dampens high sibilants and adds voice compression"
+            :label="t('settings.model-settings.audio-studio.effects.asmr.label')"
+            :description="t('settings.model-settings.audio-studio.effects.asmr.description')"
             :min="0"
             :max="100"
             :step="1"
@@ -525,8 +548,8 @@ onUnmounted(() => {
 
           <FieldRange
             v-model="form.effects.radio"
-            label="Retro Radio Filter"
-            description="Applies telephone bandpass frequency cuts"
+            :label="t('settings.model-settings.audio-studio.effects.radio.label')"
+            :description="t('settings.model-settings.audio-studio.effects.radio.description')"
             :min="0"
             :max="100"
             :step="1"
@@ -536,8 +559,8 @@ onUnmounted(() => {
 
           <FieldRange
             v-model="form.effects.robot"
-            label="Robotic Comb Delay"
-            description="Feedback metallic echo droid ring modulation"
+            :label="t('settings.model-settings.audio-studio.effects.robot.label')"
+            :description="t('settings.model-settings.audio-studio.effects.robot.description')"
             :min="0"
             :max="100"
             :step="1"
@@ -547,8 +570,8 @@ onUnmounted(() => {
 
           <FieldRange
             v-model="form.effects.reverb"
-            label="Cathedral Reverb / Space Echo"
-            description="350ms multi-tap delay acoustics decay"
+            :label="t('settings.model-settings.audio-studio.effects.reverb.label')"
+            :description="t('settings.model-settings.audio-studio.effects.reverb.description')"
             :min="0"
             :max="100"
             :step="1"
@@ -558,12 +581,12 @@ onUnmounted(() => {
 
           <FieldRange
             v-model="form.effects.spatial"
-            label="Stereo Panning"
-            description="Shift voice placement left to right"
+            :label="t('settings.model-settings.audio-studio.effects.panning.label')"
+            :description="t('settings.model-settings.audio-studio.effects.panning.description')"
             :min="-100"
             :max="100"
             :step="1"
-            :format-value="val => val === 0 ? 'Center' : val < 0 ? `Left ${Math.abs(val)}%` : `Right ${val}%`"
+            :format-value="formatPan"
             @update:model-value="saveProfile"
           />
         </div>
@@ -574,10 +597,10 @@ onUnmounted(() => {
         <div flex="~ row items-center justify-between">
           <div>
             <h3 class="text-base text-neutral-500 font-bold dark:text-neutral-400">
-              Universal Speech Transformer
+              {{ t('settings.model-settings.audio-studio.transformer.title') }}
             </h3>
             <p class="text-xs text-neutral-400 dark:text-neutral-500">
-              Granular per-profile text stripping filters
+              {{ t('settings.model-settings.audio-studio.transformer.description') }}
             </p>
           </div>
           <FieldCheckbox
@@ -591,14 +614,14 @@ onUnmounted(() => {
           <!-- Option A: Bracket-by-Bracket Action Mapper -->
           <div class="flex flex-col gap-3">
             <div class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">
-              Bracket Rules
+              {{ t('settings.model-settings.audio-studio.transformer.bracket-rules') }}
             </div>
             <div class="grid grid-cols-1 gap-4 border border-neutral-200/60 rounded-xl bg-white p-4 dark:border-neutral-800/60 dark:bg-neutral-900/60">
               <!-- Asterisks -->
               <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div class="flex flex-col">
-                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">Asterisks (*...*)</span>
-                  <span class="text-[10px] text-neutral-400">Used for italics, actions, or emotes</span>
+                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.model-settings.audio-studio.transformer.asterisks') }}</span>
+                  <span class="text-[10px] text-neutral-400">{{ t('settings.model-settings.audio-studio.transformer.asterisks-description') }}</span>
                 </div>
                 <div class="flex gap-1.5">
                   <button
@@ -613,7 +636,7 @@ onUnmounted(() => {
                     ]"
                     @click="form.ust.asterisks = act; saveProfile()"
                   >
-                    {{ act }}
+                    {{ formatBracketAction(act) }}
                   </button>
                 </div>
               </div>
@@ -621,8 +644,8 @@ onUnmounted(() => {
               <!-- Square Brackets -->
               <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div class="flex flex-col">
-                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">Square Brackets ([...])</span>
-                  <span class="text-[10px] text-neutral-400">Used for emotions, states, or labels</span>
+                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.model-settings.audio-studio.transformer.square-brackets') }}</span>
+                  <span class="text-[10px] text-neutral-400">{{ t('settings.model-settings.audio-studio.transformer.square-brackets-description') }}</span>
                 </div>
                 <div class="flex gap-1.5">
                   <button
@@ -637,7 +660,7 @@ onUnmounted(() => {
                     ]"
                     @click="form.ust.squareBrackets = act; saveProfile()"
                   >
-                    {{ act === 'token' ? 'Convert to Token' : act }}
+                    {{ formatBracketAction(act) }}
                   </button>
                 </div>
               </div>
@@ -645,8 +668,8 @@ onUnmounted(() => {
               <!-- Parentheses -->
               <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div class="flex flex-col">
-                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">Parentheses ((...))</span>
-                  <span class="text-[10px] text-neutral-400">Used for whispers or background info</span>
+                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.model-settings.audio-studio.transformer.parentheses') }}</span>
+                  <span class="text-[10px] text-neutral-400">{{ t('settings.model-settings.audio-studio.transformer.parentheses-description') }}</span>
                 </div>
                 <div class="flex gap-1.5">
                   <button
@@ -661,7 +684,7 @@ onUnmounted(() => {
                     ]"
                     @click="form.ust.parentheses = act; saveProfile()"
                   >
-                    {{ act }}
+                    {{ formatBracketAction(act) }}
                   </button>
                 </div>
               </div>
@@ -669,8 +692,8 @@ onUnmounted(() => {
               <!-- Angle Brackets -->
               <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div class="flex flex-col">
-                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">Angle Brackets (&lt;...&gt;)</span>
-                  <span class="text-[10px] text-neutral-400">Used for speech indicators or tags</span>
+                  <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.model-settings.audio-studio.transformer.angle-brackets') }}</span>
+                  <span class="text-[10px] text-neutral-400">{{ t('settings.model-settings.audio-studio.transformer.angle-brackets-description') }}</span>
                 </div>
                 <div class="flex gap-1.5">
                   <button
@@ -685,7 +708,7 @@ onUnmounted(() => {
                     ]"
                     @click="form.ust.angleBrackets = act; saveProfile()"
                   >
-                    {{ act }}
+                    {{ formatBracketAction(act) }}
                   </button>
                 </div>
               </div>
@@ -695,7 +718,7 @@ onUnmounted(() => {
           <!-- Custom Bracket Definition -->
           <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">Enable Custom Bracket</span>
+              <span class="text-xs text-neutral-700 font-bold dark:text-neutral-300">{{ t('settings.model-settings.audio-studio.transformer.enable-custom-bracket') }}</span>
               <FieldCheckbox
                 v-model="form.ust.customBracketEnabled"
                 hide-description
@@ -705,31 +728,31 @@ onUnmounted(() => {
             <div v-if="form.ust.customBracketEnabled" class="grid grid-cols-3 gap-3 border border-neutral-200/60 rounded-xl bg-white p-4 dark:border-neutral-800/60 dark:bg-neutral-900/60">
               <FieldInput
                 v-model="form.ust.customBracketStart"
-                label="Start Symbol"
+                :label="t('settings.model-settings.audio-studio.transformer.start-symbol')"
                 placeholder="e.g. {"
                 @update:model-value="saveProfile"
               />
               <FieldInput
                 v-model="form.ust.customBracketEnd"
-                label="End Symbol"
+                :label="t('settings.model-settings.audio-studio.transformer.end-symbol')"
                 placeholder="e.g. }"
                 @update:model-value="saveProfile"
               />
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs text-neutral-500 font-semibold">Action</label>
+                <label class="text-xs text-neutral-500 font-semibold">{{ t('settings.model-settings.audio-studio.transformer.action') }}</label>
                 <select
                   v-model="form.ust.customBracketAction"
                   class="w-full border border-neutral-200 rounded-xl bg-white px-3 py-2.5 text-xs dark:border-neutral-800 dark:bg-neutral-900 focus:outline-none"
                   @change="saveProfile"
                 >
                   <option value="mute">
-                    Mute
+                    {{ t('settings.model-settings.audio-studio.transformer.actions.mute') }}
                   </option>
                   <option value="flatten">
-                    Flatten
+                    {{ t('settings.model-settings.audio-studio.transformer.actions.flatten') }}
                   </option>
                   <option value="ignore">
-                    Ignore
+                    {{ t('settings.model-settings.audio-studio.transformer.actions.ignore') }}
                   </option>
                 </select>
               </div>
@@ -740,22 +763,22 @@ onUnmounted(() => {
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FieldCheckbox
               v-model="form.ust.stripEmojis"
-              label="Strip Emojis"
-              description="Wipes Unicode pictographs so TTS does not create pauses"
+              :label="t('settings.model-settings.audio-studio.transformer.strip-emojis')"
+              :description="t('settings.model-settings.audio-studio.transformer.strip-emojis-description')"
               @update:model-value="saveProfile"
             />
 
             <FieldCheckbox
               v-model="form.ust.stripSymbols"
-              label="Strip Symbols & Kaomoji"
-              description="Wipes non-alphanumeric symbols and kaomoji (Extreme Cleaning)"
+              :label="t('settings.model-settings.audio-studio.transformer.strip-symbols')"
+              :description="t('settings.model-settings.audio-studio.transformer.strip-symbols-description')"
               @update:model-value="saveProfile"
             />
 
             <FieldInput
               v-model="form.ust.tildeReplacement"
-              label="Tilde (~) Replacement String"
-              description="Word to read when tildes are spoken (e.g. 'nyan'). Leave blank to strip."
+              :label="t('settings.model-settings.audio-studio.transformer.tilde-replacement')"
+              :description="t('settings.model-settings.audio-studio.transformer.tilde-replacement-description')"
               placeholder="e.g. nyan"
               @update:model-value="saveProfile"
             />
@@ -764,13 +787,13 @@ onUnmounted(() => {
           <!-- Custom Replacement Rules Builder -->
           <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between border-t border-neutral-200/50 pt-4 dark:border-neutral-800/50">
-              <span class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">Custom Replacement Rules</span>
+              <span class="text-sm text-neutral-600 font-semibold dark:text-neutral-300">{{ t('settings.model-settings.audio-studio.transformer.custom-rules') }}</span>
               <button
                 type="button"
                 class="flex items-center gap-1 border border-primary-500 rounded-lg bg-primary-500/10 px-2 py-1 text-xs text-primary-600 font-semibold hover:bg-primary-500/20 dark:text-primary-400"
                 @click="addCustomReplacement"
               >
-                <span class="text-xs">+ Add Rule</span>
+                <span class="text-xs">{{ t('settings.model-settings.audio-studio.transformer.add-rule') }}</span>
               </button>
             </div>
 
@@ -792,7 +815,7 @@ onUnmounted(() => {
                       ]"
                       @click="rule.type = 'text'; saveProfile()"
                     >
-                      Plain Text
+                      {{ t('settings.model-settings.audio-studio.transformer.rule-type-text') }}
                     </button>
                     <button
                       type="button"
@@ -804,29 +827,30 @@ onUnmounted(() => {
                       ]"
                       @click="rule.type = 'regex'; saveProfile()"
                     >
-                      Regex Match
+                      {{ t('settings.model-settings.audio-studio.transformer.rule-type-regex') }}
                     </button>
                   </div>
 
                   <button
                     type="button"
                     class="text-[10px] text-red-500 font-bold hover:underline"
+                    :aria-label="t('settings.model-settings.audio-studio.transformer.remove-rule', { index: index + 1 })"
                     @click="removeCustomReplacement(index)"
                   >
-                    Remove
+                    {{ t('settings.model-settings.common.actions.remove') }}
                   </button>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                   <FieldInput
                     v-model="rule.pattern"
-                    label="Search Pattern"
+                    :label="t('settings.model-settings.audio-studio.transformer.search-pattern')"
                     :placeholder="rule.type === 'regex' ? 'e.g. /nya/i' : 'e.g. Nya'"
                     @update:model-value="saveProfile"
                   />
                   <FieldInput
                     v-model="rule.replacement"
-                    label="Replacement"
+                    :label="t('settings.model-settings.audio-studio.transformer.replacement')"
                     placeholder="e.g. meow"
                     @update:model-value="saveProfile"
                   />
@@ -835,13 +859,13 @@ onUnmounted(() => {
                 <div v-if="rule.type === 'text'" class="flex items-center gap-4">
                   <FieldCheckbox
                     v-model="rule.caseSensitive"
-                    label="Case Sensitive"
+                    :label="t('settings.model-settings.audio-studio.transformer.case-sensitive')"
                     hide-description
                     @update:model-value="saveProfile"
                   />
                   <FieldCheckbox
                     v-model="rule.wholeWord"
-                    label="Whole Word Only"
+                    :label="t('settings.model-settings.audio-studio.transformer.whole-word')"
                     hide-description
                     @update:model-value="saveProfile"
                   />
@@ -849,7 +873,7 @@ onUnmounted(() => {
               </div>
             </div>
             <p v-else class="py-2 text-center text-xs text-neutral-400 italic">
-              No custom replacement rules defined yet.
+              {{ t('settings.model-settings.audio-studio.transformer.empty') }}
             </p>
           </div>
         </div>
@@ -859,10 +883,10 @@ onUnmounted(() => {
       <div class="flex flex-col gap-4 border border-primary-500/20 rounded-2xl bg-primary-500/5 p-6">
         <div>
           <h3 class="text-base text-primary-600 font-bold dark:text-primary-400">
-            Audio Studio Sandbox Playground
+            {{ t('settings.model-settings.audio-studio.playground.title') }}
           </h3>
           <p class="text-xs text-neutral-400 dark:text-neutral-500">
-            Synthesize and listen to your custom effects stack immediately
+            {{ t('settings.model-settings.audio-studio.playground.description') }}
           </p>
         </div>
 
@@ -870,7 +894,7 @@ onUnmounted(() => {
           v-model="testText"
           h-20
           w-full
-          placeholder="Enter some text here to test your effects..."
+          :placeholder="t('settings.model-settings.audio-studio.playground.placeholder')"
         />
 
         <div flex="~ row gap-3">
@@ -884,7 +908,7 @@ onUnmounted(() => {
               <div i-solar:spinner-line-duotone class="text-base" />
             </div>
             <div v-else i-solar:play-circle-bold class="text-base" />
-            <span>{{ isGenerating ? 'Generating Audio...' : 'Test Custom voice' }}</span>
+            <span>{{ isGenerating ? t('settings.model-settings.audio-studio.playground.generating') : t('settings.model-settings.audio-studio.playground.test') }}</span>
           </button>
 
           <button
@@ -892,12 +916,12 @@ onUnmounted(() => {
             @click="stopTestAudio(true)"
           >
             <div i-solar:stop-circle-bold class="text-base" />
-            <span>Stop Playback</span>
+            <span>{{ t('settings.model-settings.audio-studio.playground.stop') }}</span>
           </button>
         </div>
 
         <div v-if="audioUrl" class="mt-2 flex flex-col gap-2">
-          <span class="text-xs text-neutral-400 font-medium dark:text-neutral-500">Generated Sample File (Raw TTS):</span>
+          <span class="text-xs text-neutral-400 font-medium dark:text-neutral-500">{{ t('settings.model-settings.audio-studio.playground.generated-file') }}</span>
           <audio :src="audioUrl" controls class="w-full border border-neutral-200 rounded-lg bg-white/50 p-1 dark:border-neutral-800 dark:bg-neutral-900/50" />
         </div>
       </div>
