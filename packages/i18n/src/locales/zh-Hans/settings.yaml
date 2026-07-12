@@ -11,6 +11,26 @@ dialogs:
   onboarding:
     title: 欢迎来到 AIRI！
     description: 让我们设置您的第一个服务来源来开始使用。
+    modeSelection:
+      title: 想如何开始？
+      description: 选择最适合您的设置方式。
+      easy:
+        title: 简易设置
+        description: 使用我们推荐的云服务来源，立即开始使用。
+      custom:
+        title: 高级设置
+        description: 我想配置自己的本地或自定义服务来源。
+    senseSetup:
+      title: 感知入口
+      description: 配置伙伴的核心感知能力以开始使用。
+      consciousness: 意识
+      speech: 语音与听觉
+      getOpenRouterKey: 获取 OpenRouter 密钥
+      openRouterSubtext: 快速、高质量且免费的模型，无需复杂验证。
+      deepgramSubtext: 新注册用户可获 200 美元额度，约含 50 小时的语音转写/语音服务。
+      senseKey: 感知密钥
+      senseKeyHelp: 输入 Deepgram API 密钥以启用语音感知能力。
+      getDeepgramKey: 获取 Deepgram 密钥
     selectProvider: 选择服务来源
     configureProvider: 配置 {provider}
     apiKey: API 密钥
@@ -195,6 +215,16 @@ privacy:
     title: 启用云同步
     description: 默认关闭。关闭后 AIRI 仅在本地运行，不会获取远程会话或同步聊天记录。
 pages:
+  chat:
+    title: 聊天
+    description: 调整聊天消息的发送方式，以及流式响应在取消前可以空闲多久。
+    send-mode:
+      title: 发送按键
+      description: 选择聊天输入框发送消息的按键方式。
+      options:
+        enter: 按 Enter 发送
+        ctrl-enter: 按 Ctrl+Enter 发送
+        double-enter: 连按两次 Enter 发送
   card:
     activate: 激活
     active: 已激活
@@ -228,6 +258,7 @@ pages:
       settings: 设置
       version: 版本
       create: 创建
+      proactivity: 主动性
       defaults:
         name: 名字
         personality: 你是一个普通人，对一切都充满好奇。
@@ -242,6 +273,8 @@ pages:
       fields_info:
         subtitle: >-
           您可以在这里填写有关您正在创建的角色的一些详细信息，解释他的背景和情境，以及应该如何回应您的互动。
+        identity_prompting: >-
+          这些字段共同定义角色，但目前并不是彼此独立的运行时层。系统提示词用于 AIRI 当前的提示词组装；历史后指令目前主要为角色卡兼容性和未来提示词流水线保留，因此可以现在填写，但不要期待它目前具有独立的实时行为。
         name: 是该角色的正式名称。
         nickname: 您也可以提供一个昵称，它将被优先使用。
         description: 该角色的描述。
@@ -312,6 +345,21 @@ pages:
         export: 导出聊天记录
         import: 导入聊天记录
         delete: 删除所有聊天会话
+      characters:
+        title: 角色
+        description: 批量导出或导入您的角色收藏。
+        export: 导出角色
+        import: 导入角色
+      memory:
+        title: 记忆与日记
+        description: 备份短期摘要与长期日记条目。
+        export: 导出记忆
+        import: 导入记忆
+      backgrounds:
+        title: 背景
+        description: 导出或导入场景图库（包括图片）。
+        export: 导出背景
+        import: 导入背景
       models:
         title: 模型
         description: 删除导入的Live2D/VRM模型。
@@ -532,6 +580,13 @@ pages:
         section:
           provider-selection:
             description: 选择合适的语音转文本的服务来源
+          hotkey:
+            title: 麦克风切换快捷键
+            description: 使用键盘锁定键（Scroll Lock、Caps Lock 或 Num Lock）切换麦克风。键盘 LED 会与 AIRI 的麦克风状态保持同步。
+            options:
+              scroll: Scroll Lock
+              caps: Caps Lock
+              num: Num Lock
           confidence-threshold:
             title: 置信度阈值
             description: >-
@@ -557,6 +612,41 @@ pages:
       token-description: 您的Discord机器人令牌
       token-placeholder: 输入您的Discord机器人令牌
       configured: Discord已正确配置！
+      connectivity:
+        title: 连接状态
+        status: 状态
+        ping: 延迟
+        connected: 已连接
+        disconnected: 未连接
+        connecting: 正在连接...
+        error: 错误
+        no-guilds: 未连接到任何服务器。
+      actions:
+        start: 启动服务
+        stop: 停止服务
+        restart: 重启服务
+        force-sync: 强制同步角色卡
+        simulate: 模拟消息
+        test-auth: 测试认证
+        clear-log: 清除日志
+      presence:
+        title: 活跃状态
+        guild: 服务器
+        channel: 频道
+        no-active: 当前没有活跃状态。
+      dev-console:
+        title: 开发者控制台
+        empty: 尚未记录事件。启动服务后开始捕获。
+      simulate-dialog:
+        username: 用户名
+        username-placeholder: 输入用户名...
+        content: 消息
+        content-placeholder: 输入测试消息...
+        send: 发送
+      controls:
+        title: 控制与能力
+        vision: 启用 VLM（视觉）图片输入
+        vision-description: 允许 AIRI 读取并处理 Discord 中的图片附件
     speech:
       description: 语音合成
       sections:
@@ -909,7 +999,19 @@ pages:
       amazon-bedrock:
         title: Amazon Bedrock
         description: AWS Ecosystem - Access Titan, Claude, and Llama on AWS
+        validators:
+          check-config: 配置要求
+          check-credentials: AWS 凭据检查
         config:
+          access-key-id:
+            label: AWS Access Key ID
+            description: 您的 AWS IAM Access Key ID
+          secret-access-key:
+            label: AWS Secret Access Key
+            description: 您的 AWS IAM Secret Access Key
+          session-token:
+            label: 会话令牌（可选）
+            description: AWS 临时会话令牌（用于 STS/代入角色）
           api-key:
             label: Bedrock API Key
             description: Amazon Bedrock API key (generate in AWS Console → Bedrock → API
@@ -1385,6 +1487,10 @@ pages:
       description: The authentication token for the WebSocket server. Check your
         Gateway logs on first run for the auto-generated key.
       placeholder: Enter your App Key here
+    hf-token:
+      label: Hugging Face 令牌（可选）
+      description: 您的 Hugging Face 用户访问令牌，用于下载模型并避免速率限制或限流错误。
+      placeholder: hf_...
     websocket-secure-enabled:
       label: 启用安全 WebSocket (WSS)
       description: >-
@@ -1987,6 +2093,9 @@ vrm:
     fov: 视角调整（度）
     rotation-y: 模型朝向（Y轴旋转）
     camera-distance: 相机距离（画面缩放）
+    mouse-tracking: 鼠标跟踪
+    mouse-tracking-desc: 虚拟形象会用头部和眼睛跟随鼠标移动
+    follow-speed: 跟随速度
     eye-tracking-mode:
       title: 模型注视方向
       options:
@@ -2033,6 +2142,24 @@ wip:
     \    title: CometAPI 语音识别
 
     \    description: Enterprise-grade cloud transcription"
+chat:
+  send-mode:
+    title: 发送按键
+    description: 选择聊天输入框发送消息的按键方式。
+    options:
+      enter: 按 Enter 发送
+      ctrl-enter: 按 Ctrl+Enter 发送
+      double-enter: 连按两次 Enter 发送
+  stream-idle-timeout:
+    title: 流式响应空闲超时
+    description: 模型流式响应长时间没有新事件时自动取消本次响应。
+    options:
+      10s: 10 秒
+      15s: 15 秒
+      30s: 30 秒
+      45s: 45 秒
+      60s: 60 秒
+      120s: 2 分钟
 analytics:
   notice:
     title: 使用数据及崩溃分析

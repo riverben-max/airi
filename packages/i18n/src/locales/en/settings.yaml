@@ -285,6 +285,7 @@ pages:
       settings: Settings
       version: Version
       create: Create
+      proactivity: Proactivity
       defaults:
         name: ReLU
         personality: You are ReLU (Refined Electronic Life Unit), an emergent
@@ -1262,6 +1263,9 @@ pages:
       amazon-bedrock:
         title: Amazon Bedrock
         description: AWS Ecosystem - Access Titan, Claude, and Llama on AWS
+        validators:
+          check-config: Configuration Requirements
+          check-credentials: AWS Credential Check
         config:
           access-key-id:
             label: AWS Access Key ID

@@ -4,6 +4,7 @@ chat:
       airi: AIRI
       core-system: 核心系统
       you: 你
+  reasoning_only: 模型仅生成了推理响应（思维链消息）。请检查最大 token 预算，确保 LLM 有足够空间生成可显示的回复。
   reasoning: 思考
 message: 说点什么...
 operations:
