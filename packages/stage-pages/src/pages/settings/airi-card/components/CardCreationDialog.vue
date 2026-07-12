@@ -282,7 +282,7 @@ const consciousnessProviderOptions = computed(() => {
 
 const artistryProviderOptions = computed(() => {
   return [
-    { value: 'none', label: t('settings.pages.card.creation.generation-settings.compaction-options.none') },
+    { value: 'none', label: t('settings.pages.card.creation.artistry-provider-options.disabled') },
     { value: 'replicate', label: 'Replicate' },
     { value: 'comfyui', label: 'ComfyUI' },
   ]

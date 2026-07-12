@@ -449,6 +449,8 @@ pages:
         model-expressions: ACT / 模型表情
         speech-expressions: 语音标签 / 音频表情
         artistry-prefix: 绘图提示词默认前缀
+      artistry-provider-options:
+        disabled: 无（禁用）
       guided:
         title: AnimaDex 向导
         steps:
@@ -592,7 +594,6 @@ pages:
         generating-prompt: 正在生成图像提示词...
         generate-prompt: 生成模型图像提示词
         complete: 完成设置
-        default-name: 导入的角色卡
         errors:
           configure-model: 请先在第 3 步配置意识提供商和模型。
           provider: '无法实例化提供商：{provider}'

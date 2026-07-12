@@ -476,6 +476,8 @@ pages:
         model-expressions: ACT / Model Expressions
         speech-expressions: Speech Tags / Audio Expressions
         artistry-prefix: Artistry Prompt Default Prefix
+      artistry-provider-options:
+        disabled: None (Disabled)
       guided:
         title: AnimaDex Wizard
         steps:
@@ -619,7 +621,6 @@ pages:
         generating-prompt: Generating image prompt...
         generate-prompt: Generate Image Prompt of Model
         complete: Complete Setup
-        default-name: Imported Card
         errors:
           configure-model: Please configure the consciousness provider and model in Step 3 first.
           provider: 'Failed to instantiate provider: {provider}'

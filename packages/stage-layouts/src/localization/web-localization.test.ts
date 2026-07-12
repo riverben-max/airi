@@ -367,13 +367,49 @@ describe('production settings source audit', () => {
   it('localizes card filter and voice preset metadata before rendering', () => {
     const guided = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/guided.vue'), 'utf8')
     const voiceCreator = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/VoiceCreatorModal.vue'), 'utf8')
+    const voicePresetSource = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/constants/voices.ts'), 'utf8')
+    const guidedTemplate = guided.slice(guided.indexOf('<template>'))
+    const presetDescriptionKeys: Record<string, string> = {
+      af_heart: 'settings.pages.card.creation.voice.preset-descriptions.af-heart',
+      af_bella: 'settings.pages.card.creation.voice.preset-descriptions.af-bella',
+      af_nicole: 'settings.pages.card.creation.voice.preset-descriptions.af-nicole',
+      af_sky: 'settings.pages.card.creation.voice.preset-descriptions.af-sky',
+      af_sarah: 'settings.pages.card.creation.voice.preset-descriptions.af-sarah',
+      am_adam: 'settings.pages.card.creation.voice.preset-descriptions.am-adam',
+      am_echo: 'settings.pages.card.creation.voice.preset-descriptions.am-echo',
+      am_eric: 'settings.pages.card.creation.voice.preset-descriptions.am-eric',
+      bf_emma: 'settings.pages.card.creation.voice.preset-descriptions.bf-emma',
+      bm_george: 'settings.pages.card.creation.voice.preset-descriptions.bm-george',
+    }
+    const presetIds = [...voicePresetSource.matchAll(/\{ id: '([^']+)'/g)].map(match => match[1])
 
-    expect(guided).not.toMatch(/\{\{\s*chip\.type\s*\}\}/)
-    expect(guided.match(/chipTypeLabel\(chip\.type\)/g)).toHaveLength(2)
+    expect(guidedTemplate).toContain('chip.type')
+    expect(guidedTemplate.replaceAll('chipTypeLabel(chip.type)', '')).not.toContain('chip.type')
     expect(voiceCreator).not.toContain('{{ voice.description }}')
     expect(voiceCreator).not.toContain('{{ voice.gender }}')
-    expect(voiceCreator).toContain('presetDescription(voice.id)')
     expect(voiceCreator).toContain('genderLabel(voice.gender)')
+    expect(presetIds.sort()).toEqual(Object.keys(presetDescriptionKeys).sort())
+    for (const [id, key] of Object.entries(presetDescriptionKeys)) {
+      const mapping = new RegExp(`case '${id}':\\s*return t\\('${key.replaceAll('.', '\\.')}'\\)`)
+      expect(voiceCreator).toMatch(mapping)
+    }
+  })
+
+  it('preserves the locale-independent imported card name fallback', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/CardImportWizard.vue'), 'utf8')
+
+    expect(source).toContain('name.value = props.cardData.name || \'Imported Card\'')
+    expect(source).not.toContain('settings.pages.card.creation.import.default-name')
+  })
+
+  it('uses an Artistry-specific translation key for the disabled provider option', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/CardCreationDialog.vue'), 'utf8')
+    const artistryOptionsStart = source.indexOf('const artistryProviderOptions = computed(')
+    const artistryOptionsEnd = source.indexOf('\n})', artistryOptionsStart)
+    const artistryOptions = source.slice(artistryOptionsStart, artistryOptionsEnd)
+
+    expect(artistryOptions).toContain('t(\'settings.pages.card.creation.artistry-provider-options.disabled\')')
+    expect(artistryOptions).not.toContain('generation-settings.compaction-options')
   })
 
   it('requires accessible card editor graphical controls and switches', () => {
@@ -381,29 +417,47 @@ describe('production settings source audit', () => {
     const tools = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/tabs/CardCreationTabTools.vue'), 'utf8')
     const castAvatar = guided.match(/<!-- Cast avatars -->[\s\S]*?<!-- Next Action -->/)?.[0] ?? ''
     const modelAvatar = guided.match(/<!-- Avatar circle -->[\s\S]*?<!-- Voice display pill -->/)?.[0] ?? ''
-    const toggleOpeningTag = (state: string) => {
+    const toggleOpeningTag = (source: string, state: string) => {
       const clickMarker = `@click="${state} = !${state}"`
-      const clickIndex = tools.indexOf(clickMarker)
-      const buttonIndex = tools.lastIndexOf('<button', clickIndex)
-      return tools.slice(buttonIndex, tools.indexOf('>', clickIndex) + 1)
+      const clickIndex = source.indexOf(clickMarker)
+      const buttonIndex = source.lastIndexOf('<button', clickIndex)
+      return source.slice(buttonIndex, source.indexOf('>', clickIndex) + 1)
     }
 
     expect(castAvatar).toContain('<button')
     expect(castAvatar).toContain(':aria-label="t(\'settings.pages.card.creation.guided.remove-character\', { name: char.name })"')
     expect(modelAvatar).toContain('<button')
     expect(modelAvatar).toContain(':aria-label="t(\'settings.pages.card.creation.guided.select-model-character\', { name: char.name })"')
-    expect(toggleOpeningTag('selectedInjectDreamContext')).toContain(':aria-label="t(\'settings.pages.card.creation.tools-settings.dream-intrusion\')"')
-    expect(toggleOpeningTag('selectedInjectJournalContext')).toContain(':aria-label="t(\'settings.pages.card.creation.tools-settings.journal-intrusion\')"')
-    expect(toggleOpeningTag('selectedInjectArtistryContext')).toContain(':aria-label="t(\'settings.pages.card.creation.tools-settings.artistry-intrusion\')"')
+
+    for (const source of [tools, readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/ConceptBuilderModal.vue'), 'utf8')]) {
+      const states = [...source.matchAll(/@click="(\w+) = !\1"/g)].map(match => match[1])
+      expect(states.length).toBeGreaterThan(0)
+      for (const state of states) {
+        const openingTag = toggleOpeningTag(source, state)
+        expect(openingTag).toContain('<button')
+        expect(openingTag).toContain('type="button"')
+        expect(openingTag).toContain('role="switch"')
+        expect(openingTag).toContain(`:aria-checked="${state}"`)
+        expect(openingTag).toMatch(/:aria-label="t\('[^']+'\)"/)
+        expect(openingTag).toContain('focus-visible:')
+      }
+    }
   })
 
   it('keeps localized hover titles on every Live2D parameter reset control', () => {
     const source = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/settings/model-settings/live2d.vue'), 'utf8')
-    const resetTitle = /:title="t\('settings\.model-settings\.common\.actions\.reset-parameter'/g
-    const resetAria = /:aria-label="t\('settings\.model-settings\.common\.actions\.reset-parameter'/g
+    const resetControls = [...source.matchAll(/@click="\(\) => [^"]+ = [^"]+"/g)].map((match) => {
+      const buttonStart = source.lastIndexOf('<button', match.index)
+      return source.slice(buttonStart, source.indexOf('>', match.index) + 1)
+    })
 
-    expect(source.match(resetTitle)).toHaveLength(10)
-    expect(source.match(resetAria)).toHaveLength(10)
+    expect(resetControls.length).toBeGreaterThan(0)
+    for (const control of resetControls) {
+      const title = control.match(/:title="([^"]+)"/)?.[1]
+      const ariaLabel = control.match(/:aria-label="([^"]+)"/)?.[1]
+      expect(ariaLabel).toContain('settings.model-settings.common.actions.reset-parameter')
+      expect(title).toBe(ariaLabel)
+    }
   })
 })
 
@@ -508,6 +562,7 @@ describe('simplified Chinese web localization', () => {
       'settings.pages.card.creation.actions.save-changes',
       'settings.pages.card.creation.guided.select-model',
       'settings.pages.card.creation.guided.configure-voice',
+      'settings.pages.card.creation.import.default-name',
     ]
 
     expect(unusedKeys.filter(key => key in english || key in chinese)).toEqual([])

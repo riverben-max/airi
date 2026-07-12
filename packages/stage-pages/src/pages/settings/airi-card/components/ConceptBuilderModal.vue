@@ -604,9 +604,11 @@ function handleSave() {
               </div>
               <button
                 type="button"
+                role="switch"
                 :aria-label="t('settings.pages.card.creation.concept.base-concept')"
+                :aria-checked="isBase"
                 :class="[
-                  'relative h-6 w-11 rounded-full transition-colors duration-200',
+                  'relative h-6 w-11 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
                   isBase ? 'bg-primary-500' : 'bg-neutral-300 dark:bg-neutral-600',
                 ]"
                 @click="isBase = !isBase"

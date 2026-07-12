@@ -313,9 +313,11 @@ const textJournalConflictWarning = computed(() => {
             </div>
             <button
               type="button"
+              role="switch"
               :aria-label="t('settings.pages.card.creation.tools-settings.dream-intrusion')"
+              :aria-checked="selectedInjectDreamContext"
               :class="[
-                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
                 selectedInjectDreamContext ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',
               ]"
               @click="selectedInjectDreamContext = !selectedInjectDreamContext"
@@ -349,9 +351,11 @@ const textJournalConflictWarning = computed(() => {
             </div>
             <button
               type="button"
+              role="switch"
               :aria-label="t('settings.pages.card.creation.tools-settings.journal-intrusion')"
+              :aria-checked="selectedInjectJournalContext"
               :class="[
-                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
                 selectedInjectJournalContext ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',
               ]"
               @click="selectedInjectJournalContext = !selectedInjectJournalContext"
@@ -385,9 +389,11 @@ const textJournalConflictWarning = computed(() => {
             </div>
             <button
               type="button"
+              role="switch"
               :aria-label="t('settings.pages.card.creation.tools-settings.artistry-intrusion')"
+              :aria-checked="selectedInjectArtistryContext"
               :class="[
-                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
                 selectedInjectArtistryContext ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',
               ]"
               @click="selectedInjectArtistryContext = !selectedInjectArtistryContext"

@@ -172,7 +172,8 @@ const speechVoiceOptions = computed(() => {
 watch(() => [props.modelValue, props.cardData], () => {
   if (props.modelValue && props.cardData) {
     currentStep.value = 1
-    name.value = props.cardData.name || t('settings.pages.card.creation.import.default-name')
+    // This fallback is persisted into the card format and must remain locale-independent.
+    name.value = props.cardData.name || 'Imported Card'
     userName.value = userProfileStore.name || ''
     selectedDisplayModelId.value = defaultDisplayModelId.value || ''
     selectedConsciousnessProvider.value = consciousnessProvider.value || ''
