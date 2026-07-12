@@ -5,6 +5,7 @@ import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettingsUserProfile } from '@proj-airi/stage-ui/stores/settings/user-profile'
 import { useBroadcastChannel, useLocalStorage } from '@vueuse/core'
 import { onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 interface Choice {
@@ -30,6 +31,7 @@ const speechStore = useSpeechStore()
 const providersStore = useProvidersStore()
 const chatOrchestratorStore = useChatOrchestratorStore()
 const suggestionCount = useLocalStorage('airi:producer:suggestion-count', 4)
+const { t } = useI18n()
 
 const { post } = useBroadcastChannel<any, any>({ name: 'airi-caption-overlay' })
 
@@ -84,7 +86,7 @@ function stopActiveAudio() {
 async function playChoiceSpeech(idx: number, text: string) {
   const voiceId = userProfileStore.voiceProfileId
   if (!voiceId) {
-    toast.error('No voice profile configured. Go to Settings > System > User Profile.')
+    toast.error(t('stage.chat.producer.no-voice-profile'))
     return
   }
 
@@ -104,7 +106,7 @@ async function playChoiceSpeech(idx: number, text: string) {
   try {
     const provider = await providersStore.getProviderInstance('virtual-audio-studio')
     if (!provider) {
-      throw new Error('Virtual Audio Studio provider is not active.')
+      throw new Error(t('stage.chat.producer.virtual-audio-studio-inactive'))
     }
 
     // Split text into sentences using lookbehind for punctuation boundaries (. ! ?)
@@ -176,7 +178,7 @@ async function playChoiceSpeech(idx: number, text: string) {
   }
   catch (error) {
     console.error('[ProducerChoiceBubble] Speech synthesis failed:', error)
-    toast.error(error instanceof Error ? error.message : 'Speech synthesis failed.')
+    toast.error(error instanceof Error ? error.message : t('stage.chat.producer.speech-failed'))
     loadingIndex.value = null
     activePlayingIndex.value = null
     activeAudio.value = null
@@ -249,36 +251,38 @@ onBeforeUnmount(() => {
     <div class="z-10 flex select-none items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="i-solar:magic-stick-3-bold-duotone animate-pulse text-lg text-primary-400" />
-        <span class="text-xs text-primary-300 font-bold tracking-widest font-mono">PRODUCER DIRECTIVES</span>
+        <span class="text-xs text-primary-300 font-bold tracking-widest font-mono">{{ t('stage.chat.producer.directives') }}</span>
       </div>
 
       <div class="flex items-center gap-1.5 border border-primary-500/10 rounded-lg bg-black/40 p-0.5">
         <button
           v-if="!message.loading && message.choices.length > 0"
           class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-neutral-400 font-semibold transition-colors hover:bg-blue-900/20 hover:text-blue-400"
-          :title="isPlayingAll ? 'Stop playing all' : 'Play all choices'"
+          :title="isPlayingAll ? t('stage.chat.producer.stop-playing-all') : t('stage.chat.producer.play-all-choices')"
+          :aria-label="isPlayingAll ? t('stage.chat.producer.stop-playing-all') : t('stage.chat.producer.play-all-choices')"
+          :aria-pressed="isPlayingAll"
           @click="isPlayingAll ? stopPlayAll() : playAllChoices()"
         >
           <span :class="isPlayingAll ? 'i-solar:pause-circle-bold-duotone' : 'i-solar:play-stream-bold-duotone'" class="text-xs" />
-          <span>{{ isPlayingAll ? 'Stop' : 'Play All' }}</span>
+          <span>{{ isPlayingAll ? t('stage.chat.producer.stop') : t('stage.chat.producer.play-all') }}</span>
         </button>
         <div v-if="!message.loading && message.choices.length > 0" class="h-2.5 w-[1px] bg-neutral-800" />
         <button
           class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-neutral-400 font-semibold transition-colors hover:bg-neutral-800/50 hover:text-primary-300"
-          title="Regenerate choices"
+          :title="t('stage.chat.producer.regenerate-choices')"
           @click="emit('retry')"
         >
           <span class="i-solar:restart-square-outline text-xs" />
-          <span>Retry</span>
+          <span>{{ t('stage.chat.producer.retry') }}</span>
         </button>
         <div class="h-2.5 w-[1px] bg-neutral-800" />
         <button
           class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-neutral-400 font-semibold transition-colors hover:bg-red-950/20 hover:text-red-400"
-          title="Dismiss suggestions"
+          :title="t('stage.chat.producer.dismiss-suggestions')"
           @click="emit('delete')"
         >
           <span class="i-solar:trash-bin-trash-outline text-xs" />
-          <span>Dismiss</span>
+          <span>{{ t('stage.chat.producer.dismiss') }}</span>
         </button>
       </div>
     </div>
@@ -317,7 +321,7 @@ onBeforeUnmount(() => {
             <span
               v-if="userProfileStore.voiceProfileId"
               class="mt-0.5 cursor-pointer rounded p-0.5 transition-colors hover:bg-neutral-800/50"
-              :title="activePlayingIndex === idx ? 'Pause' : 'Preview with your voice'"
+              :title="activePlayingIndex === idx ? t('stage.chat.producer.pause') : t('stage.chat.producer.preview-with-voice')"
               @click.stop.prevent="playChoiceSpeech(idx, choice.message)"
             >
               <!-- Loading state -->

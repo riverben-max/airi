@@ -6,10 +6,12 @@ import { fetchSession, signIn } from '@proj-airi/stage-ui/libs/auth'
 import { Button } from '@proj-airi/ui'
 import { useMediaQuery } from '@vueuse/core'
 import { onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const isDesktop = useMediaQuery('(min-width: 768px)')
 
@@ -24,7 +26,7 @@ async function handleSignIn(provider: OAuthProvider) {
     await signIn(provider)
   }
   catch (error) {
-    toast.error(error instanceof Error ? error.message : 'An unknown error occurred')
+    toast.error(error instanceof Error ? error.message : t('server.auth.signIn.error.unknown'))
   }
   finally {
     loading.value[provider] = false
@@ -51,7 +53,7 @@ watch(isDesktop, (val) => {
 <template>
   <div v-if="isDesktop" class="min-h-screen flex flex-col items-center justify-center">
     <div class="mb-8 text-3xl font-bold">
-      Sign in to AIRI Stage
+      {{ t('server.auth.signIn.title') }} AIRI Stage
     </div>
     <div class="max-w-xs w-full flex flex-col gap-3">
       <Button
@@ -72,13 +74,13 @@ watch(isDesktop, (val) => {
       </Button>
     </div>
     <div class="mt-8 text-xs text-gray-400">
-      By continuing, you agree to our <a href="#" class="underline">Terms</a> and <a href="#" class="underline">Privacy Policy</a>.
+      {{ t('server.auth.signIn.footer.prefix') }} <a href="#" class="underline">{{ t('server.auth.signIn.footer.terms') }}</a> {{ t('server.auth.signIn.footer.and') }} <a href="#" class="underline">{{ t('server.auth.signIn.footer.privacy') }}</a>
     </div>
   </div>
 
   <div v-else class="min-h-screen flex flex-col items-center justify-center bg-neutral-100 dark:bg-neutral-950">
     <div class="mb-12 flex flex-col items-center gap-4">
-      <img src="../../assets/logo.svg" class="h-24 w-24 rounded-3xl shadow-lg">
+      <img src="../../assets/logo.svg" alt="AIRI" class="h-24 w-24 rounded-3xl shadow-lg">
       <div class="text-3xl font-bold">
         AIRI Stage
       </div>

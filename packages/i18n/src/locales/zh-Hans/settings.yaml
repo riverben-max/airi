@@ -236,6 +236,56 @@ dialogs:
     setupWithoutSigningIn: 暂不登录，继续体验
     flux: Flux 电量
     buyFlux: 补充 Flux 电量
+    common:
+      back: 返回
+    provider-configuration:
+      api-key-description: 输入所选提供商的 API 密钥。
+      base-url-description: 输入提供商 API 的基础 URL。
+    provider-selection:
+      deployment: 部署方式
+      pricing: 价格
+      all: 全部
+      cloud: 云端
+      local: 本地
+      free: 免费
+      paid: 付费
+      empty: 没有符合当前筛选条件的提供商。
+      clear-filters: 清除筛选条件
+    provider-resolver:
+      title: 恢复备份
+      scanning: 正在扫描已连接的账户……
+      scanning-description: 正在检索匹配的配置和数据库备份
+      found-description: 找到以下与您账户关联的数据库和文件备份。请选择要恢复的备份目标：
+      simulate-empty: 模拟空 AppData
+      local-file-system: 本地文件系统
+      s3-bucket: S3 存储桶
+      local-directory: 本地目录
+      size: '大小：{size}'
+      region: '区域：{region}'
+      sync: '同步：{time}'
+      no-saved-title: 未找到已保存的配置
+      no-saved-description: 在此 Google 账户中找不到现有的存储连接配置或数据库备份。
+      configure-manually: 手动配置连接
+      next-selective-sync: 下一步：选择性同步
+      different-account: 登录其他账户
+      never: 从未同步
+      just-now: 刚刚
+      minute-ago: 1 分钟前
+      minutes-ago: '{count} 分钟前'
+      hour-ago: 1 小时前
+      hours-ago: '{count} 小时前'
+      yesterday: 昨天
+      days-ago: '{count} 天前'
+    selective-sync:
+      title: 选择性同步
+      link-google-drive: 将连接详情关联到 Google Drive
+      link-google-drive-description: 将存储凭据安全地保存到 Google AppData 文件夹。以后在新设备上恢复时，系统会自动检测连接配置。
+      restore-selected: 恢复所选项目
+    sync-progress:
+      title: 正在恢复数据
+      complete: 恢复完成
+      syncing: 正在同步数据库和资源……
+      finish: 完成引导并重新加载
   bug-report:
     title: Bug 汇报 (´;ω;`)ヾ(･∀･`)
     subtitle: 坏哦，看起来我们不小心搞砸了一些东西。可以分享一下遇到了什么问题吗？
@@ -389,6 +439,39 @@ privacy:
     title: 启用云同步
     description: 默认关闭。关闭后 AIRI 仅在本地运行，不会获取远程会话或同步聊天记录。
 pages:
+  characters:
+    title: 角色
+    description: 管理 AI 角色及其能力。
+    search-placeholder: 搜索……
+    create-new: 新建
+    create-character: 创建角色
+    confirm-delete: 确定要删除此角色吗？
+    dialog:
+      edit-title: 编辑角色
+      create-title: 创建角色
+      close: 关闭角色编辑器
+      tabs:
+        identity: 身份
+        capabilities: 能力
+      fields:
+        handle-id: 句柄 ID
+        version: 版本
+        name-en: 名称（英文）
+        description: 描述
+        cover-url: 封面 URL
+        model: 模型
+        temperature: 温度
+        voice-id: 语音 ID
+        speed: 速度
+      placeholders:
+        character-name: 角色名称
+        short-description: 简短描述……
+      sections:
+        llm: LLM 配置
+        tts: TTS 配置
+      cancel: 取消
+      save: 保存更改
+      create: 创建
   chat:
     title: 聊天
     description: 调整聊天消息的发送方式，以及流式响应在取消前可以空闲多久。

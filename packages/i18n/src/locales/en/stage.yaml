@@ -11,6 +11,127 @@ chat:
   reasoning_only: The model only generated a reasoning response (chain of thought message).
     Please check your max token budget to ensure the LLM has enough room to
     generate a displayed response.
+  composer:
+    imagine-placeholder: Describe a scene to imagine...
+    vision-desktop-hint: Vision capture is optimized for desktop. Please use the attach button for screenshots.
+    remove-attachment: 'Remove attachment {index}'
+    hearing: Hearing
+    microphone-enabled: Microphone enabled
+    microphone-disabled: Microphone disabled
+    input-device: Input device
+    input-device-description: Choose the microphone to use.
+    unknown-device: Unknown device
+    select-microphone: Select microphone
+    inherited-context: 'Inherited context: {used} / {limit} ({percentage}%)'
+    context: 'Context: {used} / {limit} ({percentage}%)'
+    estimated-token-count: Estimated token count for the current chat
+    grounding-enabled: 'Grounding enabled: messages will include sensor data'
+    grounding-disabled: Attach sensor data to every message (preview it in Proactivity settings)
+    memory-and-context-for: 'Memory & Context for {name}'
+    memory: Memory
+    cleanup-messages: Cleanup Messages
+    send-message: Send message
+    change-send-mode: Change send shortcut mode
+    send-key-mode: Send Key Mode
+    clear-conversation: Clear conversation?
+    clear-conversation-description: You haven't summarized today's chat into memory yet. Clearing now will lose this context for future sessions.
+    save-memory-clear: Save to Memory & Clear
+    clear-anyway: Clear Anyway
+    cancel: Cancel
+  navigation:
+    context: Context
+    about: About
+    home: Home
+    documentation: Documentation
+    switch-to-light-theme: Switch to light theme
+    switch-to-dark-theme: Switch to dark theme
+    account-menu: Account menu
+    view-controls: View controls
+    scale: Scale
+  producer:
+    edit-system-prompt: Edit System Prompt
+    prompt-producer: Prompt the Producer
+    edit-system-prompt-template: Edit system prompt template
+    close: Close
+    direction-style: Direction / Style (Optional)
+    guidance-placeholder: "e.g. 'something teasing', 'acknowledge her feelings', 'be vulnerable'..."
+    context-depth: Context Depth
+    message-count: '{count} messages'
+    preview: Preview
+    boundary-message: Boundary Message
+    no-session-messages: No messages in current session
+    boundary-position: 'Message #{index} from the end — inclusive of the count'
+    context-depth-description: How many recent messages to include as context for the dialogue generation.
+    suggestions-count: Suggestions Count
+    choices-count: '{count} choices'
+    suggestions-count-description: Number of response choices to generate.
+    short-replies: Generate short replies
+    short-replies-description: Keep generated options short (1-2 sentences)
+    auto-send: Auto-send on click
+    auto-send-description: Immediately send the choice upon clicking it
+    auto-play: Automatically play all suggestions
+    auto-play-description: Play voice previews for all choices sequentially when generated
+    cache-aligned: Cache-Aligned (Full Context)
+    experimental: Experimental
+    cache-aligned-description: Reuse active chat cache for higher accuracy with full history
+    system-prompt-template: System Prompt Template
+    supported-placeholders: Supported Placeholders
+    placeholder-count: Suggested choice options count
+    placeholder-character-name: Active character/companion name
+    placeholder-guidance: Guidance style string input
+    placeholder-length-rule: Short/long reply configuration instruction
+    user: You
+    assistant: Assistant
+    user-profile-tip: "Tip: You can configure the narrator's voice in"
+    user-settings: user settings
+    cancel: Cancel
+    inspire-me: Inspire me
+    reset-default: Reset to Default
+    done: Done
+    directives: Producer Directives
+    stop-playing-all: Stop playing all
+    play-all-choices: Play all choices
+    stop: Stop
+    play-all: Play All
+    regenerate-choices: Regenerate choices
+    retry: Retry
+    dismiss-suggestions: Dismiss suggestions
+    dismiss: Dismiss
+    pause: Pause
+    preview-with-voice: Preview with your voice
+    no-voice-profile: No voice profile configured. Go to Settings > System > User Profile.
+    virtual-audio-studio-inactive: Virtual Audio Studio provider is not active.
+    speech-failed: Speech synthesis failed.
+  journal:
+    edit-prompt-template: Edit Prompt Template
+    journal-moment: Journal Moment
+    close: Close
+    context-scope: Context Scope
+    all: All
+    last-turns: Last Turns
+    all-description: The character will receive the whole conversation to generate a journal entry.
+    turns-description: Number of turns since the selected message to include when writing the journal
+    turn-time: 'Message {count} was from {time}'
+    unknown-time: an unknown time
+    conversation-start: the start of the conversation
+    optional-instructions: Optional Instructions
+    instructions-placeholder: Explain what to emphasize in the latest moments or what the entry should cover...
+    system-prompt-template: System Prompt Template
+    supported-placeholders: Supported Placeholders
+    placeholder-character-name: Name of the active companion
+    placeholder-instructions: Rendered additional instructions block
+    cancel: Cancel
+    reset-default: Reset to Default
+    done: Done
+    view-image: View image
+    view-generation-prompt: View generation prompt
+    view-director-reasoning: View director's reasoning
+    download-image: Download image
+    attach-to-chat: Attach to chat
+    generation-prompt: Generation Prompt
+    director-reasoning: Director's Reasoning
+    intensity: 'Intensity: {value}/100'
+    visual-state-board: Visual State Board (Scratchpad)
 message: Say something...
 operations:
   load-models: Load Models

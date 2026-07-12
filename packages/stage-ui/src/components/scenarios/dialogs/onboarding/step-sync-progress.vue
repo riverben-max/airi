@@ -3,6 +3,7 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 
 import { Button } from '@proj-airi/ui'
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useSyncEngineStore } from '../../../../stores/sync-engine'
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const progress = ref(0)
 const logs = ref<string[]>([])
@@ -107,7 +109,7 @@ function handleFinish() {
       class="flex items-center gap-2"
     >
       <div class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Restoring Data
+        {{ t('settings.dialogs.onboarding.sync-progress.title') }}
       </div>
     </div>
 
@@ -122,7 +124,7 @@ function handleFinish() {
           />
         </div>
         <div class="w-full flex justify-between text-xs text-neutral-500 font-mono">
-          <span>{{ syncComplete ? 'Restoration complete' : 'Syncing databases & assets...' }}</span>
+          <span>{{ syncComplete ? t('settings.dialogs.onboarding.sync-progress.complete') : t('settings.dialogs.onboarding.sync-progress.syncing') }}</span>
           <span>{{ progress }}%</span>
         </div>
       </div>
@@ -146,7 +148,7 @@ function handleFinish() {
       :duration="400"
       :delay="300"
       :disabled="!syncComplete"
-      label="Complete Onboarding & Reload"
+      :label="t('settings.dialogs.onboarding.sync-progress.finish')"
       @click="handleFinish"
     />
   </div>

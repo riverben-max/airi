@@ -39,23 +39,23 @@ const selectedProviderIdModel = computed({
   },
 })
 
-const deploymentOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Cloud', value: 'cloud' },
-  { label: 'Local', value: 'local' },
-] as const
+const deploymentOptions = computed(() => [
+  { label: t('settings.dialogs.onboarding.provider-selection.all'), value: 'all' },
+  { label: t('settings.dialogs.onboarding.provider-selection.cloud'), value: 'cloud' },
+  { label: t('settings.dialogs.onboarding.provider-selection.local'), value: 'local' },
+] as const)
 
-const pricingOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Free', value: 'free' },
-  { label: 'Paid', value: 'paid' },
-] as const
+const pricingOptions = computed(() => [
+  { label: t('settings.dialogs.onboarding.provider-selection.all'), value: 'all' },
+  { label: t('settings.dialogs.onboarding.provider-selection.free'), value: 'free' },
+  { label: t('settings.dialogs.onboarding.provider-selection.paid'), value: 'paid' },
+] as const)
 </script>
 
 <template>
   <div h-full flex flex-col gap-4 overflow-hidden>
     <div sticky top-0 z-100 flex flex-shrink-0 items-center gap-2>
-      <button outline-none @click="props.onPrevious">
+      <button :aria-label="t('settings.dialogs.onboarding.common.back')" outline-none @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
@@ -69,7 +69,7 @@ const pricingOptions = [
       <div flex flex-wrap items-center gap-x-6 gap-y-3>
         <!-- Deployment Filter -->
         <div flex flex-col gap-1.5>
-          <span text-xs text-neutral-500 font-medium tracking-wider uppercase dark:text-neutral-400>Deployment</span>
+          <span text-xs text-neutral-500 font-medium tracking-wider uppercase dark:text-neutral-400>{{ t('settings.dialogs.onboarding.provider-selection.deployment') }}</span>
           <div flex items-center gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800>
             <button
               v-for="opt in deploymentOptions"
@@ -89,7 +89,7 @@ const pricingOptions = [
 
         <!-- Pricing Filter -->
         <div flex flex-col gap-1.5>
-          <span text-xs text-neutral-500 font-medium tracking-wider uppercase dark:text-neutral-400>Pricing</span>
+          <span text-xs text-neutral-500 font-medium tracking-wider uppercase dark:text-neutral-400>{{ t('settings.dialogs.onboarding.provider-selection.pricing') }}</span>
           <div flex items-center gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800>
             <button
               v-for="opt in pricingOptions"
@@ -128,9 +128,9 @@ const pricingOptions = [
       </div>
       <div v-else h-40 flex flex-col items-center justify-center gap-2 text-neutral-500>
         <div class="i-solar:shield-warning-line-duotone h-10 w-10 opacity-50" />
-        <span text-sm italic>No providers match your current filters.</span>
+        <span text-sm italic>{{ t('settings.dialogs.onboarding.provider-selection.empty') }}</span>
         <button text-xs underline @click="deploymentFilter = 'all'; pricingFilter = 'all'">
-          Clear filters
+          {{ t('settings.dialogs.onboarding.provider-selection.clear-filters') }}
         </button>
       </div>
     </div>

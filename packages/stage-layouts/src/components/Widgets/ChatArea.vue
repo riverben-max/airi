@@ -87,7 +87,7 @@ const effectiveSystemPrompt = computed(() => buildSystemPrompt(activeCard.value)
 
 function handleScreenshotClick() {
   // Vision capture is typically restricted in browser unless using getDisplayMedia
-  toast.info('Vision capture is optimized for desktop. Please use the attach button for screenshots.')
+  toast.info(t('stage.chat.composer.vision-desktop-hint'))
 }
 
 // --- Token Counter ---
@@ -204,7 +204,7 @@ onUnmounted(() => {
       <div v-if="attachments.length > 0" class="flex flex-wrap gap-2 border-b border-primary-100/50 p-2">
         <div v-for="(attachment, index) in attachments" :key="index" class="relative">
           <img :src="attachment.url" class="h-16 w-16 rounded-md object-cover">
-          <button class="absolute h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[10px] text-white -right-1 -top-1" @click="removeAttachment(index)">
+          <button class="absolute h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[10px] text-white -right-1 -top-1" :aria-label="t('stage.chat.composer.remove-attachment', { index: index + 1 })" @click="removeAttachment(index)">
             &times;
           </button>
         </div>
@@ -213,7 +213,7 @@ onUnmounted(() => {
       <BasicTextarea
         v-model="messageInput"
         :send-mode="settingsChat.sendMode"
-        :placeholder="isImagineMode ? 'Describe a scene to imagine...' : t('stage.message')"
+        :placeholder="isImagineMode ? t('stage.chat.composer.imagine-placeholder') : t('stage.message')"
         text="neutral-900 dark:primary-50 placeholder:neutral-900/60 dark:placeholder:white/60"
         bg="transparent"
         min-h="[100px]" max-h="[300px]" w-full
@@ -236,7 +236,8 @@ onUnmounted(() => {
             <button
               class="h-8 w-8 flex items-center justify-center rounded-md outline-none transition-all duration-200 active:scale-95"
               text="lg neutral-500 dark:neutral-400"
-              title="听觉"
+              :title="t('stage.chat.composer.hearing')"
+              :aria-label="t('stage.chat.composer.hearing')"
             >
               <Transition name="fade" mode="out-in">
                 <IndicatorMicVolume v-if="enabled" class="h-5 w-5" />
@@ -277,23 +278,25 @@ onUnmounted(() => {
                     :class="enabled
                       ? 'bg-primary-500 text-white hover:bg-primary-600 active:scale-95'
                       : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300 active:scale-95 dark:bg-neutral-700 dark:text-neutral-200'"
+                    :aria-label="enabled ? t('stage.chat.composer.microphone-enabled') : t('stage.chat.composer.microphone-disabled')"
+                    :aria-pressed="enabled"
                     @click="enabled = !enabled"
                   >
                     <div :class="enabled ? 'i-ph:microphone' : 'i-ph:microphone-slash'" class="h-6 w-6" />
                   </button>
                 </div>
                 <p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
-                  {{ enabled ? '麦克风已启用' : '麦克风已禁用' }}
+                  {{ enabled ? t('stage.chat.composer.microphone-enabled') : t('stage.chat.composer.microphone-disabled') }}
                 </p>
               </div>
 
               <FieldSelect
                 v-model="selectedAudioInput"
-                label="输入设备"
-                description="选择要使用的麦克风。"
-                :options="audioInputs.map(device => ({ label: device.label || 'Unknown Device', value: device.deviceId }))"
+                :label="t('stage.chat.composer.input-device')"
+                :description="t('stage.chat.composer.input-device-description')"
+                :options="audioInputs.map(device => ({ label: device.label || t('stage.chat.composer.unknown-device'), value: device.deviceId }))"
                 layout="vertical"
-                placeholder="Select microphone"
+                :placeholder="t('stage.chat.composer.select-microphone')"
               />
             </PopoverContent>
           </PopoverPortal>
@@ -307,7 +310,7 @@ onUnmounted(() => {
       <div
         v-if="effectiveContextWidth"
         class="flex cursor-help items-center gap-1.5 px-2 py-1"
-        :title="`${globalContextWidth ? '[Inherited] ' : ''}Context: ${formattedTokenCount} / ${formatTokenCount(effectiveContextWidth)} (${contextPercentage.toFixed(1)}%)`"
+        :title="t(globalContextWidth ? 'stage.chat.composer.inherited-context' : 'stage.chat.composer.context', { used: formattedTokenCount, limit: formatTokenCount(effectiveContextWidth), percentage: contextPercentage.toFixed(1) })"
       >
         <div class="i-solar:graph-bold-duotone text-[10px] text-neutral-400 dark:text-neutral-500" />
         <span class="text-[10px] text-neutral-400 font-bold leading-none tracking-tight uppercase dark:text-neutral-500">{{ formattedTokenCount }}</span>
@@ -327,7 +330,7 @@ onUnmounted(() => {
         :class="[
           sessionTokenCount > 100000 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-400 dark:text-neutral-500',
         ]"
-        title="当前聊天预计使用的 token 数"
+        :title="t('stage.chat.composer.estimated-token-count')"
       >
         <div class="i-solar:graph-bold-duotone text-xs" />
         <span>{{ formattedTokenCount }}</span>
@@ -343,7 +346,9 @@ onUnmounted(() => {
             ? 'border-amber-500/50 bg-amber-500/10 text-lg text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
             : 'border-neutral-100/60 bg-neutral-50/70 text-lg text-neutral-500 hover:text-primary-500 dark:border-neutral-800/30 dark:bg-neutral-800/70 dark:text-neutral-400 dark:hover:text-primary-400',
         ]"
-        :title="activeCard?.extensions?.airi?.groundingEnabled ? '接地已启用：消息将附带传感器数据' : '为每条消息附加传感器数据（可在主动性设置中预览）'"
+        :title="activeCard?.extensions?.airi?.groundingEnabled ? t('stage.chat.composer.grounding-enabled') : t('stage.chat.composer.grounding-disabled')"
+        :aria-label="activeCard?.extensions?.airi?.groundingEnabled ? t('stage.chat.composer.grounding-enabled') : t('stage.chat.composer.grounding-disabled')"
+        :aria-pressed="Boolean(activeCard?.extensions?.airi?.groundingEnabled)"
         @click="airiCardStore.toggleGrounding(activeCardId)"
       >
         <div :class="[activeCard?.extensions?.airi?.groundingEnabled ? 'i-solar:cpu-bolt-bold-duotone' : 'i-solar:cpu-bold-duotone']" />
@@ -353,7 +358,7 @@ onUnmounted(() => {
       <ChatMemoryPopover
         variant="mobile"
         show-cache-status
-        :title="`Memory & Context for ${characterName}`"
+        :title="t('stage.chat.composer.memory-and-context-for', { name: characterName })"
         @view-context="showContext = true"
         @manage-sessions="showSessions = true"
       />
@@ -372,7 +377,8 @@ onUnmounted(() => {
       <!-- Clear Messages (Safety Hook) -->
       <button
         class="max-h-[10lh] min-h-[1lh] flex items-center justify-center border-2 border-neutral-100/60 rounded-xl bg-neutral-50/70 p-2 text-lg text-neutral-500 outline-none backdrop-blur-md transition-colors transition-transform active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
-        title="清空消息"
+        :title="t('stage.chat.composer.cleanup-messages')"
+        :aria-label="t('stage.chat.composer.cleanup-messages')"
         @click="handleTrashClick(cleanupMessages)"
       >
         <div class="i-solar:trash-bin-2-bold-duotone" />
@@ -385,7 +391,8 @@ onUnmounted(() => {
       >
         <button
           class="h-9 w-10 flex items-center justify-center outline-none transition-transform active:scale-95 hover:bg-primary-500/10"
-          title="发送消息"
+          :title="t('stage.chat.composer.send-message')"
+          :aria-label="t('stage.chat.composer.send-message')"
           @click="handleSend"
         >
           <div class="i-solar:plain-2-bold-duotone text-xl text-primary-600 dark:text-primary-400" />
@@ -396,7 +403,8 @@ onUnmounted(() => {
             <button
               class="h-9 w-6 flex items-center justify-center border-l border-neutral-200/50 outline-none transition-colors dark:border-neutral-700/50 hover:bg-primary-500/10"
               text="neutral-500 dark:neutral-400"
-              title="更改发送快捷键模式"
+              :title="t('stage.chat.composer.change-send-mode')"
+              :aria-label="t('stage.chat.composer.change-send-mode')"
             >
               <div class="i-solar:alt-arrow-down-linear text-xs" />
             </button>
@@ -409,7 +417,7 @@ onUnmounted(() => {
               :side-offset="12"
             >
               <div class="px-2 py-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-                Send Key Mode
+                {{ t('stage.chat.composer.send-key-mode') }}
               </div>
               <button
                 v-for="mode in (['enter', 'ctrl-enter', 'double-enter'] as const)"
@@ -422,7 +430,7 @@ onUnmounted(() => {
                 ]"
                 @click="settingsChat.sendMode = mode"
               >
-                <span>{{ mode === 'enter' ? 'Enter' : mode === 'ctrl-enter' ? 'Ctrl + Enter' : 'Double Enter' }}</span>
+                <span>{{ t(`settings.pages.chat.send-mode.options.${mode}`) }}</span>
                 <div v-if="settingsChat.sendMode === mode" class="i-solar:check-circle-bold text-sm" />
               </button>
             </PopoverContent>
@@ -453,29 +461,29 @@ onUnmounted(() => {
         >
           <div class="max-w-md w-full border border-neutral-200/60 rounded-2xl bg-white/90 p-6 shadow-2xl backdrop-blur-xl dark:border-neutral-800/60 dark:bg-neutral-900/90">
             <h3 class="text-xl text-neutral-900 font-bold dark:text-white">
-              Clear conversation?
+              {{ t('stage.chat.composer.clear-conversation') }}
             </h3>
             <p class="mt-2 text-neutral-600 dark:text-neutral-400">
-              You haven't summarized today's chat into memory yet. Clearing now will lose this context for future sessions.
+              {{ t('stage.chat.composer.clear-conversation-description') }}
             </p>
             <div class="mt-6 flex flex-col gap-2">
               <button
                 class="w-full rounded-xl bg-primary-500 py-3 text-sm text-white font-bold transition active:scale-95 hover:bg-primary-600"
                 @click="handleSaveAndClear(cleanupMessages)"
               >
-                Save to Memory & Clear
+                {{ t('stage.chat.composer.save-memory-clear') }}
               </button>
               <button
                 class="w-full rounded-xl bg-neutral-100 py-3 text-sm text-neutral-700 font-bold transition active:scale-95 dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 @click="handleClearAnyway(cleanupMessages)"
               >
-                Clear Anyway
+                {{ t('stage.chat.composer.clear-anyway') }}
               </button>
               <button
                 class="mt-2 w-full text-sm text-neutral-400 font-medium hover:text-neutral-600 dark:hover:text-neutral-200"
                 @click="trashConfirmOpenRef = false"
               >
-                Cancel
+                {{ t('stage.chat.composer.cancel') }}
               </button>
             </div>
           </div>

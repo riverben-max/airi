@@ -24,17 +24,17 @@ const showAbout = ref(false)
 const dropdownRef = ref(null)
 
 const buildInfo = useBuildInfo()
-const aboutLinks = [
-  { label: 'Home', href: 'https://airi.moeru.ai/docs/', icon: 'i-solar:home-smile-outline' },
-  { label: 'Documentations', href: 'https://airi.moeru.ai/docs/en/docs/overview/', icon: 'i-solar:document-add-outline' },
+const aboutLinks = computed(() => [
+  { label: t('stage.chat.navigation.home'), href: 'https://airi.moeru.ai/docs/', icon: 'i-solar:home-smile-outline' },
+  { label: t('stage.chat.navigation.documentation'), href: 'https://airi.moeru.ai/docs/en/docs/overview/', icon: 'i-solar:document-add-outline' },
   { label: 'GitHub', href: 'https://github.com/moeru-ai/airi', icon: 'i-simple-icons:github' },
-]
+])
 
-const edition = isStageTamagotchi()
+const edition = computed(() => isStageTamagotchi()
   ? t('base.edition.desktop')
   : isStageCapacitor()
     ? t('base.edition.mobile')
-    : t('base.edition.web')
+    : t('base.edition.web'))
 
 onClickOutside(dropdownRef, () => {
   showDropdown.value = false
@@ -66,7 +66,8 @@ async function handleListSessions() {
       w-fit flex items-center justify-center rounded-xl p-2 backdrop-blur-md
       text="lg neutral-500 dark:neutral-400"
       transition-colors transition-transform active:scale-95
-      title="Context"
+      :title="t('stage.chat.navigation.context')"
+      :aria-label="t('stage.chat.navigation.context')"
       @click="showAbout = true"
     >
       <div i-solar:notes-bold-duotone size-5 />
@@ -82,6 +83,9 @@ async function handleListSessions() {
       w-fit flex items-center justify-center rounded-xl p-2 backdrop-blur-md
       text="lg neutral-500 dark:neutral-400"
       transition-colors transition-transform active:scale-95
+      :title="isDark ? t('stage.chat.navigation.switch-to-light-theme') : t('stage.chat.navigation.switch-to-dark-theme')"
+      :aria-label="isDark ? t('stage.chat.navigation.switch-to-light-theme') : t('stage.chat.navigation.switch-to-dark-theme')"
+      :aria-pressed="isDark"
       @click="() => toggleDark()"
     >
       <Transition name="fade" mode="out-in">
@@ -97,7 +101,8 @@ async function handleListSessions() {
         border="2 solid neutral-100/60 dark:neutral-800/30"
         bg="neutral-50/70 dark:neutral-800/70"
         w-fit flex items-center justify-center rounded-xl p-2 backdrop-blur-md
-        title="Settings"
+        :title="t('settings.title')"
+        :aria-label="t('settings.title')"
         to="/settings"
       >
         <div i-solar:settings-minimalistic-bold-duotone size-5 text="neutral-500 dark:neutral-400" />
@@ -111,12 +116,14 @@ async function handleListSessions() {
         class="flex items-center gap-2 border-2 border-neutral-100/60 rounded-full bg-neutral-50/70 p-1 pl-1 pr-3 backdrop-blur-md transition dark:border-neutral-800/30 dark:bg-neutral-800/70 hover:bg-neutral-100 dark:hover:bg-neutral-800"
         :class="{ 'ring-2 ring-primary-500/20': showDropdown }"
         aria-haspopup="true"
+        :aria-label="t('stage.chat.navigation.account-menu')"
         :aria-expanded="showDropdown ? 'true' : 'false'"
         @click="showDropdown = !showDropdown"
       >
         <img
           v-if="userAvatar"
           :src="userAvatar"
+          :alt="userName || t('stage.chat.navigation.account-menu')"
           class="h-8 w-8 rounded-full object-cover ring-2 ring-white dark:ring-neutral-900"
         >
         <div

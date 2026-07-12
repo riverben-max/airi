@@ -2,6 +2,7 @@
 import { useLocalStorage } from '@vueuse/core'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { DEFAULT_SYSTEM_PROMPT_TEMPLATE } from '../../../composables/use-producer'
 import { useChatSessionStore } from '../../../stores/chat/session-store'
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 }>()
 
 const chatSessionStore = useChatSessionStore()
+const { t } = useI18n()
 
 const guidance = ref('')
 const contextDepth = useLocalStorage('airi:producer:context-depth', 6)
@@ -41,7 +43,7 @@ const boundaryMessage = computed(() => {
   if (index < 0)
     return ''
   const msg = messages[index]
-  const role = msg.role === 'user' ? 'You' : props.characterName || 'Assistant'
+  const role = msg.role === 'user' ? t('stage.chat.producer.user') : props.characterName || t('stage.chat.producer.assistant')
   const text = (typeof msg.content === 'string' ? msg.content.slice(0, 300) : '') || ''
   return `${role}: ${text}`
 })
@@ -91,19 +93,21 @@ function resetTemplate() {
           <div class="flex items-center justify-between border-b border-neutral-200/50 px-5 py-4 dark:border-neutral-700/50">
             <div class="flex items-center gap-2 text-base text-neutral-800 font-bold dark:text-neutral-100">
               <div class="i-solar:magic-stick-3-bold-duotone text-lg text-primary-500" />
-              <span>{{ showPromptEditor ? 'Edit System Prompt' : 'Prompt the Producer' }}</span>
+              <span>{{ showPromptEditor ? t('stage.chat.producer.edit-system-prompt') : t('stage.chat.producer.prompt-producer') }}</span>
             </div>
             <div class="flex items-center gap-2">
               <button
                 v-if="!showPromptEditor"
                 class="rounded-lg p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                title="Edit system prompt template"
+                :title="t('stage.chat.producer.edit-system-prompt-template')"
+                :aria-label="t('stage.chat.producer.edit-system-prompt-template')"
                 @click="showPromptEditor = true"
               >
                 <div class="i-solar:document-text-bold-duotone text-lg" />
               </button>
               <button
                 class="rounded-lg p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                :aria-label="t('stage.chat.producer.close')"
                 @click="close"
               >
                 <div class="i-solar:close-square-outline text-lg" />
@@ -116,12 +120,12 @@ function resetTemplate() {
             <!-- Guidance Textarea -->
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-500 font-semibold tracking-wider uppercase dark:text-neutral-400">
-                Direction / Style (Optional)
+                {{ t('stage.chat.producer.direction-style') }}
               </label>
               <textarea
                 v-model="guidance"
                 rows="3"
-                placeholder="e.g. 'something teasing', 'acknowledge her feelings', 'be vulnerable'..."
+                :placeholder="t('stage.chat.producer.guidance-placeholder')"
                 class="w-full resize-none border border-neutral-200 rounded-xl bg-neutral-50/50 p-3 text-sm text-neutral-800 outline-none transition-all dark:border-neutral-700 focus:border-primary-500 dark:bg-neutral-900/50 dark:text-neutral-100 dark:focus:border-primary-400"
                 @keydown.enter.ctrl.prevent="handleGenerate"
               />
@@ -131,14 +135,14 @@ function resetTemplate() {
             <div v-if="!cacheAligned" class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <label class="text-xs text-neutral-500 font-semibold tracking-wider uppercase dark:text-neutral-400">
-                  Context Depth
+                  {{ t('stage.chat.producer.context-depth') }}
                 </label>
                 <span class="rounded bg-primary-500/10 px-2 py-0.5 text-xs text-primary-500 font-bold font-mono">
                   <PopoverRoot>
                     <PopoverTrigger as-child>
                       <button class="flex items-center gap-1 outline-none">
-                        {{ contextDepth }} messages
-                        <span class="rounded bg-primary-500/20 px-1 text-[9px] text-primary-600 font-bold leading-relaxed uppercase dark:text-primary-400">Preview</span>
+                        {{ t('stage.chat.producer.message-count', { count: contextDepth }) }}
+                        <span class="rounded bg-primary-500/20 px-1 text-[9px] text-primary-600 font-bold leading-relaxed uppercase dark:text-primary-400">{{ t('stage.chat.producer.preview') }}</span>
                       </button>
                     </PopoverTrigger>
                     <PopoverPortal>
@@ -147,12 +151,12 @@ function resetTemplate() {
                         align="center"
                         class="z-50 max-w-xs border border-neutral-200 rounded-xl bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
                       >
-                        <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">Boundary Message</div>
+                        <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">{{ t('stage.chat.producer.boundary-message') }}</div>
                         <p class="mt-1.5 max-h-24 overflow-y-auto text-xs text-neutral-700 leading-relaxed dark:text-neutral-300">
-                          {{ boundaryMessage || 'No messages in current session' }}
+                          {{ boundaryMessage || t('stage.chat.producer.no-session-messages') }}
                         </p>
                         <div class="mt-2 text-[9px] text-neutral-400 italic">
-                          Message #{{ chatSessionStore.activeSessionId ? (chatSessionStore.sessionMessages[chatSessionStore.activeSessionId]?.length ?? 0) - contextDepth + 1 : '—' }} from the end — inclusive of the count
+                          {{ t('stage.chat.producer.boundary-position', { index: chatSessionStore.activeSessionId ? (chatSessionStore.sessionMessages[chatSessionStore.activeSessionId]?.length ?? 0) - contextDepth + 1 : '—' }) }}
                         </div>
                       </PopoverContent>
                     </PopoverPortal>
@@ -168,7 +172,7 @@ function resetTemplate() {
                 class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-primary-500 dark:bg-neutral-700"
               >
               <span class="text-[10px] text-neutral-400 dark:text-neutral-500">
-                How many recent messages to include as context for the dialogue generation.
+                {{ t('stage.chat.producer.context-depth-description') }}
               </span>
             </div>
 
@@ -176,10 +180,10 @@ function resetTemplate() {
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <label class="text-xs text-neutral-500 font-semibold tracking-wider uppercase dark:text-neutral-400">
-                  Suggestions Count
+                  {{ t('stage.chat.producer.suggestions-count') }}
                 </label>
                 <span class="rounded bg-primary-500/10 px-2 py-0.5 text-xs text-primary-500 font-bold font-mono">
-                  {{ suggestionCount }} choices
+                  {{ t('stage.chat.producer.choices-count', { count: suggestionCount }) }}
                 </span>
               </div>
               <input
@@ -191,7 +195,7 @@ function resetTemplate() {
                 class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-primary-500 dark:bg-neutral-700"
               >
               <span class="text-[10px] text-neutral-400 dark:text-neutral-500">
-                Number of response choices to generate.
+                {{ t('stage.chat.producer.suggestions-count-description') }}
               </span>
             </div>
 
@@ -203,8 +207,8 @@ function resetTemplate() {
                 class="h-4 w-4 border-neutral-300 rounded text-primary-500 accent-primary-500 focus:ring-primary-500"
               >
               <div class="flex flex-col">
-                <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">Generate short replies</span>
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">Keep generated options short (1-2 sentences)</span>
+                <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">{{ t('stage.chat.producer.short-replies') }}</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('stage.chat.producer.short-replies-description') }}</span>
               </div>
             </label>
 
@@ -216,8 +220,8 @@ function resetTemplate() {
                 class="h-4 w-4 border-neutral-300 rounded text-primary-500 accent-primary-500 focus:ring-primary-500"
               >
               <div class="flex flex-col">
-                <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">Auto-send on click</span>
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">Immediately send the choice upon clicking it</span>
+                <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">{{ t('stage.chat.producer.auto-send') }}</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('stage.chat.producer.auto-send-description') }}</span>
               </div>
             </label>
 
@@ -229,8 +233,8 @@ function resetTemplate() {
                 class="h-4 w-4 border-neutral-300 rounded text-primary-500 accent-primary-500 focus:ring-primary-500"
               >
               <div class="flex flex-col">
-                <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">Automatically play all suggestions</span>
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">Play voice previews for all choices sequentially when generated</span>
+                <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">{{ t('stage.chat.producer.auto-play') }}</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('stage.chat.producer.auto-play-description') }}</span>
               </div>
             </label>
 
@@ -243,10 +247,10 @@ function resetTemplate() {
               >
               <div class="flex flex-col">
                 <div class="flex items-center gap-1.5">
-                  <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">Cache-Aligned (Full Context)</span>
-                  <span class="rounded bg-amber-500/20 px-1 py-0.5 text-[8px] text-amber-600 font-bold leading-none dark:text-amber-400">Experimental</span>
+                  <span class="text-xs text-neutral-700 font-semibold dark:text-neutral-300">{{ t('stage.chat.producer.cache-aligned') }}</span>
+                  <span class="rounded bg-amber-500/20 px-1 py-0.5 text-[8px] text-amber-600 font-bold leading-none dark:text-amber-400">{{ t('stage.chat.producer.experimental') }}</span>
                 </div>
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">Reuse active chat cache for higher accuracy with full history</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('stage.chat.producer.cache-aligned-description') }}</span>
               </div>
             </label>
           </div>
@@ -256,7 +260,7 @@ function resetTemplate() {
             <!-- Custom System Prompt Textarea -->
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-500 font-semibold tracking-wider uppercase dark:text-neutral-400">
-                System Prompt Template
+                {{ t('stage.chat.producer.system-prompt-template') }}
               </label>
               <textarea
                 v-model="customPromptTemplate"
@@ -267,12 +271,12 @@ function resetTemplate() {
 
             <!-- Placeholders explanation -->
             <div class="border border-neutral-200/40 rounded-xl bg-neutral-50 p-3 text-[10px] text-neutral-500 leading-normal dark:border-neutral-800/40 dark:bg-neutral-900/50 dark:text-neutral-400">
-              <span class="mb-1 block font-bold tracking-wider uppercase">Supported Placeholders</span>
+              <span class="mb-1 block font-bold tracking-wider uppercase">{{ t('stage.chat.producer.supported-placeholders') }}</span>
               <ul class="flex flex-col list-disc list-inside gap-0.5">
-                <li><code class="text-primary-500 dark:text-primary-400">{count}</code>: Suggested choice options count</li>
-                <li><code class="text-primary-500 dark:text-primary-400">{characterName}</code>: Active character/companion name</li>
-                <li><code class="text-primary-500 dark:text-primary-400">{guidance}</code>: Guidance style string input</li>
-                <li><code class="text-primary-500 dark:text-primary-400">{lengthRule}</code>: Short/long reply configuration instruction</li>
+                <li><code class="text-primary-500 dark:text-primary-400">{count}</code>: {{ t('stage.chat.producer.placeholder-count') }}</li>
+                <li><code class="text-primary-500 dark:text-primary-400">{characterName}</code>: {{ t('stage.chat.producer.placeholder-character-name') }}</li>
+                <li><code class="text-primary-500 dark:text-primary-400">{guidance}</code>: {{ t('stage.chat.producer.placeholder-guidance') }}</li>
+                <li><code class="text-primary-500 dark:text-primary-400">{lengthRule}</code>: {{ t('stage.chat.producer.placeholder-length-rule') }}</li>
               </ul>
             </div>
           </div>
@@ -281,12 +285,12 @@ function resetTemplate() {
           <div v-if="!showPromptEditor" class="flex items-start gap-2 border-t border-neutral-200/50 px-5 py-3 dark:border-neutral-700/50">
             <div class="i-solar:info-circle-linear mt-0.5 shrink-0 text-sm text-neutral-400" />
             <p class="text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Tip: You can configure the narrator's voice by setting up your
+              {{ t('stage.chat.producer.user-profile-tip') }}
               <button
                 class="text-primary-500 font-semibold underline underline-offset-2 transition-colors hover:text-primary-400"
                 @click="emit('openUserProfile')"
               >
-                user's setting
+                {{ t('stage.chat.producer.user-settings') }}
               </button>.
             </p>
           </div>
@@ -298,13 +302,13 @@ function resetTemplate() {
                 class="rounded-lg px-4 py-2 text-xs text-neutral-600 font-semibold transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 @click="close"
               >
-                Cancel
+                {{ t('stage.chat.producer.cancel') }}
               </button>
               <button
                 class="rounded-lg bg-primary-500 px-4 py-2 text-xs text-white font-semibold shadow-sm transition-colors hover:bg-primary-600"
                 @click="handleGenerate"
               >
-                Inspire me
+                {{ t('stage.chat.producer.inspire-me') }}
               </button>
             </template>
             <template v-else>
@@ -312,13 +316,13 @@ function resetTemplate() {
                 class="mr-auto border border-neutral-200 rounded-lg px-4 py-2 text-xs text-neutral-600 font-semibold transition-colors dark:border-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 @click="resetTemplate"
               >
-                Reset to Default
+                {{ t('stage.chat.producer.reset-default') }}
               </button>
               <button
                 class="rounded-lg bg-primary-500 px-4 py-2 text-xs text-white font-semibold shadow-sm transition-colors hover:bg-primary-600"
                 @click="showPromptEditor = false"
               >
-                Done
+                {{ t('stage.chat.producer.done') }}
               </button>
             </template>
           </div>

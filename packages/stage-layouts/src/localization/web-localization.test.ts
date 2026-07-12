@@ -13,6 +13,34 @@ const sourceRoots = [
   'packages/stage-ui/src',
 ]
 const forbiddenEnglishByFile: Record<string, string[]> = {
+  'packages/stage-layouts/src/components/Widgets/ChatArea.vue': [
+    'Describe a scene to imagine...',
+    'Memory & Context for',
+  ],
+  'packages/stage-layouts/src/components/Layouts/MobileInteractiveArea.vue': [
+    'Hearing',
+    'Memory',
+    'Cleanup Messages',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-provider-selection.vue': [
+    'Deployment',
+    'Pricing',
+    'No providers match your current filters.',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/ProducerChoiceBubble.vue': [
+    'PRODUCER DIRECTIVES',
+    'Regenerate choices',
+    'Retry',
+    'Dismiss suggestions',
+  ],
+  'apps/stage-web/src/pages/auth/login.vue': [
+    'By continuing, you agree to our',
+    'Terms',
+    'Privacy Policy',
+  ],
+  'apps/stage-web/src/pages/settings/characters/index.vue': [
+    'Search...',
+  ],
   'packages/stage-ui/src/components/scenarios/settings/model-settings/audio-studio.vue': [
     'New Profile',
     'Profile Name',
@@ -104,11 +132,9 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
 }
 
 const excludedPath = /[\\/]devtools[\\/]|[\\/]dist[\\/]|[\\/]stories[\\/]|\.test\.ts$|\.story\.vue$/
-const deferredEnglishCatalogPrefixes = [
-  // Task 5 restores the server auth locale sources and adds them to the web catalog.
-  'server.auth.',
-]
 const allowedIdenticalEnglishMessages = new Map<string, string>([
+  ['server.auth.forgotPassword.email.placeholder', 'you{\'@\'}example.com'],
+  ['server.auth.signIn.email.placeholder', 'you{\'@\'}example.com'],
   ['settings.live2d.scale-and-position.x', 'X'],
   ['settings.live2d.scale-and-position.y', 'Y'],
   ['settings.pages.admin.models.fields.id', 'ID'],
@@ -192,6 +218,9 @@ function loadWebMessages(locale: 'en' | 'zh-Hans') {
   const localeRoot = resolve(workspaceRoot, 'packages/i18n/src/locales', locale)
   return flatten({
     base: parse(readFileSync(resolve(localeRoot, 'base.yaml'), 'utf8')),
+    server: {
+      auth: parse(readFileSync(resolve(localeRoot, 'server/auth.yaml'), 'utf8')),
+    },
     settings: parse(readFileSync(resolve(localeRoot, 'settings.yaml'), 'utf8')),
     stage: parse(readFileSync(resolve(localeRoot, 'stage.yaml'), 'utf8')),
     tamagotchi: {
@@ -296,10 +325,17 @@ function stripSourceComments(source: string) {
   return result + stripHtmlComments(source.slice(lastIndex))
 }
 
+function includesForbiddenPhrase(source: string, phrase: string) {
+  const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const startBoundary = /^\w/.test(phrase) ? '(?<!\\w)' : ''
+  const endBoundary = /\w$/.test(phrase) ? '(?!\\w)' : ''
+  return new RegExp(`${startBoundary}${escapedPhrase}${endBoundary}`).test(source)
+}
+
 it('does not reintroduce audited English literals in production settings', () => {
   const violations = Object.entries(forbiddenEnglishByFile).flatMap(([file, phrases]) => {
     const source = stripSourceComments(readFileSync(resolve(workspaceRoot, file), 'utf8'))
-    return phrases.filter(phrase => source.includes(phrase)).map(phrase => `${file}: ${phrase}`)
+    return phrases.filter(phrase => includesForbiddenPhrase(source, phrase)).map(phrase => `${file}: ${phrase}`)
   })
   expect(violations).toEqual([])
 })
@@ -326,6 +362,12 @@ describe('production settings source audit', () => {
 
     for (const source of sources)
       expect(stripSourceComments(source)).toContain('Add Provider')
+  })
+
+  it('does not treat forbidden words embedded in source identifiers as rendered copy', () => {
+    expect(includesForbiddenPhrase('const matchDeployment = true', 'Deployment')).toBe(false)
+    expect(includesForbiddenPhrase('<HearingConfigDialog />', 'Hearing')).toBe(false)
+    expect(includesForbiddenPhrase('<span>Hearing</span>', 'Hearing')).toBe(true)
   })
 
   it('requires localized accessible names for icon-only provider actions', () => {
@@ -526,10 +568,27 @@ describe('simplified Chinese web localization', () => {
   const cataloguedReferencedKeys = referencedKeys.filter(key => key in english)
 
   it('accounts for every statically referenced key in an English catalog', () => {
-    const missing = referencedKeys
-      .filter(key => !(key in english))
-      .filter(key => !deferredEnglishCatalogPrefixes.some(prefix => key.startsWith(prefix)))
+    const missing = referencedKeys.filter(key => !(key in english))
     expect(missing).toEqual([])
+  })
+
+  it('loads every server auth key without deferring or silently excluding the catalog', () => {
+    const englishAuthKeys = Object.keys(english).filter(key => key.startsWith('server.auth.')).sort()
+    const chineseAuthKeys = Object.keys(chinese).filter(key => key.startsWith('server.auth.')).sort()
+    const referencedAuthKeys = referencedKeys.filter(key => key.startsWith('server.auth.'))
+
+    expect(englishAuthKeys).toHaveLength(141)
+    expect(chineseAuthKeys).toEqual(englishAuthKeys)
+    expect(referencedAuthKeys.length).toBeGreaterThanOrEqual(132)
+    expect(referencedAuthKeys.filter(key => !englishAuthKeys.includes(key))).toEqual([])
+  })
+
+  it('preserves interpolation variables across the complete server auth catalog', () => {
+    const mismatches = Object.keys(english)
+      .filter(key => key.startsWith('server.auth.'))
+      .filter(key => interpolationVariables(english[key]).join('|') !== interpolationVariables(chinese[key]).join('|'))
+
+    expect(mismatches).toEqual([])
   })
 
   it('defines every statically referenced English key in Simplified Chinese', () => {

@@ -2,10 +2,12 @@
 import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 
 const emits = defineEmits<{
   (e: 'reset'): void
 }>()
+const { t } = useI18n()
 
 const {
   stageModelRenderer,
@@ -27,17 +29,17 @@ function handleViewControlsToggle(targetMode: 'x' | 'y' | 'z' | 'scale') {
   <div w-full flex flex-1 items-center self-end justify-end gap-2>
     <Transition name="fade">
       <div v-if="stageViewControlsEnabled" w-full flex justify-between gap-2>
-        <Button variant="secondary-muted" :toggled="mode === 'x'" w-full @click="handleViewControlsToggle('x')">
+        <Button variant="secondary-muted" :toggled="mode === 'x'" :aria-pressed="mode === 'x'" w-full @click="handleViewControlsToggle('x')">
           X
         </Button>
-        <Button variant="secondary-muted" :toggled="mode === 'y'" w-full @click="handleViewControlsToggle('y')">
+        <Button variant="secondary-muted" :toggled="mode === 'y'" :aria-pressed="mode === 'y'" w-full @click="handleViewControlsToggle('y')">
           Y
         </Button>
-        <Button v-if="stageModelRenderer === 'vrm'" variant="secondary-muted" :toggled="mode === 'z'" w-full @click="handleViewControlsToggle('z')">
+        <Button v-if="stageModelRenderer === 'vrm'" variant="secondary-muted" :toggled="mode === 'z'" :aria-pressed="mode === 'z'" w-full @click="handleViewControlsToggle('z')">
           Z
         </Button>
-        <Button variant="secondary-muted" :toggled="mode === 'scale'" w-full @click="handleViewControlsToggle('scale')">
-          Scale
+        <Button variant="secondary-muted" :toggled="mode === 'scale'" :aria-pressed="mode === 'scale'" w-full @click="handleViewControlsToggle('scale')">
+          {{ t('stage.chat.navigation.scale') }}
         </Button>
       </div>
     </Transition>
@@ -45,7 +47,9 @@ function handleViewControlsToggle(targetMode: 'x' | 'y' | 'z' | 'scale') {
       w-fit flex items-center self-end justify-center justify-self-end rounded-xl p-2 backdrop-blur-md
       border="2 solid neutral-100/60 dark:neutral-800/30"
       bg="neutral-50/70 dark:neutral-800/70"
-      title="View"
+      :title="t('stage.chat.navigation.view-controls')"
+      :aria-label="t('stage.chat.navigation.view-controls')"
+      :aria-pressed="stageViewControlsEnabled"
       text="neutral-500 dark:neutral-400"
       @click="stageViewControlsEnabled = !stageViewControlsEnabled"
     >

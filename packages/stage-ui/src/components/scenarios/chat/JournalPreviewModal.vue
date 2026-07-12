@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useJournalPreviewStore } from '../../../stores/journal-preview'
 import { useAutonomousArtistryStore } from '../../../stores/modules/artistry-autonomous'
@@ -10,6 +11,7 @@ defineEmits(['attach'])
 const store = useJournalPreviewStore()
 const { previewModal } = storeToRefs(store)
 const { closePreview, downloadImage } = store
+const { t } = useI18n()
 
 const autonomousStore = useAutonomousArtistryStore()
 const viewMode = ref<'image' | 'prompt' | 'note'>('image')
@@ -50,7 +52,9 @@ const directorNote = computed(() => {
                     'rounded-full p-1 transition-colors',
                     viewMode === 'image' ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
                   ]"
-                  title="View Image"
+                  :title="t('stage.chat.journal.view-image')"
+                  :aria-label="t('stage.chat.journal.view-image')"
+                  :aria-pressed="viewMode === 'image'"
                   @click="viewMode = 'image'"
                 >
                   <div i-solar:gallery-bold-duotone class="text-lg" />
@@ -61,7 +65,9 @@ const directorNote = computed(() => {
                     'rounded-full p-1 transition-colors',
                     viewMode === 'prompt' ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
                   ]"
-                  title="View Generation Prompt"
+                  :title="t('stage.chat.journal.view-generation-prompt')"
+                  :aria-label="t('stage.chat.journal.view-generation-prompt')"
+                  :aria-pressed="viewMode === 'prompt'"
                   @click="viewMode = 'prompt'"
                 >
                   <div i-solar:document-text-bold-duotone class="text-lg" />
@@ -72,7 +78,9 @@ const directorNote = computed(() => {
                     'rounded-full p-1 transition-colors',
                     viewMode === 'note' ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
                   ]"
-                  title="View Director's reasoning"
+                  :title="t('stage.chat.journal.view-director-reasoning')"
+                  :aria-label="t('stage.chat.journal.view-director-reasoning')"
+                  :aria-pressed="viewMode === 'note'"
                   @click="viewMode = 'note'"
                 >
                   <div i-solar:clapperboard-play-bold-duotone class="text-lg" />
@@ -82,14 +90,16 @@ const directorNote = computed(() => {
 
                 <button
                   :class="['rounded-full p-1 text-neutral-400 transition-colors', 'hover:bg-neutral-100 hover:text-neutral-600', 'dark:hover:bg-neutral-800 dark:hover:text-neutral-200']"
-                  title="Download image"
+                  :title="t('stage.chat.journal.download-image')"
+                  :aria-label="t('stage.chat.journal.download-image')"
                   @click="downloadImage(previewModal.content, previewModal.title)"
                 >
                   <div i-solar:download-minimalistic-bold-duotone class="text-lg" />
                 </button>
                 <button
                   :class="['rounded-full p-1 text-primary-500 transition-colors', 'hover:bg-primary-50 hover:text-primary-600', 'dark:hover:bg-primary-900/30 dark:hover:text-primary-400']"
-                  title="Attach to chat"
+                  :title="t('stage.chat.journal.attach-to-chat')"
+                  :aria-label="t('stage.chat.journal.attach-to-chat')"
                   @click="$emit('attach', { url: previewModal.content, title: previewModal.title })"
                 >
                   <div i-solar:gallery-send-bold-duotone class="text-lg" />
@@ -98,6 +108,7 @@ const directorNote = computed(() => {
 
               <button
                 :class="['rounded-full p-1 text-neutral-400 transition-colors', 'hover:bg-neutral-100 hover:text-neutral-600', 'dark:hover:bg-neutral-800 dark:hover:text-neutral-200']"
+                :aria-label="t('stage.chat.journal.close')"
                 @click="closePreview"
               >
                 <div i-solar:close-circle-bold-duotone class="text-lg" />
@@ -114,12 +125,12 @@ const directorNote = computed(() => {
           </div>
           <div v-else class="max-h-[60vh] overflow-y-auto">
             <div v-if="viewMode === 'image'" class="flex items-center justify-center p-2">
-              <img :src="previewModal.content" class="h-auto max-h-[60vh] w-auto rounded-lg object-contain">
+              <img :src="previewModal.content" :alt="previewModal.title" class="h-auto max-h-[60vh] w-auto rounded-lg object-contain">
             </div>
             <div v-else-if="viewMode === 'prompt'" class="px-4 py-3">
               <div class="mb-2 flex items-center gap-1.5 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
                 <div i-solar:document-text-bold-duotone />
-                Generation Prompt
+                {{ t('stage.chat.journal.generation-prompt') }}
               </div>
               <div class="rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed dark:bg-neutral-800/50">
                 <p class="whitespace-pre-wrap text-neutral-600 italic dark:text-neutral-400">
@@ -130,12 +141,12 @@ const directorNote = computed(() => {
             <div v-else-if="viewMode === 'note' && directorNote" class="px-4 py-3">
               <div class="mb-2 flex items-center gap-1.5 text-[10px] text-primary-500 font-bold tracking-wider uppercase">
                 <div i-solar:clapperboard-play-bold-duotone />
-                Director's Reasoning
+                {{ t('stage.chat.journal.director-reasoning') }}
               </div>
               <div class="rounded-lg bg-primary-50/30 p-3 text-xs leading-relaxed dark:bg-primary-900/10">
                 <div class="mb-2 flex items-center gap-2">
                   <span class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] text-primary-600 font-bold dark:bg-primary-900/50 dark:text-primary-400">
-                    Intensity: {{ directorNote.intensity }}/100
+                    {{ t('stage.chat.journal.intensity', { value: directorNote.intensity }) }}
                   </span>
                 </div>
                 <p class="text-neutral-700 dark:text-neutral-300">
@@ -147,7 +158,7 @@ const directorNote = computed(() => {
               <div v-if="directorNote.scratchpad" class="mt-3">
                 <div class="mb-2 flex items-center gap-1.5 text-[10px] text-primary-500 font-bold tracking-wider uppercase">
                   <div i-solar:database-bold-duotone />
-                  Visual State Board (Scratchpad)
+                  {{ t('stage.chat.journal.visual-state-board') }}
                 </div>
                 <div class="rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed dark:bg-neutral-800/50">
                   <pre class="whitespace-pre-wrap text-[11px] text-neutral-600 leading-relaxed font-mono dark:text-neutral-400">{{ directorNote.scratchpad }}</pre>

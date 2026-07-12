@@ -6,6 +6,127 @@ chat:
       you: 你
   reasoning_only: 模型仅生成了推理响应（思维链消息）。请检查最大 token 预算，确保 LLM 有足够空间生成可显示的回复。
   reasoning: 思考
+  composer:
+    imagine-placeholder: 描述想象中的场景……
+    vision-desktop-hint: 视觉捕获已针对桌面端优化。请使用附件按钮添加截图。
+    remove-attachment: '移除附件 {index}'
+    hearing: 听觉
+    microphone-enabled: 麦克风已启用
+    microphone-disabled: 麦克风已禁用
+    input-device: 输入设备
+    input-device-description: 选择要使用的麦克风。
+    unknown-device: 未知设备
+    select-microphone: 选择麦克风
+    inherited-context: '继承的上下文：{used} / {limit}（{percentage}%）'
+    context: '上下文：{used} / {limit}（{percentage}%）'
+    estimated-token-count: 当前聊天的预计 Token 数
+    grounding-enabled: 接地已启用：消息将附带传感器数据
+    grounding-disabled: 为每条消息附加传感器数据（可在主动性设置中预览）
+    memory-and-context-for: '{name} 的记忆与上下文'
+    memory: 记忆
+    cleanup-messages: 清理消息
+    send-message: 发送消息
+    change-send-mode: 更改发送快捷键模式
+    send-key-mode: 发送快捷键模式
+    clear-conversation: 要清空对话吗？
+    clear-conversation-description: 今天的聊天尚未汇总到记忆中。现在清空将丢失未来会话所需的上下文。
+    save-memory-clear: 保存到记忆并清空
+    clear-anyway: 仍然清空
+    cancel: 取消
+  navigation:
+    context: 上下文
+    about: 关于
+    home: 主页
+    documentation: 文档
+    switch-to-light-theme: 切换到浅色主题
+    switch-to-dark-theme: 切换到深色主题
+    account-menu: 账户菜单
+    view-controls: 视图控制
+    scale: 缩放
+  producer:
+    edit-system-prompt: 编辑系统提示词
+    prompt-producer: 提示制作人
+    edit-system-prompt-template: 编辑系统提示词模板
+    close: 关闭
+    direction-style: 方向 / 风格（可选）
+    guidance-placeholder: 例如“带点调侃”“回应她的感受”“表现脆弱”……
+    context-depth: 上下文深度
+    message-count: '{count} 条消息'
+    preview: 预览
+    boundary-message: 边界消息
+    no-session-messages: 当前会话中没有消息
+    boundary-position: '倒数第 {index} 条消息，计数时包含该消息'
+    context-depth-description: 生成对话时要作为上下文包含的最近消息数量。
+    suggestions-count: 建议数量
+    choices-count: '{count} 个选项'
+    suggestions-count-description: 要生成的回复选项数量。
+    short-replies: 生成简短回复
+    short-replies-description: 将生成的选项限制为 1 至 2 句话
+    auto-send: 点击后自动发送
+    auto-send-description: 点击选项后立即发送
+    auto-play: 自动播放所有建议
+    auto-play-description: 生成后依次播放所有选项的语音预览
+    cache-aligned: 缓存对齐（完整上下文）
+    experimental: 实验性
+    cache-aligned-description: 复用当前聊天缓存，通过完整历史记录提高准确度
+    system-prompt-template: 系统提示词模板
+    supported-placeholders: 支持的占位符
+    placeholder-count: 建议选项数量
+    placeholder-character-name: 当前角色或伙伴名称
+    placeholder-guidance: 指导风格输入字符串
+    placeholder-length-rule: 长短回复配置指令
+    user: 你
+    assistant: 助手
+    user-profile-tip: 提示：您可以在以下位置配置叙述者语音：
+    user-settings: 用户设置
+    cancel: 取消
+    inspire-me: 启发我
+    reset-default: 恢复默认值
+    done: 完成
+    directives: 制作人指令
+    stop-playing-all: 停止播放全部选项
+    play-all-choices: 播放全部选项
+    stop: 停止
+    play-all: 播放全部
+    regenerate-choices: 重新生成选项
+    retry: 重试
+    dismiss-suggestions: 关闭建议
+    dismiss: 关闭
+    pause: 暂停
+    preview-with-voice: 使用您的声音预览
+    no-voice-profile: 尚未配置语音档案。请前往“设置 > 系统 > 用户资料”。
+    virtual-audio-studio-inactive: Virtual Audio Studio 提供商未启用。
+    speech-failed: 语音合成失败。
+  journal:
+    edit-prompt-template: 编辑提示词模板
+    journal-moment: 记录此刻
+    close: 关闭
+    context-scope: 上下文范围
+    all: 全部
+    last-turns: 最近轮次
+    all-description: 角色将接收完整对话以生成日记条目。
+    turns-description: 从所选消息开始，写入日记时要包含的对话轮数
+    turn-time: '第 {count} 条消息来自{time}'
+    unknown-time: 未知时间
+    conversation-start: 对话开始时
+    optional-instructions: 可选指令
+    instructions-placeholder: 说明应重点关注哪些近期时刻，或日记条目应涵盖的范围……
+    system-prompt-template: 系统提示词模板
+    supported-placeholders: 支持的占位符
+    placeholder-character-name: 当前伙伴的名称
+    placeholder-instructions: 渲染后的附加指令块
+    cancel: 取消
+    reset-default: 恢复默认值
+    done: 完成
+    view-image: 查看图像
+    view-generation-prompt: 查看生成提示词
+    view-director-reasoning: 查看导演推理
+    download-image: 下载图像
+    attach-to-chat: 附加到聊天
+    generation-prompt: 生成提示词
+    director-reasoning: 导演推理
+    intensity: '强度：{value}/100'
+    visual-state-board: 视觉状态板（草稿区）
 message: 说点什么...
 operations:
   load-models: 加载模型

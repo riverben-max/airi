@@ -208,7 +208,7 @@ initializeForm()
 <template>
   <div h-full flex flex-col gap-4>
     <div sticky top-0 z-100 flex flex-shrink-0 items-center gap-2>
-      <button outline-none @click="props.onPrevious">
+      <button :aria-label="t('settings.dialogs.onboarding.common.back')" outline-none @click="props.onPrevious">
         <div i-solar:alt-arrow-left-line-duotone h-5 w-5 />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
@@ -217,15 +217,19 @@ initializeForm()
       <div h-5 w-5 />
     </div>
     <div v-if="props.selectedProvider" flex-1 overflow-y-auto space-y-4>
-      <Callout label="Keep your API keys and credentials safe!" theme="violet">
+      <Callout :label="t('settings.dialogs.onboarding.credentialsSafeLabel')" theme="violet">
         <div>
           <div>
-            AIRI is running pure locally in your browser, and we will never steal your credentials for AI / LLM providers. But keep in mind that your API keys are sensitive information. Make sure to keep them safe and do not share them with anyone.
+            {{ t('settings.dialogs.onboarding.credentialsSafeLocal') }}
           </div>
           <div>
-            AIRI is open sourced at <div inline-flex translate-y-1 items-center gap-1>
-              <div i-simple-icons:github inline-block /><a decoration-underline decoration-dashed href="https://github.com/moeru-ai/airi" target="_blank" rel="noopener noreferrer">GitHub</a>
-            </div>, if you want to check how we handle your credentials, feel free to inspect our code.
+            <i18n-t keypath="settings.dialogs.onboarding.credentialsSafeOpenSource" tag="span">
+              <template #github>
+                <span inline-flex translate-y-1 items-center gap-1>
+                  <span i-simple-icons:github inline-block /><a decoration-underline decoration-dashed href="https://github.com/moeru-ai/airi" target="_blank" rel="noopener noreferrer">GitHub</a>
+                </span>
+              </template>
+            </i18n-t>
           </div>
         </div>
       </Callout>
@@ -264,8 +268,8 @@ initializeForm()
               v-model="apiKey"
               :placeholder="getApiKeyPlaceholder(props.selectedProvider.id)"
               type="password"
-              label="API Key"
-              description="Enter your API key for the selected provider."
+              :label="t('settings.dialogs.onboarding.apiKey')"
+              :description="t('settings.dialogs.onboarding.provider-configuration.api-key-description')"
               required
             />
           </div>
@@ -276,8 +280,8 @@ initializeForm()
               v-model="baseUrl"
               :placeholder="getBaseUrlPlaceholder(props.selectedProvider.id)"
               type="text"
-              label="Base URL"
-              description="Enter the base URL for the provider's API."
+              :label="t('settings.dialogs.onboarding.baseUrl')"
+              :description="t('settings.dialogs.onboarding.provider-configuration.base-url-description')"
             />
           </div>
 

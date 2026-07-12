@@ -254,6 +254,56 @@ dialogs:
     setupWithoutSigningIn: Continue without signing in
     flux: Flux
     buyFlux: Charge Flux
+    common:
+      back: Go back
+    provider-configuration:
+      api-key-description: Enter your API key for the selected provider.
+      base-url-description: Enter the base URL for the provider's API.
+    provider-selection:
+      deployment: Deployment
+      pricing: Pricing
+      all: All
+      cloud: Cloud
+      local: Local
+      free: Free
+      paid: Paid
+      empty: No providers match your current filters.
+      clear-filters: Clear filters
+    provider-resolver:
+      title: Restore Backups
+      scanning: Scanning connected accounts...
+      scanning-description: Retrieving matching configurations and database backups
+      found-description: 'We found the following database and file backups associated with your account. Select a backup target to restore:'
+      simulate-empty: Simulate Empty AppData
+      local-file-system: Local File System
+      s3-bucket: S3 Bucket
+      local-directory: Local Directory
+      size: 'Size: {size}'
+      region: 'Region: {region}'
+      sync: 'Sync: {time}'
+      no-saved-title: No Saved Configurations Found
+      no-saved-description: We couldn't find any existing storage connection profiles or database backups on this Google account.
+      configure-manually: Configure Connection Manually
+      next-selective-sync: 'Next: Selective Sync'
+      different-account: Sign in to a different account
+      never: Never
+      just-now: Just now
+      minute-ago: 1 minute ago
+      minutes-ago: '{count} minutes ago'
+      hour-ago: 1 hour ago
+      hours-ago: '{count} hours ago'
+      yesterday: Yesterday
+      days-ago: '{count} days ago'
+    selective-sync:
+      title: Selective Sync
+      link-google-drive: Link connection details to Google Drive
+      link-google-drive-description: Saves your storage credentials securely to your Google AppData folder. The connection profile will be detected automatically when you restore on a new device.
+      restore-selected: Restore Selected Items
+    sync-progress:
+      title: Restoring Data
+      complete: Restoration complete
+      syncing: Syncing databases & assets...
+      finish: Complete Onboarding & Reload
   bug-report:
     title: Bug report (´;ω;`)ヾ(･∀･`)
     subtitle: Oops, sorry we made something wrong. Would you mind telling us what
@@ -414,6 +464,39 @@ groups:
   intelligence:
     title: Intelligence
 pages:
+  characters:
+    title: Characters
+    description: Manage your AI characters and their capabilities.
+    search-placeholder: Search...
+    create-new: Create New
+    create-character: Create Character
+    confirm-delete: Are you sure you want to delete this character?
+    dialog:
+      edit-title: Edit Character
+      create-title: Create Character
+      close: Close character editor
+      tabs:
+        identity: Identity
+        capabilities: Capabilities
+      fields:
+        handle-id: Handle ID
+        version: Version
+        name-en: Name (EN)
+        description: Description
+        cover-url: Cover URL
+        model: Model
+        temperature: Temperature
+        voice-id: Voice ID
+        speed: Speed
+      placeholders:
+        character-name: Character Name
+        short-description: Short description...
+      sections:
+        llm: LLM Configuration
+        tts: TTS Configuration
+      cancel: Cancel
+      save: Save Changes
+      create: Create
   chat:
     title: Chat
     description: Tune how chat messages are sent and how long streaming can stay

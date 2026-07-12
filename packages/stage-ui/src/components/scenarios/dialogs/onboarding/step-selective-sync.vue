@@ -3,6 +3,7 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 
 import { Button } from '@proj-airi/ui'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import SelectiveSyncPanel from '../../providers/selective-sync-panel.vue'
 
@@ -18,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const panelRef = ref<InstanceType<typeof SelectiveSyncPanel> | null>(null)
 const saveToGoogle = ref(true)
+const { t } = useI18n()
 
 function handleNext() {
   const selectedCheckedIds = panelRef.value ? panelRef.value.getSelectedCheckedIds() : []
@@ -39,11 +41,11 @@ function handleNext() {
       :duration="400"
       class="flex items-center gap-2"
     >
-      <button class="outline-none" @click="props.onPrevious">
+      <button class="outline-none" :aria-label="t('settings.dialogs.onboarding.common.back')" @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5 transition-colors hover:text-primary-500" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Selective Sync
+        {{ t('settings.dialogs.onboarding.selective-sync.title') }}
       </h2>
       <div class="h-5 w-5" />
     </div>
@@ -71,9 +73,9 @@ function handleNext() {
         class="mt-1 cursor-pointer border-neutral-300 rounded text-primary-500 focus:ring-primary-500"
       >
       <label for="save-to-google-drive" class="flex-1 cursor-pointer select-none">
-        <span class="block text-xs text-neutral-800 font-bold dark:text-neutral-100">Link connection details to Google Drive</span>
+        <span class="block text-xs text-neutral-800 font-bold dark:text-neutral-100">{{ t('settings.dialogs.onboarding.selective-sync.link-google-drive') }}</span>
         <span class="mt-0.5 block text-[11px] text-neutral-500 leading-relaxed dark:text-neutral-400">
-          Saves your storage credentials securely to your Google AppData folder. Next time you restore from a new device, your connection profile will be auto-detected.
+          {{ t('settings.dialogs.onboarding.selective-sync.link-google-drive-description') }}
         </span>
       </label>
     </div>
@@ -85,7 +87,7 @@ function handleNext() {
       :enter="{ opacity: 1, y: 0 }"
       :duration="400"
       :delay="300"
-      label="Restore Selected Items"
+      :label="t('settings.dialogs.onboarding.selective-sync.restore-selected')"
       @click="handleNext"
     />
   </div>

@@ -3,6 +3,7 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useSyncEngineStore } from '../../../../stores/sync-engine'
 
@@ -18,10 +19,10 @@ const simulateEmpty = ref(false)
 interface BackupTarget {
   id: string
   name: string
-  provider: string
+  provider: 'amazon-s3' | 'cloudflare-r2' | 'local'
   icon: string
   lastSync: string
-  size: string
+  size: 'local' | 's3'
   region?: string
 }
 
@@ -29,11 +30,12 @@ const backups = ref<BackupTarget[]>([])
 const selectedBackupId = ref('')
 
 const syncStore = useSyncEngineStore()
+const { locale, t } = useI18n()
 
 // Helper to format lastSync ISO string to a human-friendly relative format
 function formatRelativeTime(isoString: string): string {
   if (!isoString)
-    return 'Never'
+    return t('settings.dialogs.onboarding.provider-resolver.never')
   try {
     const date = new Date(isoString)
     const now = new Date()
@@ -43,21 +45,37 @@ function formatRelativeTime(isoString: string): string {
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
 
     if (diffMins < 1)
-      return 'Just now'
+      return t('settings.dialogs.onboarding.provider-resolver.just-now')
+    if (diffMins === 1)
+      return t('settings.dialogs.onboarding.provider-resolver.minute-ago')
     if (diffMins < 60)
-      return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+      return t('settings.dialogs.onboarding.provider-resolver.minutes-ago', { count: diffMins })
+    if (diffHours === 1)
+      return t('settings.dialogs.onboarding.provider-resolver.hour-ago')
     if (diffHours < 24)
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+      return t('settings.dialogs.onboarding.provider-resolver.hours-ago', { count: diffHours })
     if (diffDays === 1)
-      return 'Yesterday'
+      return t('settings.dialogs.onboarding.provider-resolver.yesterday')
     if (diffDays < 7)
-      return `${diffDays} days ago`
+      return t('settings.dialogs.onboarding.provider-resolver.days-ago', { count: diffDays })
 
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString(locale.value, { month: 'short', day: 'numeric', year: 'numeric' })
   }
-  catch (e) {
+  catch {
     return isoString
   }
+}
+
+function formatProvider(provider: BackupTarget['provider']) {
+  if (provider === 'local')
+    return t('settings.dialogs.onboarding.provider-resolver.local-file-system')
+  return provider === 'cloudflare-r2' ? 'Cloudflare R2' : 'Amazon S3'
+}
+
+function formatBackupSize(size: BackupTarget['size']) {
+  return t(size === 's3'
+    ? 'settings.dialogs.onboarding.provider-resolver.s3-bucket'
+    : 'settings.dialogs.onboarding.provider-resolver.local-directory')
 }
 
 async function loadBackups() {
@@ -75,20 +93,20 @@ async function loadBackups() {
 
     backups.value = providersList.map((p: any) => {
       let icon = 'i-solar:database-bold-duotone'
-      let provider = 'Amazon S3'
+      let provider: BackupTarget['provider'] = 'amazon-s3'
 
       if (p.type === 'local') {
         icon = 'i-solar:laptop-bold-duotone'
-        provider = 'Local File System'
+        provider = 'local'
       }
       else if (p.type === 's3') {
         // If s3 endpoint includes r2.cloudflarestorage.com, call it Cloudflare R2
         if (p.config?.endpoint?.includes('r2.cloudflarestorage.com')) {
-          provider = 'Cloudflare R2'
+          provider = 'cloudflare-r2'
           icon = 'i-solar:cloud-bold-duotone'
         }
         else {
-          provider = 'Amazon S3'
+          provider = 'amazon-s3'
         }
       }
 
@@ -97,8 +115,8 @@ async function loadBackups() {
         name: p.type === 's3' ? p.config?.bucket || p.name : p.config?.path || p.name,
         provider,
         icon,
-        lastSync: formatRelativeTime(p.lastSync),
-        size: p.type === 's3' ? 'S3 Bucket' : 'Local Directory',
+        lastSync: p.lastSync,
+        size: p.type === 's3' ? 's3' : 'local',
         region: p.config?.region,
       }
     })
@@ -152,11 +170,11 @@ function handleNext() {
       :duration="400"
       class="flex items-center gap-2"
     >
-      <button class="outline-none" @click="props.onPrevious">
+      <button class="outline-none" :aria-label="t('settings.dialogs.onboarding.common.back')" @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5 transition-colors hover:text-primary-500" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Restore Backups
+        {{ t('settings.dialogs.onboarding.provider-resolver.title') }}
       </h2>
       <div class="h-5 w-5" />
     </div>
@@ -171,10 +189,10 @@ function handleNext() {
         </div>
         <div>
           <h3 class="text-sm text-neutral-800 font-bold dark:text-neutral-100">
-            Scanning connected accounts...
+            {{ t('settings.dialogs.onboarding.provider-resolver.scanning') }}
           </h3>
           <p class="mt-1 text-xs text-neutral-500">
-            Retrieving matching configurations and database backups
+            {{ t('settings.dialogs.onboarding.provider-resolver.scanning-description') }}
           </p>
         </div>
       </div>
@@ -183,13 +201,13 @@ function handleNext() {
       <div v-else-if="backups.length > 0" class="flex flex-col gap-4">
         <div class="flex items-center justify-between">
           <p class="text-xs text-neutral-500 dark:text-neutral-400">
-            We found the following database and file backups associated with your account. Select a backup target to restore:
+            {{ t('settings.dialogs.onboarding.provider-resolver.found-description') }}
           </p>
           <button
             class="border border-neutral-200 rounded px-2 py-0.5 text-[10px] text-neutral-400 dark:border-neutral-800 hover:text-neutral-500"
             @click="triggerEmptySimulation"
           >
-            Simulate Empty AppData
+            {{ t('settings.dialogs.onboarding.provider-resolver.simulate-empty') }}
           </button>
         </div>
 
@@ -222,13 +240,13 @@ function handleNext() {
                   {{ backup.name }}
                 </span>
                 <span class="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                  {{ backup.provider }}
+                  {{ formatProvider(backup.provider) }}
                 </span>
               </div>
               <div class="mt-1 flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400">
-                <span>Size: {{ backup.size }}</span>
-                <span v-if="backup.region">Region: {{ backup.region }}</span>
-                <span>• Sync: {{ backup.lastSync }}</span>
+                <span>{{ t('settings.dialogs.onboarding.provider-resolver.size', { size: formatBackupSize(backup.size) }) }}</span>
+                <span v-if="backup.region">{{ t('settings.dialogs.onboarding.provider-resolver.region', { region: backup.region }) }}</span>
+                <span>• {{ t('settings.dialogs.onboarding.provider-resolver.sync', { time: formatRelativeTime(backup.lastSync) }) }}</span>
               </div>
             </div>
 
@@ -249,10 +267,10 @@ function handleNext() {
         </div>
         <div>
           <h3 class="text-base text-neutral-800 font-bold dark:text-neutral-100">
-            No Saved Configurations Found
+            {{ t('settings.dialogs.onboarding.provider-resolver.no-saved-title') }}
           </h3>
           <p class="mx-auto mt-1.5 max-w-xs text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-            We couldn't find any existing storage connection profiles or database backups on this Google account.
+            {{ t('settings.dialogs.onboarding.provider-resolver.no-saved-description') }}
           </p>
         </div>
       </div>
@@ -267,7 +285,7 @@ function handleNext() {
         :duration="400"
         :delay="300"
         :disabled="isSearching"
-        :label="backups.length === 0 ? 'Configure Connection Manually' : 'Next: Selective Sync'"
+        :label="backups.length === 0 ? t('settings.dialogs.onboarding.provider-resolver.configure-manually') : t('settings.dialogs.onboarding.provider-resolver.next-selective-sync')"
         @click="handleNext"
       />
       <button
@@ -275,7 +293,7 @@ function handleNext() {
         class="text-xs text-neutral-500 underline outline-none dark:text-neutral-400 hover:text-neutral-600"
         @click="props.onPrevious"
       >
-        Sign in to different account
+        {{ t('settings.dialogs.onboarding.provider-resolver.different-account') }}
       </button>
     </div>
   </div>

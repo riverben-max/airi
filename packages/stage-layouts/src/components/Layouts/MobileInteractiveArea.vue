@@ -44,6 +44,7 @@ const backgroundDialogOpen = ref(false)
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
 const router = useRouter()
+const { t } = useI18n()
 const screenSafeArea = useScreenSafeArea()
 const { activeCardId } = storeToRefs(airiCardStore)
 
@@ -69,14 +70,13 @@ function navigateToImageJournal() {
 }
 
 function handleScreenshotClick() {
-  toast.info('Vision capture is optimized for desktop. Please use the attach button for screenshots.')
+  toast.info(t('stage.chat.composer.vision-desktop-hint'))
 }
 
 useResizeObserver(document.documentElement, () => screenSafeArea.update())
 const { themeColorsHueDynamic } = storeToRefs(useSettings())
 const settingsAudioDevice = useSettingsAudioDevice()
 const { enabled, selectedAudioInput, stream, audioInputs } = storeToRefs(settingsAudioDevice)
-const { t } = useI18n()
 const { audioContext } = useAudioContext()
 const { startAnalyzer, stopAnalyzer, volumeLevel } = useAudioAnalyzer()
 let analyzerSource: MediaStreamAudioSourceNode | undefined
@@ -163,7 +163,8 @@ onMounted(() => {
           >
             <button
               class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md dark:border-neutral-800/30 dark:bg-neutral-800/70"
-              title="Hearing"
+              :title="t('stage.chat.composer.hearing')"
+              :aria-label="t('stage.chat.composer.hearing')"
             >
               <Transition name="fade" mode="out-in">
                 <IndicatorMicVolume v-if="enabled" class="size-5 text-neutral-500 dark:text-neutral-400" />
@@ -175,7 +176,7 @@ onMounted(() => {
           <ChatMemoryPopover
             show-cache-status
             variant="mobile"
-            title="Memory"
+            :title="t('stage.chat.composer.memory')"
           />
 
           <ChatImagesPopover
@@ -193,7 +194,8 @@ onMounted(() => {
           <!-- Safely clear messages warning validation dialog trigger -->
           <button
             class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md dark:border-neutral-800/30 dark:bg-neutral-800/70"
-            title="Cleanup Messages"
+            :title="t('stage.chat.composer.cleanup-messages')"
+            :aria-label="t('stage.chat.composer.cleanup-messages')"
             @click="handleTrashClick(cleanupMessages)"
           >
             <div class="i-solar:trash-bin-2-bold-duotone size-5" />
@@ -205,7 +207,7 @@ onMounted(() => {
         <div v-if="attachments.length > 0" class="flex flex-wrap gap-2 border-b border-neutral-100/40 p-2 dark:border-neutral-700/40">
           <div v-for="(attachment, index) in attachments" :key="index" class="relative">
             <img :src="attachment.url" class="h-16 w-16 rounded-md object-cover">
-            <button class="absolute h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[10px] text-white -right-1 -top-1" @click="removeAttachment(index)">
+            <button class="absolute h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[10px] text-white -right-1 -top-1" :aria-label="t('stage.chat.composer.remove-attachment', { index: index + 1 })" @click="removeAttachment(index)">
               &times;
             </button>
           </div>
@@ -226,6 +228,7 @@ onMounted(() => {
           <button
             v-if="messageInput.trim() || isComposing || attachments.length > 0"
             class="aspect-square h-[calc(1lh+4px+4px)] w-[calc(1lh+4px+4px)] flex items-center self-end justify-center rounded-full bg-primary-50/80 text-neutral-500 outline-none backdrop-blur-md transition-all duration-250 ease-in-out dark:bg-neutral-100/80 hover:bg-neutral-50 dark:text-neutral-900 hover:text-neutral-600 dark:hover:text-neutral-800"
+            :aria-label="t('stage.chat.composer.send-message')"
             @click="handleSend"
           >
             <div i-solar:arrow-up-outline />
@@ -244,29 +247,29 @@ onMounted(() => {
         >
           <div class="max-w-md w-full border border-neutral-200/60 rounded-2xl bg-white/90 p-6 font-sans shadow-2xl backdrop-blur-xl dark:border-neutral-800/60 dark:bg-neutral-900/90">
             <h3 class="text-xl text-neutral-900 font-bold dark:text-white">
-              Clear conversation?
+              {{ t('stage.chat.composer.clear-conversation') }}
             </h3>
             <p class="mt-2 text-neutral-600 dark:text-neutral-400">
-              You haven't summarized today's chat into memory yet. Clearing now will lose this context for future sessions.
+              {{ t('stage.chat.composer.clear-conversation-description') }}
             </p>
             <div class="mt-6 flex flex-col gap-2">
               <button
                 class="w-full rounded-xl bg-primary-500 py-3 text-sm text-white font-bold transition active:scale-95 hover:bg-primary-600"
                 @click="handleSaveAndClear(cleanupMessages)"
               >
-                Save to Memory & Clear
+                {{ t('stage.chat.composer.save-memory-clear') }}
               </button>
               <button
                 class="w-full rounded-xl bg-neutral-100 py-3 text-sm text-neutral-700 font-bold transition active:scale-95 dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 @click="handleClearAnyway(cleanupMessages)"
               >
-                Clear Anyway
+                {{ t('stage.chat.composer.clear-anyway') }}
               </button>
               <button
                 class="mt-2 w-full text-sm text-neutral-400 font-medium hover:text-neutral-600 dark:hover:text-neutral-200"
                 @click="trashConfirmOpen = false"
               >
-                Cancel
+                {{ t('stage.chat.composer.cancel') }}
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
 } from 'reka-ui'
 import { safeParse } from 'valibot'
 import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface Props {
   modelValue: boolean
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const characterStore = useCharacterStore()
+const { t } = useI18n()
 
 // Form State
 const form = reactive({
@@ -177,11 +179,11 @@ async function handleSubmit() {
 
 // Tab State
 const activeTab = ref('identity')
-const tabs = [
-  { id: 'identity', label: 'Identity', icon: 'i-solar:user-id-bold-duotone' },
-  { id: 'capabilities', label: 'Capabilities', icon: 'i-solar:cpu-bolt-bold-duotone' },
+const tabs = computed(() => [
+  { id: 'identity', label: t('settings.pages.characters.dialog.tabs.identity'), icon: 'i-solar:user-id-bold-duotone' },
+  { id: 'capabilities', label: t('settings.pages.characters.dialog.tabs.capabilities'), icon: 'i-solar:cpu-bolt-bold-duotone' },
   // { id: 'models', label: 'Models', icon: 'i-solar:box-minimalistic-bold-duotone' },
-]
+])
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -198,9 +200,9 @@ const isOpen = computed({
           <!-- Header -->
           <div class="flex items-center justify-between border-b border-neutral-100 p-4 dark:border-neutral-800">
             <DialogTitle class="text-lg font-semibold">
-              {{ character ? 'Edit Character' : 'Create Character' }}
+              {{ character ? t('settings.pages.characters.dialog.edit-title') : t('settings.pages.characters.dialog.create-title') }}
             </DialogTitle>
-            <button class="rounded-full p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800" @click="isOpen = false">
+            <button class="rounded-full p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800" :aria-label="t('settings.pages.characters.dialog.close')" @click="isOpen = false">
               <div i-solar:close-circle-bold class="text-xl" />
             </button>
           </div>
@@ -226,25 +228,25 @@ const isOpen = computed({
               <!-- Identity Tab -->
               <div v-show="activeTab === 'identity'" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <FieldInput v-model="form.characterId" label="Handle ID" placeholder="e.g. airi-core" required />
-                  <FieldInput v-model="form.version" label="Version" placeholder="1.0.0" />
+                  <FieldInput v-model="form.characterId" :label="t('settings.pages.characters.dialog.fields.handle-id')" placeholder="e.g. airi-core" required />
+                  <FieldInput v-model="form.version" :label="t('settings.pages.characters.dialog.fields.version')" placeholder="1.0.0" />
                 </div>
 
-                <FieldInput v-model="form.name" label="Name (EN)" placeholder="Character Name" required />
-                <FieldInput v-model="form.description" label="Description" type="textarea" placeholder="Short description..." />
-                <FieldInput v-model="form.coverUrl" label="Cover URL" placeholder="https://..." />
+                <FieldInput v-model="form.name" :label="t('settings.pages.characters.dialog.fields.name-en')" :placeholder="t('settings.pages.characters.dialog.placeholders.character-name')" required />
+                <FieldInput v-model="form.description" :label="t('settings.pages.characters.dialog.fields.description')" type="textarea" :placeholder="t('settings.pages.characters.dialog.placeholders.short-description')" />
+                <FieldInput v-model="form.coverUrl" :label="t('settings.pages.characters.dialog.fields.cover-url')" placeholder="https://..." />
               </div>
 
               <!-- Capabilities Tab -->
               <div v-show="activeTab === 'capabilities'" class="space-y-6">
                 <div class="space-y-4">
                   <h3 class="text-sm text-neutral-900 font-semibold dark:text-neutral-100">
-                    LLM Configuration
+                    {{ t('settings.pages.characters.dialog.sections.llm') }}
                   </h3>
-                  <FieldInput v-model="form.llmModel" label="Model" placeholder="gpt-4o" />
+                  <FieldInput v-model="form.llmModel" :label="t('settings.pages.characters.dialog.fields.model')" placeholder="gpt-4o" />
                   <!-- Use number input for temperature properly -->
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Temperature</label>
+                    <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.characters.dialog.fields.temperature') }}</label>
                     <input
                       v-model.number="form.llmTemperature"
                       type="number"
@@ -258,11 +260,11 @@ const isOpen = computed({
 
                 <div class="space-y-4">
                   <h3 class="text-sm text-neutral-900 font-semibold dark:text-neutral-100">
-                    TTS Configuration
+                    {{ t('settings.pages.characters.dialog.sections.tts') }}
                   </h3>
-                  <FieldInput v-model="form.ttsVoiceId" label="Voice ID" placeholder="Voice ID" />
+                  <FieldInput v-model="form.ttsVoiceId" :label="t('settings.pages.characters.dialog.fields.voice-id')" placeholder="Voice ID" />
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">Speed</label>
+                    <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.characters.dialog.fields.speed') }}</label>
                     <input
                       v-model.number="form.ttsSpeed"
                       type="number"
@@ -280,10 +282,10 @@ const isOpen = computed({
           <!-- Footer -->
           <div class="flex items-center justify-end gap-2 border-t border-neutral-100 p-4 dark:border-neutral-800">
             <Button variant="ghost" @click="isOpen = false">
-              Cancel
+              {{ t('settings.pages.characters.dialog.cancel') }}
             </Button>
             <Button :loading="isSubmitting" @click="handleSubmit">
-              {{ character ? 'Save Changes' : 'Create' }}
+              {{ character ? t('settings.pages.characters.dialog.save') : t('settings.pages.characters.dialog.create') }}
             </Button>
           </div>
         </div>
