@@ -32,6 +32,45 @@ const providersStore = useProvidersStore()
 const speechStore = useSpeechStore()
 
 const translatedDefaultTestText = computed(() => t('settings.pages.card.creation.voice.preview-text'))
+
+function presetDescription(id: string) {
+  switch (id) {
+    case 'af_heart':
+      return t('settings.pages.card.creation.voice.preset-descriptions.af-heart')
+    case 'af_bella':
+      return t('settings.pages.card.creation.voice.preset-descriptions.af-bella')
+    case 'af_nicole':
+      return t('settings.pages.card.creation.voice.preset-descriptions.af-nicole')
+    case 'af_sky':
+      return t('settings.pages.card.creation.voice.preset-descriptions.af-sky')
+    case 'af_sarah':
+      return t('settings.pages.card.creation.voice.preset-descriptions.af-sarah')
+    case 'am_adam':
+      return t('settings.pages.card.creation.voice.preset-descriptions.am-adam')
+    case 'am_echo':
+      return t('settings.pages.card.creation.voice.preset-descriptions.am-echo')
+    case 'am_eric':
+      return t('settings.pages.card.creation.voice.preset-descriptions.am-eric')
+    case 'bf_emma':
+      return t('settings.pages.card.creation.voice.preset-descriptions.bf-emma')
+    case 'bm_george':
+      return t('settings.pages.card.creation.voice.preset-descriptions.bm-george')
+    default:
+      return t('settings.pages.card.creation.voice.preset-description-unavailable')
+  }
+}
+
+function genderLabel(gender: unknown) {
+  const normalized = typeof gender === 'string' ? gender.toLowerCase() : ''
+  if (normalized === 'female')
+    return t('settings.pages.card.creation.voice.genders.female')
+  if (normalized === 'male')
+    return t('settings.pages.card.creation.voice.genders.male')
+  if (normalized === 'saved profile')
+    return t('settings.pages.card.creation.voice.genders.saved-profile')
+  return t('settings.pages.card.creation.voice.genders.unspecified')
+}
+
 const voiceForm = ref({
   name: '',
   baseProvider: 'kokoro-local',
@@ -331,11 +370,11 @@ async function playVoicePreview() {
                   <div class="min-w-0 flex items-center gap-2">
                     <span class="shrink-0 text-xs text-neutral-800 font-bold dark:text-neutral-200">{{ voice.name }}</span>
                     <span class="text-xs text-neutral-400 dark:text-neutral-600">—</span>
-                    <span class="truncate text-[10px] text-neutral-500 italic">{{ voice.description }}</span>
+                    <span class="truncate text-[10px] text-neutral-500 italic">{{ presetDescription(voice.id) }}</span>
                   </div>
                   <div class="ml-3 flex shrink-0 items-center gap-1.5">
                     <span class="rounded bg-neutral-200 px-1.5 py-0.5 text-[8px] text-neutral-600 font-bold uppercase dark:bg-neutral-800 dark:text-neutral-400">
-                      {{ voice.gender }}
+                      {{ genderLabel(voice.gender) }}
                     </span>
                     <span class="rounded bg-neutral-200 px-1.5 py-0.5 text-[8px] text-neutral-600 font-bold uppercase dark:bg-neutral-800 dark:text-neutral-400">
                       {{ voice.accent }}
@@ -406,7 +445,7 @@ async function playVoicePreview() {
                 v-else
                 v-model="voiceForm.baseModel"
                 type="text"
-                placeholder="e.g. tts-1"
+                :placeholder="t('settings.pages.card.creation.example', { example: 'tts-1' })"
                 class="w-full border border-neutral-200 rounded-xl bg-neutral-50 px-4 py-2.5 text-sm text-neutral-800 outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-950/60 dark:text-neutral-200"
               >
             </div>
@@ -417,14 +456,14 @@ async function playVoicePreview() {
               <Select
                 v-if="selectedProviderVoices.length > 0"
                 v-model="voiceForm.baseVoice"
-                :options="selectedProviderVoices.map(v => ({ value: v.id, label: v.gender === 'saved profile' ? v.name : `${v.name} (${v.gender})` }))"
+                :options="selectedProviderVoices.map(v => ({ value: v.id, label: v.gender === 'saved profile' ? v.name : `${v.name} (${genderLabel(v.gender)})` }))"
                 :placeholder="t('settings.pages.card.creation.voice.select-voice')"
               />
               <input
                 v-else
                 v-model="voiceForm.baseVoice"
                 type="text"
-                placeholder="e.g. alloy, bella"
+                :placeholder="t('settings.pages.card.creation.example', { example: 'alloy, bella' })"
                 class="w-full border border-neutral-200 rounded-xl bg-neutral-50 px-4 py-2.5 text-sm text-neutral-800 outline-none dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-950/60 dark:text-neutral-200"
               >
             </div>

@@ -527,7 +527,7 @@ function handleSave() {
             <FieldInput
               v-model="id"
               :label="t('settings.pages.card.creation.concept.id')"
-              placeholder="e.g. silver_performance"
+              :placeholder="t('settings.pages.card.creation.example', { example: 'silver_performance' })"
               :description="t('settings.pages.card.creation.concept.id-description')"
               :disabled="!!conceptId"
             />
@@ -647,7 +647,7 @@ function handleSave() {
                 v-else
                 v-model="selectedModel"
                 :label="t('settings.pages.card.creation.concept.model-id')"
-                placeholder="e.g. black-forest-labs/flux-schnell"
+                :placeholder="t('settings.pages.card.creation.example', { example: 'black-forest-labs/flux-schnell' })"
               />
 
               <FieldInput

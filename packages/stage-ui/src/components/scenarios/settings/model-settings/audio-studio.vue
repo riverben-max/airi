@@ -729,13 +729,13 @@ onUnmounted(() => {
               <FieldInput
                 v-model="form.ust.customBracketStart"
                 :label="t('settings.model-settings.audio-studio.transformer.start-symbol')"
-                placeholder="e.g. {"
+                :placeholder="t('settings.model-settings.common.example', { example: '{' })"
                 @update:model-value="saveProfile"
               />
               <FieldInput
                 v-model="form.ust.customBracketEnd"
                 :label="t('settings.model-settings.audio-studio.transformer.end-symbol')"
-                placeholder="e.g. }"
+                :placeholder="t('settings.model-settings.common.example', { example: '}' })"
                 @update:model-value="saveProfile"
               />
               <div class="flex flex-col gap-1.5">
@@ -779,7 +779,7 @@ onUnmounted(() => {
               v-model="form.ust.tildeReplacement"
               :label="t('settings.model-settings.audio-studio.transformer.tilde-replacement')"
               :description="t('settings.model-settings.audio-studio.transformer.tilde-replacement-description')"
-              placeholder="e.g. nyan"
+              :placeholder="t('settings.model-settings.common.example', { example: 'nyan' })"
               @update:model-value="saveProfile"
             />
           </div>
@@ -845,13 +845,13 @@ onUnmounted(() => {
                   <FieldInput
                     v-model="rule.pattern"
                     :label="t('settings.model-settings.audio-studio.transformer.search-pattern')"
-                    :placeholder="rule.type === 'regex' ? 'e.g. /nya/i' : 'e.g. Nya'"
+                    :placeholder="t('settings.model-settings.common.example', { example: rule.type === 'regex' ? '/nya/i' : 'Nya' })"
                     @update:model-value="saveProfile"
                   />
                   <FieldInput
                     v-model="rule.replacement"
                     :label="t('settings.model-settings.audio-studio.transformer.replacement')"
-                    placeholder="e.g. meow"
+                    :placeholder="t('settings.model-settings.common.example', { example: 'meow' })"
                     @update:model-value="saveProfile"
                   />
                 </div>

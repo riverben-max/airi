@@ -370,7 +370,7 @@ const sceneOptions = computed(() => {
     { value: 'none', label: t('settings.pages.card.creation.none') },
     ...backgrounds.map(bg => ({
       value: bg.id,
-      label: bg.type === 'journal' ? `Journal: ${bg.title}` : bg.title,
+      label: bg.type === 'journal' ? t('settings.pages.card.creation.journal-background', { title: bg.title }) : bg.title,
     })),
   ]
 })

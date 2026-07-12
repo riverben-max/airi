@@ -313,6 +313,7 @@ const textJournalConflictWarning = computed(() => {
             </div>
             <button
               type="button"
+              :aria-label="t('settings.pages.card.creation.tools-settings.dream-intrusion')"
               :class="[
                 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                 selectedInjectDreamContext ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',
@@ -348,6 +349,7 @@ const textJournalConflictWarning = computed(() => {
             </div>
             <button
               type="button"
+              :aria-label="t('settings.pages.card.creation.tools-settings.journal-intrusion')"
               :class="[
                 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                 selectedInjectJournalContext ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',
@@ -383,6 +385,7 @@ const textJournalConflictWarning = computed(() => {
             </div>
             <button
               type="button"
+              :aria-label="t('settings.pages.card.creation.tools-settings.artistry-intrusion')"
               :class="[
                 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                 selectedInjectArtistryContext ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',

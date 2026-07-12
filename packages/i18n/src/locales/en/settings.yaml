@@ -2,6 +2,7 @@ common:
   save: Save
 model-settings:
   common:
+    example: 'e.g. {example}'
     sections:
       character-customizations: Character Customizations
       scene: Scene
@@ -15,19 +16,13 @@ model-settings:
     actions:
       all: All
       none: None
-      show: Show
-      hide: Hide
       showing-hidden: Showing Hidden
       hide-hidden: Hide Hidden
       renamed-only: Renamed Only
-      rename: Rename
       rename-item: 'Rename {name}'
       remove: Remove
-      add-to-idle-cycle: Add to Idle Cycle
-      remove-from-idle-cycle: Remove from Idle Cycle
       remove-custom-motion: Remove Custom Motion
       remove-custom-motion-item: 'Remove custom motion {name}'
-      reset-value: Reset value to default
       reset-parameter: 'Reset {name} to default'
       add-item-to-idle-cycle: 'Add {name} to idle cycle'
       remove-item-from-idle-cycle: 'Remove {name} from idle cycle'
@@ -62,7 +57,6 @@ model-settings:
       ground-color: Ground Color
       skybox-intensity: Skybox Intensity
   audio-studio:
-    title: Audio Studio
     library: Voice Library
     new-profile: New Profile
     new-profile-name: New Custom Voice
@@ -456,6 +450,8 @@ pages:
     create_card: Create a new Card
     edit_card: Edit Card
     creation:
+      example: 'e.g. {example}'
+      journal-background: 'Journal: {title}'
       identity: Identity
       name: Name
       nickname: Nickname
@@ -475,7 +471,6 @@ pages:
         back: Back
         next: Next
         cancel: Cancel
-        save-changes: Save Changes
         create: Create
       generator-fields:
         model-expressions: ACT / Model Expressions
@@ -494,6 +489,13 @@ pages:
           tag: 'Tag:'
           series: 'Series:'
           character: 'Character:'
+        filter-types:
+          tag: Tag
+          copyright: Series
+          hair-length: Hair length
+          eye-color: Eye color
+          hair-color: Hair color
+          other: Other
         active-filters: 'Active filters:'
         gender: 'Gender:'
         genders:
@@ -524,8 +526,6 @@ pages:
         bind-voice-hint: Tap the voice button to set a TTS voice.
         bind: Bind
         set-voice: Set Voice
-        select-model: Select Model / Avatar
-        configure-voice: Configure Voice
         configure-voice-character: 'Configure voice for {name}'
         select-model-character: 'Select model or avatar for {name}'
         default-voice: Default Voice
@@ -709,6 +709,23 @@ pages:
         profile-name: Voice Profile Name
         preset: Select Voice Preset
         gender-filter: 'Gender Filter:'
+        genders:
+          female: Female
+          male: Male
+          saved-profile: Saved profile
+          unspecified: Unspecified
+        preset-description-unavailable: Description unavailable.
+        preset-descriptions:
+          af-heart: Conversational, warm, smiling tone, natural breathiness.
+          af-bella: Polished, articulate, professional narration.
+          af-nicole: Soothing, whisper-soft, ASMR-style, noticeable vocal fry.
+          af-sky: Youthful energy, clear, helpful assistant tone.
+          af-sarah: Standard narrator voice, balanced and neutral.
+          am-adam: Clear, low-pitched, general-purpose male narrator.
+          am-echo: Distinct, clear American male voice.
+          am-eric: Polished corporate voice, excellent for instructions.
+          bf-emma: Gentle, friendly British female speaker.
+          bm-george: Rich, deep, professional British male voice.
         pitch: Pitch Shift
         speed: Speech Speed
         model: Speech Model

@@ -2,6 +2,7 @@ common:
   save: 保存
 model-settings:
   common:
+    example: '例如：{example}'
     sections:
       character-customizations: 角色自定义
       scene: 场景
@@ -15,19 +16,13 @@ model-settings:
     actions:
       all: 全部
       none: 无
-      show: 显示
-      hide: 隐藏
       showing-hidden: 正在显示隐藏项
       hide-hidden: 隐藏已隐藏项
       renamed-only: 仅已重命名
-      rename: 重命名
       rename-item: 重命名 {name}
       remove: 移除
-      add-to-idle-cycle: 添加到待机循环
-      remove-from-idle-cycle: 从待机循环移除
       remove-custom-motion: 移除自定义动作
       remove-custom-motion-item: 移除自定义动作 {name}
-      reset-value: 重置为默认值
       reset-parameter: 将 {name} 重置为默认值
       add-item-to-idle-cycle: 将 {name} 添加到待机循环
       remove-item-from-idle-cycle: 将 {name} 从待机循环移除
@@ -62,7 +57,6 @@ model-settings:
       ground-color: 地面颜色
       skybox-intensity: 天空盒强度
   audio-studio:
-    title: 音频工作室
     library: 音色库
     new-profile: 新建配置
     new-profile-name: 新建自定义音色
@@ -429,6 +423,8 @@ pages:
     create_card: 创建新角色卡
     edit_card: 卡片编辑
     creation:
+      example: '例如：{example}'
+      journal-background: '日记：{title}'
       identity: 身份
       name: 名字
       nickname: 昵称
@@ -448,7 +444,6 @@ pages:
         back: 返回
         next: 下一步
         cancel: 取消
-        save-changes: 保存更改
         create: 创建
       generator-fields:
         model-expressions: ACT / 模型表情
@@ -467,6 +462,13 @@ pages:
           tag: '标签：'
           series: '作品：'
           character: '角色：'
+        filter-types:
+          tag: 标签
+          copyright: 作品
+          hair-length: 头发长度
+          eye-color: 眼睛颜色
+          hair-color: 发色
+          other: 其他
         active-filters: '当前筛选：'
         gender: '性别：'
         genders:
@@ -497,8 +499,6 @@ pages:
         bind-voice-hint: 点击音色按钮设置 TTS 音色。
         bind: 绑定
         set-voice: 设置音色
-        select-model: 选择模型 / 虚拟形象
-        configure-voice: 配置音色
         configure-voice-character: 为 {name} 配置音色
         select-model-character: 为 {name} 选择模型或虚拟形象
         default-voice: 默认音色
@@ -682,6 +682,23 @@ pages:
         profile-name: 音色配置名称
         preset: 选择音色预设
         gender-filter: '性别筛选：'
+        genders:
+          female: 女性
+          male: 男性
+          saved-profile: 已保存配置
+          unspecified: 未指定
+        preset-description-unavailable: 暂无音色预设描述。
+        preset-descriptions:
+          af-heart: 对话感自然、温暖，带微笑感和自然气息。
+          af-bella: 精致清晰，适合专业旁白。
+          af-nicole: 舒缓轻柔的耳语声线，ASMR 风格，带明显的声门化音色。
+          af-sky: 年轻有活力，清晰，具有亲切的助手语气。
+          af-sarah: 标准旁白声线，均衡中性。
+          am-adam: 清晰低沉，适合通用男性旁白。
+          am-echo: 独特清晰的美式男性声线。
+          am-eric: 精致的企业风格声线，非常适合讲解说明。
+          bf-emma: 温柔友善的英式女性声线。
+          bm-george: 浑厚低沉的专业英式男性声线。
         pitch: 音高偏移
         speed: 语速
         model: 语音模型

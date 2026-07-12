@@ -613,7 +613,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.angle-x') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-x') })" @click="() => modelParameters.angleX = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-x') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-x') })" @click="() => modelParameters.angleX = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -623,7 +623,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.angle-y') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-y') })" @click="() => modelParameters.angleY = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-y') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-y') })" @click="() => modelParameters.angleY = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -633,7 +633,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.angle-z') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-z') })" @click="() => modelParameters.angleZ = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-z') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.angle-z') })" @click="() => modelParameters.angleZ = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -647,7 +647,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.left-eye-open') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.left-eye-open') })" @click="() => modelParameters.leftEyeOpen = 1">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.left-eye-open') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.left-eye-open') })" @click="() => modelParameters.leftEyeOpen = 1">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -657,7 +657,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.right-eye-open') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.right-eye-open') })" @click="() => modelParameters.rightEyeOpen = 1">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.right-eye-open') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.right-eye-open') })" @click="() => modelParameters.rightEyeOpen = 1">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -667,7 +667,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.mouth-open') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.mouth-open') })" @click="() => modelParameters.mouthOpen = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.mouth-open') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.mouth-open') })" @click="() => modelParameters.mouthOpen = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -677,7 +677,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.parameters.cheek') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.cheek') })" @click="() => modelParameters.cheek = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.cheek') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.parameters.cheek') })" @click="() => modelParameters.cheek = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -701,7 +701,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.scale') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.scale') })" @click="() => scale = 1">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.scale') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.scale') })" @click="() => scale = 1">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -711,7 +711,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.x') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.x') })" @click="() => positionX = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.x') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.x') })" @click="() => positionX = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>
@@ -721,7 +721,7 @@ onUnmounted(() => {
         <template #label>
           <div :class="['flex', 'items-center']">
             <div>{{ t('settings.live2d.scale-and-position.y') }}</div>
-            <button :class="['px-2', 'text-xs', 'outline-none']" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.y') })" @click="() => positionY = 0">
+            <button :class="['px-2', 'text-xs', 'outline-none']" :title="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.y') })" :aria-label="t('settings.model-settings.common.actions.reset-parameter', { name: t('settings.live2d.scale-and-position.y') })" @click="() => positionY = 0">
               <div :class="['i-solar:forward-linear', 'transform-scale-x--100', 'text-neutral-500', 'dark:text-neutral-400']" />
             </button>
           </div>

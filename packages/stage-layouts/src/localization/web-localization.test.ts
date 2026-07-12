@@ -20,6 +20,7 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
     'Pitch Tuning',
     'Custom Replacement Rules',
     'Stop Playback',
+    'e.g.',
   ],
   'packages/stage-ui/src/components/scenarios/settings/model-settings/live2d.vue': [
     'Character Customizations',
@@ -39,6 +40,15 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
     'Roster Settings',
     'Model Preview',
     'Auto-Assign Voices',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/CardCreationDialog.vue': [
+    'Journal:',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/ConceptBuilderModal.vue': [
+    'e.g.',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/VoiceCreatorModal.vue': [
+    'e.g.',
   ],
   'packages/stage-pages/src/pages/settings/modules/speech.vue': [
     'Add Provider',
@@ -353,6 +363,48 @@ describe('production settings source audit', () => {
     expect(source).toContain('watch(translatedDefaultTestText, (nextDefault, previousDefault) => {')
     expect(source).toContain('if (testText.value === previousDefault)')
   })
+
+  it('localizes card filter and voice preset metadata before rendering', () => {
+    const guided = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/guided.vue'), 'utf8')
+    const voiceCreator = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/VoiceCreatorModal.vue'), 'utf8')
+
+    expect(guided).not.toMatch(/\{\{\s*chip\.type\s*\}\}/)
+    expect(guided.match(/chipTypeLabel\(chip\.type\)/g)).toHaveLength(2)
+    expect(voiceCreator).not.toContain('{{ voice.description }}')
+    expect(voiceCreator).not.toContain('{{ voice.gender }}')
+    expect(voiceCreator).toContain('presetDescription(voice.id)')
+    expect(voiceCreator).toContain('genderLabel(voice.gender)')
+  })
+
+  it('requires accessible card editor graphical controls and switches', () => {
+    const guided = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/guided.vue'), 'utf8')
+    const tools = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/tabs/CardCreationTabTools.vue'), 'utf8')
+    const castAvatar = guided.match(/<!-- Cast avatars -->[\s\S]*?<!-- Next Action -->/)?.[0] ?? ''
+    const modelAvatar = guided.match(/<!-- Avatar circle -->[\s\S]*?<!-- Voice display pill -->/)?.[0] ?? ''
+    const toggleOpeningTag = (state: string) => {
+      const clickMarker = `@click="${state} = !${state}"`
+      const clickIndex = tools.indexOf(clickMarker)
+      const buttonIndex = tools.lastIndexOf('<button', clickIndex)
+      return tools.slice(buttonIndex, tools.indexOf('>', clickIndex) + 1)
+    }
+
+    expect(castAvatar).toContain('<button')
+    expect(castAvatar).toContain(':aria-label="t(\'settings.pages.card.creation.guided.remove-character\', { name: char.name })"')
+    expect(modelAvatar).toContain('<button')
+    expect(modelAvatar).toContain(':aria-label="t(\'settings.pages.card.creation.guided.select-model-character\', { name: char.name })"')
+    expect(toggleOpeningTag('selectedInjectDreamContext')).toContain(':aria-label="t(\'settings.pages.card.creation.tools-settings.dream-intrusion\')"')
+    expect(toggleOpeningTag('selectedInjectJournalContext')).toContain(':aria-label="t(\'settings.pages.card.creation.tools-settings.journal-intrusion\')"')
+    expect(toggleOpeningTag('selectedInjectArtistryContext')).toContain(':aria-label="t(\'settings.pages.card.creation.tools-settings.artistry-intrusion\')"')
+  })
+
+  it('keeps localized hover titles on every Live2D parameter reset control', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/settings/model-settings/live2d.vue'), 'utf8')
+    const resetTitle = /:title="t\('settings\.model-settings\.common\.actions\.reset-parameter'/g
+    const resetAria = /:aria-label="t\('settings\.model-settings\.common\.actions\.reset-parameter'/g
+
+    expect(source.match(resetTitle)).toHaveLength(10)
+    expect(source.match(resetAria)).toHaveLength(10)
+  })
 })
 
 describe('static translation call matching', () => {
@@ -442,5 +494,22 @@ describe('simplified Chinese web localization', () => {
       isUntranslatedEnglishMessage(key, english[key], chinese[key])
     ))
     expect(untranslated).toEqual([])
+  })
+
+  it('does not retain unused Task 4 catalog leaves', () => {
+    const unusedKeys = [
+      'settings.model-settings.common.actions.show',
+      'settings.model-settings.common.actions.hide',
+      'settings.model-settings.common.actions.rename',
+      'settings.model-settings.common.actions.add-to-idle-cycle',
+      'settings.model-settings.common.actions.remove-from-idle-cycle',
+      'settings.model-settings.common.actions.reset-value',
+      'settings.model-settings.audio-studio.title',
+      'settings.pages.card.creation.actions.save-changes',
+      'settings.pages.card.creation.guided.select-model',
+      'settings.pages.card.creation.guided.configure-voice',
+    ]
+
+    expect(unusedKeys.filter(key => key in english || key in chinese)).toEqual([])
   })
 })

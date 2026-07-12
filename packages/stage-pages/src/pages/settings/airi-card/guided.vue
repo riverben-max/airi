@@ -27,6 +27,23 @@ const genderOptions = computed(() => [
   { value: 'Non-Human', label: t('settings.pages.card.creation.guided.genders.non-human') },
 ])
 
+function chipTypeLabel(type: string) {
+  switch (type) {
+    case 'tag':
+      return t('settings.pages.card.creation.guided.filter-types.tag')
+    case 'copyright':
+      return t('settings.pages.card.creation.guided.filter-types.copyright')
+    case 'hair_length':
+      return t('settings.pages.card.creation.guided.filter-types.hair-length')
+    case 'eye_color':
+      return t('settings.pages.card.creation.guided.filter-types.eye-color')
+    case 'hair_color':
+      return t('settings.pages.card.creation.guided.filter-types.hair-color')
+    default:
+      return t('settings.pages.card.creation.guided.filter-types.other')
+  }
+}
+
 const router = useRouter()
 const wizardStore = useAnimaDexWizardStore()
 const airiCardStore = useAiriCardStore()
@@ -914,9 +931,9 @@ async function confirmCreateCard() {
               :key="index"
               class="flex items-center gap-1 border border-primary-500/30 rounded-lg bg-primary-500/5 px-2.5 py-1 text-xs text-primary-400 font-medium"
             >
-              <span class="text-[10px] capitalize opacity-70">{{ chip.type }}:</span>
+              <span class="text-[10px] opacity-70">{{ chipTypeLabel(chip.type) }}:</span>
               <span>{{ chip.value }}</span>
-              <button class="ml-1 hover:text-white" :aria-label="t('settings.pages.card.creation.guided.remove-filter', { type: chip.type, value: chip.value })" @click="wizardStore.removeChip(index)">
+              <button class="ml-1 hover:text-white" :aria-label="t('settings.pages.card.creation.guided.remove-filter', { type: chipTypeLabel(chip.type), value: chip.value })" @click="wizardStore.removeChip(index)">
                 <div i-solar:close-circle-bold class="text-xs" />
               </button>
             </div>
@@ -1048,18 +1065,20 @@ async function confirmCreateCard() {
 
               <!-- Cast avatars -->
               <div class="max-w-[50vw] flex items-center gap-2 overflow-x-auto py-1">
-                <div
+                <button
                   v-for="char in selectedCharacters"
                   :key="char.id"
+                  type="button"
                   class="group relative h-10 w-10 flex-shrink-0 cursor-pointer overflow-hidden border border-neutral-800 rounded-full transition-colors hover:border-red-500"
                   :title="t('settings.pages.card.creation.guided.remove-character', { name: char.name })"
+                  :aria-label="t('settings.pages.card.creation.guided.remove-character', { name: char.name })"
                   @click="wizardStore.removeCharacterFromBasket(char.id)"
                 >
                   <img :src="getThumbUrl(char.trigger)" alt="" class="h-full w-full object-cover">
                   <div class="absolute inset-0 flex items-center justify-center bg-red-600/60 opacity-0 transition-opacity group-hover:opacity-100">
                     <div i-solar:trash-bin-trash-bold class="text-xs text-white" />
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -1145,9 +1164,11 @@ async function confirmCreateCard() {
                 <!-- Controls row -->
                 <div class="flex items-center gap-3">
                   <!-- Avatar circle -->
-                  <div
+                  <button
+                    type="button"
                     class="relative shrink-0 cursor-pointer transition-transform hover:scale-105"
                     :title="t('settings.pages.card.creation.guided.select-model-character', { name: char.name })"
+                    :aria-label="t('settings.pages.card.creation.guided.select-model-character', { name: char.name })"
                     @click="openModelSelector(char.id)"
                   >
                     <div class="h-11 w-11 flex items-center justify-center overflow-hidden border border-neutral-800 rounded-full bg-neutral-900">
@@ -1164,7 +1185,7 @@ async function confirmCreateCard() {
                     >
                       {{ getBoundModel(char.id)?.format.toLowerCase().includes('live2d') ? 'L2D' : 'VRM' }}
                     </span>
-                  </div>
+                  </button>
 
                   <!-- Voice display pill -->
                   <div class="min-w-0 flex flex-1 items-center gap-2 border border-neutral-800 rounded-xl bg-neutral-950/40 px-3 py-2">
