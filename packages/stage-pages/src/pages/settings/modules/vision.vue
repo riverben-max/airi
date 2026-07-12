@@ -87,7 +87,7 @@ watch(activeProvider, async (provider, oldProvider) => {
 // Feedback when model is set
 watch(activeModel, (newModel, oldModel) => {
   if (newModel && oldModel !== undefined && newModel !== oldModel) {
-    toast.success(`Vision model updated to: ${newModel}`)
+    toast.success(t('settings.pages.modules.vision.status.model-updated', { model: newModel }))
   }
 })
 
@@ -111,25 +111,25 @@ function handleDeleteProvider(providerId: string) {
         <div>
           <div flex="~ row items-center justify-between gap-2">
             <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-500">
-              Vision Provider
+              {{ t('settings.pages.modules.vision.provider.title') }}
             </h2>
             <div
               v-if="visionStore.configured"
               class="flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-700 font-bold dark:bg-green-900/30 dark:text-green-400"
             >
               <div i-solar:check-circle-bold class="text-sm" />
-              <span>Configured</span>
+              <span>{{ t('settings.pages.modules.vision.provider.configured') }}</span>
             </div>
             <div
               v-else
               class="flex items-center gap-1.5 rounded-full bg-neutral-200 px-2.5 py-0.5 text-xs text-neutral-500 font-bold dark:bg-neutral-800 dark:text-neutral-500"
             >
               <div i-solar:info-circle-bold class="text-sm" />
-              <span>Not Configured</span>
+              <span>{{ t('settings.pages.modules.vision.provider.not-configured') }}</span>
             </div>
           </div>
           <div text="neutral-400 dark:neutral-400">
-            <span>Select the AI provider and model you want to use for visual analysis and image processing.</span>
+            <span>{{ t('settings.pages.modules.vision.provider.description') }}</span>
           </div>
         </div>
         <div max-w-full>
@@ -146,13 +146,14 @@ function handleDeleteProvider(providerId: string) {
               v-model="activeProvider"
               name="provider"
               :value="metadata.id"
-              :title="metadata.name || 'Unknown'"
+              :title="metadata.name || t('settings.pages.providers.unknown')"
               :description="metadata.description"
               @click="trackProviderClick(metadata.id, 'vision')"
             >
               <template #topRight>
                 <button
                   type="button"
+                  :aria-label="t('settings.pages.providers.actions.delete-provider', { name: metadata.name || t('settings.pages.providers.unknown') })"
                   class="rounded bg-neutral-100 p-1 text-neutral-600 transition-colors dark:bg-neutral-800/60 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
                   @click.stop.prevent="handleDeleteProvider(metadata.id)"
                 >
@@ -175,7 +176,7 @@ function handleDeleteProvider(providerId: string) {
               relative w-full shrink-0 rounded-xl p-3
             >
               <div i-solar:add-circle-line-duotone class="text-xl" />
-              <span class="text-sm font-medium">Add Provider</span>
+              <span class="text-sm font-medium">{{ t('settings.pages.modules.vision.actions.add-provider') }}</span>
             </RouterLink>
           </fieldset>
           <div v-else>
@@ -188,8 +189,8 @@ function handleDeleteProvider(providerId: string) {
             >
               <div i-solar:warning-circle-line-duotone class="text-2xl text-amber-500 dark:text-amber-400" />
               <div class="flex flex-col">
-                <span class="font-medium">No Vision Providers Configured</span>
-                <span class="text-sm text-neutral-400 dark:text-neutral-500">Go to Settings > Providers to set up a provider for vision tasks. Setup OpenAI or OpenRouter.</span>
+                <span class="font-medium">{{ t('settings.pages.modules.vision.empty.title') }}</span>
+                <span class="text-sm text-neutral-400 dark:text-neutral-500">{{ t('settings.pages.modules.vision.empty.description') }}</span>
               </div>
               <div i-solar:arrow-right-line-duotone class="ml-auto text-xl text-neutral-400 dark:text-neutral-500" />
             </RouterLink>
@@ -203,14 +204,14 @@ function handleDeleteProvider(providerId: string) {
       <div flex="~ col gap-4">
         <div>
           <h2 class="text-lg md:text-2xl">
-            Vision Model
+            {{ t('settings.pages.modules.vision.model.title') }}
           </h2>
           <div class="flex flex-col items-start gap-1 text-neutral-400 md:flex-row md:items-center md:justify-between dark:text-neutral-400">
-            <span>Select the model architecture.</span>
+            <span>{{ t('settings.pages.modules.vision.model.description') }}</span>
             <div class="flex items-center gap-2 text-sm font-medium">
-              <span class="text-neutral-400 dark:text-neutral-400">Current Model:</span>
+              <span class="text-neutral-400 dark:text-neutral-400">{{ t('settings.pages.modules.vision.model.current') }}</span>
               <span v-if="activeModel" class="text-primary-500 dark:text-primary-400">{{ activeModel }}</span>
-              <span v-else class="text-neutral-400/50 italic">Not Set</span>
+              <span v-else class="text-neutral-400/50 italic">{{ t('settings.pages.modules.vision.model.not-set') }}</span>
             </div>
           </div>
         </div>
@@ -219,58 +220,58 @@ function handleDeleteProvider(providerId: string) {
           <div class="mr-2 animate-spin">
             <div i-solar:spinner-line-duotone text-xl />
           </div>
-          <span>Loading models...</span>
+          <span>{{ t('settings.pages.modules.consciousness.sections.section.provider-model-selection.loading') }}</span>
         </div>
 
         <template v-else-if="activeProviderModelError">
           <ErrorContainer
-            title="Failed to fetch models"
+            :title="t('settings.pages.modules.consciousness.sections.section.provider-model-selection.error')"
             :error="activeProviderModelError"
           />
 
           <div v-if="isOpenAICompatibleProvider" class="mt-2">
             <label class="mb-1 block text-sm font-medium">
-              Model ID (Manual)
+              {{ t('settings.pages.modules.vision.fields.manual-model.label') }}
             </label>
             <input
               v-model="activeModel"
               type="text"
               class="w-full border border-neutral-300 rounded bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-              placeholder="e.g. gpt-4o-mini"
+              :placeholder="t('settings.pages.modules.vision.fields.manual-model.placeholder')"
             >
           </div>
         </template>
 
         <div v-if="activeProviderModelError" class="mt-2">
           <label class="mb-1 block text-sm font-medium">
-            Model ID (Manual)
+            {{ t('settings.pages.modules.vision.fields.manual-model.label') }}
           </label>
           <input
             v-model="activeModel" type="text"
             class="w-full border border-neutral-300 rounded bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-            placeholder="e.g. gpt-4o-mini"
+            :placeholder="t('settings.pages.modules.vision.fields.manual-model.placeholder')"
           >
         </div>
 
         <template v-else-if="providerModels.length === 0 && !isLoadingActiveProviderModels">
           <Alert type="warning">
             <template #title>
-              No models found
+              {{ t('settings.pages.modules.vision.model.empty-title') }}
             </template>
             <template #content>
-              We couldn't retrieve any available models from the provider. You might need to specify the model name manually if you're using a custom endpoint.
+              {{ t('settings.pages.modules.vision.model.empty-description') }}
             </template>
           </Alert>
 
           <div v-if="isOpenAICompatibleProvider" class="mt-2">
             <label class="mb-1 block text-sm font-medium">
-              Model ID (Manual)
+              {{ t('settings.pages.modules.vision.fields.manual-model.label') }}
             </label>
             <input
               v-model="activeModel"
               type="text"
               class="w-full border border-neutral-300 rounded bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-              placeholder="e.g. gpt-4o-mini"
+              :placeholder="t('settings.pages.modules.vision.fields.manual-model.placeholder')"
             >
           </div>
         </template>
@@ -282,13 +283,13 @@ function handleDeleteProvider(providerId: string) {
             :items="filteredModels"
             :searchable="true"
             :allow-custom="true"
-            search-placeholder="Search models..."
-            search-no-results-title="No results found"
-            search-no-results-description="Could not find any matching models"
-            search-results-text="Found {count} out of {total} models"
-            custom-input-placeholder="Type custom model ID..."
-            expand-button-text="Show more"
-            collapse-button-text="Show less"
+            :search-placeholder="t('settings.pages.modules.consciousness.sections.section.provider-model-selection.search_placeholder')"
+            :search-no-results-title="t('settings.pages.modules.consciousness.sections.section.provider-model-selection.no_search_results')"
+            :search-no-results-description="t('settings.pages.modules.vision.model.no-search-results-description')"
+            :search-results-text="t('settings.pages.modules.vision.model.search-results', { count: '{count}', total: '{total}' })"
+            :custom-input-placeholder="t('settings.pages.modules.vision.fields.manual-model.custom-placeholder')"
+            :expand-button-text="t('settings.pages.modules.vision.model.show-more')"
+            :collapse-button-text="t('settings.pages.modules.vision.model.show-less')"
             @update:custom-value="updateCustomModelName"
           />
         </template>
@@ -300,10 +301,10 @@ function handleDeleteProvider(providerId: string) {
       <div flex="~ col gap-4">
         <div>
           <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-400">
-            Vision Model
+            {{ t('settings.pages.modules.vision.model.title') }}
           </h2>
           <div text="neutral-400 dark:neutral-500">
-            <span>Select the model architecture.</span>
+            <span>{{ t('settings.pages.modules.vision.model.description') }}</span>
           </div>
         </div>
 
@@ -312,19 +313,19 @@ function handleDeleteProvider(providerId: string) {
         >
           <div i-solar:info-circle-line-duotone class="text-2xl text-primary-500 dark:text-primary-400" />
           <div class="flex flex-col">
-            <span class="font-medium">Model listing not supported</span>
-            <span class="text-sm text-primary-600 dark:text-primary-400">This provider does not support retrieving a list of available models. Please enter the exact model ID manually.</span>
+            <span class="font-medium">{{ t('settings.pages.modules.vision.model.listing-unsupported-title') }}</span>
+            <span class="text-sm text-primary-600 dark:text-primary-400">{{ t('settings.pages.modules.vision.model.listing-unsupported-description') }}</span>
           </div>
         </div>
 
         <div class="mt-2">
           <label class="mb-1 block text-sm font-medium">
-            Model ID (Manual)
+            {{ t('settings.pages.modules.vision.fields.manual-model.label') }}
           </label>
           <input
             v-model="activeModel" type="text"
             class="w-full border border-neutral-300 rounded bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-            placeholder="e.g. gpt-4o-mini"
+            :placeholder="t('settings.pages.modules.vision.fields.manual-model.placeholder')"
           >
         </div>
       </div>
@@ -335,10 +336,10 @@ function handleDeleteProvider(providerId: string) {
       <div flex="~ col gap-4">
         <div>
           <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-500">
-            Image Description
+            {{ t('settings.pages.modules.vision.strategy.title') }}
           </h2>
           <div text="neutral-400 dark:neutral-400">
-            <span>What should the model do with the description of the image provided?</span>
+            <span>{{ t('settings.pages.modules.vision.strategy.description') }}</span>
           </div>
         </div>
 
@@ -348,8 +349,8 @@ function handleDeleteProvider(providerId: string) {
             v-model="strategy"
             name="strategy"
             value="direct"
-            title="Direct Response"
-            description="Allow this vision model to reply to the image"
+            :title="t('settings.pages.modules.vision.strategy.direct.title')"
+            :description="t('settings.pages.modules.vision.strategy.direct.description')"
             class="min-w-60"
           />
           <RadioCardSimple
@@ -357,8 +358,8 @@ function handleDeleteProvider(providerId: string) {
             v-model="strategy"
             name="strategy"
             value="forward"
-            title="Forward to LLM"
-            description="Forward the description of the image to your consciousness model"
+            :title="t('settings.pages.modules.vision.strategy.forward.title')"
+            :description="t('settings.pages.modules.vision.strategy.forward.description')"
             class="min-w-65"
           />
         </div>
@@ -370,10 +371,10 @@ function handleDeleteProvider(providerId: string) {
       <div flex="~ col gap-4">
         <div>
           <h2 class="text-lg text-neutral-500 md:text-2xl dark:text-neutral-500">
-            Vision Directives
+            {{ t('settings.pages.modules.vision.directives.title') }}
           </h2>
           <div text="neutral-400 dark:neutral-400">
-            <span>Hidden instructions sent alongside images to guide the vision model's behavior and personality.</span>
+            <span>{{ t('settings.pages.modules.vision.directives.description') }}</span>
           </div>
         </div>
 
@@ -381,14 +382,14 @@ function handleDeleteProvider(providerId: string) {
           <textarea
             v-model="activePromptShim"
             class="min-h-24 w-full border border-neutral-300 rounded-lg bg-white p-3 text-sm dark:border-neutral-700 dark:bg-neutral-900/50"
-            placeholder="Enter hidden vision directives..."
+            :placeholder="t('settings.pages.modules.vision.directives.placeholder')"
           />
           <div class="flex justify-end">
             <button
               class="text-xs text-neutral-400 transition-colors hover:text-primary-500"
               @click="resetActivePromptShim"
             >
-              Reset to default
+              {{ t('settings.pages.modules.vision.directives.reset') }}
             </button>
           </div>
         </div>

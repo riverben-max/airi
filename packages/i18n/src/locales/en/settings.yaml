@@ -461,6 +461,10 @@ pages:
       providers_reset: Provider settings reset.
       all_deleted: All local data deleted.
       desktop_reset: Desktop data reset.
+      backup-complete: Backup completed successfully!
+      backup-failed: 'Backup failed: {error}'
+      orphans-deleted: Selected orphaned sessions permanently deleted.
+      orphans-restored: Successfully restored or merged {count} companion(s).
     local_notice:
       title: Local data lives in this browser
       description: Chats, private character cards, and memory are stored on this
@@ -470,6 +474,47 @@ pages:
           reinstalling.
         characters: Private character cards remain local to this browser/device.
         memory: Memory settings remain local and are not synced to the server.
+    backup:
+      title: Auto-Backup & Manual Backup
+      description: Configure auto-backup or trigger a manual backup.
+      provider: 'Backup Provider:'
+      location: 'Backup Location:'
+      last: 'Last Backup:'
+      local-filesystem: Local File System / Samba
+      never: Never
+      enabled: Auto-Backup Enabled
+      disabled: Auto-Backup Disabled
+      trigger: Trigger Backup
+    orphans:
+      title: Orphaned Sessions Maintenance
+      description: Clean up or restore chat histories left behind by deleted characters.
+      found: 'Orphaned Groups Found: {count}'
+      manage: Manage Orphans
+      confirm-delete: Are you sure you want to permanently delete all sessions associated with the selected character IDs? This action cannot be undone.
+      dialog:
+        title: Manage Orphaned Sessions
+        description: Preview, restore, or permanently delete session histories from characters that have been deleted.
+      empty:
+        title: No orphaned session groups found.
+        description: Everything is clean!
+      actions:
+        select-all: Select All
+        deselect-all: Deselect All
+        close: Close
+        delete-selected: Delete Selected
+        restore-selected: Restore Selected
+        cancel: Cancel
+        confirm-restore: Confirm Restore
+      table:
+        messages: Messages
+        last-active: Last Active
+        preview: Preview
+        no-messages: No messages
+      restore:
+        title: Restore Target Selection
+        description: Map each orphaned session to a new companion card or merge it into an existing companion.
+        create-new: ✨ Create New Companion ({id})
+        merge-into: 🤝 Merge into {character}
   models:
     description: Manage physical assets, animations, and motion mappings for Live2D,
       VRM, Spine, and MMD.
@@ -583,10 +628,19 @@ pages:
             start_screen_capture: Start screen capture
             stop: Stop
           description: Select an audio source to detect beats from.
+          errors:
+            no_audio:
+              title: No audio detected
+              description: Please make sure the correct permissions are granted and the audio source is playing sound.
           title: Audio source
         beat_visualizer:
+          scale:
+            linear: Linear
+            logarithm: Logarithm
           title: Beat visualizer
         parameters:
+          actions:
+            reset: Reset settings
           advanced_parameters: Advanced Parameters
           description: Tweak the beat detection parameters.
           title: Parameters
@@ -709,6 +763,40 @@ pages:
     hearing:
       description: Configure how speech recognition works
       title: Hearing
+      actions:
+        add-provider: Add transcription provider
+      empty:
+        title: No Providers Configured
+        description: Click here to set up your transcription providers
+      model:
+        manual-description: Enter the transcription model to use (e.g., 'whisper-1', 'gpt-4o-transcribe')
+      voice-activity:
+        title: Voice Activity
+        subtitle: Last 2 seconds
+        speaking: Speaking
+        detected: Voice detected
+        silence: Silence
+        threshold: Speech threshold
+      test:
+        errors:
+          no-result: No transcription result returned from provider
+          select-provider: Please select a transcription provider first
+          select-device: Please select an audio input device first
+          stream-start: Failed to start audio stream. Please check microphone permissions.
+        status:
+          transcribing-recording: Transcribing recording...
+          complete: Transcription complete!
+          failed: Transcription failed
+          error: 'Error: {error}'
+          starting-stream: Starting audio stream...
+          starting-streaming-transcription: Starting streaming transcription...
+          transcribing-stream: Transcribing... (streaming)
+          waiting-for-speech: Waiting for speech...
+          listening-stream: Listening for speech... (streaming mode active)
+          recording: Recording audio for transcription... (3 seconds)
+          processing: Processing transcription...
+          stopped: Stopped
+          stream-start-error: 'Error: Failed to start audio stream'
       sections:
         section:
           provider-selection:
@@ -739,9 +827,225 @@ pages:
     memory-long-term:
       description: Long-term memory specific settings and management
       title: Long-Term Memory
+      all-characters: All Characters
+      unknown-character: Unknown Character
+      header:
+        title: The Sentinel's Journal
+        description: Durable episodic records. These sacred narrative memories are stored forever and accessed only when high-fidelity recall is required.
+      cards:
+        vault:
+          title: The Sacred Vault
+          description: Durable local archive intentionally separate from session context.
+          features:
+            indexeddb: IndexedDB Powered
+            local-storage: Durable Local Storage
+            anchors: Permanent Anchors
+        integrity:
+          title: Record Integrity
+          description: Append-only architecture ensures records remain uncorrupted over time.
+          features:
+            zero-erasure: Zero Erasure Logic
+            immutable-history: Immutable History
+            stability: Narrative Stability
+        recall:
+          title: Relational Recall
+          description: Powers deep relational grounding through hybrid keyword and semantic recall.
+          features:
+            character-scope: Character Scoped
+            patterns: Pattern Discovery
+            grounding: Durable Grounding
+      fields:
+        character-filter:
+          label: Character Filter
+          description: Default retrieval stays scoped to the selected character.
+        search:
+          label: Search Archive
+          description: High-fidelity semantic retrieval across all memory layers (Raw, STMM, LTMM).
+          placeholder: Filter memories...
+      actions:
+        seed-record: Seed Record
+      status:
+        seeded: Seeded journal entry for {character}.
+        seed-failed: 'Failed to seed journal entry: {error}'
+      records:
+        title: The Sacred Records
+        for-character: Episodic memories for {character}.
+        stored: '{count} records stored'
+        searching: Probing memory layers...
+        loading: Opening the vault...
+        empty: The records are silent. Use the txt_journal tool in chat to create a durable memory.
+        source:
+          label: 'Source:'
+          chat: Chat
+          recap: Recap
+          journal: Journal
+      governance:
+        title: Episodic Governance
+        archive-purpose:
+          title: Archive Purpose
+          description: Episodic records support durable lookup and high-fidelity recall, maintaining relationship integrity over long horizons.
+        rules:
+          title: Operational Rules
+          manual:
+            title: Manual Ingestion
+            description: Created explicitly by the character through the txt_journal tool.
+          persistence:
+            title: Local Persistence
+            description: Stored forever in the secure character-scoped vault.
+          identity:
+            title: Identity Anchors
+            description: Prevents personality drift during high-complexity dialogues.
     memory-short-term:
       description: Short-term memory specific settings and management
       title: Short-Term Memory
+      unknown-character: Unknown Character
+      header:
+        title: Active Pulse
+        description: Daily summary blocks derived from your history. These keep recent continuity fresh without dragging entire logs into every session.
+      cards:
+        context-window:
+          title: The Context Window
+          description: Automatically preloads recent continuity into the active prompt.
+          features:
+            daily-summaries: Daily Summary Blocks
+            cross-session: Cross-Session Continuity
+            history-distillation: History Distillation
+        dream-output:
+          title: Dream Output
+          description: Captures flavor tags and mood highlights generated during the Dream State.
+          features:
+            integrated-chips: Integrated Chips
+            journal-candidates: Journal Candidates
+            handoff-cycle: 24H Handoff Cycle
+        current-status:
+          title: Current Status
+          description: Rebuild from history is live. Periodic post-midnight generation is active.
+          features:
+            history-rebuild: History Rebuild Live
+            id-protection: ID Bleed Protection
+            character-scope: Per-Character Scope
+      fields:
+        active-character:
+          label: Active Character
+          description: Context pulse is always scoped to the selected character.
+        window-size:
+          label: Window Size
+          description: How many daily blocks are kept ready for prompt injection.
+        token-budget:
+          label: Token Budget Per Day
+          description: Target size hint for daily summarization.
+      actions:
+        rebuild-history: Rebuild From History
+        rebuild-today: Rebuild Today
+        synthesize-echoes: Synthesize Echoes
+      status:
+        rebuilding-history: Rebuilding short-term memory...
+        rebuild-complete: Short-term rebuild complete. Created {created}, updated {updated}, skipped {skipped}.
+        rebuild-failed: 'Short-term rebuild failed: {error}'
+        rebuilding-today: Rebuilding today's summary...
+        today-complete: Short-term block for today has been successfully rebuilt.
+        today-failed: 'Today''s rebuild failed: {error}'
+        synthesizing-echoes: Synthesizing echo chips...
+        echoes-complete: Generated {count} new echo chips.
+        echoes-failed: 'Echo synthesis failed: {error}'
+        rebuilding-pulse: Rebuilding pulse...
+        synthesizing-interpretation: Synthesizing interpretation...
+        pending-cycle: Auto-generation pending cycle
+      feed:
+        title: Daily Summary Blocks
+        for-character: Reverse-chronological summaries for {character}.
+        stored-blocks: '{count} stored blocks'
+        loading: Distilling short-term memory...
+        empty: No memory blocks exist. Run Rebuild From History to begin.
+        sources:
+          automatic: 24H Generated
+          manual: Manual Rebuild
+        metrics: '~{tokens} tokens | {messages} msgs'
+        low-relevance: Low relevance
+      handoff:
+        title: Dream Output & Handoff
+        context-strategy:
+          title: Context Strategy
+          description: The latest {count} daily blocks are automatically compacted and injected as hidden session context.
+        lifecycle:
+          title: Neurological Lifecycle
+          memory-handoff:
+            title: 24H Memory Handoff
+            description: Summaries are generated daily at midnight from history logs.
+          dream-synthesis:
+            title: Dream State Synthesis
+            description: Inline Chips bridge the gap between context and permanent records.
+          journal-promotion:
+            title: Journal Promotion
+            description: High-worthiness artifacts are flagged for the Sentinel's Journal.
+    memory-signals:
+      title: The Dream State
+      description: AIRI consolidates completed conversations into flavor tags and "Sacred Records" while you're away.
+      breadcrumb:
+        memory-hub: Memory Hub
+      cards:
+        deliverables:
+          title: The Deliverables
+          description: What AIRI produces during the consolidation phase.
+          items:
+            flavor-tags: Flavor Tags & Mood Highlights
+            summaries: Interpretive Session Summaries
+            motifs: Recurring Motifs
+            journal-entries: Journal-Worthy Entries
+        ritual:
+          title: The Ritual
+          description: The conditions that allow AIRI to begin dreaming.
+          items:
+            timeout: 1-Hour Session Timeout
+            afk-gating: Strict AFK Gating
+            idle-threshold: Character Idle Threshold
+            daily-cap: Daily Consolidation Cap (4)
+        experience:
+          title: The Experience
+          description: How consolidation affects your active relationship.
+          items:
+            decorations: Lively & Textured Feed Decorations
+            emotional-sprints: Preserves Emotional Sprints
+            session-vault: Reviewable Session Vault
+            highlights: Curation of Memorable Highlights
+      controls:
+        title: Console Controls
+        enable:
+          label: Enable Dream State
+          description: Allow idle-time chip generation for the active character
+        afk:
+          label: Strict AFK Gating
+          description: Only dreams while you're away
+      threshold:
+        title: Journaling Threshold
+        description: Determines the density and "worth" of recorded memories.
+        options:
+          minimal:
+            label: Minimal
+            description: Tags only. No journals are recorded.
+          balanced:
+            label: Balanced
+            description: Tags and journals for highly significant moments.
+          lush:
+            label: Lush
+            description: Tags and journals for most sessions (lower threshold).
+      fields:
+        max-sessions:
+          label: Max Sessions / Day
+          description: The maximum number of times the character is allowed to dream per day.
+        timeout:
+          label: Timeout (Minutes)
+          description: Idle time before dreaming starts.
+        min-turns:
+          label: Min Turns to Dream
+          description: Minimum turns of active conversation required to trigger a dream cycle. Cycles are skipped if there is not enough context to synthesize.
+      status:
+        afk-gated: AFK Gated
+        afk-optional: AFK Optional
+        sessions-per-day: Max {count} Sessions/Day
+        idle-consolidation: Idle Consolidation
+        disabled: Dream State Disabled
+        flavor-output: Flavor Output
     messaging-discord:
       description: Chat & voice chat over Discord
       title: Discord
@@ -788,9 +1092,34 @@ pages:
         vision-description: Allow AIRI to read and process image attachments from Discord
     speech:
       description: Speech synthesis
+      tabs:
+        global: Global Configuration
+        studio: Audio Studio Console
+      actions:
+        add-provider: Add Provider
+      empty:
+        title: No Speech Providers Configured
+        description: Click here to set up your speech providers
+      fields:
+        model:
+          label: Model
+          tts-description: Enter the TTS model to use for speech generation
+          discovery-failed-description: Enter the model name manually if model discovery fails
+          empty-description: Enter the model name manually when no models are returned
+        pitch:
+          label: Pitch
+          description: Tune the pitch of the voice
+        ssml:
+          label: Enable SSML
+          description: Enable Speech Synthesis Markup Language for more control over speech output
+        voice-name:
+          label: Voice Name
+          description: Enter the name of your custom voice
+          placeholder: "Enter voice name (e.g., 'alloy', 'echo')"
       sections:
         section:
           playground:
+            default-text: Hello, my name is AI Assistant
             buttons:
               stop:
                 label: Stop
@@ -821,6 +1150,10 @@ pages:
             show_more: Show more
             title: Provider
             search_models_results: Found {count} of {total} models
+          voice-configuration:
+            title: Voice Configuration
+            description: Customize how your AI assistant speaks
+            error: Error loading voices
           voice-settings:
             input-ssml:
               placeholder: Enter SSML text...
@@ -838,6 +1171,50 @@ pages:
     vision:
       description: Vision
       title: Vision
+      actions:
+        add-provider: Add Provider
+      status:
+        model-updated: 'Vision model updated to: {model}'
+      provider:
+        title: Vision Provider
+        configured: Configured
+        not-configured: Not Configured
+        description: Select the AI provider and model to use for visual analysis and image processing.
+      empty:
+        title: No Vision Providers Configured
+        description: Go to Settings > Providers to set up a provider for vision tasks. Set up OpenAI or OpenRouter.
+      model:
+        title: Vision Model
+        description: Select the model architecture.
+        current: 'Current Model:'
+        not-set: Not Set
+        empty-title: No models found
+        empty-description: We couldn't retrieve any available models from the provider. You might need to specify the model name manually if you're using a custom endpoint.
+        no-search-results-description: Could not find any matching models
+        search-results: Found {count} out of {total} models
+        show-more: Show more
+        show-less: Show less
+        listing-unsupported-title: Model listing not supported
+        listing-unsupported-description: This provider does not support retrieving a list of available models. Please enter the exact model ID manually.
+      fields:
+        manual-model:
+          label: Model ID (Manual)
+          placeholder: 'e.g. gpt-4o-mini'
+          custom-placeholder: Type custom model ID...
+      strategy:
+        title: Image Description
+        description: What should the model do with the description of the provided image?
+        direct:
+          title: Direct Response
+          description: Allow this vision model to reply to the image
+        forward:
+          title: Forward to LLM
+          description: Forward the image description to your consciousness model
+      directives:
+        title: Vision Directives
+        description: Hidden instructions sent alongside images to guide the vision model's behavior and personality.
+        placeholder: Enter hidden vision directives...
+        reset: Reset to default
     x:
       description: X / Twitter browsing and usage
       title: X / Twitter
@@ -969,6 +1346,8 @@ pages:
       gaming: Gaming
       artistry: Artistry
   providers:
+    actions:
+      delete-provider: Delete {name} provider
     explained:
       chat: Text generation model providers. e.g. OpenRouter, OpenAI, Ollama.
       Speech: Speech (text-to-speech) model providers. e.g. ElevenLabs, Azure Speech.
@@ -1026,6 +1405,11 @@ pages:
         device_id: Input Device ID
         device_id_placeholder: Enter input device ID (e.g. 'default')...
     catalog:
+      title: Provider Catalog
+      search-configured: Search configured...
+      customize-options: Customize options
+      search-supported: Search supported providers...
+      empty: No providers
       edit:
         config-id-not-found: Provider configuration not found.
         definition-id-not-found: Provider definition not found.

@@ -400,6 +400,10 @@ pages:
       providers_reset: 服务端设置重置。
       all_deleted: 已删除所有本地数据。
       desktop_reset: 桌面数据重置。
+      backup-complete: 备份成功完成！
+      backup-failed: 备份失败：{error}
+      orphans-deleted: 已永久删除所选孤立会话。
+      orphans-restored: 已成功恢复或合并 {count} 个伙伴。
     local_notice:
       title: 本地数据保存在当前浏览器
       description: 聊天记录、私人角色卡和记忆保存在当前浏览器/设备中。登录账号不会把它们备份到服务端。
@@ -407,6 +411,47 @@ pages:
         chats: 清理站点数据、更换浏览器或重新安装前，请先导出聊天记录。
         characters: 私人角色卡只保存在当前浏览器/设备中。
         memory: 记忆设置保存在本地，不会同步到服务端。
+    backup:
+      title: 自动备份与手动备份
+      description: 配置自动备份或立即触发手动备份。
+      provider: 备份服务来源：
+      location: 备份位置：
+      last: 上次备份：
+      local-filesystem: 本地文件系统 / Samba
+      never: 从未
+      enabled: 自动备份已启用
+      disabled: 自动备份已禁用
+      trigger: 立即备份
+    orphans:
+      title: 孤立会话维护
+      description: 清理或恢复已删除角色遗留的聊天记录。
+      found: 找到 {count} 组孤立会话
+      manage: 管理孤立会话
+      confirm-delete: 确定要永久删除与所选角色 ID 关联的全部会话吗？此操作无法撤销。
+      dialog:
+        title: 管理孤立会话
+        description: 预览、恢复或永久删除已删除角色遗留的会话记录。
+      empty:
+        title: 未找到孤立会话组。
+        description: 当前无需清理。
+      actions:
+        select-all: 全选
+        deselect-all: 取消全选
+        close: 关闭
+        delete-selected: 删除所选内容
+        restore-selected: 恢复所选内容
+        cancel: 取消
+        confirm-restore: 确认恢复
+      table:
+        messages: 消息数
+        last-active: 最后活跃时间
+        preview: 预览
+        no-messages: 无消息
+      restore:
+        title: 选择恢复目标
+        description: 将每个孤立会话映射到新伙伴卡，或合并到现有伙伴。
+        create-new: ✨ 创建新伙伴（{id}）
+        merge-into: 🤝 合并到 {character}
   models:
     description: 切换角色的 Live2D，VRM 模型
     title: 角色模型
@@ -452,10 +497,19 @@ pages:
             start_screen_capture: 开始屏幕录制
             stop: 停止
           description: 选择音频来源以检测其中的节拍
+          errors:
+            no_audio:
+              title: 未检测到音频
+              description: 请确认已授予正确权限，并且音频来源正在播放声音。
           title: 音频来源
         beat_visualizer:
+          scale:
+            linear: 线性
+            logarithm: 对数
           title: 节拍可视化
         parameters:
+          actions:
+            reset: 重置设置
           advanced_parameters: 高级参数
           description: 调整节拍检测参数
           title: 参数
@@ -576,6 +630,40 @@ pages:
     hearing:
       description: 语音识别
       title: 听觉
+      actions:
+        add-provider: 添加转录服务来源
+      empty:
+        title: 尚未配置服务来源
+        description: 点击此处设置转录服务来源
+      model:
+        manual-description: 输入要使用的转录模型（例如 'whisper-1'、'gpt-4o-transcribe'）
+      voice-activity:
+        title: 语音活动
+        subtitle: 最近 2 秒
+        speaking: 正在说话
+        detected: 检测到语音
+        silence: 无语音
+        threshold: 语音阈值
+      test:
+        errors:
+          no-result: 服务来源未返回转录结果
+          select-provider: 请先选择转录服务来源
+          select-device: 请先选择音频输入设备
+          stream-start: 无法启动音频流，请检查麦克风权限。
+        status:
+          transcribing-recording: 正在转录录音...
+          complete: 转录完成！
+          failed: 转录失败
+          error: '错误：{error}'
+          starting-stream: 正在启动音频流...
+          starting-streaming-transcription: 正在启动流式转录...
+          transcribing-stream: 正在转录...（流式）
+          waiting-for-speech: 正在等待语音...
+          listening-stream: 正在监听语音...（流式模式已启用）
+          recording: 正在录制用于转录的音频...（3 秒）
+          processing: 正在处理转录...
+          stopped: 已停止
+          stream-start-error: 错误：无法启动音频流
       sections:
         section:
           provider-selection:
@@ -600,9 +688,225 @@ pages:
     memory-long-term:
       description: 长期记忆
       title: 长期记忆
+      all-characters: 所有角色
+      unknown-character: 未知角色
+      header:
+        title: 哨兵日记
+        description: 持久保存的情节记录。这些重要的叙事记忆会永久存储，仅在需要高保真回忆时访问。
+      cards:
+        vault:
+          title: 重要记忆库
+          description: 与会话上下文有意分离的持久本地档案。
+          features:
+            indexeddb: 由 IndexedDB 提供支持
+            local-storage: 持久本地存储
+            anchors: 永久锚点
+        integrity:
+          title: 记录完整性
+          description: 仅追加架构确保记录长期保持完整。
+          features:
+            zero-erasure: 零擦除逻辑
+            immutable-history: 不可变历史
+            stability: 叙事稳定性
+        recall:
+          title: 关系回忆
+          description: 通过关键词与语义混合检索提供深层关系基础。
+          features:
+            character-scope: 按角色隔离
+            patterns: 模式发现
+            grounding: 持久关系基础
+      fields:
+        character-filter:
+          label: 角色筛选
+          description: 默认检索始终限定在所选角色范围内。
+        search:
+          label: 搜索档案
+          description: 在所有记忆层（Raw、STMM、LTMM）中进行高保真语义检索。
+          placeholder: 筛选记忆...
+      actions:
+        seed-record: 创建种子记录
+      status:
+        seeded: 已为 {character} 创建日记条目。
+        seed-failed: 创建日记条目失败：{error}
+      records:
+        title: 重要记录
+        for-character: '{character} 的情节记忆。'
+        stored: 已存储 {count} 条记录
+        searching: 正在探查记忆层...
+        loading: 正在打开记忆库...
+        empty: 暂无记录。请在聊天中使用 txt_journal 工具创建持久记忆。
+        source:
+          label: 来源：
+          chat: 聊天
+          recap: 回顾
+          journal: 日记
+      governance:
+        title: 情节记忆治理
+        archive-purpose:
+          title: 档案用途
+          description: 情节记录用于持久检索和高保真回忆，在长期互动中维持关系完整性。
+        rules:
+          title: 运行规则
+          manual:
+            title: 手动写入
+            description: 由角色通过 txt_journal 工具明确创建。
+          persistence:
+            title: 本地持久化
+            description: 永久存储在按角色隔离的安全记忆库中。
+          identity:
+            title: 身份锚点
+            description: 防止在高复杂度对话中出现人格漂移。
     memory-short-term:
       description: 短期记忆
       title: 短期记忆
+      unknown-character: 未知角色
+      header:
+        title: 活跃脉冲
+        description: 根据历史记录生成每日摘要块，让近期上下文保持连贯，而无需在每次会话中载入完整日志。
+      cards:
+        context-window:
+          title: 上下文窗口
+          description: 自动将最近的连续上下文预载到当前提示词中。
+          features:
+            daily-summaries: 每日摘要块
+            cross-session: 跨会话连续性
+            history-distillation: 历史提炼
+        dream-output:
+          title: 梦境输出
+          description: 收集梦境状态中生成的风格标签和情绪重点。
+          features:
+            integrated-chips: 已整合片段
+            journal-candidates: 日记候选项
+            handoff-cycle: 24 小时交接周期
+        current-status:
+          title: 当前状态
+          description: 已启用从历史记录重建，并会在午夜后定期生成摘要。
+          features:
+            history-rebuild: 历史重建已启用
+            id-protection: ID 串扰保护
+            character-scope: 按角色隔离
+      fields:
+        active-character:
+          label: 当前角色
+          description: 上下文脉冲始终限定在所选角色范围内。
+        window-size:
+          label: 窗口大小
+          description: 为注入提示词而保留的每日摘要块数量。
+        token-budget:
+          label: 每日 Token 预算
+          description: 每日摘要的目标大小提示。
+      actions:
+        rebuild-history: 从历史记录重建
+        rebuild-today: 重建今日摘要
+        synthesize-echoes: 合成回响片段
+      status:
+        rebuilding-history: 正在重建短期记忆...
+        rebuild-complete: 短期记忆重建完成。新建 {created} 条，更新 {updated} 条，跳过 {skipped} 条。
+        rebuild-failed: 短期记忆重建失败：{error}
+        rebuilding-today: 正在重建今日摘要...
+        today-complete: 今日短期记忆块已成功重建。
+        today-failed: 今日摘要重建失败：{error}
+        synthesizing-echoes: 正在合成回响片段...
+        echoes-complete: 已生成 {count} 个新回响片段。
+        echoes-failed: 回响合成失败：{error}
+        rebuilding-pulse: 正在重建脉冲...
+        synthesizing-interpretation: 正在合成解读...
+        pending-cycle: 等待下一次自动生成周期
+      feed:
+        title: 每日摘要块
+        for-character: 按时间倒序显示 {character} 的摘要。
+        stored-blocks: 已存储 {count} 个摘要块
+        loading: 正在提炼短期记忆...
+        empty: 尚无记忆块，请先从历史记录重建。
+        sources:
+          automatic: 24 小时自动生成
+          manual: 手动重建
+        metrics: 约 {tokens} Token | {messages} 条消息
+        low-relevance: 相关性较低
+      handoff:
+        title: 梦境输出与交接
+        context-strategy:
+          title: 上下文策略
+          description: 最近 {count} 个每日摘要块会自动压缩，并作为隐藏会话上下文注入。
+        lifecycle:
+          title: 记忆生命周期
+          memory-handoff:
+            title: 24 小时记忆交接
+            description: 每天午夜根据历史日志生成摘要。
+          dream-synthesis:
+            title: 梦境状态合成
+            description: 内联片段连接会话上下文与永久记录。
+          journal-promotion:
+            title: 提升为日记
+            description: 高价值内容会被标记为“哨兵日记”的候选记录。
+    memory-signals:
+      title: 梦境状态
+      description: 当你离开时，AIRI 会将已完成的对话整合为风格标签和“重要记录”。
+      breadcrumb:
+        memory-hub: 记忆中心
+      cards:
+        deliverables:
+          title: 输出内容
+          description: AIRI 在整合阶段生成的内容。
+          items:
+            flavor-tags: 风格标签与情绪重点
+            summaries: 解读式会话摘要
+            motifs: 重复出现的主题
+            journal-entries: 值得写入日记的条目
+        ritual:
+          title: 触发条件
+          description: 允许 AIRI 进入梦境状态的条件。
+          items:
+            timeout: 1 小时会话超时
+            afk-gating: 严格 AFK 限制
+            idle-threshold: 角色空闲阈值
+            daily-cap: 每日整合上限（4 次）
+        experience:
+          title: 体验影响
+          description: 整合过程如何影响当前关系体验。
+          items:
+            decorations: 生动而丰富的动态装饰
+            emotional-sprints: 保留情绪冲刺片段
+            session-vault: 可回顾的会话记忆库
+            highlights: 筛选值得记住的重点
+      controls:
+        title: 控制台设置
+        enable:
+          label: 启用梦境状态
+          description: 允许为空闲角色生成记忆片段
+        afk:
+          label: 严格 AFK 限制
+          description: 仅在你离开时进入梦境状态
+      threshold:
+        title: 日记记录阈值
+        description: 决定记录记忆的密度和价值门槛。
+        options:
+          minimal:
+            label: 最精简
+            description: 仅生成标签，不记录日记。
+          balanced:
+            label: 均衡
+            description: 为高度重要的时刻生成标签和日记。
+          lush:
+            label: 丰富
+            description: 为大多数会话生成标签和日记（较低阈值）。
+      fields:
+        max-sessions:
+          label: 每日最大梦境次数
+          description: 角色每天允许进入梦境状态的最大次数。
+        timeout:
+          label: 超时时间（分钟）
+          description: 开始进入梦境状态前的空闲时长。
+        min-turns:
+          label: 触发梦境的最少轮数
+          description: 触发梦境周期所需的最少有效对话轮数。上下文不足时会跳过该周期。
+      status:
+        afk-gated: 已启用 AFK 限制
+        afk-optional: AFK 限制可选
+        sessions-per-day: 每天最多 {count} 次
+        idle-consolidation: 空闲时整合
+        disabled: 梦境状态已禁用
+        flavor-output: 风格输出
     messaging-discord:
       description: Discord 发消息和语音聊天
       title: Discord
@@ -649,9 +953,34 @@ pages:
         vision-description: 允许 AIRI 读取并处理 Discord 中的图片附件
     speech:
       description: 语音合成
+      tabs:
+        global: 全局配置
+        studio: 音频工作台
+      actions:
+        add-provider: 添加服务来源
+      empty:
+        title: 尚未配置语音合成服务来源
+        description: 点击此处设置语音合成服务来源
+      fields:
+        model:
+          label: 模型
+          tts-description: 输入用于语音生成的 TTS 模型
+          discovery-failed-description: 模型发现失败时手动输入模型名称
+          empty-description: 未返回模型时手动输入模型名称
+        pitch:
+          label: 音高
+          description: 调整语音的音高
+        ssml:
+          label: 启用 SSML
+          description: 启用语音合成标记语言，以便更精细地控制语音输出
+        voice-name:
+          label: 声线名称
+          description: 输入自定义声线的名称
+          placeholder: "输入声线名称（例如 'alloy'、'echo'）"
       sections:
         section:
           playground:
+            default-text: 你好，我是 AI 助手
             buttons:
               stop:
                 label: 停止
@@ -668,7 +997,7 @@ pages:
             no_voices_description: 该服务来源的声线列表没有返回任何的数据
             no_voices_hint: 可以在下方输入自定义声线名字
             pause: 暂停
-            play_sample: Play
+            play_sample: 播放示例
             search_models_placeholder: 搜索模型...
             search_models_results: 找到 {count} / {total} 个模型
             search_voices_placeholder: 搜索声线...
@@ -679,6 +1008,10 @@ pages:
             show_less: 显示更少
             show_more: 显示更多
             title: 选择语音合成服务来源
+          voice-configuration:
+            title: 声线配置
+            description: 自定义 AI 助手的说话方式
+            error: 加载声线失败
           voice-settings:
             input-ssml:
               placeholder: 请输入 SSML 文本
@@ -696,6 +1029,50 @@ pages:
     vision:
       description: 视觉
       title: 视觉
+      actions:
+        add-provider: 添加服务来源
+      status:
+        model-updated: 视觉模型已更新为：{model}
+      provider:
+        title: 视觉服务来源
+        configured: 已配置
+        not-configured: 未配置
+        description: 选择用于视觉分析和图像处理的 AI 服务来源与模型。
+      empty:
+        title: 尚未配置视觉服务来源
+        description: 前往“设置 > 服务来源”配置视觉任务所需的服务来源，例如 OpenAI 或 OpenRouter。
+      model:
+        title: 视觉模型
+        description: 选择模型架构。
+        current: 当前模型：
+        not-set: 未设置
+        empty-title: 未找到模型
+        empty-description: 无法从服务来源获取可用模型。如果使用自定义端点，可能需要手动指定模型名称。
+        no-search-results-description: 找不到匹配的模型
+        search-results: 找到 {count} / {total} 个模型
+        show-more: 显示更多
+        show-less: 显示更少
+        listing-unsupported-title: 不支持列出模型
+        listing-unsupported-description: 此服务来源无法获取可用模型列表，请手动输入准确的模型 ID。
+      fields:
+        manual-model:
+          label: 模型 ID（手动）
+          placeholder: 例如 gpt-4o-mini
+          custom-placeholder: 输入自定义模型 ID...
+      strategy:
+        title: 图像描述
+        description: 模型应如何处理所提供图像的描述？
+        direct:
+          title: 直接响应
+          description: 允许视觉模型直接回复图像内容
+        forward:
+          title: 转发给 LLM
+          description: 将图像描述转发给意识模型
+      directives:
+        title: 视觉指令
+        description: 随图像一同发送的隐藏指令，用于引导视觉模型的行为和个性。
+        placeholder: 输入隐藏的视觉指令...
+        reset: 恢复默认值
     x:
       description: X / Twitter 的浏览和使用
       title: X / Twitter
@@ -868,6 +1245,8 @@ pages:
       gaming: 游戏
       artistry: Artistry
   providers:
+    actions:
+      delete-provider: 删除 {name} 服务来源
     explained:
       chat: 文本生成模型服务来源，例如 OpenRouter, OpenAI, Ollama
       Speech: 语音合成（文本转语音）模型服务来源，例如 ElevenLabs, Azure Speech
@@ -878,6 +1257,11 @@ pages:
       description: >
         AIRI 需要配置至少一个 {chat} 服务来源，才能正常思考和运作。你可以把它看作是 AIRI 系统中角色的大脑。
     catalog:
+      title: 服务来源目录
+      search-configured: 搜索已配置项...
+      customize-options: 自定义选项
+      search-supported: 搜索支持的服务来源...
+      empty: 暂无服务来源
       edit:
         config-id-not-found: 未找到服务来源配置。
         definition-id-not-found: 找不到服务来源定义。

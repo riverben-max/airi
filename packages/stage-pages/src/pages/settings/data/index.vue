@@ -155,17 +155,17 @@ const formattedBackupLocation = computed(() => {
 
 const formattedLastSyncTime = computed(() => {
   if (!syncEngineStore.lastSyncTime)
-    return 'Never'
+    return t('settings.pages.data.backup.never')
   return new Date(syncEngineStore.lastSyncTime).toLocaleString()
 })
 
 async function handleTriggerBackup() {
   await syncEngineStore.triggerSync()
   if (!syncEngineStore.syncError) {
-    setStatus(`Backup completed successfully!`)
+    setStatus(t('settings.pages.data.status.backup-complete'))
   }
   else {
-    setStatus(`Backup failed: ${syncEngineStore.syncError}`, 'error')
+    setStatus(t('settings.pages.data.status.backup-failed', { error: syncEngineStore.syncError }), 'error')
   }
 }
 
@@ -207,11 +207,11 @@ function deselectAll() {
 }
 
 async function confirmNuke() {
-  if (confirm(`Are you sure you want to delete all sessions associated with the selected character IDs? This action is permanent and cannot be undone.`)) {
+  if (confirm(t('settings.pages.data.orphans.confirm-delete'))) {
     try {
       await nukeOrphanedGroups(selectedOrphans.value)
       selectedOrphans.value = []
-      setStatus(`Successfully nuked selected orphaned sessions!`)
+      setStatus(t('settings.pages.data.status.orphans-deleted'))
       await loadOrphans()
     }
     catch (e) {
@@ -235,7 +235,7 @@ async function executeRestore() {
     const count = Object.keys(restoreMappings.value).length
     isRestoreMappingOpen.value = false
     selectedOrphans.value = []
-    setStatus(`Successfully restored/merged ${count} companion(s)!`)
+    setStatus(t('settings.pages.data.status.orphans-restored', { count }))
     await loadOrphans()
   }
   catch (e) {
@@ -332,26 +332,26 @@ async function executeRestore() {
       <div class="grid grid-cols-1 items-start gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <div class="flex flex-col gap-1 md:max-w-[560px]">
           <div class="text-lg font-medium">
-            Auto-Backup & Manual Backup
+            {{ t('settings.pages.data.backup.title') }}
           </div>
           <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            Configure auto-backup or trigger a manual backup.
+            {{ t('settings.pages.data.backup.description') }}
           </p>
           <div class="mt-2 text-sm text-neutral-500">
-            <div>Backup Provider: <span class="font-semibold">{{ syncEngineStore.activeProvider === 'local-fs' ? 'Local File System / Samba' : syncEngineStore.activeProvider }}</span></div>
+            <div>{{ t('settings.pages.data.backup.provider') }} <span class="font-semibold">{{ syncEngineStore.activeProvider === 'local-fs' ? t('settings.pages.data.backup.local-filesystem') : syncEngineStore.activeProvider }}</span></div>
             <div v-if="formattedBackupLocation">
-              Backup Location: <span class="font-mono">{{ formattedBackupLocation }}</span>
+              {{ t('settings.pages.data.backup.location') }} <span class="font-mono">{{ formattedBackupLocation }}</span>
             </div>
-            <div>Last Backup: <span class="font-mono">{{ formattedLastSyncTime }}</span></div>
+            <div>{{ t('settings.pages.data.backup.last') }} <span class="font-mono">{{ formattedLastSyncTime }}</span></div>
           </div>
         </div>
         <div class="flex flex-col items-start gap-2 sm:items-end">
           <div class="flex flex-wrap gap-2">
             <Button :variant="syncEngineStore.syncEnabled ? 'primary' : 'secondary'" @click="syncEngineStore.syncEnabled = !syncEngineStore.syncEnabled">
-              {{ syncEngineStore.syncEnabled ? 'Auto-Backup Enabled' : 'Auto-Backup Disabled' }}
+              {{ syncEngineStore.syncEnabled ? t('settings.pages.data.backup.enabled') : t('settings.pages.data.backup.disabled') }}
             </Button>
             <Button variant="primary" :disabled="syncEngineStore.isSyncing" @click="handleTriggerBackup">
-              Trigger Backup
+              {{ t('settings.pages.data.backup.trigger') }}
             </Button>
           </div>
         </div>
@@ -363,18 +363,18 @@ async function executeRestore() {
       <div class="grid grid-cols-1 items-start gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <div class="flex flex-col gap-1 md:max-w-[560px]">
           <div class="text-lg font-medium">
-            Orphaned Sessions Maintenance
+            {{ t('settings.pages.data.orphans.title') }}
           </div>
           <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            Clean up or restore chat histories left behind by deleted characters.
+            {{ t('settings.pages.data.orphans.description') }}
           </p>
           <div class="mt-2 text-sm text-neutral-500">
-            Orphaned Groups Found: <span class="font-semibold">{{ orphanedGroups.length }}</span>
+            {{ t('settings.pages.data.orphans.found', { count: orphanedGroups.length }) }}
           </div>
         </div>
         <div class="flex flex-col items-start gap-2 sm:items-end">
           <Button variant="secondary" @click="openManageModal">
-            Manage Orphans
+            {{ t('settings.pages.data.orphans.manage') }}
           </Button>
         </div>
       </div>
@@ -422,10 +422,10 @@ async function executeRestore() {
           <div class="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-700">
             <div>
               <DialogTitle class="from-primary-500 to-primary-400 bg-gradient-to-r bg-clip-text text-xl text-transparent font-bold">
-                Manage Orphaned Sessions
+                {{ t('settings.pages.data.orphans.dialog.title') }}
               </DialogTitle>
               <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                Preview, restore, or purge session histories from characters that have been deleted.
+                {{ t('settings.pages.data.orphans.dialog.description') }}
               </p>
             </div>
           </div>
@@ -436,19 +436,19 @@ async function executeRestore() {
                 🎉
               </div>
               <p class="text-sm font-medium">
-                No orphaned session groups found.
+                {{ t('settings.pages.data.orphans.empty.title') }}
               </p>
               <p class="mt-1 text-xs text-neutral-400">
-                Everything is clean!
+                {{ t('settings.pages.data.orphans.empty.description') }}
               </p>
             </div>
             <div v-else class="flex flex-col gap-4">
               <div class="flex items-center gap-2">
                 <Button variant="secondary" size="sm" @click="selectAll">
-                  Select All
+                  {{ t('settings.pages.data.orphans.actions.select-all') }}
                 </Button>
                 <Button variant="secondary" size="sm" @click="deselectAll">
-                  Deselect All
+                  {{ t('settings.pages.data.orphans.actions.deselect-all') }}
                 </Button>
               </div>
 
@@ -458,13 +458,13 @@ async function executeRestore() {
                     <tr class="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900">
                       <th class="w-12 p-3" />
                       <th class="w-24 p-3 text-xs text-neutral-500 font-semibold uppercase dark:text-neutral-400">
-                        Messages
+                        {{ t('settings.pages.data.orphans.table.messages') }}
                       </th>
                       <th class="w-44 p-3 text-xs text-neutral-500 font-semibold uppercase dark:text-neutral-400">
-                        Last Active
+                        {{ t('settings.pages.data.orphans.table.last-active') }}
                       </th>
                       <th class="p-3 text-xs text-neutral-500 font-semibold uppercase dark:text-neutral-400">
-                        Preview
+                        {{ t('settings.pages.data.orphans.table.preview') }}
                       </th>
                     </tr>
                   </thead>
@@ -486,10 +486,10 @@ async function executeRestore() {
                         {{ group.messageCount }}
                       </td>
                       <td :class="['whitespace-nowrap p-3 text-sm text-neutral-600 dark:text-neutral-400']">
-                        {{ group.lastActive ? new Date(group.lastActive).toLocaleString() : 'Never' }}
+                        {{ group.lastActive ? new Date(group.lastActive).toLocaleString() : t('settings.pages.data.backup.never') }}
                       </td>
                       <td :class="['p-3 text-xs text-neutral-500 dark:text-neutral-400 font-normal line-clamp-3 whitespace-normal break-words']">
-                        {{ group.preview || 'No messages' }}
+                        {{ group.preview || t('settings.pages.data.orphans.table.no-messages') }}
                       </td>
                     </tr>
                   </tbody>
@@ -501,19 +501,19 @@ async function executeRestore() {
           <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
             <Button
               variant="secondary"
-              label="Close"
+              :label="t('settings.pages.data.orphans.actions.close')"
               @click="isModalOpen = false"
             />
             <div class="flex gap-2">
               <Button
                 variant="danger"
-                label="Nuke Selected"
+                :label="t('settings.pages.data.orphans.actions.delete-selected')"
                 :disabled="selectedOrphans.length === 0"
                 @click="confirmNuke"
               />
               <Button
                 variant="primary"
-                label="Restore Selected"
+                :label="t('settings.pages.data.orphans.actions.restore-selected')"
                 :disabled="selectedOrphans.length === 0"
                 @click="handleRestore"
               />
@@ -531,10 +531,10 @@ async function executeRestore() {
         <div class="h-full flex flex-col gap-5 overflow-hidden">
           <div class="border-b border-neutral-200 pb-3 dark:border-neutral-700">
             <DialogTitle class="from-primary-500 to-primary-400 bg-gradient-to-r bg-clip-text text-lg text-transparent font-bold">
-              Restore Target Selection
+              {{ t('settings.pages.data.orphans.restore.title') }}
             </DialogTitle>
             <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Map each orphaned session to a new companion card or merge into an existing companion.
+              {{ t('settings.pages.data.orphans.restore.description') }}
             </p>
           </div>
 
@@ -548,10 +548,10 @@ async function executeRestore() {
                 class="w-full border border-neutral-200 rounded-lg bg-white px-3 py-2 text-sm text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="new">
-                  ✨ Create New Companion ({{ orphanId }})
+                  {{ t('settings.pages.data.orphans.restore.create-new', { id: orphanId }) }}
                 </option>
                 <option v-for="char in existingCharacters" :key="char.id" :value="char.id">
-                  🤝 Merge into {{ char.name }}
+                  {{ t('settings.pages.data.orphans.restore.merge-into', { character: char.name }) }}
                 </option>
               </select>
             </div>
@@ -560,12 +560,12 @@ async function executeRestore() {
           <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
             <Button
               variant="secondary"
-              label="Cancel"
+              :label="t('settings.pages.data.orphans.actions.cancel')"
               @click="isRestoreMappingOpen = false"
             />
             <Button
               variant="primary"
-              label="Confirm Restore"
+              :label="t('settings.pages.data.orphans.actions.confirm-restore')"
               @click="executeRestore"
             />
           </div>

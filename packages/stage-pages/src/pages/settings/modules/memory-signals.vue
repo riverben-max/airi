@@ -3,9 +3,11 @@ import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { FieldInput } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
+const { t } = useI18n()
 
 function updateDreamState(patch: Record<string, any>) {
   const cardId = activeCardId.value
@@ -57,17 +59,36 @@ const afkGating = computed({
   set: value => updateDreamState({ strictAfkGating: value }),
 })
 
-const lushnessOptions: Array<{ value: 'minimal' | 'balanced' | 'lush', label: string, description: string }> = [
-  { value: 'minimal', label: 'Minimal', description: 'Tags only. No journals are recorded.' },
-  { value: 'balanced', label: 'Balanced', description: 'Tags + Journals for highly significant moments.' },
-  { value: 'lush', label: 'Lush', description: 'Tags + Journals for most sessions (Lower Threshold).' },
-]
+const lushnessOptions = computed<Array<{ value: 'minimal' | 'balanced' | 'lush', label: string, description: string }>>(() => [
+  { value: 'minimal', label: t('settings.pages.modules.memory-signals.threshold.options.minimal.label'), description: t('settings.pages.modules.memory-signals.threshold.options.minimal.description') },
+  { value: 'balanced', label: t('settings.pages.modules.memory-signals.threshold.options.balanced.label'), description: t('settings.pages.modules.memory-signals.threshold.options.balanced.description') },
+  { value: 'lush', label: t('settings.pages.modules.memory-signals.threshold.options.lush.label'), description: t('settings.pages.modules.memory-signals.threshold.options.lush.description') },
+])
+
+const deliverableItems = computed(() => [
+  t('settings.pages.modules.memory-signals.cards.deliverables.items.flavor-tags'),
+  t('settings.pages.modules.memory-signals.cards.deliverables.items.summaries'),
+  t('settings.pages.modules.memory-signals.cards.deliverables.items.motifs'),
+  t('settings.pages.modules.memory-signals.cards.deliverables.items.journal-entries'),
+])
+const ritualItems = computed(() => [
+  t('settings.pages.modules.memory-signals.cards.ritual.items.timeout'),
+  t('settings.pages.modules.memory-signals.cards.ritual.items.afk-gating'),
+  t('settings.pages.modules.memory-signals.cards.ritual.items.idle-threshold'),
+  t('settings.pages.modules.memory-signals.cards.ritual.items.daily-cap'),
+])
+const experienceItems = computed(() => [
+  t('settings.pages.modules.memory-signals.cards.experience.items.decorations'),
+  t('settings.pages.modules.memory-signals.cards.experience.items.emotional-sprints'),
+  t('settings.pages.modules.memory-signals.cards.experience.items.session-vault'),
+  t('settings.pages.modules.memory-signals.cards.experience.items.highlights'),
+])
 
 const statusChips = computed(() => [
-  { label: afkGating.value ? 'AFK Gated' : 'AFK Optional', icon: 'i-solar:ghost-bold-duotone', active: afkGating.value },
-  { label: `Max ${maxSessions.value} Sessions/Day`, icon: 'i-solar:calendar-limit-bold-duotone', active: true },
-  { label: dreamStateEnabled.value ? 'Idle Consolidation' : 'Dream State Disabled', icon: 'i-solar:moon-stars-bold-duotone', active: dreamStateEnabled.value },
-  { label: 'Flavor Output', icon: 'i-solar:magic-stick-3-bold-duotone', active: true },
+  { label: afkGating.value ? t('settings.pages.modules.memory-signals.status.afk-gated') : t('settings.pages.modules.memory-signals.status.afk-optional'), icon: 'i-solar:ghost-bold-duotone', active: afkGating.value },
+  { label: t('settings.pages.modules.memory-signals.status.sessions-per-day', { count: maxSessions.value }), icon: 'i-solar:calendar-limit-bold-duotone', active: true },
+  { label: dreamStateEnabled.value ? t('settings.pages.modules.memory-signals.status.idle-consolidation') : t('settings.pages.modules.memory-signals.status.disabled'), icon: 'i-solar:moon-stars-bold-duotone', active: dreamStateEnabled.value },
+  { label: t('settings.pages.modules.memory-signals.status.flavor-output'), icon: 'i-solar:magic-stick-3-bold-duotone', active: true },
 ])
 </script>
 
@@ -76,10 +97,10 @@ const statusChips = computed(() => [
     <!-- Breadcrumb Nav -->
     <nav class="flex items-center gap-2 text-xs text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
       <router-link to="/settings/memory" class="transition-colors hover:text-primary-500">
-        Memory Hub
+        {{ t('settings.pages.modules.memory-signals.breadcrumb.memory-hub') }}
       </router-link>
       <div class="i-solar:alt-arrow-right-bold h-3 w-3" />
-      <span class="text-neutral-400 dark:text-neutral-500">The Dream State</span>
+      <span class="text-neutral-400 dark:text-neutral-500">{{ t('settings.pages.modules.memory-signals.title') }}</span>
     </nav>
 
     <!-- Bespoke Header -->
@@ -94,10 +115,10 @@ const statusChips = computed(() => [
             <div class="i-solar:bolt-bold-duotone" />
           </div>
           <h1 class="text-4xl text-neutral-800 font-bold tracking-tight dark:text-neutral-100">
-            The Dream State
+            {{ t('settings.pages.modules.memory-signals.title') }}
           </h1>
           <p class="max-w-2xl text-lg text-neutral-500 line-height-relaxed dark:text-neutral-400">
-            AIRI consolidates completed conversations into flavor tags and "Sacred Records" while you're away.
+            {{ t('settings.pages.modules.memory-signals.description') }}
           </p>
         </div>
       </div>
@@ -123,14 +144,14 @@ const statusChips = computed(() => [
           <div class="i-solar:magic-stick-bold-duotone" />
         </div>
         <h3 class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-          The Deliverables
+          {{ t('settings.pages.modules.memory-signals.cards.deliverables.title') }}
         </h3>
         <p class="mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-          What AIRI produces during the consolidation phase.
+          {{ t('settings.pages.modules.memory-signals.cards.deliverables.description') }}
         </p>
 
         <ul class="flex flex-col gap-3">
-          <li v-for="item in ['Flavor Tags & Mood Highlights', 'Interpretive Session Summaries', 'Recurring Motifs', 'Journal-Worthy Entries']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+          <li v-for="item in deliverableItems" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
             <div class="i-solar:check-circle-bold-duotone text-violet-500" />
             {{ item }}
           </li>
@@ -143,14 +164,14 @@ const statusChips = computed(() => [
           <div class="i-solar:ghost-bold-duotone" />
         </div>
         <h3 class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-          The Ritual
+          {{ t('settings.pages.modules.memory-signals.cards.ritual.title') }}
         </h3>
         <p class="mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-          The conditions that allow AIRI to begin dreaming.
+          {{ t('settings.pages.modules.memory-signals.cards.ritual.description') }}
         </p>
 
         <ul class="flex flex-col gap-3">
-          <li v-for="item in ['1-Hour Session Timeout', 'Strict AFK Gating', 'Character Idle Threshold', 'Daily Consolidation Cap (4)']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+          <li v-for="item in ritualItems" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
             <div class="i-solar:play-circle-bold-duotone text-indigo-500" />
             {{ item }}
           </li>
@@ -163,14 +184,14 @@ const statusChips = computed(() => [
           <div class="i-solar:heart-bold-duotone" />
         </div>
         <h3 class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-          The Experience
+          {{ t('settings.pages.modules.memory-signals.cards.experience.title') }}
         </h3>
         <p class="mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-          How the consolidation affects your active relationship.
+          {{ t('settings.pages.modules.memory-signals.cards.experience.description') }}
         </p>
 
         <ul class="flex flex-col gap-3">
-          <li v-for="item in ['Lively & Textured Feed Decorations', 'Preserves Emotional Sprints', 'Reviewable Session Vault', 'Curation of Memorable Highlights']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+          <li v-for="item in experienceItems" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
             <div class="i-solar:star-circle-bold-duotone text-primary-500" />
             {{ item }}
           </li>
@@ -181,7 +202,7 @@ const statusChips = computed(() => [
     <!-- Interface Controls Mockup -->
     <section class="border border-neutral-200 rounded-[2.5rem] bg-white p-10 shadow-xl dark:border-neutral-800 dark:bg-neutral-900/80">
       <h2 class="mb-8 text-2xl text-neutral-800 font-bold dark:text-neutral-100">
-        Console Controls
+        {{ t('settings.pages.modules.memory-signals.controls.title') }}
       </h2>
 
       <div class="grid gap-10 lg:grid-cols-2">
@@ -190,15 +211,15 @@ const statusChips = computed(() => [
           <div class="flex items-center gap-3 border border-neutral-200 rounded-2xl bg-neutral-50/50 px-6 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
             <input id="dream-state-enabled" v-model="dreamStateEnabled" type="checkbox" class="h-5 w-5 border-neutral-300 rounded text-primary-500">
             <label for="dream-state-enabled" class="flex flex-col cursor-pointer">
-              <span class="text-sm text-neutral-700 font-bold dark:text-neutral-200">Enable Dream State</span>
-              <span class="text-[10px] text-neutral-500 tracking-tighter uppercase">Allow idle-time chips generation for the active character</span>
+              <span class="text-sm text-neutral-700 font-bold dark:text-neutral-200">{{ t('settings.pages.modules.memory-signals.controls.enable.label') }}</span>
+              <span class="text-[10px] text-neutral-500 tracking-tighter uppercase">{{ t('settings.pages.modules.memory-signals.controls.enable.description') }}</span>
             </label>
           </div>
 
           <div>
-            <span class="text-sm text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">Journaling Threshold</span>
+            <span class="text-sm text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">{{ t('settings.pages.modules.memory-signals.threshold.title') }}</span>
             <p class="text-xs text-neutral-400 dark:text-neutral-500">
-              Determines the density and "worth" of recorded memories.
+              {{ t('settings.pages.modules.memory-signals.threshold.description') }}
             </p>
           </div>
 
@@ -221,17 +242,17 @@ const statusChips = computed(() => [
         <!-- Metric Controls -->
         <div class="flex flex-col gap-8">
           <div class="grid gap-6 sm:grid-cols-3">
-            <FieldInput v-model="maxSessions" label="Max Sessions / Day" type="number" description="The maximum number of times the character is allowed to dream per day." />
-            <FieldInput v-model="timeoutThreshold" label="Timeout (Minutes)" type="number" description="Idle time before dreaming starts." />
-            <FieldInput v-model="minTurns" label="Min Turns to Dream" type="number" description="Minimum turns of active conversation required to trigger a dream cycle. Cycles are skipped if there is not enough context to synthesize." />
+            <FieldInput v-model="maxSessions" :label="t('settings.pages.modules.memory-signals.fields.max-sessions.label')" type="number" :description="t('settings.pages.modules.memory-signals.fields.max-sessions.description')" />
+            <FieldInput v-model="timeoutThreshold" :label="t('settings.pages.modules.memory-signals.fields.timeout.label')" type="number" :description="t('settings.pages.modules.memory-signals.fields.timeout.description')" />
+            <FieldInput v-model="minTurns" :label="t('settings.pages.modules.memory-signals.fields.min-turns.label')" type="number" :description="t('settings.pages.modules.memory-signals.fields.min-turns.description')" />
           </div>
 
           <div class="flex flex-wrap gap-6 pt-4">
             <div class="flex items-center gap-3 border border-neutral-200 rounded-2xl bg-neutral-50/50 px-6 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
               <input id="afk" v-model="afkGating" type="checkbox" class="h-5 w-5 border-neutral-300 rounded text-primary-500">
               <label for="afk" class="flex flex-col cursor-pointer">
-                <span class="text-sm text-neutral-700 font-bold dark:text-neutral-200">Strict AFK Gating</span>
-                <span class="text-[10px] text-neutral-500 tracking-tighter uppercase">Only dreams while you're away</span>
+                <span class="text-sm text-neutral-700 font-bold dark:text-neutral-200">{{ t('settings.pages.modules.memory-signals.controls.afk.label') }}</span>
+                <span class="text-[10px] text-neutral-500 tracking-tighter uppercase">{{ t('settings.pages.modules.memory-signals.controls.afk.description') }}</span>
               </label>
             </div>
           </div>
@@ -252,7 +273,7 @@ const statusChips = computed(() => [
 <route lang="yaml">
 meta:
   layout: settings
-  titleKey: The Dream State
+  titleKey: settings.pages.modules.memory-signals.title
   subtitleKey: settings.title
   stageTransition:
     name: slide

@@ -23,12 +23,11 @@ const frequencies = ref<number[]>([])
 const totalFreqHistory = ref<number[]>([])
 const isUpdatingFrequencies = ref(false)
 const spectrumScale = ref<'linear' | 'logarithm'>('logarithm')
-const spectrumScaleOptions = [
-  { label: 'Linear', value: 'linear' as const, icon: 'i-solar:chart-2-bold-duotone' },
-  { label: 'Logarithm', value: 'logarithm' as const, icon: 'i-solar:chart-bold-duotone' },
-]
-
 const { t } = useI18n()
+const spectrumScaleOptions = computed(() => [
+  { label: t('settings.pages.modules.beat_sync.sections.beat_visualizer.scale.linear'), value: 'linear' as const, icon: 'i-solar:chart-2-bold-duotone' },
+  { label: t('settings.pages.modules.beat_sync.sections.beat_visualizer.scale.logarithm'), value: 'logarithm' as const, icon: 'i-solar:chart-bold-duotone' },
+])
 
 const beatsHistory = ref<Array<{
   id: string
@@ -184,10 +183,10 @@ onUnmounted(() => {
           type="warning"
         >
           <template #title>
-            No audio detected
+            {{ t('settings.pages.modules.beat_sync.sections.audio_source.errors.no_audio.title') }}
           </template>
           <template #content>
-            Please make sure that the correct permissions are granted and the audio source is playing sound.
+            {{ t('settings.pages.modules.beat_sync.sections.audio_source.errors.no_audio.description') }}
           </template>
         </Alert>
 
@@ -203,7 +202,7 @@ onUnmounted(() => {
             </div>
 
             <button
-              title="Reset settings"
+              :title="t('settings.pages.modules.beat_sync.sections.parameters.actions.reset')"
               flex items-center justify-center rounded-full p-2
               transition="all duration-250 ease-in-out"
               text="neutral-500 dark:neutral-400"

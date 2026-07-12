@@ -12,6 +12,59 @@ const sourceRoots = [
   'packages/stage-layouts/src',
   'packages/stage-ui/src',
 ]
+const forbiddenEnglishByFile: Record<string, string[]> = {
+  'packages/stage-pages/src/pages/settings/modules/speech.vue': [
+    'Add Provider',
+    'No Speech Providers Configured',
+    'Customize how your AI assistant speaks',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/vision.vue': [
+    'Not Configured',
+    'No Vision Providers Configured',
+    'Search models...',
+    'Direct Response',
+    'Forward to LLM',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/hearing.vue': [
+    'No Providers Configured',
+    'Click here to set up your Transcription providers',
+    'Voice Activity',
+    'Last 2 seconds',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/memory-short-term.vue': [
+    'Active Character',
+    'Window Size',
+    'Rebuild From History',
+    'Context Strategy',
+    'Dream State Synthesis',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/memory-long-term.vue': [
+    'Character Filter',
+    'Search Archive',
+    'Archive Purpose',
+    'Operational Rules',
+    'Identity Anchors',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/memory-signals.vue': [
+    'The Dream State',
+    'Enable Dream State',
+    'Journaling Threshold',
+    'Strict AFK Gating',
+  ],
+  'packages/stage-pages/src/pages/settings/data/index.vue': [
+    'Backup Provider:',
+    'Last Backup:',
+    'Nuke Selected',
+    'Restore Selected',
+    'Confirm Restore',
+  ],
+  'packages/stage-pages/src/pages/v2/settings/providers.vue': [
+    'Search configured...',
+    'Customize options',
+    'Search supported providers...',
+    'No providers',
+  ],
+}
 
 const excludedPath = /[\\/]devtools[\\/]|[\\/]dist[\\/]|[\\/]stories[\\/]|\.test\.ts$|\.story\.vue$/
 const deferredEnglishCatalogPrefixes = [
@@ -131,6 +184,149 @@ function interpolationVariables(value: unknown) {
     return []
   return [...value.matchAll(/\{([^{}]+)\}/g)].map(match => match[1]).sort()
 }
+
+function stripSourceComments(source: string) {
+  const blankComment = (comment: string) => comment.replace(/[^\r\n]/g, ' ')
+  const stripHtmlComments = (content: string) => content.replace(/<!--[\s\S]*?-->/g, blankComment)
+  const stripJavaScriptComments = (content: string) => {
+    const result = [...content]
+    let quote: '\'' | '"' | '`' | undefined
+    let escaped = false
+
+    for (let index = 0; index < result.length; index++) {
+      const character = result[index]
+      const nextCharacter = result[index + 1]
+
+      if (quote) {
+        if (escaped)
+          escaped = false
+        else if (character === '\\')
+          escaped = true
+        else if (character === quote)
+          quote = undefined
+        continue
+      }
+
+      if (character === '\'' || character === '"' || character === '`') {
+        quote = character
+        continue
+      }
+
+      if (character === '/' && nextCharacter === '/') {
+        while (index < result.length && result[index] !== '\n' && result[index] !== '\r') {
+          result[index] = ' '
+          index++
+        }
+        index--
+      }
+      else if (character === '/' && nextCharacter === '*') {
+        result[index] = ' '
+        result[index + 1] = ' '
+        index += 2
+        while (index < result.length) {
+          if (result[index] === '*' && result[index + 1] === '/') {
+            result[index] = ' '
+            result[index + 1] = ' '
+            index++
+            break
+          }
+          if (result[index] !== '\n' && result[index] !== '\r')
+            result[index] = ' '
+          index++
+        }
+      }
+    }
+
+    return result.join('')
+  }
+
+  const scriptPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi
+  let result = ''
+  let lastIndex = 0
+  for (const match of source.matchAll(scriptPattern)) {
+    const matchIndex = match.index
+    const scriptBlock = match[0]
+    const scriptContent = match[1]
+    const contentOffset = scriptBlock.indexOf(scriptContent)
+
+    result += stripHtmlComments(source.slice(lastIndex, matchIndex))
+    result += scriptBlock.slice(0, contentOffset)
+    result += stripJavaScriptComments(scriptContent)
+    result += scriptBlock.slice(contentOffset + scriptContent.length)
+    lastIndex = matchIndex + scriptBlock.length
+  }
+
+  return result + stripHtmlComments(source.slice(lastIndex))
+}
+
+it('does not reintroduce audited English literals in production settings', () => {
+  const violations = Object.entries(forbiddenEnglishByFile).flatMap(([file, phrases]) => {
+    const source = stripSourceComments(readFileSync(resolve(workspaceRoot, file), 'utf8'))
+    return phrases.filter(phrase => source.includes(phrase)).map(phrase => `${file}: ${phrase}`)
+  })
+  expect(violations).toEqual([])
+})
+
+describe('production settings source audit', () => {
+  it('ignores forbidden phrases in Vue and JavaScript comments', () => {
+    const source = [
+      '<!-- Add Provider -->',
+      '<script setup lang="ts">',
+      '// Add Provider',
+      '/* Add Provider */',
+      '</script>',
+    ].join('\n')
+
+    expect(stripSourceComments(source)).not.toContain('Add Provider')
+  })
+
+  it('keeps forbidden phrases in template and script content', () => {
+    const sources = [
+      '<template><span>Add Provider</span></template>',
+      '<script setup lang="ts">const toastText = \'Add Provider\'</script>',
+      '<script setup lang="ts">const help = \'https://example.com/* Add Provider */\'</script>',
+    ]
+
+    for (const source of sources)
+      expect(stripSourceComments(source)).toContain('Add Provider')
+  })
+
+  it('requires localized accessible names for icon-only provider actions', () => {
+    const requirements = [
+      {
+        file: 'packages/stage-pages/src/pages/settings/modules/speech.vue',
+        key: 'settings.pages.providers.actions.delete-provider',
+        interpolation: '{ name:',
+      },
+      {
+        file: 'packages/stage-pages/src/pages/settings/modules/vision.vue',
+        key: 'settings.pages.providers.actions.delete-provider',
+        interpolation: '{ name:',
+      },
+      {
+        file: 'packages/stage-pages/src/pages/settings/modules/hearing.vue',
+        key: 'settings.pages.modules.hearing.actions.add-provider',
+      },
+    ]
+    const missing = requirements.flatMap(({ file, key, interpolation }) => {
+      const source = stripSourceComments(readFileSync(resolve(workspaceRoot, file), 'utf8'))
+      const ariaLabels = [...source.matchAll(/:aria-label="([^"]+)"/g)].map(match => match[1])
+      const hasBinding = ariaLabels.some(label => label.includes(key) && (!interpolation || label.includes(interpolation)))
+      return hasBinding ? [] : [`${file}: ${key}`]
+    })
+
+    expect(missing).toEqual([])
+  })
+
+  it('updates the default speech sample across locale changes without replacing edits', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/modules/speech.vue'), 'utf8')
+
+    expect(source).toContain('const translatedDefaultTestText = computed(')
+    expect(source).toContain('const testText = ref(translatedDefaultTestText.value)')
+    expect(source).toContain('watch(translatedDefaultTestText, (nextDefault, previousDefault) => {')
+    expect(source).toContain('if (testText.value === previousDefault)')
+  })
+})
 
 describe('static translation call matching', () => {
   it('accepts constant literal calls with whitespace before the parenthesis', () => {

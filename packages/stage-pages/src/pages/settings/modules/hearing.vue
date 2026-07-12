@@ -304,24 +304,24 @@ onStopRecord(async (recording) => {
 
   // Handle STT test transcription directly here
   if (isTestingSTT.value) {
-    testStatusMessage.value = 'Transcribing recording...'
+    testStatusMessage.value = t('settings.pages.modules.hearing.test.status.transcribing-recording')
     isTranscribing.value = true
 
     try {
       const result = await transcribeForRecording(recording)
       if (result) {
         testTranscriptionText.value = result
-        testStatusMessage.value = 'Transcription complete!'
+        testStatusMessage.value = t('settings.pages.modules.hearing.test.status.complete')
         console.info('STT test transcription result:', result)
       }
       else {
-        testTranscriptionError.value = transcriptionPipelineError.value || 'No transcription result returned from provider'
-        testStatusMessage.value = 'Transcription failed'
+        testTranscriptionError.value = transcriptionPipelineError.value || t('settings.pages.modules.hearing.test.errors.no-result')
+        testStatusMessage.value = t('settings.pages.modules.hearing.test.status.failed')
       }
     }
     catch (err) {
       testTranscriptionError.value = err instanceof Error ? err.message : String(err)
-      testStatusMessage.value = `Error: ${testTranscriptionError.value}`
+      testStatusMessage.value = t('settings.pages.modules.hearing.test.status.error', { error: testTranscriptionError.value })
       console.error('STT test transcription error:', err)
     }
     finally {
@@ -348,12 +348,12 @@ onStopRecord(async (recording) => {
 // Speech-to-Text test functions
 async function startSTTTest() {
   if (!activeTranscriptionProvider.value) {
-    testTranscriptionError.value = 'Please select a transcription provider first'
+    testTranscriptionError.value = t('settings.pages.modules.hearing.test.errors.select-provider')
     return
   }
 
   if (!selectedAudioInput.value) {
-    testTranscriptionError.value = 'Please select an audio input device first'
+    testTranscriptionError.value = t('settings.pages.modules.hearing.test.errors.select-device')
     return
   }
 
@@ -368,7 +368,7 @@ async function startSTTTest() {
   try {
     // Ensure audio stream is available
     if (!stream.value) {
-      testStatusMessage.value = 'Starting audio stream...'
+      testStatusMessage.value = t('settings.pages.modules.hearing.test.status.starting-stream')
       testStreamWasStarted.value = true
       await startStream()
 
@@ -393,14 +393,14 @@ async function startSTTTest() {
 
     // Check if provider supports streaming input
     if (shouldUseStreamInput.value && stream.value) {
-      testStatusMessage.value = 'Starting streaming transcription...'
+      testStatusMessage.value = t('settings.pages.modules.hearing.test.status.starting-streaming-transcription')
       console.info('Starting STT test with streaming input for provider:', activeTranscriptionProvider.value)
 
       await transcribeForMediaStream(stream.value, {
         onSentenceEnd: (delta) => {
           if (delta && delta.trim()) {
             testStreamingText.value += `${delta} `
-            testStatusMessage.value = 'Transcribing... (streaming)'
+            testStatusMessage.value = t('settings.pages.modules.hearing.test.status.transcribing-stream')
             isTranscribing.value = true
             console.info('STT test received sentence:', delta)
           }
@@ -409,23 +409,23 @@ async function startSTTTest() {
           if (text) {
             testTranscriptionText.value = text
             testStreamingText.value = ''
-            testStatusMessage.value = 'Transcription complete!'
+            testStatusMessage.value = t('settings.pages.modules.hearing.test.status.complete')
             isTranscribing.value = false
             console.info('STT test completed with text:', text)
           }
           else {
-            testStatusMessage.value = 'Waiting for speech...'
+            testStatusMessage.value = t('settings.pages.modules.hearing.test.status.waiting-for-speech')
             isTranscribing.value = false
           }
         },
       })
 
-      testStatusMessage.value = 'Listening for speech... (streaming mode active)'
+      testStatusMessage.value = t('settings.pages.modules.hearing.test.status.listening-stream')
       isTranscribing.value = false // Not actively transcribing yet, just listening
     }
     else {
       // Fallback to recording-based transcription
-      testStatusMessage.value = 'Recording audio for transcription... (3 seconds)'
+      testStatusMessage.value = t('settings.pages.modules.hearing.test.status.recording')
       console.info('Starting STT test with recording-based transcription for provider:', activeTranscriptionProvider.value)
 
       startRecord()
@@ -433,13 +433,13 @@ async function startSTTTest() {
       // Wait a bit for recording to start, then stop it after a delay
       setTimeout(async () => {
         stopRecord()
-        testStatusMessage.value = 'Processing transcription...'
+        testStatusMessage.value = t('settings.pages.modules.hearing.test.status.processing')
       }, 3000) // Record for 3 seconds
     }
   }
   catch (err) {
     testTranscriptionError.value = err instanceof Error ? err.message : String(err)
-    testStatusMessage.value = `Error: ${testTranscriptionError.value}`
+    testStatusMessage.value = t('settings.pages.modules.hearing.test.status.error', { error: testTranscriptionError.value })
     isTranscribing.value = false
     isTestingSTT.value = false
     console.error('STT test error:', err)
@@ -449,7 +449,7 @@ async function startSTTTest() {
 async function stopSTTTest() {
   isTestingSTT.value = false
   isTranscribing.value = false
-  testStatusMessage.value = 'Stopped'
+  testStatusMessage.value = t('settings.pages.modules.hearing.test.status.stopped')
 
   try {
     // Stop streaming transcription if active
@@ -487,8 +487,8 @@ async function stopSTTTest() {
 watch(selectedAudioInput, async () => isMonitoring.value && await setupAudioMonitoring())
 
 function handleStreamStartError() {
-  testTranscriptionError.value = 'Failed to start audio stream. Please check microphone permissions.'
-  testStatusMessage.value = 'Error: Failed to start audio stream'
+  testTranscriptionError.value = t('settings.pages.modules.hearing.test.errors.stream-start')
+  testStatusMessage.value = t('settings.pages.modules.hearing.test.status.stream-start-error')
   isTranscribing.value = false
   isTestingSTT.value = false
   testStreamWasStarted.value = false
@@ -581,13 +581,14 @@ onUnmounted(() => {
                 v-model="activeTranscriptionProvider"
                 name="provider"
                 :value="metadata.id"
-                :title="metadata.localizedName || 'Unknown'"
+                :title="metadata.localizedName || t('settings.pages.providers.unknown')"
                 :description="metadata.localizedDescription"
                 class="shrink-0 !w-80"
                 @click="trackProviderClick(metadata.id, 'hearing')"
               />
               <RouterLink
                 to="/settings/providers#transcription"
+                :aria-label="t('settings.pages.modules.hearing.actions.add-provider')"
                 border="2px solid"
                 class="border-neutral-100 bg-white dark:border-neutral-900 hover:border-primary-500/30 dark:bg-neutral-900/20 dark:hover:border-primary-400/30"
 
@@ -614,8 +615,8 @@ onUnmounted(() => {
               >
                 <div i-solar:warning-circle-line-duotone class="text-2xl text-amber-500 dark:text-amber-400" />
                 <div class="flex flex-col">
-                  <span class="font-medium">No Providers Configured</span>
-                  <span class="text-sm text-neutral-400 dark:text-neutral-500">Click here to set up your Transcription providers</span>
+                  <span class="font-medium">{{ t('settings.pages.modules.hearing.empty.title') }}</span>
+                  <span class="text-sm text-neutral-400 dark:text-neutral-500">{{ t('settings.pages.modules.hearing.empty.description') }}</span>
                 </div>
                 <div i-solar:arrow-right-line-duotone class="ml-auto text-xl text-neutral-400 dark:text-neutral-500" />
               </RouterLink>
@@ -635,7 +636,7 @@ onUnmounted(() => {
                   {{ t('settings.pages.modules.consciousness.sections.section.provider-model-selection.subtitle') }}
                 </span>
                 <span v-else>
-                  Enter the transcription model to use (e.g., 'whisper-1', 'gpt-4o-transcribe')
+                  {{ t('settings.pages.modules.hearing.model.manual-description') }}
                 </span>
                 <span v-if="activeTranscriptionModel" class="text-sm text-neutral-400 font-medium dark:text-neutral-400">{{ t('settings.pages.modules.consciousness.sections.section.provider-model-selection.current_model_label') }} {{ activeTranscriptionModel }}</span>
               </div>
@@ -891,19 +892,19 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Voice Activity Visualization (when VAD model is active) -->
+              <!-- VAD timeline visualization -->
               <TimeSeriesChart
                 v-if="useVADModel && loadedVAD"
                 :history="isSpeechHistory"
                 :current-value="isSpeechProb"
                 :threshold="useVADThreshold"
                 :is-active="isSpeech"
-                title="Voice Activity"
-                subtitle="Last 2 seconds"
-                active-label="Speaking"
-                active-legend-label="Voice detected"
-                inactive-legend-label="Silence"
-                threshold-label="Speech threshold"
+                :title="t('settings.pages.modules.hearing.voice-activity.title')"
+                :subtitle="t('settings.pages.modules.hearing.voice-activity.subtitle')"
+                :active-label="t('settings.pages.modules.hearing.voice-activity.speaking')"
+                :active-legend-label="t('settings.pages.modules.hearing.voice-activity.detected')"
+                :inactive-legend-label="t('settings.pages.modules.hearing.voice-activity.silence')"
+                :threshold-label="t('settings.pages.modules.hearing.voice-activity.threshold')"
               />
             </div>
           </div>

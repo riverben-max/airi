@@ -4,6 +4,7 @@ import { useAiriCardStore, useTextJournalStore } from '@proj-airi/stage-ui/store
 import { Button, FieldInput, FieldSelect } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 interface CharacterOption { value: string, label: string }
@@ -20,6 +21,7 @@ function formatTimestamp(timestamp: number) {
 
 const cardStore = useAiriCardStore()
 const textJournalStore = useTextJournalStore()
+const { t } = useI18n()
 
 const { cards, activeCardId } = storeToRefs(cardStore)
 const { entries, loading } = storeToRefs(textJournalStore)
@@ -29,6 +31,22 @@ const searchTerm = ref('')
 const isSearching = ref(false)
 const semanticResults = ref<(any & { kind?: string })[]>([])
 
+const vaultFeatures = computed(() => [
+  t('settings.pages.modules.memory-long-term.cards.vault.features.indexeddb'),
+  t('settings.pages.modules.memory-long-term.cards.vault.features.local-storage'),
+  t('settings.pages.modules.memory-long-term.cards.vault.features.anchors'),
+])
+const integrityFeatures = computed(() => [
+  t('settings.pages.modules.memory-long-term.cards.integrity.features.zero-erasure'),
+  t('settings.pages.modules.memory-long-term.cards.integrity.features.immutable-history'),
+  t('settings.pages.modules.memory-long-term.cards.integrity.features.stability'),
+])
+const recallFeatures = computed(() => [
+  t('settings.pages.modules.memory-long-term.cards.recall.features.character-scope'),
+  t('settings.pages.modules.memory-long-term.cards.recall.features.patterns'),
+  t('settings.pages.modules.memory-long-term.cards.recall.features.grounding'),
+])
+
 const characterOptions = computed<CharacterOption[]>(() => {
   const options = Array.from(cards.value.entries()).map(([id, card]) => ({
     value: id,
@@ -36,10 +54,14 @@ const characterOptions = computed<CharacterOption[]>(() => {
   }))
 
   return [
-    { value: 'all', label: 'All Characters' },
+    { value: 'all', label: t('settings.pages.modules.memory-long-term.all-characters') },
     ...options,
   ]
 })
+
+const selectedCharacterLabel = computed(() => selectedCharacter.value === 'all'
+  ? t('settings.pages.modules.memory-long-term.all-characters')
+  : characterOptions.value.find(option => option.value === selectedCharacter.value)?.label ?? t('settings.pages.modules.memory-long-term.unknown-character'))
 
 // Legacy keyword filter as a fallback
 const keywordFilteredEntries = computed(() => {
@@ -105,13 +127,13 @@ watch(searchTerm, (term) => {
 async function seedEntry() {
   try {
     const entry = await textJournalStore.seedActiveCharacterEntry()
-    toast.success(`Seeded journal entry for ${entry.characterName}.`)
+    toast.success(t('settings.pages.modules.memory-long-term.status.seeded', { character: entry.characterName }))
     if (selectedCharacter.value === 'all' && activeCardId.value)
       selectedCharacter.value = activeCardId.value
   }
   catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    toast.error(`Failed to seed journal entry: ${message}`)
+    toast.error(t('settings.pages.modules.memory-long-term.status.seed-failed', { error: message }))
   }
 }
 
@@ -142,10 +164,10 @@ watch(characterOptions, (options) => {
             <div class="i-solar:notebook-bookmark-bold-duotone" />
           </div>
           <h1 class="text-4xl text-neutral-800 font-bold tracking-tight dark:text-neutral-100">
-            The Sentinel's Journal
+            {{ t('settings.pages.modules.memory-long-term.header.title') }}
           </h1>
           <p class="max-w-2xl text-lg text-neutral-500 line-height-relaxed dark:text-neutral-400">
-            Durable episodic records. These are sacred narrative memories stored forever, accessible only when high-fidelity recall is required.
+            {{ t('settings.pages.modules.memory-long-term.header.description') }}
           </p>
         </div>
       </div>
@@ -158,13 +180,13 @@ watch(characterOptions, (options) => {
             <div class="i-solar:safe-square-bold-duotone" />
           </div>
           <h3 class="mb-1 text-sm text-neutral-700 font-bold dark:text-neutral-200">
-            The Sacred Vault
+            {{ t('settings.pages.modules.memory-long-term.cards.vault.title') }}
           </h3>
           <p class="mb-4 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-            Durable local archive intentionally separate from session context.
+            {{ t('settings.pages.modules.memory-long-term.cards.vault.description') }}
           </p>
           <ul class="flex flex-col gap-1.5 border-t border-neutral-100 pt-3 dark:border-neutral-700/50">
-            <li v-for="s in ['IndexedDB Powered', 'Durable Local Storage', 'Permanent Anchors']" :key="s" class="flex items-center gap-2 text-[10px] text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
+            <li v-for="s in vaultFeatures" :key="s" class="flex items-center gap-2 text-[10px] text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
               <div class="i-solar:check-circle-bold-duotone text-emerald-500" />
               {{ s }}
             </li>
@@ -177,13 +199,13 @@ watch(characterOptions, (options) => {
             <div class="i-solar:verified-check-bold-duotone" />
           </div>
           <h3 class="mb-1 text-sm text-neutral-700 font-bold dark:text-neutral-200">
-            Record Integrity
+            {{ t('settings.pages.modules.memory-long-term.cards.integrity.title') }}
           </h3>
           <p class="mb-4 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-            Append-only architecture ensures records remain uncorrupted over time.
+            {{ t('settings.pages.modules.memory-long-term.cards.integrity.description') }}
           </p>
           <ul class="flex flex-col gap-1.5 border-t border-neutral-100 pt-3 dark:border-neutral-700/50">
-            <li v-for="s in ['Zero Erasure Logic', 'Immutable History', 'Narrative Stability']" :key="s" class="flex items-center gap-2 text-[10px] text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
+            <li v-for="s in integrityFeatures" :key="s" class="flex items-center gap-2 text-[10px] text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
               <div class="i-solar:check-circle-bold-duotone text-teal-500" />
               {{ s }}
             </li>
@@ -196,13 +218,13 @@ watch(characterOptions, (options) => {
             <div class="i-solar:magnifer-bold-duotone" />
           </div>
           <h3 class="mb-1 text-sm text-neutral-700 font-bold dark:text-neutral-200">
-            Relational Recall
+            {{ t('settings.pages.modules.memory-long-term.cards.recall.title') }}
           </h3>
           <p class="mb-4 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-            Powers deep relational grounding through hybrid keyword & semantic recall.
+            {{ t('settings.pages.modules.memory-long-term.cards.recall.description') }}
           </p>
           <ul class="flex flex-col gap-1.5 border-t border-neutral-100 pt-3 dark:border-neutral-700/50">
-            <li v-for="s in ['Character Scoped', 'Pattern Discovery', 'Durable Grounding']" :key="s" class="flex items-center gap-2 text-[10px] text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
+            <li v-for="s in recallFeatures" :key="s" class="flex items-center gap-2 text-[10px] text-neutral-500 font-bold tracking-widest uppercase dark:text-neutral-400">
               <div class="i-solar:check-circle-bold-duotone text-primary-500" />
               {{ s }}
             </li>
@@ -216,19 +238,19 @@ watch(characterOptions, (options) => {
       <div class="grid gap-6 xl:grid-cols-[1fr_1.3fr_auto]">
         <FieldSelect
           v-model="selectedCharacter"
-          label="Character Filter"
-          description="Default retrieval stays scoped to the selected character."
+          :label="t('settings.pages.modules.memory-long-term.fields.character-filter.label')"
+          :description="t('settings.pages.modules.memory-long-term.fields.character-filter.description')"
           :options="characterOptions"
         />
         <FieldInput
           v-model="searchTerm"
-          label="Search Archive"
-          description="High-fidelity semantic retrieval across all memory layers (Raw, STMM, LTMM)."
-          placeholder="Filter memories..."
+          :label="t('settings.pages.modules.memory-long-term.fields.search.label')"
+          :description="t('settings.pages.modules.memory-long-term.fields.search.description')"
+          :placeholder="t('settings.pages.modules.memory-long-term.fields.search.placeholder')"
         />
         <div class="flex items-end">
           <Button
-            label="Seed Record"
+            :label="t('settings.pages.modules.memory-long-term.actions.seed-record')"
             icon="i-solar:pen-new-square-bold-duotone"
             variant="secondary"
             @click="seedEntry"
@@ -243,24 +265,24 @@ watch(characterOptions, (options) => {
         <div class="flex items-center justify-between px-2">
           <div>
             <h3 class="font-urbanist text-2xl text-neutral-800 font-bold dark:text-neutral-100">
-              The Sacred Records
+              {{ t('settings.pages.modules.memory-long-term.records.title') }}
             </h3>
             <p class="text-sm text-neutral-500 italic dark:text-neutral-400">
-              Episodic memories for <span class="text-neutral-700 font-bold dark:text-neutral-200">{{ selectedCharacter === 'all' ? 'All Characters' : characterOptions.find(o => o.value === selectedCharacter)?.label }}</span>.
+              {{ t('settings.pages.modules.memory-long-term.records.for-character', { character: selectedCharacterLabel }) }}
             </p>
           </div>
           <div class="border border-neutral-200 rounded-full bg-white px-4 py-1.5 text-xs text-neutral-600 font-bold shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-            {{ visibleEntries.length }} records stored
+            {{ t('settings.pages.modules.memory-long-term.records.stored', { count: visibleEntries.length }) }}
           </div>
         </div>
 
         <div v-if="loading || isSearching" class="border-2 border-neutral-200 rounded-[2.5rem] border-dashed bg-neutral-50/50 p-12 text-center text-neutral-400 dark:border-neutral-800 dark:bg-neutral-950/40">
           <div class="i-solar:loading-bold mx-auto mb-4 animate-spin text-4xl" />
-          {{ isSearching ? 'Probing memory layers...' : 'Opening the vault...' }}
+          {{ isSearching ? t('settings.pages.modules.memory-long-term.records.searching') : t('settings.pages.modules.memory-long-term.records.loading') }}
         </div>
 
         <div v-else-if="visibleEntries.length === 0" class="font-urbanist border-2 border-neutral-200 rounded-[2.5rem] border-dashed bg-neutral-50/50 p-12 text-center text-neutral-400 dark:border-neutral-800 dark:bg-neutral-950/40">
-          The records are silent. Use the <span class="text-emerald-600 font-bold dark:text-emerald-400">txt_journal</span> tool in chat to create a durable memory.
+          {{ t('settings.pages.modules.memory-long-term.records.empty') }}
         </div>
 
         <div v-else class="flex flex-col gap-6">
@@ -288,7 +310,7 @@ watch(characterOptions, (options) => {
                             : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400',
                   ]"
                 >
-                  Source: {{ (entry as any).kind === 'raw_turn' ? 'Chat' : (entry as any).kind === 'stmm_block' ? 'Recap' : 'Journal' }}
+                  {{ t('settings.pages.modules.memory-long-term.records.source.label') }} {{ (entry as any).kind === 'raw_turn' ? t('settings.pages.modules.memory-long-term.records.source.chat') : (entry as any).kind === 'stmm_block' ? t('settings.pages.modules.memory-long-term.records.source.recap') : t('settings.pages.modules.memory-long-term.records.source.journal') }}
                 </div>
               </div>
               <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">
@@ -316,27 +338,27 @@ watch(characterOptions, (options) => {
         <div class="sticky top-6">
           <div class="border border-neutral-200 rounded-[2.5rem] bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
             <h3 class="font-urbanist mb-4 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-              Episodic Governance
+              {{ t('settings.pages.modules.memory-long-term.governance.title') }}
             </h3>
 
             <div class="flex flex-col gap-6">
               <div class="border border-neutral-100 rounded-2xl bg-neutral-50/70 p-5 dark:border-neutral-800 dark:bg-neutral-950/40">
-                <span class="mb-2 block text-[10px] text-neutral-500 font-bold tracking-widest uppercase">Archive Purpose</span>
+                <span class="mb-2 block text-[10px] text-neutral-500 font-bold tracking-widest uppercase">{{ t('settings.pages.modules.memory-long-term.governance.archive-purpose.title') }}</span>
                 <p class="text-sm text-neutral-700 leading-relaxed dark:text-neutral-200">
-                  Episodic records are for durable lookup and high-fidelity recall, maintaining relationship integrity over long horizons.
+                  {{ t('settings.pages.modules.memory-long-term.governance.archive-purpose.description') }}
                 </p>
               </div>
 
               <div class="font-urbanist border border-neutral-100 rounded-2xl bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/60">
-                <span class="mb-3 block text-[10px] text-neutral-500 font-bold tracking-widest uppercase">Operational Rules</span>
+                <span class="mb-3 block text-[10px] text-neutral-500 font-bold tracking-widest uppercase">{{ t('settings.pages.modules.memory-long-term.governance.rules.title') }}</span>
                 <ul class="flex flex-col gap-4">
                   <li class="flex gap-4">
                     <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
                       <div class="i-solar:document-bold-duotone" />
                     </div>
                     <div class="flex flex-col">
-                      <span class="font-urbanist text-sm text-neutral-700 font-bold dark:text-neutral-200">Manual Ingestion</span>
-                      <span class="text-xs text-neutral-500 dark:text-neutral-400">Created explicitly by the character via the "txt_journal" tool.</span>
+                      <span class="font-urbanist text-sm text-neutral-700 font-bold dark:text-neutral-200">{{ t('settings.pages.modules.memory-long-term.governance.rules.manual.title') }}</span>
+                      <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('settings.pages.modules.memory-long-term.governance.rules.manual.description') }}</span>
                     </div>
                   </li>
                   <li class="flex gap-4">
@@ -344,8 +366,8 @@ watch(characterOptions, (options) => {
                       <div class="i-solar:database-bold-duotone" />
                     </div>
                     <div class="flex flex-col">
-                      <span class="font-urbanist text-sm text-neutral-700 font-bold dark:text-neutral-200">Local Persistence</span>
-                      <span class="text-xs text-neutral-500 dark:text-neutral-400">Stored forever in the secure character-scoped vault.</span>
+                      <span class="font-urbanist text-sm text-neutral-700 font-bold dark:text-neutral-200">{{ t('settings.pages.modules.memory-long-term.governance.rules.persistence.title') }}</span>
+                      <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('settings.pages.modules.memory-long-term.governance.rules.persistence.description') }}</span>
                     </div>
                   </li>
                   <li class="flex gap-4">
@@ -353,8 +375,8 @@ watch(characterOptions, (options) => {
                       <div class="i-solar:shield-network-bold-duotone" />
                     </div>
                     <div class="flex flex-col">
-                      <span class="font-urbanist text-sm text-neutral-700 font-bold dark:text-neutral-200">Identity Anchors</span>
-                      <span class="text-xs text-neutral-500 dark:text-neutral-400">Prevents personality drift during high-complexity dialogues.</span>
+                      <span class="font-urbanist text-sm text-neutral-700 font-bold dark:text-neutral-200">{{ t('settings.pages.modules.memory-long-term.governance.rules.identity.title') }}</span>
+                      <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('settings.pages.modules.memory-long-term.governance.rules.identity.description') }}</span>
                     </div>
                   </li>
                 </ul>
