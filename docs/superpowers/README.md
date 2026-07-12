@@ -22,6 +22,7 @@
 | 2026-07-11 | 头像菜单 Flux 入口与本地化 | `done` | [Design](specs/2026-07-11-header-avatar-flux-menu-localization-design.md) | [Plan](plans/2026-07-11-header-avatar-flux-menu-localization.md) | [`791812663`](https://github.com/riverben-max/airi/commit/79181266366741c65c3dcf9d1999259faae72782) |
 | 2026-07-11 | 管理后台上游模型发现 | `done` | [Design](specs/2026-07-11-admin-upstream-model-discovery-design.md) | [Plan](plans/2026-07-11-admin-upstream-model-discovery.md) | [`141b3eee5`](https://github.com/riverben-max/airi/commit/141b3eee5) |
 | 2026-07-12 | Web 语音输入设备刷新 | `done` | [Design](specs/2026-07-12-web-voice-input-device-refresh-design.md) | [Plan](plans/2026-07-12-web-voice-input-device-refresh.md) | [`cfee37470`](https://github.com/riverben-max/airi/commit/cfee374701230c901bd98307cf6ee0550ba21723) |
+| 2026-07-13 | Web 用户界面中文化 | `planned` | [Design](specs/2026-07-13-web-interface-localization-design.md) | - | - |
 
 ## 维护规则
 
