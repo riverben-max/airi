@@ -91,6 +91,8 @@ export const useAudioContext = defineStore('audio-context', () => {
 export function useAudioDevice(requestPermission: boolean = false) {
   const devices = useDevicesList({ constraints: { audio: true }, requestPermissions: requestPermission })
   const audioInputs = computed(() => devices.audioInputs.value)
+  let hasCompletedGrantedRefresh = false
+  let isApplyingConfirmedDevices = false
 
   const selectedAudioInput = ref<string>('')
 
@@ -137,9 +139,46 @@ export function useAudioDevice(requestPermission: boolean = false) {
     autoSwitch: true,
   })
 
+  async function applyConfirmedDevices(confirmedDevices: MediaDeviceInfo[]) {
+    isApplyingConfirmedDevices = true
+    try {
+      devices.devices.value = confirmedDevices
+      await nextTick()
+    }
+    finally {
+      isApplyingConfirmedDevices = false
+    }
+  }
+
+  async function refreshMissingSelection() {
+    try {
+      await applyConfirmedDevices(await navigator.mediaDevices.enumerateDevices())
+
+      const isSelectedAvailable = audioInputs.value.some(device => device.deviceId === selectedAudioInput.value)
+      if (audioInputs.value.length > 0 && !isSelectedAvailable)
+        selectedAudioInput.value = findBestDevice(audioInputs.value)
+    }
+    catch (error) {
+      console.error('Error refreshing audio devices:', error)
+    }
+  }
+
+  let missingSelectionRefresh: Promise<void> | undefined
+  function confirmMissingSelection() {
+    if (!missingSelectionRefresh) {
+      missingSelectionRefresh = refreshMissingSelection().finally(() => {
+        missingSelectionRefresh = undefined
+      })
+    }
+
+    return missingSelectionRefresh
+  }
+
   watch(audioInputs, (newInputs) => {
     const isCommunications = selectedAudioInputLabel.value.toLowerCase().includes('communications')
-    const needsBest = !selectedAudioInput.value || selectedAudioInput.value === 'default' || isCommunications
+    const needsBest = !selectedAudioInput.value
+      || selectedAudioInput.value === 'default'
+      || isCommunications
 
     if (needsBest && newInputs.length > 0) {
       const best = findBestDevice(newInputs)
@@ -148,26 +187,45 @@ export function useAudioDevice(requestPermission: boolean = false) {
         selectedAudioInput.value = best
       }
     }
+
+    if (needsBest)
+      return
+
+    const isSelectedMissing = !newInputs.some(device => device.deviceId === selectedAudioInput.value)
+    if (hasCompletedGrantedRefresh && !isApplyingConfirmedDevices && isSelectedMissing)
+      void confirmMissingSelection()
   }, { immediate: true })
 
-  async function askPermission() {
+  async function refreshPermission() {
     try {
       const granted = await devices.ensurePermissions()
       if (!granted)
         return false
 
-      devices.devices.value = await navigator.mediaDevices.enumerateDevices()
-      await nextTick()
+      await applyConfirmedDevices(await navigator.mediaDevices.enumerateDevices())
 
-      if (audioInputs.value.length > 0 && !selectedAudioInput.value)
+      const isSelectedAvailable = audioInputs.value.some(device => device.deviceId === selectedAudioInput.value)
+      if (audioInputs.value.length > 0 && !isSelectedAvailable)
         selectedAudioInput.value = findBestDevice(audioInputs.value)
 
+      hasCompletedGrantedRefresh = true
       return true
     }
     catch (error) {
       console.error('Error ensuring permissions:', error)
       throw error
     }
+  }
+
+  let permissionRequest: Promise<boolean> | undefined
+  function askPermission() {
+    if (!permissionRequest) {
+      permissionRequest = refreshPermission().finally(() => {
+        permissionRequest = undefined
+      })
+    }
+
+    return permissionRequest
   }
 
   return {
