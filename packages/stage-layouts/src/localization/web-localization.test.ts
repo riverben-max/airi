@@ -18,6 +18,63 @@ const deferredEnglishCatalogPrefixes = [
   // Task 5 restores the server auth locale sources and adds them to the web catalog.
   'server.auth.',
 ]
+const allowedIdenticalEnglishMessages = new Map<string, string>([
+  ['settings.live2d.scale-and-position.x', 'X'],
+  ['settings.live2d.scale-and-position.y', 'Y'],
+  ['settings.pages.admin.models.fields.id', 'ID'],
+  ['settings.pages.admin.officialGateway.columns.flux', 'Flux'],
+  ['settings.pages.admin.officialGateway.providers.openrouter', 'OpenRouter'],
+  ['settings.pages.admin.plans.columns.flux', 'Flux'],
+  ['settings.pages.admin.plans.fields.id', 'ID'],
+  ['settings.pages.admin.users.columns.flux', 'Flux'],
+  ['settings.pages.admin.users.fields.flux', 'Flux'],
+  ['settings.pages.connection.hf-token.placeholder', 'hf_...'],
+  ['settings.pages.flux.title', 'Flux'],
+  ['settings.pages.modules.hearing.sections.section.hotkey.options.caps', 'Caps Lock'],
+  ['settings.pages.modules.hearing.sections.section.hotkey.options.num', 'Num Lock'],
+  ['settings.pages.modules.hearing.sections.section.hotkey.options.scroll', 'Scroll Lock'],
+  ['settings.pages.modules.messaging-discord.title', 'Discord'],
+  ['settings.pages.modules.x.title', 'X / Twitter'],
+  ['settings.pages.providers.provider.302-ai.title', '302.AI'],
+  ['settings.pages.providers.provider.aihubmix.title', 'AIHubMix'],
+  ['settings.pages.providers.provider.amazon-bedrock.title', 'Amazon Bedrock'],
+  ['settings.pages.providers.provider.anthropic.title', 'Anthropic | Claude'],
+  ['settings.pages.providers.provider.azure-ai-foundry.title', 'Azure AI Foundry'],
+  ['settings.pages.providers.provider.cerebras.title', 'Cerebras'],
+  ['settings.pages.providers.provider.comet-api.title', 'Comet API'],
+  ['settings.pages.providers.provider.featherless.title', 'Featherless AI'],
+  ['settings.pages.providers.provider.fireworks.title', 'Fireworks.ai'],
+  ['settings.pages.providers.provider.google-generative-ai.title', 'Google Gemini'],
+  ['settings.pages.providers.provider.groq.title', 'Groq'],
+  ['settings.pages.providers.provider.lm-studio.title', 'LM Studio'],
+  ['settings.pages.providers.provider.minimax-global.title', 'MiniMax Global'],
+  ['settings.pages.providers.provider.minimax.title', 'MiniMax'],
+  ['settings.pages.providers.provider.mistral.title', 'Mistral'],
+  ['settings.pages.providers.provider.n1n.title', 'n1n'],
+  ['settings.pages.providers.provider.novita.title', 'Novita'],
+  ['settings.pages.providers.provider.nvidia.title', 'NVIDIA NIM'],
+  ['settings.pages.providers.provider.ollama.title', 'Ollama'],
+  ['settings.pages.providers.provider.openai.title', 'OpenAI'],
+  ['settings.pages.providers.provider.openrouter.title', 'OpenRouter'],
+  ['settings.pages.providers.provider.perplexity.title', 'Perplexity'],
+  ['settings.pages.providers.provider.together.title', 'Together.ai'],
+  ['settings.pages.providers.provider.xai.title', 'xAI'],
+  ['settings.pages.system.sections.section.developer.sections.section.markdown-stress.title', 'Markdown Stress'],
+  ['stage.chat.message.character-name.airi', 'AIRI'],
+  ['tamagotchi.settings.devtools.pages.context-flow.title', 'Context Flow'],
+])
+
+function canRemainEnglish(key: string, value: unknown) {
+  return typeof value === 'string'
+    && allowedIdenticalEnglishMessages.get(key) === value
+}
+
+function isUntranslatedEnglishMessage(key: string, englishValue: unknown, chineseValue: unknown) {
+  return typeof englishValue === 'string'
+    && englishValue === chineseValue
+    && /[A-Z]/i.test(englishValue)
+    && !canRemainEnglish(key, englishValue)
+}
 
 function listSourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -93,11 +150,43 @@ describe('static translation call matching', () => {
   it('does not match unrelated methods or interpolated templates', () => {
     const source = [
       'translator.t(\'settings.unrelated-method\')',
-      't(`settings.dynamic.${suffix}`)',
+      `t(\`settings.dynamic.\${suffix}\`)`,
       '$t(\'stage.valid\')',
     ].join('\n')
 
     expect(extractStaticTranslationKeys(source)).toEqual(['stage.valid'])
+  })
+})
+
+describe('identical English message exceptions', () => {
+  it('allows a known provider title with its exact value', () => {
+    expect(canRemainEnglish('settings.pages.providers.provider.openai.title', 'OpenAI')).toBe(true)
+  })
+
+  it('rejects ordinary prose under a known provider title key', () => {
+    expect(canRemainEnglish('settings.pages.providers.provider.openai.title', 'Configure Provider')).toBe(false)
+  })
+
+  it('allows a known technical value under an exact flux key', () => {
+    expect(canRemainEnglish('settings.pages.admin.officialGateway.columns.flux', 'Flux')).toBe(true)
+  })
+
+  it('rejects ordinary prose under a known flux key', () => {
+    expect(canRemainEnglish('settings.pages.admin.officialGateway.columns.flux', 'Configure Flux')).toBe(false)
+  })
+
+  it('detects ordinary one- and two-letter English messages', () => {
+    for (const value of ['Go', 'No', 'On'])
+      expect(isUntranslatedEnglishMessage('settings.test.action', value, value)).toBe(true)
+  })
+
+  it('allows exact technical X, Y, ID, and hf_... values', () => {
+    expect([
+      canRemainEnglish('settings.live2d.scale-and-position.x', 'X'),
+      canRemainEnglish('settings.live2d.scale-and-position.y', 'Y'),
+      canRemainEnglish('settings.pages.admin.models.fields.id', 'ID'),
+      canRemainEnglish('settings.pages.connection.hf-token.placeholder', 'hf_...'),
+    ]).toEqual([true, true, true, true])
   })
 })
 
@@ -123,5 +212,12 @@ describe('simplified Chinese web localization', () => {
       .filter(key => key in chinese)
       .filter(key => interpolationVariables(english[key]).join('|') !== interpolationVariables(chinese[key]).join('|'))
     expect(mismatches).toEqual([])
+  })
+
+  it('does not leave referenced user-facing sentences identical to English', () => {
+    const untranslated = referencedKeys.filter(key => (
+      isUntranslatedEnglishMessage(key, english[key], chinese[key])
+    ))
+    expect(untranslated).toEqual([])
   })
 })
