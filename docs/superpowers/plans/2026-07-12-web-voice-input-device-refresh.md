@@ -16,7 +16,7 @@
 - Create: `packages/stage-ui/src/stores/audio.test.ts`
 - Modify: `packages/stage-ui/src/stores/audio.ts:91-166`
 
-- [ ] **Step 1: Write the failing granted-permission refresh test**
+- [x] **Step 1: Write the failing granted-permission refresh test**
 
 Create `packages/stage-ui/src/stores/audio.test.ts` with a complete VueUse test double. The test starts with an empty reactive device list, resolves permission as granted, returns one microphone from the browser enumeration API, and asserts on the composable's observable device and selection state:
 
@@ -97,19 +97,19 @@ describe('useAudioDevice', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify RED**
+- [x] **Step 2: Run the test to verify RED**
 
 Run from `D:\Tools\airi`:
 
 ```powershell
 $nodeHome = 'D:\Tools\airi\.node24.local\node-v24.13.0-win-x64'
 $env:Path = "$nodeHome;$env:Path"
-& "$nodeHome\corepack.cmd" pnpm exec vitest run --config packages/stage-ui/vitest.config.ts packages/stage-ui/src/stores/audio.test.ts
+& "$nodeHome\corepack.cmd" pnpm exec vitest run --root packages/stage-ui src/stores/audio.test.ts
 ```
 
 Expected: FAIL because `askPermission()` does not call the browser's `enumerateDevices()` and `audioInputs` stays empty.
 
-- [ ] **Step 3: Implement the minimal refresh**
+- [x] **Step 3: Implement the minimal refresh**
 
 In `useAudioDevice()`, retain the full `useDevicesList()` return so its `devices` ref can be updated. Replace `askPermission()` with an async implementation that only refreshes after a granted result:
 
@@ -137,13 +137,13 @@ async function askPermission() {
 
 Do not change `findBestDevice()`, `deviceConstraints`, `startStream()`, or iOS playback behavior.
 
-- [ ] **Step 4: Run the test to verify GREEN**
+- [x] **Step 4: Run the test to verify GREEN**
 
 Run the Task 1 Vitest command again.
 
 Expected: `1 passed`; `enumerateDevices()` is called once and the selected input is `microphone-array`.
 
-- [ ] **Step 5: Commit the focused change**
+- [x] **Step 5: Commit the focused change**
 
 ```powershell
 git add -- 'packages/stage-ui/src/stores/audio.ts' 'packages/stage-ui/src/stores/audio.test.ts'
@@ -156,7 +156,7 @@ git commit -m "fix(stage-ui): refresh granted microphone devices"
 - Modify: `packages/stage-layouts/src/components/Widgets/ChatArea.test.ts`
 - Modify: `packages/stage-layouts/src/components/Widgets/ChatArea.vue:49-50,169-171`
 
-- [ ] **Step 1: Write the failing desktop popover test**
+- [x] **Step 1: Write the failing desktop popover test**
 
 Extend the existing source contract test with:
 
@@ -170,17 +170,17 @@ it('requests microphone permission when the hearing popover opens', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify RED**
+- [x] **Step 2: Run the test to verify RED**
 
 ```powershell
 $nodeHome = 'D:\Tools\airi\.node24.local\node-v24.13.0-win-x64'
 $env:Path = "$nodeHome;$env:Path"
-& "$nodeHome\corepack.cmd" pnpm exec vitest run --config packages/stage-layouts/vitest.config.ts packages/stage-layouts/src/components/Widgets/ChatArea.test.ts
+& "$nodeHome\corepack.cmd" pnpm exec vitest run --root packages/stage-layouts src/components/Widgets/ChatArea.test.ts
 ```
 
 Expected: the existing portal test passes and the new test fails because `ChatArea.vue` has no settings store variable or popover-open permission watcher.
 
-- [ ] **Step 3: Implement the desktop watcher**
+- [x] **Step 3: Implement the desktop watcher**
 
 Use one Pinia store instance for both refs and actions:
 
@@ -207,37 +207,78 @@ watch(hearingPopoverOpen, async (value) => {
 
 This catch is required so a failed enumeration does not become an unhandled watcher rejection. Do not add new visible text or change the mobile dialog.
 
-- [ ] **Step 4: Run the test to verify GREEN**
+- [x] **Step 4: Run the test to verify GREEN**
 
 Run the Task 2 Vitest command again.
 
 Expected: `2 passed`.
 
-- [ ] **Step 5: Commit the focused change**
+- [x] **Step 5: Commit the focused change**
 
 ```powershell
 git add -- 'packages/stage-layouts/src/components/Widgets/ChatArea.vue' 'packages/stage-layouts/src/components/Widgets/ChatArea.test.ts'
 git commit -m "fix(web): refresh microphone devices from chat"
 ```
 
-### Task 3: Verify the integrated Web flow and close the plan
+### Task 3: Sync the refreshed microphone into the selector
+
+**Files:**
+- Create: `packages/stage-ui/src/stores/settings/audio-device.test.ts`
+- Modify: `packages/stage-ui/src/stores/settings/audio-device.ts:8-27`
+
+- [x] **Step 1: Write the failing settings-store synchronization test**
+
+Mock `useAudioDevice().askPermission()` so it selects `microphone-array` in the runtime ref, then assert that `useSettingsAudioDevice().askPermission()` exposes the same value through its persisted `selectedAudioInput` property.
+
+- [x] **Step 2: Run the test to verify RED**
+
+Run:
+
+```powershell
+& "$nodeHome\corepack.cmd" pnpm exec vitest run --root packages/stage-ui src/stores/settings/audio-device.test.ts
+```
+
+Expected and observed: FAIL because the persisted selector value remains an empty string.
+
+- [x] **Step 3: Implement the minimal reverse synchronization**
+
+Wrap the underlying permission action, copy a non-empty runtime selection to `selectedAudioInputPersist`, and return the original permission result. Do not alter stream startup or stale-device handling.
+
+- [x] **Step 4: Run the Stage UI audio tests to verify GREEN**
+
+Run:
+
+```powershell
+& "$nodeHome\corepack.cmd" pnpm exec vitest run --root packages/stage-ui src/stores/audio.test.ts src/stores/settings/audio-device.test.ts
+```
+
+Expected and observed: both test files pass with 27 tests.
+
+- [x] **Step 5: Commit the focused synchronization change**
+
+```powershell
+git add -- 'packages/stage-ui/src/stores/settings/audio-device.ts' 'packages/stage-ui/src/stores/settings/audio-device.test.ts'
+git commit -m "fix(stage-ui): persist refreshed microphone selection"
+```
+
+### Task 4: Verify the integrated Web flow and close the plan
 
 **Files:**
 - Modify: `docs/superpowers/README.md`
 - Modify: `docs/superpowers/plans/2026-07-12-web-voice-input-device-refresh.md`
 
-- [ ] **Step 1: Run both regression tests together**
+- [x] **Step 1: Run both regression tests together**
 
 ```powershell
 $nodeHome = 'D:\Tools\airi\.node24.local\node-v24.13.0-win-x64'
 $env:Path = "$nodeHome;$env:Path"
-& "$nodeHome\corepack.cmd" pnpm exec vitest run --config packages/stage-ui/vitest.config.ts packages/stage-ui/src/stores/audio.test.ts
-& "$nodeHome\corepack.cmd" pnpm exec vitest run --config packages/stage-layouts/vitest.config.ts packages/stage-layouts/src/components/Widgets/ChatArea.test.ts
+& "$nodeHome\corepack.cmd" pnpm exec vitest run --root packages/stage-ui src/stores/audio.test.ts src/stores/settings/audio-device.test.ts
+& "$nodeHome\corepack.cmd" pnpm exec vitest run --root packages/stage-layouts src/components/Widgets/ChatArea.test.ts
 ```
 
-Expected: both commands exit 0 with three total passing tests.
+Observed: both commands exit 0 with 29 total passing tests: 27 Stage UI audio-store tests and 2 ChatArea tests.
 
-- [ ] **Step 2: Run scoped type checks**
+- [x] **Step 2: Run scoped type checks**
 
 ```powershell
 & "$nodeHome\corepack.cmd" pnpm --filter '@proj-airi/stage-ui' typecheck
@@ -246,7 +287,7 @@ Expected: both commands exit 0 with three total passing tests.
 
 Expected: both commands exit 0 with no TypeScript errors.
 
-- [ ] **Step 3: Build the production Web app**
+- [x] **Step 3: Build the production Web app**
 
 ```powershell
 & "$nodeHome\corepack.cmd" pnpm --filter '@proj-airi/stage-web' build
@@ -254,7 +295,7 @@ Expected: both commands exit 0 with no TypeScript errors.
 
 Expected: Vite production build exits 0 and emits `apps/stage-web/dist`.
 
-- [ ] **Step 4: Verify in a desktop browser**
+- [x] **Step 4: Verify in a desktop browser**
 
 Start the existing Web dev server with Node 24 on an unused port, open it at a desktop viewport, and grant microphone permission. Verify:
 
@@ -265,9 +306,20 @@ Start the existing Web dev server with Node 24 on an unused port, open it at a d
 
 If the browser environment cannot expose a real microphone, use a Playwright Chromium session with microphone permission and a fake media device; report any limitation explicitly.
 
-- [ ] **Step 5: Mark documentation complete**
+Observed with desktop Playwright Chromium at `http://127.0.0.1:5175/`:
+
+1. Microphone permission transitioned to `granted`.
+2. Opening the hearing popover exposed four microphone options and removed `No options`.
+3. The selector chose `default` and persisted `settings/audio/input=default` in local storage.
+4. No application permission-refresh or device-enumeration error was reported.
+
+Windows still rejected `getUserMedia({ audio: true })` with `NotAllowedError: Permission denied by system`, including with Chromium fake-media flags and a generated WAV input. Live MediaStream, volume animation, and final speech-to-text insertion therefore could not be exercised in this automation environment; their permission, stream lifecycle, cancellation, recovery, and persisted-selection paths are covered by the 27 Stage UI tests.
+
+- [x] **Step 5: Mark documentation complete**
 
 Change the `Web 语音输入设备刷新` row in `docs/superpowers/README.md` from `planned` to `done`, add this plan link, and use `git rev-parse --short=9 HEAD` to record the latest implementation commit as evidence. Mark all completed checkboxes in this plan.
+
+Completed. Implementation commit: `cfee37470`.
 
 - [ ] **Step 6: Commit documentation closure**
 

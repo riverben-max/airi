@@ -21,7 +21,7 @@
 | 2026-07-11 | 返回用户会话失效自动登录 | `done` | [Design](specs/2026-07-11-returning-user-auth-redirect-design.md) | [Plan](plans/2026-07-11-returning-user-auth-redirect.md) | [`4956a8f9e`](https://github.com/riverben-max/airi/commit/4956a8f9e7e8cd76815a6679e56657a2ed4e5559) |
 | 2026-07-11 | 头像菜单 Flux 入口与本地化 | `done` | [Design](specs/2026-07-11-header-avatar-flux-menu-localization-design.md) | [Plan](plans/2026-07-11-header-avatar-flux-menu-localization.md) | [`791812663`](https://github.com/riverben-max/airi/commit/79181266366741c65c3dcf9d1999259faae72782) |
 | 2026-07-11 | 管理后台上游模型发现 | `done` | [Design](specs/2026-07-11-admin-upstream-model-discovery-design.md) | [Plan](plans/2026-07-11-admin-upstream-model-discovery.md) | [`141b3eee5`](https://github.com/riverben-max/airi/commit/141b3eee5) |
-| 2026-07-12 | Web 语音输入设备刷新 | `planned` | [Design](specs/2026-07-12-web-voice-input-device-refresh-design.md) | [Plan](plans/2026-07-12-web-voice-input-device-refresh.md) | - |
+| 2026-07-12 | Web 语音输入设备刷新 | `done` | [Design](specs/2026-07-12-web-voice-input-device-refresh-design.md) | [Plan](plans/2026-07-12-web-voice-input-device-refresh.md) | [`cfee37470`](https://github.com/riverben-max/airi/commit/cfee374701230c901bd98307cf6ee0550ba21723) |
 
 ## 维护规则
 
