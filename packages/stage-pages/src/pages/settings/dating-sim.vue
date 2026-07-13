@@ -78,7 +78,7 @@ function clearTest() {
 <template>
   <div :class="['flex flex-col gap-6', 'mx-auto max-w-2xl', 'p-4 pb-20']">
     <Section
-      title="Dating Sim Preferences"
+      title="恋爱模拟偏好设置"
       icon="i-solar:heart-bold-duotone"
       :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     >
@@ -86,10 +86,10 @@ function clearTest() {
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-lg font-medium">
-              Enable Dating Sim Overlay
+              启用恋爱模拟浮层
             </h3>
             <p class="text-sm text-neutral-500">
-              Activates the zero-window immersive UI for choices and subtitles.
+              启用用于选项和字幕的沉浸式无窗口界面。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -101,22 +101,22 @@ function clearTest() {
         <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div>
             <h3 class="font-medium">
-              Test Overlay
+              测试浮层
             </h3>
             <p class="text-sm text-neutral-500">
-              Injects mock choices and subtitles into the stage.
+              向舞台注入模拟选项和字幕。
             </p>
           </div>
           <div class="flex gap-2">
             <Button variant="secondary" @click="clearTest">
-              Clear
+              清除
             </Button>
             <Button variant="secondary" :disabled="isGenerating" @click="testLiveGeneration">
-              <span v-if="isGenerating">Generating...</span>
-              <span v-else>Live Generate AI Topics</span>
+              <span v-if="isGenerating">正在生成...</span>
+              <span v-else>实时生成 AI 话题</span>
             </Button>
             <Button variant="primary" @click="testDatingSim">
-              Inject Test
+              注入测试内容
             </Button>
           </div>
         </div>
@@ -124,7 +124,7 @@ function clearTest() {
     </Section>
 
     <Section
-      title="Universal Features"
+      title="通用功能"
       icon="i-solar:settings-bold-duotone"
       :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     >
@@ -132,10 +132,10 @@ function clearTest() {
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-medium">
-              Branching Choice Overlay
+              分支选项浮层
             </h3>
             <p class="text-sm text-neutral-500">
-              Render dynamic dialogue choices from the DSL store.
+              从 DSL 存储中渲染动态对话选项。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -147,10 +147,10 @@ function clearTest() {
         <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div>
             <h3 class="font-medium">
-              Inline Captions Overlay
+              内嵌字幕浮层
             </h3>
             <p class="text-sm text-neutral-500">
-              Render character dialogue/subtitles directly overlaying the bottom screen.
+              将角色对话和字幕直接叠加显示在屏幕底部。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -162,10 +162,10 @@ function clearTest() {
         <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div>
             <h3 class="font-medium">
-              Lightning Rounds (Timed Choices)
+              闪电回合（限时选项）
             </h3>
             <p class="text-sm text-neutral-500">
-              Enable choice countdown timers to simulate high-pressure quick responses.
+              启用选项倒计时，模拟高压下的快速回应。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -178,14 +178,14 @@ function clearTest() {
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium">
-                Context Depth
+                上下文深度
               </h3>
               <p class="text-sm text-neutral-500">
-                Number of recent messages to include as context for generating suggestions/choices.
+                生成建议和选项时纳入上下文的最近消息数量。
               </p>
             </div>
             <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
-              {{ datingSimStore.settings.contextDepth }} messages
+              {{ datingSimStore.settings.contextDepth }} 条消息
             </span>
           </div>
           <input
@@ -202,10 +202,10 @@ function clearTest() {
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium">
-                Game Mode
+                游戏模式
               </h3>
               <p class="text-sm text-neutral-500">
-                Choose between sandbox dialogue assisting and goal-driven dating sessions.
+                在自由对话辅助和目标驱动的约会剧情之间选择。
               </p>
             </div>
             <select
@@ -213,10 +213,10 @@ function clearTest() {
               class="border border-neutral-300 rounded-lg bg-white px-3 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
             >
               <option value="open_ended">
-                Sandbox (Open-Ended)
+                自由模式（开放式）
               </option>
               <option value="goal_driven">
-                Date Session (Goal-Driven)
+                约会剧情（目标驱动）
               </option>
             </select>
           </div>
@@ -226,10 +226,10 @@ function clearTest() {
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium">
-                Scenery Image Spawn Route
+                场景图片呈现方式
               </h3>
               <p class="text-sm text-neutral-500">
-                Choose how story scenario concept arts are delivered to the interface.
+                选择剧情场景概念图呈现在界面中的方式。
               </p>
             </div>
             <select
@@ -237,16 +237,16 @@ function clearTest() {
               class="border border-neutral-300 rounded-lg bg-white px-3 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
             >
               <option value="background">
-                Stage Background (Clean Overlay)
+                舞台背景（简洁浮层）
               </option>
               <option value="widget">
-                Standalone Widget
+                独立组件
               </option>
               <option value="bg_widget">
-                Background & Widget (Default)
+                背景和组件（默认）
               </option>
               <option value="inherit">
-                Respect Autonomous Artistry settings
+                遵循自主创作设置
               </option>
             </select>
           </div>
@@ -255,10 +255,10 @@ function clearTest() {
         <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div>
             <h3 class="font-medium">
-              Show Choice Weights
+              显示选项权重
             </h3>
             <p class="text-sm text-neutral-500">
-              Display intimacy, tension, and AP costs directly on overlay choices (Debug Mode).
+              直接在浮层选项中显示亲密度、紧张度和行动点消耗（调试模式）。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -272,14 +272,14 @@ function clearTest() {
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-medium">
-                  Max Score Threshold
+                  最高分数阈值
                 </h3>
                 <p class="text-sm text-neutral-500">
-                  Target score required to resolve the date session.
+                  完成约会剧情所需达到的目标分数。
                 </p>
               </div>
               <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
-                {{ datingSimStore.settings.maxScore }} points
+                {{ datingSimStore.settings.maxScore }} 分
               </span>
             </div>
             <input
@@ -296,14 +296,14 @@ function clearTest() {
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-medium">
-                  Max Session Turns
+                  最大剧情回合数
                 </h3>
                 <p class="text-sm text-neutral-500">
-                  Turn/message limit constraint for the session.
+                  该剧情的回合和消息数量上限。
                 </p>
               </div>
               <span class="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-500 font-bold font-mono dark:bg-blue-400/10 dark:text-blue-400">
-                {{ datingSimStore.settings.maxTurns }} turns
+                {{ datingSimStore.settings.maxTurns }} 回合
               </span>
             </div>
             <input
@@ -320,7 +320,7 @@ function clearTest() {
     </Section>
 
     <Section
-      title="Live2D Exclusives"
+      title="Live2D 专属功能"
       icon="i-solar:crown-bold-duotone"
       :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     >
@@ -328,10 +328,10 @@ function clearTest() {
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-medium">
-              RPG Intimacy Gating
+              RPG 亲密度解锁
             </h3>
             <p class="text-sm text-neutral-500">
-              Affinity scores unlock secret voice lines, outfits, and responses.
+              亲密度分数可解锁隐藏语音、服装和回应。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -343,10 +343,10 @@ function clearTest() {
         <div class="flex items-center justify-between border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div>
             <h3 class="font-medium">
-              Delta Ticking Engine
+              增量计时引擎
             </h3>
             <p class="text-sm text-neutral-500">
-              Background timers for auto-ticks and character heartbeats.
+              用于自动计时和角色心跳的后台计时器。
             </p>
           </div>
           <label class="relative inline-flex cursor-pointer items-center">
@@ -358,7 +358,7 @@ function clearTest() {
     </Section>
 
     <Section
-      title="Character Metrics (Test Data)"
+      title="角色指标（测试数据）"
       icon="i-solar:graph-up-bold-duotone"
       :class="['rounded-2xl', 'bg-white/80 dark:bg-black/75', 'backdrop-blur-lg']"
     >
@@ -366,7 +366,7 @@ function clearTest() {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <h3 class="font-medium">
-              Intimacy
+              亲密度
             </h3>
             <span class="text-pink-500 font-bold">{{ datingSimStore.variables.Intimacy }}</span>
           </div>
@@ -376,7 +376,7 @@ function clearTest() {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <h3 class="font-medium">
-              Tension
+              紧张度
             </h3>
             <span class="text-yellow-500 font-bold">{{ datingSimStore.variables.Tension }}</span>
           </div>
@@ -386,7 +386,7 @@ function clearTest() {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <h3 class="font-medium">
-              Action Points
+              行动点
             </h3>
             <span class="text-blue-500 font-bold">{{ datingSimStore.variables.ActionPoints }}</span>
           </div>
@@ -396,7 +396,7 @@ function clearTest() {
         <div class="flex flex-col gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
           <div class="flex items-center justify-between">
             <h3 class="font-medium">
-              Positive Score
+              正向分数
             </h3>
             <span class="text-emerald-500 font-bold">{{ datingSimStore.variables.positiveScore }}</span>
           </div>
@@ -406,7 +406,7 @@ function clearTest() {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <h3 class="font-medium">
-              Negative Score
+              负向分数
             </h3>
             <span class="text-red-500 font-bold">{{ datingSimStore.variables.negativeScore }}</span>
           </div>
@@ -416,7 +416,7 @@ function clearTest() {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <h3 class="font-medium">
-              Turns Elapsed
+              已经过回合
             </h3>
             <span class="text-purple-500 font-bold">{{ datingSimStore.variables.turnsElapsed }}</span>
           </div>
@@ -445,7 +445,7 @@ function clearTest() {
 <route lang="yaml">
 meta:
   layout: settings
-  title: Dating Sim Preferences
+  title: 恋爱模拟偏好设置
   icon: i-solar:heart-bold-duotone
   settingsEntry: true
   order: 4

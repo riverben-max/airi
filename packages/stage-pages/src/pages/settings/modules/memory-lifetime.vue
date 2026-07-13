@@ -89,16 +89,16 @@ onMounted(() => loadData())
             终身记忆
           </h1>
           <p class="max-w-2xl text-lg text-neutral-500 line-height-relaxed dark:text-neutral-400">
-            The long-term memory of the relationship. It keeps the bond stable across resets by merging daily changes into a permanent identity.
+            关系的长期记忆。它会将每日变化沉淀为持久身份，让关系在重置后依然稳定。
           </p>
         </div>
 
         <div v-if="isProvisioned" class="flex flex-col items-end gap-2">
           <div class="flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs text-emerald-700 font-bold dark:text-emerald-400">
             <div class="i-solar:check-circle-bold-duotone text-base" />
-            Character Subscribed
+            角色已订阅
           </div>
-          <Button label="Change Character" icon="i-solar:users-group-two-rounded-bold-duotone" variant="secondary" />
+          <Button label="更换角色" icon="i-solar:users-group-two-rounded-bold-duotone" variant="secondary" />
         </div>
       </div>
 
@@ -121,7 +121,7 @@ onMounted(() => loadData())
         <div class="i-solar:link-break-bold-duotone" />
       </div>
       <h2 class="mb-2 text-3xl text-neutral-800 font-bold dark:text-neutral-100">
-        Permanent Identity Offline
+        永久身份未启用
       </h2>
       <p class="mx-auto mb-8 max-w-lg text-neutral-500 dark:text-neutral-400">
         <span class="text-neutral-700 font-bold dark:text-neutral-200">{{ activeCard?.name || '当前角色' }}</span> 尚未启用终身记忆。启用后，系统会将每日对话沉淀为长期角色记忆。
@@ -138,13 +138,13 @@ onMounted(() => loadData())
             <div class="i-solar:shield-user-bold-duotone" />
           </div>
           <h3 class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-            The Core Bond
+            核心羁绊
           </h3>
           <p class="mb-6 text-sm text-neutral-500 italic dark:text-neutral-400">
-            Stable personality baseline protected against session-reset erasure.
+            稳定的人格基线，不会因会话重置而消失。
           </p>
           <ul class="flex flex-col gap-3">
-            <li v-for="item in ['Stable Identity Benchmark', 'Cross-Session Continuity', 'Durable Motif Tracking']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 font-medium dark:text-neutral-300">
+            <li v-for="item in ['稳定身份基准', '跨会话连续性', '持久主题追踪']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 font-medium dark:text-neutral-300">
               <div class="i-solar:check-circle-bold-duotone text-amber-500" />
               {{ item }}
             </li>
@@ -156,10 +156,10 @@ onMounted(() => loadData())
             <div class="i-solar:history-bold-duotone" />
           </div>
           <h3 class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-            Daily Updates
+            每日更新
           </h3>
           <p class="mb-6 text-sm text-neutral-500 italic dark:text-neutral-400">
-            Piggybacks on the 24H STMM cycle to integrate meaningful session shifts.
+            借助 24 小时 STMM 周期整合有意义的会话变化。
           </p>
           <ul class="flex flex-col gap-3">
             <li v-for="item in ['增量记忆整合', '短期记忆周期衔接', '自动处理记忆冲突']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 font-medium dark:text-neutral-300">
@@ -174,10 +174,10 @@ onMounted(() => loadData())
             <div class="i-solar:lock-bold-duotone" />
           </div>
           <h3 class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-            Stability Guard
+            稳定性守护
           </h3>
           <p class="mb-6 text-sm text-neutral-500 italic dark:text-neutral-400">
-            Monitors for erratic identity drift and ensures long-term bond integrity.
+            监控异常的身份漂移，确保长期羁绊完整。
           </p>
           <ul class="flex flex-col gap-3">
             <li v-for="item in ['关系完整性监控', '人格特征保护', '持久历史档案']" :key="item" class="flex items-center gap-3 text-sm text-neutral-700 font-medium dark:text-neutral-300">
@@ -201,7 +201,7 @@ onMounted(() => loadData())
                   核心记忆线索
                 </h2>
                 <p class="text-sm text-neutral-500 italic dark:text-neutral-400">
-                  This is the distilled 1k entry AIRI reloads from.
+                  这是 AIRI 重新加载时使用的 1k 提炼记忆。
                 </p>
               </div>
             </div>
@@ -220,14 +220,14 @@ onMounted(() => loadData())
             <div class="flex items-center gap-6">
               <div class="flex flex-col">
                 <span class="text-[10px] text-neutral-500 tracking-tighter uppercase">提炼后的记忆档案</span>
-                <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">~{{ artifactTokens1k }} Tokens</span>
+                <span class="text-sm text-neutral-800 font-bold dark:text-neutral-200">约 {{ artifactTokens1k }} Token</span>
               </div>
               <div class="h-8 w-px bg-neutral-200 dark:bg-neutral-800" />
               <button
                 class="group flex flex-col text-left transition-colors hover:text-primary-500"
                 @click="showSourceModal = true"
               >
-                <span class="text-[10px] text-neutral-500 tracking-tighter uppercase group-hover:text-primary-400">Source Archive ({{ Math.round(artifactTokens7k / 1000) }}k)</span>
+                <span class="text-[10px] text-neutral-500 tracking-tighter uppercase group-hover:text-primary-400">来源档案（{{ Math.round(artifactTokens7k / 1000) }}k）</span>
                 <span class="text-sm text-neutral-800 font-bold underline decoration-dotted dark:text-neutral-200 group-hover:text-primary-500">
                   已浓缩 {{ activeCharacterArtifact.sourceManifest.rawTurnCount }} 个对话回合
                 </span>
@@ -251,8 +251,8 @@ onMounted(() => loadData())
             <div class="flex items-center gap-3 border border-neutral-200 rounded-2xl bg-neutral-50/50 px-8 py-6 dark:border-neutral-700 dark:bg-neutral-800/40">
               <input id="handoff" v-model="autoHandoff" type="checkbox" class="h-6 w-6 border-neutral-300 rounded text-amber-500">
               <label for="handoff" class="flex flex-col cursor-pointer">
-                <span class="text-base text-neutral-700 font-bold dark:text-neutral-200">Daily Update Handoff</span>
-                <span class="text-xs text-neutral-500 font-bold tracking-tighter uppercase">Your daily changes are merged into the thread at midnight</span>
+                <span class="text-base text-neutral-700 font-bold dark:text-neutral-200">每日更新交接</span>
+                <span class="text-xs text-neutral-500 font-bold tracking-tighter uppercase">每日变化会在午夜合并到记忆线索中</span>
               </label>
             </div>
           </div>
@@ -274,7 +274,7 @@ onMounted(() => loadData())
           <!-- 7k Source (Undistilled) -->
           <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs text-neutral-500 font-bold tracking-widest uppercase">Undistilled Source ({{ artifactTokens7k }} tokens)</span>
+              <span class="text-xs text-neutral-500 font-bold tracking-widest uppercase">未提炼来源（{{ artifactTokens7k }} Token）</span>
             </div>
             <div class="max-h-[500px] flex-1 overflow-y-auto border border-neutral-200 rounded-2xl bg-neutral-50 p-6 text-[13px] text-neutral-600 dark:border-neutral-800 dark:bg-black/20 dark:text-neutral-400">
               <MarkdownRenderer :content="activeCharacterArtifact.baseContent" />
@@ -284,7 +284,7 @@ onMounted(() => loadData())
           <!-- 1k Canonical (Distilled) -->
           <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs text-amber-600 font-bold tracking-widest uppercase">Distilled Essence ({{ artifactTokens1k }} tokens)</span>
+              <span class="text-xs text-amber-600 font-bold tracking-widest uppercase">提炼精华（{{ artifactTokens1k }} Token）</span>
             </div>
             <div class="max-h-[500px] flex-1 overflow-y-auto border border-amber-500/20 rounded-2xl bg-amber-500/5 p-6 text-[13px] text-neutral-800 dark:border-amber-500/10 dark:bg-amber-500/5 dark:text-neutral-200">
               <MarkdownRenderer :content="activeCharacterArtifact.distilledContent" />
@@ -294,7 +294,7 @@ onMounted(() => loadData())
 
         <footer class="mt-8 border-t border-neutral-100 pt-8 text-center dark:border-neutral-800">
           <p class="mx-auto max-w-xl text-xs text-neutral-500 italic dark:text-neutral-400">
-            The canonical thread is distilled from the source archive by deduping motifs and summarizing erratic session shifts into a stable identity baseline.
+            规范记忆线索由来源档案提炼而来：系统会去除重复主题，并将不稳定的会话变化总结为稳定的人格基线。
           </p>
         </footer>
       </div>
