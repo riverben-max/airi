@@ -28,6 +28,8 @@
 - 文本统一使用 UTF-8 无 BOM 和 LF。PowerShell 写文件使用 `-Encoding utf8NoBOM`；Python 使用 `encoding='utf-8'` 和 `newline='\n'`。
 - 前端生产构建使用项目专用 Node 24：`D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node.exe`。
 - pnpm 使用该 Node 目录内 Corepack 提供的 `10.32.1`，不要误用 Codex runtime 的全局 pnpm。
+- 构建前必须将 `D:\Tools\airi\.node24.local\node-v24.13.0-win-x64` 置于当前 PowerShell 的 `PATH` 首位；否则 pnpm 脚本的 `vite` shebang 会误用系统 Node 20。固定构建命令为：`$node24 = 'D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node.exe'`、`$corepack24 = 'D:\Tools\airi\.node24.local\node-v24.13.0-win-x64\node_modules\corepack\dist\corepack.js'`、`$env:PATH = 'D:\Tools\airi\.node24.local\node-v24.13.0-win-x64;' + $env:PATH`、`& $node24 $corepack24 pnpm --filter @proj-airi/stage-web build`。
+- 若本机 `vite`、`rollup` 或其他 pnpm 链接缺失，先以同一 Node 24/COREPACK 组合修复 `node_modules`；不要以系统 Node 或全局 pnpm 重装。非冻结安装可能重写 `pnpm-lock.yaml`，此类仅为本机恢复产生的锁文件改动不得提交。
 - 常用范围：`apps/stage-web` 是 Web 入口，`apps/server` 是 API，`apps/ui-server-auth` 是认证 UI，`packages/stage-ui`、`packages/stage-layouts` 和 `packages/stage-pages` 是主要前端包，翻译位于 `packages/i18n`。
 
 ## 生产部署安全
@@ -37,7 +39,8 @@
 - 服务器源码目录是 `/root/airi`，Web 静态目录是 `/www/wwwroot/airi-web`，认证 UI 位于 `/www/wwwroot/airi-web/ui`，备份放在 `/root/deploy-backups`。
 - 不要把服务器 IP、密钥、token、SMTP 密码或其他 secret 写入仓库和交付说明。
 - 部署前备份将被替换的内容。不要覆盖 `/root/airi/apps/server/.env` 和 `.env.local`；部署前后校验这两个文件的 SHA-256，确认没有变化。
-- 本地前端构建使用 Node 24；服务器 `airi-api` 固定使用 Node.js `22.20.0`。
+- 本地前端构建使用 Node 24；服务器 `airi-api` 固定使用 Node.js `22.20.0`，实际二进制为 `/www/server/nvm/versions/node/v22.20.0/bin/node`。`ssh airi-vps` 的默认 `node` 当前是 Node 18，不能用于判断或操作 API 运行时；用 `ss -ltnp | grep ':6112'` 定位进程，再检查 `/proc/<pid>/exe --version`。
+- 非交互 SSH shell 的 `PATH` 不包含 `pm2`。不要因 `pm2: command not found` 重启或重装服务；先通过端口 `6112`、`/proc` 进程路径和 API 响应检查服务。仅在已定位项目 PM2 可执行路径且用户授权时操作 `airi-api`。
 - PM2 只操作 `airi-api`。不要重启、删除或清理 `oai-reverse-proxy` 及其他服务。
 - `apps/stage-web/.env.production` 必须设置 `VITE_SERVER_URL=https://airi.aifamily.vip`，避免前端错误请求 `api.airi.build`。
 - 发布主站静态文件时必须保留 `/ui`，例如使用 `rsync --delete --exclude=/ui/***`；不要让主站同步删除认证 UI。
