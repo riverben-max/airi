@@ -7,66 +7,66 @@ const router = useRouter()
 const memorySections = [
   {
     id: 'ephemeral',
-    title: 'The Active Pulse',
-    subtitle: 'Short-Term Memory (STMM)',
-    description: 'Retains high-quality awareness and rich memories from the last few days—even after a session reset.',
+    title: '活跃脉冲',
+    subtitle: '短期记忆（STMM）',
+    description: '保留最近几天的高质量感知和丰富记忆，即使会话重置后也不会丢失。',
     icon: 'i-solar:alarm-bold-duotone',
     accent: 'from-cyan-500/20 to-sky-500/10',
     route: '/settings/modules/memory-short-term',
-    status: 'Active - 16 turns',
+    status: '活跃中 - 16 回合',
     bullets: [
-      'Preserve high quality situational awareness from recent days',
-      'Seamless character reload by clearing history while retaining context',
-      'Updates daily for active characters to maintain the current window',
-      'Powers intelligent context compaction as your conversation grows',
+      '保留最近几天的高质量情境感知',
+      '清除历史时保留上下文，实现角色无缝重新加载',
+      '每天为活跃角色更新，维持当前记忆窗口',
+      '随着对话增长，为智能上下文压缩提供支持',
     ],
   },
   {
     id: 'signals',
-    title: 'The Echoes',
-    subtitle: 'The Dream State (Chips)',
-    description: 'AIRI consolidates long conversations into interpretive tags and highlights while you\'re away.',
+    title: '回响',
+    subtitle: '梦境状态（记忆片段）',
+    description: '当你离开时，AIRI 会将长对话整理为可解读的标签和重点。',
     icon: 'i-solar:bolt-bold-duotone',
     accent: 'from-violet-500/20 to-indigo-500/10',
     route: '/settings/modules/memory-signals',
-    status: 'Idle-Gated',
+    status: '空闲时启用',
     bullets: [
-      'Generates flavor tags and mood highlights when the character is idle',
-      'Uses AFK gating so proactive runs do not interrupt active conversation',
-      'Distills highlights after the 1-hour session timeout threshold',
-      'Processes up to 4 core conversation sessions per day',
+      '角色空闲时生成氛围标签和情绪重点',
+      '通过离开状态门控，避免主动任务打断正在进行的对话',
+      '会话空闲超过 1 小时后提炼重点',
+      '每天最多处理 4 个核心对话会话',
     ],
   },
   {
     id: 'episodic',
-    title: 'The Sentinel\'s Journal',
-    subtitle: 'Episodic Records (LTMM)',
-    description: 'The Sacred Records. Ask your character to use their "text_journal" to preserve meaningful moments forever.',
+    title: '守望者日志',
+    subtitle: '情节记录（LTMM）',
+    description: '珍贵记录。让角色使用“text_journal”将重要时刻永久保存。',
     icon: 'i-solar:notebook-bookmark-bold-duotone',
     accent: 'from-emerald-500/20 to-teal-500/10',
     route: '/settings/modules/memory-long-term',
-    status: '9 Records Stored',
+    status: '已存储 9 条记录',
     bullets: [
-      'A dedicated tool you can ask the character to use on-demand',
-      'Record and search through durable, high-fidelity narrative memories',
-      'Powerhouse for deep semantic recall and relational grounding',
-      'Stores your personal "Sacred Records" in a human-readable format',
+      '可让角色按需使用的专用工具',
+      '记录并搜索持久、高保真的叙事记忆',
+      '为深层语义回忆和关系定位提供支持',
+      '以便于阅读的格式保存你的珍贵记录',
     ],
   },
   {
     id: 'relational',
-    title: 'The Eternal Thread',
-    subtitle: 'Relational Essence (Lifetime)',
-    description: 'The long-term memory of the relationship. It keeps the bond stable across resets and slowly updates as new durable moments arrive.',
+    title: '永恒线索',
+    subtitle: '关系本质（终身）',
+    description: '关系的长期记忆。它让羁绊在重置后依然稳定，并随着新的重要时刻逐步更新。',
     icon: 'i-solar:dna-bold-duotone',
     accent: 'from-amber-500/20 to-orange-500/10',
     route: '/settings/modules/memory-lifetime',
-    status: 'Base Stable',
+    status: '基础稳定',
     bullets: [
-      'Stable base for long-horizon memory',
-      'Incremental updates from new durable events',
-      'Updates from a base plus daily changes',
-      'Preserves relationship identity across resets',
+      '为长周期记忆提供稳定基础',
+      '根据新的重要事件增量更新',
+      '由基础记忆和每日变化共同更新',
+      '在重置后保留关系身份',
     ],
   },
 ]
@@ -82,10 +82,10 @@ const memorySections = [
         </div>
         <div>
           <h1 class="text-2xl text-neutral-800 font-bold dark:text-neutral-100">
-            Memory Hub
+            记忆中心
           </h1>
           <p class="max-w-2xl text-sm text-neutral-500 line-height-relaxed dark:text-neutral-400">
-            AIRI’s nervous system is split into four distinct temporal quadrants. By segmenting ephemeral reactions from the eternal relational thread, we ensure identity stays stable even as the conversation flows.
+            AIRI 的记忆系统分为四个不同的时间象限。通过将短暂反应与长期关系线索分开，我们让身份在对话流动中始终保持稳定。
           </p>
         </div>
       </div>
@@ -93,7 +93,7 @@ const memorySections = [
       <div class="grid gap-3 md:grid-cols-4">
         <div class="border border-neutral-200/50 rounded-2xl bg-white/50 p-4 transition-all dark:border-neutral-700/50 dark:bg-neutral-900/30 hover:bg-white dark:hover:bg-neutral-900/50">
           <div class="mb-1 text-[10px] text-neutral-400 font-bold tracking-widest uppercase dark:text-neutral-500">
-            System Integrity
+            系统完整性
           </div>
           <div class="flex items-center gap-2 text-sm text-neutral-700 font-semibold dark:text-neutral-200">
             <div class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
@@ -102,26 +102,26 @@ const memorySections = [
         </div>
         <div class="border border-neutral-200/50 rounded-2xl bg-white/50 p-4 transition-all dark:border-neutral-700/50 dark:bg-neutral-900/30 hover:bg-white dark:hover:bg-neutral-900/50">
           <div class="mb-1 text-[10px] text-neutral-400 font-bold tracking-widest uppercase dark:text-neutral-500">
-            Total Depth
+            总深度
           </div>
           <div class="text-sm text-neutral-700 font-semibold dark:text-neutral-200">
-            42,109 Tokens
+            42,109 Token
           </div>
         </div>
         <div class="border border-neutral-200/50 rounded-2xl bg-white/50 p-4 transition-all dark:border-neutral-700/50 dark:bg-neutral-900/30 hover:bg-white dark:hover:bg-neutral-900/50">
           <div class="mb-1 text-[10px] text-neutral-400 font-bold tracking-widest uppercase dark:text-neutral-500">
-            Update Logic
+            更新逻辑
           </div>
           <div class="text-sm text-neutral-700 font-semibold dark:text-neutral-200">
-            Base + Daily Diffs
+            基础记忆 + 每日差异
           </div>
         </div>
         <div class="border border-neutral-200/50 rounded-2xl bg-white/50 p-4 transition-all dark:border-neutral-700/50 dark:bg-neutral-900/30 hover:bg-white dark:hover:bg-neutral-900/50">
           <div class="mb-1 text-[10px] text-neutral-400 font-bold tracking-widest uppercase dark:text-neutral-500">
-            Architecture
+            架构
           </div>
           <div class="text-sm text-neutral-700 font-semibold dark:text-neutral-200">
-            Character-Centric
+            以角色为中心
           </div>
         </div>
       </div>
@@ -175,7 +175,7 @@ const memorySections = [
 
           <div class="mt-auto border-t border-neutral-100 pt-4 dark:border-neutral-800">
             <Button
-              :label="`Explore ${section.title}`"
+              :label="`查看${section.title}`"
               icon="i-solar:arrow-right-up-bold-duotone"
               variant="secondary"
               block
@@ -192,11 +192,11 @@ const memorySections = [
       <div class="mb-3 flex items-center gap-3">
         <div class="i-solar:star-bold-duotone text-xl text-primary-500" />
         <h3 class="text-sm text-primary-600 font-bold tracking-wide uppercase dark:text-primary-400">
-          Core Handoff Note
+          核心交接说明
         </h3>
       </div>
       <p class="max-w-3xl text-sm text-neutral-700 line-height-relaxed dark:text-neutral-200">
-        This quadrant redesign validates the "Face" of the memory engine architecture. It segments fluid session context (Pulse) from relationship-wide essence (Eternal Thread). The Signal quadrant is explicitly gated by AFK proactivity rules to ensure semantic drift doesn't occur during active dialogue.
+        这套象限设计验证了记忆引擎的呈现结构。它将流动的会话上下文（脉冲）与跨越关系的长期本质（永恒线索）分开；信号象限明确受空闲主动性规则约束，避免在活跃对话期间出现语义漂移。
       </p>
     </div>
   </div>
