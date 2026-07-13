@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const props = defineProps<{
   show: boolean
 }>()
@@ -30,11 +33,11 @@ function selectMode(mode: 'open_ended' | 'goal_driven') {
           <div class="flex items-center justify-center gap-2">
             <div class="i-solar:gamepad-bold text-2xl text-blue-400" />
             <h2 class="text-2xl font-bold tracking-tight">
-              Select Encounter Mode
+              {{ t('stage.dating-sim.select-mode') }}
             </h2>
           </div>
           <p class="mt-1 text-sm text-neutral-400">
-            Choose the style of interaction for this companion session.
+            {{ t('stage.dating-sim.select-mode-description') }}
           </p>
         </div>
 
@@ -50,10 +53,10 @@ function selectMode(mode: 'open_ended' | 'goal_driven') {
             </div>
             <div class="flex-1">
               <h3 class="text-lg text-white font-bold transition-colors group-hover:text-blue-300">
-                Sandbox Mode (Open-Ended)
+                {{ t('stage.dating-sim.sandbox-title') }}
               </h3>
               <p class="mt-1 text-xs text-neutral-400 leading-relaxed">
-                Chat freely without fixed turn limits or objectives. Track intimacy, spend Action Points to guide topics, and control the scene.
+                {{ t('stage.dating-sim.sandbox-description') }}
               </p>
             </div>
           </button>
@@ -68,10 +71,10 @@ function selectMode(mode: 'open_ended' | 'goal_driven') {
             </div>
             <div class="flex-1">
               <h3 class="text-lg text-white font-bold transition-colors group-hover:text-rose-300">
-                Date Session (Goal-Driven)
+                {{ t('stage.dating-sim.date-session-title') }}
               </h3>
               <p class="mt-1 text-xs text-neutral-400 leading-relaxed">
-                Play through a structured story campaign with setup premises, fixed turn limits, friction metrics, and a final scoring summary.
+                {{ t('stage.dating-sim.date-session-description') }}
               </p>
             </div>
           </button>

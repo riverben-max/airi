@@ -297,6 +297,27 @@ chat-ui:
     menu: Message actions
     universe-title: Select Universe for Forked Timeline
     universe-description: Choose which isolated universe memory context the new branch will start in.
+dating-sim:
+  victory: Victory!
+  defeat: Defeat!
+  story-background: Storyline Background
+  intimacy: Intimacy
+  tension: Tension
+  mood: Mood
+  turns: Turns
+  time-remaining: Time Remaining
+  options-hint: Want options automatically generated? Enable Autonomous Artistry in companion settings, or use the sparkle button below to generate choices manually.
+  story-concluded: Storyline Concluded
+  story-concluded-description: You've reached the climax of this encounter. The final narrative resolution has been played back.
+  start-new-story: Start New Story
+  custom-prompt-placeholder: Or say something else...
+  character: Character
+  select-mode: Select Encounter Mode
+  select-mode-description: Choose the style of interaction for this companion session.
+  sandbox-title: Sandbox Mode (Open-Ended)
+  sandbox-description: Chat freely without fixed turn limits or objectives. Track intimacy, spend Action Points to guide topics, and control the scene.
+  date-session-title: Date Session (Goal-Driven)
+  date-session-description: Play through a structured story campaign with setup premises, fixed turn limits, friction metrics, and a final scoring summary.
 dialogs:
   hearing:
     title: Hearing Input

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useBroadcastChannel } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import CaptionPanel from './CaptionPanel.vue'
 import ModeSelectorModal from './ModeSelectorModal.vue'
@@ -11,6 +12,7 @@ import { useDatingSimStore } from '../../stores/dating-sim'
 import { useAiriCardStore } from '../../stores/modules/airi-card'
 
 const datingSimStore = useDatingSimStore()
+const { t } = useI18n()
 const cardStore = useAiriCardStore()
 const chatSessionStore = useChatSessionStore()
 const { post: postChatInput } = useBroadcastChannel({ name: 'airi-chat-input-bridge' })
@@ -98,10 +100,10 @@ const subtitleText = computed(() => {
     const pos = datingSimStore.getVariable('positiveScore')
     const neg = datingSimStore.getVariable('negativeScore')
     if (pos > neg) {
-      return datingSimStore.activeStoryline.positiveOutcome || 'Victory!'
+      return datingSimStore.activeStoryline.positiveOutcome || t('stage.dating-sim.victory')
     }
     else {
-      return datingSimStore.activeStoryline.negativeOutcome || 'Defeat!'
+      return datingSimStore.activeStoryline.negativeOutcome || t('stage.dating-sim.defeat')
     }
   }
   return datingSimStore.currentSubtitle
@@ -231,7 +233,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
       <img
         :src="datingSimStore.activeStoryline.coverImage"
         class="h-full w-full object-cover opacity-100"
-        alt="Storyline Background"
+        :alt="t('stage.dating-sim.story-background')"
       >
     </div>
 
@@ -242,7 +244,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
         <!-- Positive (Intimacy) Badge -->
         <div class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
           <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-            <span>Intimacy</span>
+            <span>{{ t('stage.dating-sim.intimacy') }}</span>
             <div class="i-solar:heart-bold text-xl text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]" />
           </div>
           <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
@@ -256,7 +258,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
         <!-- Negative (Tension) Badge -->
         <div class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
           <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-            <span>Tension</span>
+            <span>{{ t('stage.dating-sim.tension') }}</span>
             <div class="i-solar:fire-bold text-xl text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
           </div>
           <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
@@ -270,11 +272,11 @@ function handleStorySelect(story: any, customPromptVal: string) {
         <!-- Mood & Turns Badge -->
         <div class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
           <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-            <span>Mood</span>
+            <span>{{ t('stage.dating-sim.mood') }}</span>
             <span class="border border-blue-400/50 rounded-full bg-blue-500/30 px-2.5 py-0.5 text-white font-medium shadow-[0_0_10px_rgba(59,130,246,0.3)] backdrop-blur-md">{{ datingSimStore.mood }}</span>
           </div>
           <div class="mt-2 flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-            <span>Turns</span>
+            <span>{{ t('stage.dating-sim.turns') }}</span>
             <span :class="[isGameOver ? 'text-rose-400 animate-pulse font-black' : 'text-white/90 font-bold', 'font-mono']">{{ turnsElapsed }} / {{ datingSimStore.settings.maxTurns }}</span>
           </div>
         </div>
@@ -285,7 +287,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
         <!-- Intimacy Badge -->
         <div class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
           <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-            <span>Intimacy</span>
+            <span>{{ t('stage.dating-sim.intimacy') }}</span>
             <div class="i-solar:heart-bold text-xl text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]" />
           </div>
           <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
@@ -299,7 +301,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
         <!-- Mood & AP Badge -->
         <div class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
           <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-            <span>Mood</span>
+            <span>{{ t('stage.dating-sim.mood') }}</span>
             <span class="border border-blue-400/50 rounded-full bg-blue-500/30 px-2.5 py-0.5 text-white font-medium shadow-[0_0_10px_rgba(59,130,246,0.3)] backdrop-blur-md">{{ datingSimStore.mood }}</span>
           </div>
           <div v-if="datingSimStore.currentPhase === 'conversation'" class="mt-2 flex items-center justify-between text-sm text-white font-semibold tracking-wide">
@@ -314,7 +316,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
       <!-- Timer Badge (Lightning Round Mode) -->
       <div v-if="datingSimStore.settings.lightningRounds && datingSimStore.getVariable('Timer') > 0 && !isGameOver" class="min-w-[220px] flex flex-col gap-3 border border-white/20 rounded-2xl bg-white/10 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] backdrop-saturate-[180%] transition-all dark:bg-black/30 hover:bg-white/20">
         <div class="flex items-center justify-between text-sm text-white font-semibold tracking-wide">
-          <span>Time Remaining</span>
+          <span>{{ t('stage.dating-sim.time-remaining') }}</span>
           <div class="i-solar:clock-circle-bold-duotone text-xl text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
         </div>
         <div class="h-2 w-full overflow-hidden rounded-full bg-black/40 shadow-inner">
@@ -330,7 +332,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
         <!-- AA Upsell Tip -->
         <div v-if="visibleChoices.length === 0 && !autonomousEnabled && !isGameOver" class="pointer-events-auto border border-yellow-400/20 rounded-2xl bg-yellow-500/10 p-4 text-center shadow-[0_8px_32px_rgba(0,0,0,0.15)] backdrop-blur-[12px] transition-all hover:bg-yellow-500/15">
           <p class="text-sm text-yellow-100/90 font-semibold tracking-wide drop-shadow-md">
-            Want options automatically generated? Enable <span class="text-yellow-300 font-bold underline">Autonomous Artistry</span> in your companion settings, or click the <span class="text-purple-300 font-bold">Sparkle ✨</span> button below to generate choices manually.
+            {{ t('stage.dating-sim.options-hint') }}
           </p>
         </div>
 
@@ -368,16 +370,16 @@ function handleStorySelect(story: any, customPromptVal: string) {
           <div class="pointer-events-auto flex flex-col items-center gap-3 border border-rose-500/30 rounded-2xl bg-rose-950/20 p-5 text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[12px]">
             <div class="flex items-center gap-2 text-lg text-rose-400 font-bold tracking-wider uppercase">
               <span class="i-solar:shield-check-bold animate-pulse text-2xl" />
-              Storyline Concluded
+              {{ t('stage.dating-sim.story-concluded') }}
             </div>
             <p class="text-sm text-white/80 leading-relaxed">
-              You've reached the climax of this encounter. The final narrative resolution has been played back.
+              {{ t('stage.dating-sim.story-concluded-description') }}
             </p>
             <button
               class="mt-1 border border-rose-400/50 rounded-xl bg-rose-500/30 px-5 py-2 text-sm text-white font-semibold transition-all active:scale-95 hover:scale-105 hover:bg-rose-500/50"
               @click="handleRestart"
             >
-              Start New Story
+              {{ t('stage.dating-sim.start-new-story') }}
             </button>
           </div>
         </template>
@@ -388,7 +390,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
           <input
             v-model="customPrompt"
             type="text"
-            placeholder="Or say something else..."
+            :placeholder="t('stage.dating-sim.custom-prompt-placeholder')"
             class="w-full flex-1 bg-transparent text-xl text-white font-medium tracking-wide outline-none drop-shadow-md placeholder:text-white/40"
             :disabled="isGameOver || datingSimStore.isGenerating"
             @keydown.enter="submitCustomPrompt"
@@ -431,7 +433,7 @@ function handleStorySelect(story: any, customPromptVal: string) {
           <!-- Nameplate integrated smoothly -->
           <div class="absolute left-8 top-4 flex items-center gap-2 opacity-80">
             <div class="i-solar:user-bold text-lg text-blue-400" />
-            <span class="text-sm text-blue-200 font-bold tracking-widest uppercase drop-shadow-md">Character</span>
+            <span class="text-sm text-blue-200 font-bold tracking-widest uppercase drop-shadow-md">{{ t('stage.dating-sim.character') }}</span>
           </div>
 
           <!-- Modular Real-Time Caption Panel inside original frame -->

@@ -292,6 +292,27 @@ chat-ui:
     menu: 消息操作
     universe-title: 为分支时间线选择世界
     universe-description: 选择新分支开始时使用的独立世界记忆上下文。
+dating-sim:
+  victory: 胜利！
+  defeat: 失败！
+  story-background: 剧情背景
+  intimacy: 亲密度
+  tension: 紧张度
+  mood: 情绪
+  turns: 回合数
+  time-remaining: 剩余时间
+  options-hint: 想自动生成选项？请在角色设置中启用自主创作，或点击下方的闪光按钮手动生成选项。
+  story-concluded: 剧情已结束
+  story-concluded-description: 本次邂逅已到达结局，最终叙事已播放完毕。
+  start-new-story: 开始新剧情
+  custom-prompt-placeholder: 或者说点别的……
+  character: 角色
+  select-mode: 选择邂逅模式
+  select-mode-description: 选择这次角色互动的方式。
+  sandbox-title: 自由互动模式
+  sandbox-description: 不受固定回合或目标限制地聊天；可追踪亲密度、使用行动点引导话题并控制场景。
+  date-session-title: 约会剧情模式
+  date-session-description: 体验带有前提设定、固定回合、摩擦指标和最终评分的结构化剧情。
 dialogs:
   hearing:
     title: 听觉输入

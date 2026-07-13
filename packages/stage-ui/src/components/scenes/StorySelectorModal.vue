@@ -46,11 +46,11 @@ function handleStartSession() {
           <div class="flex items-center gap-2">
             <div class="i-solar:heart-bold animate-pulse text-2xl text-rose-400" />
             <h2 class="text-2xl font-bold tracking-tight">
-              Select Your Storyboard Campaign
+              选择剧情剧本
             </h2>
           </div>
           <p class="text-sm text-neutral-400">
-            Choose a curated storyline preset to seed your dating sim adventure, or write a custom scenario.
+            选择预设剧情开始恋爱模拟，或自行编写场景设定。
           </p>
         </div>
 
@@ -73,7 +73,7 @@ function handleStartSession() {
                 <img
                   :src="story.coverImage"
                   class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  alt="Story Cover"
+                  alt="剧情封面"
                 >
                 <div class="absolute inset-0 from-black/90 via-black/40 to-transparent bg-gradient-to-t" />
 
@@ -95,7 +95,7 @@ function handleStartSession() {
             <div v-if="selectedStory" class="min-h-0 flex flex-1 flex-col gap-4">
               <!-- Selected Story Info -->
               <div class="flex flex-col gap-1">
-                <span class="text-xs text-rose-400 font-semibold tracking-wider uppercase">Selected Scenario</span>
+                <span class="text-xs text-rose-400 font-semibold tracking-wider uppercase">已选场景</span>
                 <h4 class="text-lg font-bold">
                   {{ selectedStory.title }}
                 </h4>
@@ -105,19 +105,19 @@ function handleStartSession() {
               <div class="min-h-0 flex-1 overflow-y-auto pr-1 text-sm text-neutral-300 leading-relaxed scrollbar-thin">
                 <div class="flex flex-col gap-3">
                   <div>
-                    <span class="text-xs text-white/50 font-medium">Setting / Location:</span>
+                    <span class="text-xs text-white/50 font-medium">场景 / 地点：</span>
                     <p class="mt-0.5 text-xs">
                       {{ selectedStory.scene }}
                     </p>
                   </div>
                   <div>
-                    <span class="text-xs text-white/50 font-medium">Terms of Encounter:</span>
+                    <span class="text-xs text-white/50 font-medium">邂逅条件：</span>
                     <p class="mt-0.5 text-xs">
                       {{ selectedStory.termsOfEncounter }}
                     </p>
                   </div>
                   <div>
-                    <span class="text-xs text-white/50 font-medium">Target Appearances:</span>
+                    <span class="text-xs text-white/50 font-medium">目标出场次数：</span>
                     <p class="mt-0.5 text-xs italic">
                       {{ selectedStory.appearances }}
                     </p>
@@ -127,12 +127,12 @@ function handleStartSession() {
 
               <!-- Textarea for Custom Tweaks -->
               <div class="flex flex-col gap-2">
-                <label class="text-xs text-white/70 font-semibold">Customize Premise / Theme (Optional)</label>
+                <label class="text-xs text-white/70 font-semibold">自定义前提 / 主题（可选）</label>
                 <textarea
                   v-model="customScenarioPrompt"
                   rows="3"
                   class="w-full border border-white/10 rounded-xl bg-neutral-800/80 p-2.5 text-xs text-white outline-none transition focus:border-rose-400"
-                  placeholder="Alter the premise or context of the date..."
+                  placeholder="调整这次约会的前提或场景……"
                 />
               </div>
 
@@ -141,7 +141,7 @@ function handleStartSession() {
                 class="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-500 py-3 text-sm text-white font-bold transition active:scale-[0.98] hover:bg-rose-600"
                 @click="handleStartSession"
               >
-                <span>Launch Story Campaign</span>
+                <span>开始剧情</span>
                 <div class="i-solar:play-bold text-xs" />
               </button>
             </div>
@@ -150,7 +150,7 @@ function handleStartSession() {
             <div v-else class="flex flex-1 flex-col items-center justify-center text-center">
               <div class="i-solar:heart-broken-bold mb-3 text-4xl text-neutral-600" />
               <p class="text-sm text-neutral-500">
-                Select a storyboard card from the list to preview details and configure the session.
+                从列表中选择剧情卡，以预览详情并配置本次互动。
               </p>
             </div>
           </div>
