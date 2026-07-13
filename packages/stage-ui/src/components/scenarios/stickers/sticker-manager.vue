@@ -2,12 +2,14 @@
 import { Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useStickersStore } from '../../../stores/stickers'
 
 const emit = defineEmits<{
   (e: 'spawn-standalone', id: string): void
 }>()
+const { t } = useI18n()
 const stickersStore = useStickersStore()
 const { currentLibrary, standaloneMode } = storeToRefs(stickersStore)
 const fileInput = ref<HTMLInputElement>()
@@ -73,7 +75,7 @@ async function remove(id: string) {
     <div class="flex items-center justify-between gap-4">
       <div class="flex items-center gap-2">
         <h3 class="text-sm text-neutral-500 font-bold tracking-widest uppercase">
-          Sticker Library
+          {{ t('stage.shared.stickers.library') }}
         </h3>
 
         <!-- Standalone Toggle -->
@@ -84,11 +86,12 @@ async function remove(id: string) {
               ? 'bg-primary-500/10 border-primary-500/30 text-primary-600 dark:text-primary-400 shadow-[0_0_10px_rgba(139,92,246,0.1)]'
               : 'bg-neutral-100 border-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:border-neutral-700',
           ]"
-          title="Toggle Standalone Window Mode"
+          :title="t('stage.shared.stickers.toggle-standalone')"
+          :aria-pressed="standaloneMode"
           @click="standaloneMode = !standaloneMode"
         >
           <div :class="[standaloneMode ? 'i-ph:app-window-fill' : 'i-ph:app-window-light', 'size-3']" />
-          Standalone
+          {{ t('stage.shared.stickers.standalone') }}
         </button>
       </div>
 
@@ -100,7 +103,7 @@ async function remove(id: string) {
           @click="stickersStore.clearLibrary()"
         >
           <div class="i-ph:trash-bold size-3" />
-          Clear Library
+          {{ t('stage.shared.stickers.clear') }}
         </Button>
         <Button
           variant="primary"
@@ -109,7 +112,7 @@ async function remove(id: string) {
           @click="fileInput?.click()"
         >
           <div class="i-ph:plus-bold size-3" />
-          Upload
+          {{ t('stage.shared.stickers.upload') }}
         </Button>
       </div>
       <input
@@ -150,6 +153,7 @@ async function remove(id: string) {
         <!-- Delete Metadata -->
         <button
           class="absolute size-4 flex items-center justify-center rounded-full bg-red-400 text-white opacity-0 shadow-sm transition-opacity -right-1 -top-1 hover:bg-red-500 group-hover:opacity-100"
+          :aria-label="t('stage.shared.stickers.delete', { name: meta.label })"
           @click.stop="remove(meta.id)"
         >
           <div class="i-ph:x-bold size-2" />
@@ -163,7 +167,7 @@ async function remove(id: string) {
       class="flex flex-1 flex-col items-center justify-center gap-2 border-2 border-neutral-200 rounded-2xl border-dashed py-8 text-neutral-400 dark:border-neutral-800"
     >
       <div class="i-ph:stamp-light size-12 opacity-50" />
-      <span class="text-xs">No stickers yet</span>
+      <span class="text-xs">{{ t('stage.shared.stickers.empty') }}</span>
     </div>
   </div>
 </template>

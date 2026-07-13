@@ -33,11 +33,11 @@ function handleNext() {
       :duration="400"
       class="flex items-center gap-2"
     >
-      <button class="outline-none" @click="props.onPrevious">
+      <button class="outline-none" :aria-label="t('settings.dialogs.onboarding.common.back')" @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5 transition-colors hover:text-primary-500" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Get Started
+        {{ t('settings.dialogs.onboarding.remaining.start.title') }}
       </h2>
       <div class="h-5 w-5" />
     </div>
@@ -82,10 +82,10 @@ function handleNext() {
               </div>
             </div>
             <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-100">
-              Set Up as New User
+              {{ t('settings.dialogs.onboarding.remaining.start.new') }}
             </h3>
             <p class="mt-2 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Start fresh with a clean slate. Configure model keys and choose or customize a default character to begin chatting.
+              {{ t('settings.dialogs.onboarding.remaining.start.new-description') }}
             </p>
           </div>
         </div>
@@ -120,10 +120,10 @@ function handleNext() {
               </div>
             </div>
             <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-100">
-              Returning User
+              {{ t('settings.dialogs.onboarding.remaining.start.returning') }}
             </h3>
             <p class="mt-2 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Restore your databases, settings, and media assets using your existing Google account or S3 storage provider.
+              {{ t('settings.dialogs.onboarding.remaining.start.returning-description') }}
             </p>
           </div>
         </div>

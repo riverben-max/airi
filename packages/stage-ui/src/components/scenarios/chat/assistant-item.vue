@@ -135,15 +135,15 @@ async function handleRetry() {
     try {
       // Ingest with triggerOnly: true to trigger generation from the user message that is already in history
       await chatOrchestrator.ingest('', { triggerOnly: true })
-      toast.success('Retrying message...')
+      toast.success(t('stage.chat-ui.feedback.retrying'))
     }
     catch (err) {
       console.error('[Retry] Failed:', err)
-      toast.error('Failed to retry message.')
+      toast.error(t('stage.chat-ui.feedback.retry-failed'))
     }
   }
   else {
-    toast.error('Cannot retry: No user message found before this response.')
+    toast.error(t('stage.chat-ui.feedback.retry-no-user'))
   }
 }
 
@@ -157,12 +157,12 @@ async function handleFork(universeId?: string) {
         atIndex: index + 1, // Include this message
         universeId,
       })
-      toast.success('Conversation forked successfully!')
+      toast.success(t('stage.chat-ui.feedback.forked'))
       console.log(`[AssistantItem] Forked session created: ${newSessionId}`)
     }
     catch (error) {
       console.error('Failed to fork session:', error)
-      toast.error('Failed to fork conversation.')
+      toast.error(t('stage.chat-ui.feedback.fork-failed'))
     }
   }
 }
@@ -170,7 +170,7 @@ async function handleFork(universeId?: string) {
 function handleDeleteFollowing() {
   if (props.message.id) {
     chatSession.deleteMessagesFromHere(props.message.id)
-    toast.success('Messages deleted from here.')
+    toast.success(t('stage.chat-ui.feedback.deleted-from-here'))
   }
 }
 
@@ -219,9 +219,9 @@ async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: numbe
     console.error('[JournalMoment] Creation failed:', err)
     throw err
   }), {
-    loading: 'Generating journal entry...',
-    success: 'Journal entry created!',
-    error: 'Failed to create journal entry.',
+    loading: t('stage.chat-ui.feedback.journal-generating'),
+    success: t('stage.chat-ui.feedback.journal-created'),
+    error: t('stage.chat-ui.feedback.journal-failed'),
   })
 
   showJournalModal.value = false
@@ -241,12 +241,12 @@ async function handleForkAndSwitch(universeId?: string) {
       // Switch to the new session!
       chatSession.activeSessionId = newSessionId
 
-      toast.success('Conversation forked and switched!')
+      toast.success(t('stage.chat-ui.feedback.forked-switched'))
       console.log(`[AssistantItem] Forked session created: ${newSessionId}`)
     }
     catch (error) {
       console.error('Failed to fork session:', error)
-      toast.error('Failed to fork conversation.')
+      toast.error(t('stage.chat-ui.feedback.fork-failed'))
     }
   }
 }
@@ -302,7 +302,7 @@ async function handleCommitEdit() {
   if (editorRef.value) {
     const newText = (editorRef.value.textContent || '').trim()
     if (!newText) {
-      toast.error('Message content cannot be empty.')
+      toast.error(t('stage.chat-ui.feedback.empty-message'))
       return
     }
 
@@ -356,11 +356,11 @@ async function handleCommitEdit() {
       await chatSession.setSessionMessages(activeSessionId, nextMessages)
 
       isEditing.value = false
-      toast.success('Response updated.')
+      toast.success(t('stage.chat-ui.feedback.response-updated'))
     }
     catch (err) {
       console.error('[EditCommit] Failed:', err)
-      toast.error('Failed to update response.')
+      toast.error(t('stage.chat-ui.feedback.response-update-failed'))
     }
     finally {
       isSavingEdit.value = false
@@ -751,7 +751,7 @@ const dynamicStyles = computed(() => {
             </div>
 
             <div v-if="message.content === 'NO_REPLY' || message.rawContent === 'NO_REPLY'" class="py-1 text-sm text-neutral-500/70 italic dark:text-neutral-400/70">
-              The character chose not to respond in this turn
+              {{ t('stage.chat-ui.feedback.no-response') }}
             </div>
             <div v-else-if="resolvedSlices.length > 0 && !isEditing" class="break-words" :class="mood ? 'text-neutral-800 dark:text-neutral-200' : 'text-primary-700 dark:primary-100'">
               <template v-for="(slice, sliceIndex) in resolvedSlices" :key="sliceIndex">
@@ -791,7 +791,7 @@ const dynamicStyles = computed(() => {
             >
               <button
                 :disabled="isSavingEdit"
-                title="Cancel (Esc)"
+                :title="t('stage.chat-ui.edit.cancel')"
                 class="h-6 w-6 flex items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/50"
                 @click="handleCancelEdit"
               >
@@ -799,7 +799,7 @@ const dynamicStyles = computed(() => {
               </button>
               <button
                 :disabled="isSavingEdit"
-                title="Commit (Shift+Enter)"
+                :title="t('stage.chat-ui.edit.commit')"
                 class="h-6 w-6 flex items-center justify-center rounded-full text-emerald-500 transition-colors hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/50"
                 @click="handleCommitEdit"
               >

@@ -283,6 +283,53 @@ dialogs:
     buyFlux: 补充 Flux 电量
     common:
       back: 返回
+    remaining:
+      character:
+        title: 选择您的伙伴
+        description: 从预配置的意识开始您的旅程。
+        discover: 发现更多角色
+        discover-description: 从社区下载 PNG 角色卡并立即导入。
+        import: 导入自定义角色卡
+        back: 返回
+        start: 开始旅程
+        pick: 选择伙伴
+      google:
+        title: Google 身份验证
+        sign-in-title: 使用 Google 账号登录
+        sign-in-description: 完成身份验证，以查找现有数据库备份或将设置动态同步到 Google Drive。
+        sign-in: 使用 Google 登录
+        configure: 配置自定义凭据
+        client-id: OAuth 客户端 ID
+        redirect-uri: 重定向 URI
+        connecting: 正在连接 Google...
+        connecting-description: 请在浏览器弹窗中登录并授权此应用。
+        authorized-user: 已授权用户
+        authenticated: 已认证
+        connected: 连接成功
+        disconnect: 断开账号连接
+        continue: 继续搜索备份
+      manual:
+        title: 存储适配器
+        s3: S3 兼容存储
+        local: 本地文件系统
+        endpoint: 端点 URL
+        bucket: 存储桶名称
+        region: 区域
+        access-key: 访问密钥 ID
+        secret-key: 访问密钥
+        directory: 本地目录路径
+      start:
+        title: 开始使用
+        new: 以新用户身份设置
+        new-description: 从全新环境开始。配置模型密钥，并选择或自定义默认角色以开始聊天。
+        returning: 已有数据的用户
+        returning-description: 使用现有 Google 账号或 S3 存储提供商恢复数据库、设置和媒体资源。
+      sync:
+        title: 选择备份提供商
+        google: 使用 Google 登录
+        google-description: 安全关联 Google 账号，以便在 Google Drive 或兼容的对象存储集成中查找现有云备份。
+        manual: 手动配置
+        manual-description: 手动连接自定义的 S3 兼容云存储（AWS、Cloudflare R2、MinIO）或本地文件系统。
     provider-configuration:
       api-key-description: 输入所选提供商的 API 密钥。
       base-url-description: 输入提供商 API 的基础 URL。

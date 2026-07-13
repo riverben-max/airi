@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { format } from 'date-fns'
 import { storeToRefs } from 'pinia'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import UniversePickerModal from '../dialogs/UniversePickerModal.vue'
 
@@ -11,6 +11,7 @@ import { useChatSessionStore } from '../../../stores/chat/session-store'
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 
 const showDialog = defineModel<boolean>({ default: false })
+const { locale, t } = useI18n()
 
 const chatSessionStore = useChatSessionStore()
 const airiCardStore = useAiriCardStore()
@@ -125,14 +126,20 @@ async function handleDeleteSession(sessionId: string) {
 }
 
 function formatSessionDate(timestamp: number) {
-  return format(timestamp, 'MMM d, yyyy HH:mm')
+  return new Intl.DateTimeFormat(locale.value, {
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(timestamp)
 }
 const editingSessionId = ref<string | null>(null)
 const editText = ref('')
 
 function handleStartEdit(sessionId: string, currentTitle?: string) {
   editingSessionId.value = sessionId
-  editText.value = currentTitle || 'Untitled Timeline'
+  editText.value = currentTitle || t('stage.chat-ui.sessions.untitled')
 }
 
 function handleSaveTitle(sessionId: string) {
@@ -146,6 +153,23 @@ function handleSaveTitle(sessionId: string) {
   }
   editingSessionId.value = null
 }
+
+function formatUniverseName(universeId?: string) {
+  return universeId && universeId !== 'global'
+    ? universeId
+    : t('stage.dialogs.universe.global-world')
+}
+
+const pickerTitle = computed(() =>
+  pickerAction.value === 'create'
+    ? t('stage.chat-ui.sessions.create-picker-title')
+    : t('stage.chat-ui.sessions.migrate-picker-title'),
+)
+const pickerDescription = computed(() =>
+  pickerAction.value === 'create'
+    ? t('stage.chat-ui.sessions.create-picker-description')
+    : t('stage.chat-ui.sessions.migrate-picker-description'),
+)
 </script>
 
 <template>
@@ -157,25 +181,26 @@ function handleSaveTitle(sessionId: string) {
         <div class="flex items-center justify-between p-6 pb-4">
           <div class="flex flex-col">
             <DialogTitle class="text-xl text-neutral-800 font-bold tracking-tight dark:text-neutral-100">
-              Parallel Timelines
+              {{ t('stage.chat-ui.sessions.title') }}
             </DialogTitle>
             <span class="mt-1 text-xs text-neutral-500 font-medium dark:text-neutral-400">
-              Manage different branches of your story
+              {{ t('stage.chat-ui.sessions.description') }}
             </span>
             <div v-if="rawTurnsCount !== null" class="mt-2 flex items-center gap-3 text-[10px] text-primary-600 font-bold tracking-wider uppercase dark:text-primary-400">
               <span class="flex items-center gap-1">
                 <span class="i-solar:chat-line-bold-duotone text-xs" />
-                {{ rawTurnsCount }} Raw Turns
+                {{ t('stage.chat-ui.sessions.raw-turns', { count: rawTurnsCount }) }}
               </span>
               <span class="text-neutral-300 dark:text-neutral-700">|</span>
               <span class="flex items-center gap-1">
                 <span class="i-solar:magic-stick-3-bold-duotone text-xs" />
-                {{ uniqueTurnsCount }} Unique Turns
+                {{ t('stage.chat-ui.sessions.unique-turns', { count: uniqueTurnsCount }) }}
               </span>
             </div>
           </div>
           <button
             class="group rounded-full p-2 text-neutral-400 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            :aria-label="t('stage.chat-ui.sessions.close')"
             @click="showDialog = false"
           >
             <div class="i-solar:close-circle-bold-duotone text-2xl transition-transform group-hover:scale-110" />
@@ -189,7 +214,7 @@ function handleSaveTitle(sessionId: string) {
             @click="handleCreateSessionClick"
           >
             <div class="i-solar:add-circle-bold-duotone text-lg" />
-            Start New Timeline
+            {{ t('stage.chat-ui.sessions.start') }}
           </button>
         </div>
 
@@ -213,7 +238,7 @@ function handleSaveTitle(sessionId: string) {
                 class="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-primary-500 px-2 py-0.5 text-[10px] text-white font-black tracking-widest uppercase shadow-lg shadow-primary-500/20"
               >
                 <div class="i-solar:check-circle-bold text-[10px]" />
-                Active
+                {{ t('stage.chat-ui.sessions.active') }}
               </div>
 
               <div v-if="editingSessionId === session.sessionId" class="flex items-center gap-2 pr-24" @click.stop>
@@ -225,6 +250,7 @@ function handleSaveTitle(sessionId: string) {
                 >
                 <button
                   class="p-1 text-primary-500 hover:text-primary-600"
+                  :aria-label="t('stage.chat-ui.sessions.save-title')"
                   @click.stop="handleSaveTitle(session.sessionId)"
                 >
                   <div class="i-solar:check-circle-bold text-lg" />
@@ -237,7 +263,7 @@ function handleSaveTitle(sessionId: string) {
                   session.sessionId === activeSessionId ? 'text-primary-700 dark:text-primary-300' : 'text-neutral-700 dark:text-neutral-200',
                 ]"
               >
-                {{ session.title || 'Untitled Timeline' }}
+                {{ session.title || t('stage.chat-ui.sessions.untitled') }}
               </span>
 
               <div class="mt-1 flex items-center gap-4">
@@ -247,31 +273,31 @@ function handleSaveTitle(sessionId: string) {
                 </div>
                 <div class="flex items-center gap-1.5 text-[11px] text-neutral-500 font-medium dark:text-neutral-400">
                   <div class="i-solar:chat-line-bold-duotone opacity-70" />
-                  {{ session.messageCount || 0 }} messages
+                  {{ t('stage.chat-ui.sessions.messages', { count: session.messageCount || 0 }) }}
                 </div>
                 <div class="flex items-center gap-1.5 text-[11px] text-primary-600 font-bold dark:text-primary-400">
                   <div class="i-solar:globus-bold opacity-70" />
-                  {{ session.universeId || 'global' }}
+                  {{ formatUniverseName(session.universeId) }}
                 </div>
               </div>
 
               <!-- Last Active info -->
               <div class="mt-2 text-[10px] text-neutral-400 font-medium italic dark:text-neutral-500">
-                Last active {{ formatSessionDate(session.updatedAt) }}
+                {{ t('stage.chat-ui.sessions.last-active', { date: formatSessionDate(session.updatedAt) }) }}
               </div>
 
               <!-- Actions -->
               <div class="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
                   class="rounded-xl bg-neutral-100 p-2 text-neutral-600 transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                  title="Change Universe"
+                  :title="t('stage.chat-ui.sessions.change-universe')"
                   @click.stop="handleOpenUniverseMigration(session.sessionId)"
                 >
                   <div class="i-solar:globus-bold text-lg" />
                 </button>
                 <button
                   class="rounded-xl bg-neutral-100 p-2 text-neutral-600 transition-all dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                  title="Edit Title"
+                  :title="t('stage.chat-ui.sessions.edit-title')"
                   @click.stop="handleStartEdit(session.sessionId, session.title)"
                 >
                   <div class="i-solar:pen-bold text-lg" />
@@ -279,7 +305,7 @@ function handleSaveTitle(sessionId: string) {
                 <button
                   v-if="characterSessions.length > 1"
                   class="rounded-xl bg-red-50 p-2 text-red-500 transition-all dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-800/30"
-                  title="Delete Session"
+                  :title="t('stage.chat-ui.sessions.delete')"
                   @click.stop="handleDeleteSession(session.sessionId)"
                 >
                   <div class="i-solar:trash-bin-trash-bold-duotone text-lg" />
@@ -295,8 +321,8 @@ function handleSaveTitle(sessionId: string) {
   <UniversePickerModal
     v-model="showUniversePicker"
     :character-id="activeCardId"
-    :title="pickerAction === 'create' ? 'Start New Timeline Universe' : 'Change Timeline Universe'"
-    :description="pickerAction === 'create' ? 'Assign a universe or create a new memory pool for this timeline.' : 'Move this session and all its associated memories and images to another universe.'"
+    :title="pickerTitle"
+    :description="pickerDescription"
     @confirm="handleUniverseConfirm"
   />
 </template>

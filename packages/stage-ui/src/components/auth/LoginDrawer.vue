@@ -5,11 +5,13 @@ import { Button } from '@proj-airi/ui'
 import { useResizeObserver, useScreenSafeArea } from '@vueuse/core'
 import { DrawerContent, DrawerHandle, DrawerOverlay, DrawerPortal, DrawerRoot } from 'vaul-vue'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 import { signIn } from '../../libs/auth'
 
 const open = defineModel<boolean>('open', { required: true })
+const { t } = useI18n()
 
 const screenSafeArea = useScreenSafeArea()
 useResizeObserver(document.documentElement, () => screenSafeArea.update())
@@ -25,7 +27,7 @@ async function handleSignIn(provider: OAuthProvider) {
     await signIn(provider)
   }
   catch (error) {
-    toast.error(error instanceof Error ? error.message : 'An unknown error occurred')
+    toast.error(error instanceof Error ? error.message : t('server.auth.signIn.error.unknown'))
   }
   finally {
     loading.value[provider] = false
@@ -44,7 +46,7 @@ async function handleSignIn(provider: OAuthProvider) {
         <div class="px-6 pt-2">
           <DrawerHandle class="mb-6" />
           <div class="mb-6 text-2xl font-bold">
-            Sign in
+            {{ t('server.auth.signIn.title') }}
           </div>
           <div class="flex flex-col gap-4">
             <Button
@@ -53,7 +55,7 @@ async function handleSignIn(provider: OAuthProvider) {
               @click="handleSignIn('google')"
             >
               <div v-if="!loading.google" class="i-simple-icons-google text-xl" />
-              <span>Sign in with Google</span>
+              <span>{{ t('stage.shared.login.google') }}</span>
             </Button>
             <Button
               :class="['w-full', 'py-4', 'flex', 'items-center', 'justify-center', 'gap-3', 'text-lg', 'rounded-2xl']"
@@ -61,11 +63,18 @@ async function handleSignIn(provider: OAuthProvider) {
               @click="handleSignIn('github')"
             >
               <div v-if="!loading.github" class="i-simple-icons-github text-xl" />
-              <span>Sign in with GitHub</span>
+              <span>{{ t('stage.shared.login.github') }}</span>
             </Button>
           </div>
           <div class="mt-10 pb-2 text-center text-xs text-gray-400">
-            By continuing, you agree to our <a href="#" class="underline">Terms</a> and <a href="#" class="underline">Privacy Policy</a>.
+            <i18n-t keypath="server.auth.signIn.footer.agreement" tag="span">
+              <template #terms>
+                <a href="#" class="underline">{{ t('server.auth.signIn.footer.terms') }}</a>
+              </template>
+              <template #privacy>
+                <a href="#" class="underline">{{ t('server.auth.signIn.footer.privacy') }}</a>
+              </template>
+            </i18n-t>
           </div>
         </div>
       </DrawerContent>

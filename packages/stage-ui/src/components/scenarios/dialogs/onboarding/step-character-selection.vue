@@ -5,6 +5,7 @@ import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { Button } from '@proj-airi/ui'
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   selectedCharacterId: string
@@ -15,6 +16,7 @@ const props = defineProps<{
 
 const cardStore = useAiriCardStore()
 const displayModelsStore = useDisplayModelsStore()
+const { t } = useI18n()
 
 const reluPreviewAttribute = new URL('../../../menu/relu.avif', import.meta.url).href
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -167,10 +169,10 @@ defineExpose({
     <!-- Header Section -->
     <div class="text-center">
       <h2 class="text-3xl text-neutral-900 font-bold tracking-tight sm:text-4xl dark:text-neutral-50">
-        Choose Your Companion
+        {{ t('settings.dialogs.onboarding.remaining.character.title') }}
       </h2>
       <p class="mt-4 text-neutral-500 dark:text-neutral-400">
-        Start your journey with a pre-configured consciousness.
+        {{ t('settings.dialogs.onboarding.remaining.character.description') }}
       </p>
     </div>
 
@@ -232,10 +234,10 @@ defineExpose({
       <div class="w-full flex flex-col items-center justify-between gap-6 px-2 md:flex-row">
         <div class="text-center md:text-left">
           <h4 class="text-xs text-neutral-400 font-bold tracking-widest uppercase dark:text-neutral-500">
-            Discover More Characters
+            {{ t('settings.dialogs.onboarding.remaining.character.discover') }}
           </h4>
           <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            Download PNG cards from the community and import them instantly.
+            {{ t('settings.dialogs.onboarding.remaining.character.discover-description') }}
           </p>
         </div>
 
@@ -266,7 +268,7 @@ defineExpose({
             @click="triggerUpload"
           >
             <div class="i-solar-file-send-bold h-4 w-4" />
-            Import Custom Card
+            {{ t('settings.dialogs.onboarding.remaining.character.import') }}
           </Button>
           <input
             ref="fileInput"
@@ -289,7 +291,7 @@ defineExpose({
           @click="onPrevious"
         >
           <div class="i-solar-arrow-left-bold h-5 w-5" />
-          Back
+          {{ t('settings.dialogs.onboarding.remaining.character.back') }}
         </Button>
         <div class="h-6 w-[1px] bg-white/10" />
         <Button
@@ -298,7 +300,7 @@ defineExpose({
           class="gap-2 bg-primary-500 px-8 text-white shadow-lg shadow-primary-500/20 hover:bg-primary-600"
           @click="handleNext"
         >
-          {{ props.selectedCharacterId ? 'Start Your Journey' : 'Pick a Companion' }}
+          {{ props.selectedCharacterId ? t('settings.dialogs.onboarding.remaining.character.start') : t('settings.dialogs.onboarding.remaining.character.pick') }}
           <div class="i-solar-stars-bold h-5 w-5" />
         </Button>
       </div>

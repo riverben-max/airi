@@ -7,6 +7,7 @@ import { BasicInputFile } from '@proj-airi/ui'
 import { useObjectUrl } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { colorFromElement, patchThemeSamplingHtml2CanvasClone } from '../../../../libs'
 import { useSettings } from '../../../../stores/settings'
@@ -20,13 +21,13 @@ const props = withDefaults(defineProps<{
   allowUpload: false,
   idPrefix: 'background-',
 })
-
 const emit = defineEmits<{
   (e: 'apply', payload: { option: BackgroundOption, color?: string }): void
   (e: 'import', payload: { option: BackgroundOption, color?: string }): void
   (e: 'change', payload: { option: BackgroundOption | undefined }): void
   (e: 'remove', option: BackgroundOption): void
 }>()
+const { t } = useI18n()
 
 const { themeColorsHue } = useSettings()
 
@@ -144,7 +145,7 @@ async function handleFilesChange(files: File[]) {
   for (const file of files) {
     const option: BackgroundOption = {
       id: `${props.idPrefix}custom-${nanoid(6)}`,
-      label: file.name || 'Custom Background',
+      label: file.name || t('stage.dialogs.background.custom-label'),
       file,
       kind: 'image',
     }
@@ -210,13 +211,17 @@ async function applySelection(isImport = false) {
     <div class="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-1 scrollbar-none">
       <div class="flex flex-col gap-4">
         <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <button
+          <div
             v-for="option in mergedOptions"
             :key="option.id"
-            type="button"
+            role="button"
+            tabindex="0"
             class="background-option group relative border-2 rounded-xl bg-neutral-100/80 p-2 text-left transition-colors dark:bg-neutral-900/80"
             :class="[option.id === selectedId ? 'selected border-primary-500/80 shadow-primary-500/10 shadow-lg' : 'border-neutral-200 dark:border-neutral-800']"
+            :aria-pressed="option.id === selectedId"
             @click="selectedId = option.id"
+            @keydown.enter="selectedId = option.id"
+            @keydown.space.prevent="selectedId = option.id"
           >
             <div class="aspect-video w-full overflow-hidden border border-neutral-200 rounded-lg bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800/70">
               <component
@@ -232,7 +237,7 @@ async function applySelection(isImport = false) {
                 decoding="async"
               >
               <div v-else class="h-full w-full flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
-                No preview
+                {{ t('stage.dialogs.background.no-preview') }}
               </div>
             </div>
             <div class="mt-2 flex flex-col gap-1">
@@ -241,37 +246,38 @@ async function applySelection(isImport = false) {
                 {{ option.description }}
               </span>
             </div>
-            <div
+            <button
               v-if="option.removable"
+              type="button"
               class="trash-button absolute right-2 top-2 z-10 flex cursor-pointer items-center justify-center rounded-full bg-neutral-200/50 p-1 text-neutral-600 backdrop-blur-md transition-opacity dark:bg-neutral-800/50"
               :class="[option.id === selectedId ? 'opacity-100' : 'opacity-0']"
-              title="Remove background"
+              :title="t('stage.dialogs.background.remove')"
               @click.stop="emit('remove', option)"
             >
               <div class="i-solar:trash-bin-trash-bold h-4 w-4" />
-            </div>
-          </button>
+            </button>
+          </div>
         </div>
 
         <div v-if="allowUpload" class="flex flex-wrap gap-2">
           <BasicInputFile v-model="uploadingFiles" class="cursor-pointer">
             <div class="upload-button flex items-center gap-2 border border-neutral-300 rounded-lg border-dashed px-3 py-2 text-sm text-neutral-600 transition-colors dark:border-neutral-700 dark:text-neutral-300">
               <div i-solar:add-square-linear />
-              <span>Add custom background</span>
+              <span>{{ t('stage.dialogs.background.add') }}</span>
             </div>
           </BasicInputFile>
         </div>
 
         <div class="border border-neutral-200 rounded-xl bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/70">
           <p class="mb-2 text-sm text-neutral-600 dark:text-neutral-300">
-            Preview
+            {{ t('stage.dialogs.background.preview') }}
           </p>
           <label
             v-if="selectedOption?.kind !== 'wave'"
             class="flex items-center gap-2 pb-2 text-sm text-neutral-700 dark:text-neutral-200"
           >
             <input v-model="enableBlur" type="checkbox" class="accent-primary-500">
-            <span>Blur</span>
+            <span>{{ t('stage.dialogs.background.blur') }}</span>
           </label>
           <div
             ref="previewRef"
@@ -292,7 +298,7 @@ async function applySelection(isImport = false) {
                 class="h-full w-full object-cover"
               >
               <div v-else class="h-full w-full flex items-center justify-center text-neutral-500 dark:text-neutral-400">
-                Select a background
+                {{ t('stage.dialogs.background.select') }}
               </div>
             </div>
             <BackgroundGradientOverlay v-if="(selectedOption as any)?.kind !== 'wave'" :color="previewColor" />
@@ -307,7 +313,7 @@ async function applySelection(isImport = false) {
         :disabled="!selectedOption || busy"
         @click="() => applySelection()"
       >
-        {{ busy ? 'Sampling...' : 'Use this background' }}
+        {{ busy ? t('stage.dialogs.background.sampling') : t('stage.dialogs.background.use') }}
       </button>
     </div>
   </div>

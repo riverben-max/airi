@@ -301,6 +301,53 @@ dialogs:
     buyFlux: Charge Flux
     common:
       back: Go back
+    remaining:
+      character:
+        title: Choose Your Companion
+        description: Start your journey with a pre-configured consciousness.
+        discover: Discover More Characters
+        discover-description: Download PNG cards from the community and import them instantly.
+        import: Import Custom Card
+        back: Back
+        start: Start Your Journey
+        pick: Pick a Companion
+      google:
+        title: Google Authentication
+        sign-in-title: Sign in with your Google Account
+        sign-in-description: Authenticate to find existing database backups or sync your settings dynamically to Google Drive.
+        sign-in: Sign In with Google
+        configure: Configure Custom Credentials
+        client-id: OAuth Client ID
+        redirect-uri: Redirect URI
+        connecting: Connecting to Google...
+        connecting-description: Please log in and authorize the app in the browser popup window.
+        authorized-user: Authorized User
+        authenticated: Authenticated
+        connected: Successfully Connected
+        disconnect: Disconnect Account
+        continue: Continue to Search Backups
+      manual:
+        title: Storage Adapter
+        s3: S3 Compatible
+        local: Local File System
+        endpoint: Endpoint URL
+        bucket: Bucket Name
+        region: Region
+        access-key: Access Key ID
+        secret-key: Secret Access Key
+        directory: Local Directory Path
+      start:
+        title: Get Started
+        new: Set Up as New User
+        new-description: Start fresh with a clean slate. Configure model keys and choose or customize a default character to begin chatting.
+        returning: Returning User
+        returning-description: Restore your databases, settings, and media assets using your existing Google account or S3 storage provider.
+      sync:
+        title: Choose Backup Provider
+        google: Sign In with Google
+        google-description: Link your Google Account securely to search for existing cloud backups in Google Drive or compatible object store integrations.
+        manual: Manual Configuration
+        manual-description: Manually connect your custom S3-compatible cloud storage (AWS, Cloudflare R2, MinIO) or target local file systems.
     provider-configuration:
       api-key-description: Enter your API key for the selected provider.
       base-url-description: Enter the base URL for the provider's API.

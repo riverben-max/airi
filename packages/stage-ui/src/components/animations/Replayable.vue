@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, provide, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface ReplayableProps {
   position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center'
@@ -18,12 +19,12 @@ const props = withDefaults(defineProps<ReplayableProps>(), {
   disabled: false,
   hotkey: 'r',
 })
-
 const emit = defineEmits<{
   replay: []
   beforeReplay: []
   afterReplay: []
 }>()
+const { t } = useI18n()
 
 // State
 const isReplaying = ref(false)
@@ -162,7 +163,7 @@ defineExpose({
               : position === 'center' ? 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2' : '',
       ]"
       :disabled="disabled || isReplaying"
-      :title="`Replay animation${hotkey ? ` (${hotkey.toUpperCase()})` : ''}`"
+      :title="t('stage.shared.replay.title', { hotkey: hotkey ? ` (${hotkey.toUpperCase()})` : '' })"
       type="button"
       @click="replay"
     >
@@ -170,7 +171,7 @@ defineExpose({
 
       <!-- Label -->
       <span v-if="showLabel" text-nowrap>
-        {{ isReplaying ? 'Replaying...' : 'Replay' }}
+        {{ isReplaying ? t('stage.shared.replay.replaying') : t('stage.shared.replay.replay') }}
       </span>
     </button>
 
@@ -178,7 +179,7 @@ defineExpose({
     <div
       v-if="autoReplay"
       class="replayable-auto-indicator"
-      :title="`Auto replay every ${replayInterval}ms`"
+      :title="t('stage.shared.replay.auto', { interval: replayInterval })"
     >
       <div class="replayable-auto-pulse" />
     </div>

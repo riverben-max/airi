@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from 'reka-ui'
 import { computed, inject, reactive, ref, shallowRef, toRef, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import UniversePickerModal from '../../../dialogs/UniversePickerModal.vue'
 
@@ -44,11 +45,9 @@ const props = withDefaults(defineProps<{
   canDelete: true,
   canEdit: true,
   copyText: '',
-  menuLabel: 'Message actions',
   placement: 'right',
   fullWidth: false,
 })
-
 const emit = defineEmits<{
   (e: 'copy'): void
   (e: 'delete'): void
@@ -62,6 +61,8 @@ const emit = defineEmits<{
 defineSlots<{
   default: (props: { setMeasuredElement: (element: Element | ComponentPublicInstance | null) => void }) => unknown
 }>()
+const { t } = useI18n()
+const resolvedMenuLabel = computed(() => props.menuLabel || t('stage.chat-ui.actions.menu'))
 
 const airiCardStore = useAiriCardStore()
 const activeCardId = computed(() => airiCardStore.activeCardId)
@@ -380,7 +381,7 @@ watch(isTouching, (val) => {
                 'dark:bg-neutral-900/85 dark:text-neutral-300',
                 'transition-colors hover:text-primary-500 dark:hover:text-primary-300',
               ]"
-              :aria-label="menuLabel"
+              :aria-label="resolvedMenuLabel"
             >
               <div class="i-solar:menu-dots-bold text-base" />
             </button>
@@ -438,7 +439,7 @@ watch(isTouching, (val) => {
                   'dark:bg-neutral-900/85 dark:text-neutral-300',
                   'transition-colors hover:text-primary-500 dark:hover:text-primary-300',
                 ]"
-                :aria-label="menuLabel"
+                :aria-label="resolvedMenuLabel"
               >
                 <div class="i-solar:menu-dots-bold text-base" />
               </button>
@@ -507,8 +508,8 @@ watch(isTouching, (val) => {
   <UniversePickerModal
     v-model="showUniversePicker"
     :character-id="activeCardId"
-    title="Select Universe for Forked Timeline"
-    description="Choose which isolated universe memory context the new branch will start in."
+    :title="t('stage.chat-ui.actions.universe-title')"
+    :description="t('stage.chat-ui.actions.universe-description')"
     @confirm="handleUniverseConfirm"
   />
 </template>

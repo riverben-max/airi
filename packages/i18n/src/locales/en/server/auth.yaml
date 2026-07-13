@@ -70,6 +70,10 @@ signIn:
     and: and
     privacy: Privacy Policy
     agreement: By continuing, you agree to our {terms} and {privacy}.
+notFound:
+  title: Page not found
+  description: This auth page does not exist.
+  back: Go back
 verifyEmail:
   title:
     pending: Check your inbox

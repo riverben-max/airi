@@ -3,6 +3,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useAiriCardStore } from '../../../stores/modules/airi-card'
 import { useConsciousnessStore } from '../../../stores/modules/consciousness'
@@ -14,10 +15,11 @@ const props = withDefaults(defineProps<{
   variant?: 'default' | 'mobile'
   side?: 'top' | 'right' | 'bottom' | 'left'
 }>(), {
-  title: 'Model & Provider',
   variant: 'default',
   side: 'top',
 })
+const { t } = useI18n()
+const triggerTitle = computed(() => props.title || t('stage.chat-ui.brain.title'))
 
 // Store bindings
 const consciousnessStore = useConsciousnessStore()
@@ -77,7 +79,7 @@ watch(cards, (newCards) => {
     const alreadyInFavorites = favorites.value.some(fav => fav.provider === provider && fav.model === model)
     if (!alreadyInFavorites) {
       // Find a friendly display name based on character card name
-      let displayName = `Current (${model.split('/').pop() || model})`
+      let displayName = model.split('/').pop() || model
       for (const card of newCards.values()) {
         const cardProv = card.extensions?.airi?.modules?.consciousness?.provider || card.extensions?.airi?.generation?.provider
         const cardModel = card.extensions?.airi?.modules?.consciousness?.model || card.extensions?.airi?.generation?.model
@@ -185,8 +187,8 @@ const activeModelDisplay = computed(() => {
   if (matched) {
     return matched.name
   }
-  const modelShort = activeModel.value?.split('/').pop() || activeModel.value || 'None'
-  return `${modelShort} / ${activeProvider.value || 'None'}`
+  const modelShort = activeModel.value?.split('/').pop() || activeModel.value || t('stage.chat-ui.brain.none')
+  return `${modelShort} / ${activeProvider.value || t('stage.chat-ui.brain.none')}`
 })
 </script>
 
@@ -196,14 +198,14 @@ const activeModelDisplay = computed(() => {
       <button
         v-if="variant === 'mobile'"
         class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md transition-all active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70"
-        :title="title"
+        :title="triggerTitle"
       >
         <div class="i-ph:brain-duotone size-5 text-neutral-500 dark:text-neutral-400" />
       </button>
       <button
         v-else
         class="flex cursor-pointer items-center justify-center rounded-xl p-1.5 text-neutral-500 transition-colors duration-200 ease-in-out hover:bg-neutral-200 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-        :title="title"
+        :title="triggerTitle"
       >
         <div class="i-ph:brain-duotone text-base" />
       </button>
@@ -220,16 +222,16 @@ const activeModelDisplay = computed(() => {
         <div class="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
           <div class="flex items-center gap-1.5">
             <div class="i-ph:brain-duotone text-base text-primary-500" />
-            <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">Model & Provider</span>
+            <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('stage.chat-ui.brain.title') }}</span>
           </div>
-          <span class="rounded bg-primary-500/10 px-1.5 py-0.5 text-[9px] text-primary-500 font-bold font-mono uppercase dark:bg-primary-500/20">Real-Time</span>
+          <span class="rounded bg-primary-500/10 px-1.5 py-0.5 text-[9px] text-primary-500 font-bold font-mono uppercase dark:bg-primary-500/20">{{ t('stage.chat-ui.brain.real-time') }}</span>
         </div>
 
         <!-- Sleek, Compact Active Status Badge -->
         <div class="mb-3.5 flex items-center justify-between gap-2 border border-neutral-200/30 rounded-xl bg-neutral-50/50 px-2.5 py-1.5 text-[10px] dark:border-neutral-800/60 dark:bg-neutral-800/20">
           <div class="flex items-center gap-1.5">
             <span class="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-            <span class="text-neutral-400 font-bold tracking-tight uppercase">Active</span>
+            <span class="text-neutral-400 font-bold tracking-tight uppercase">{{ t('stage.chat-ui.brain.active') }}</span>
           </div>
           <span class="max-w-48 truncate text-neutral-700 font-semibold font-mono dark:text-neutral-300" :title="activeModelDisplay">
             {{ activeModelDisplay }}
@@ -239,12 +241,12 @@ const activeModelDisplay = computed(() => {
         <!-- Favorites List -->
         <div class="mb-4">
           <div class="mb-2 flex items-center justify-between text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            <span>Favorites</span>
-            <span class="text-[9px] text-neutral-400/60 font-mono">{{ favorites.length }} saved</span>
+            <span>{{ t('stage.chat-ui.brain.favorites') }}</span>
+            <span class="text-[9px] text-neutral-400/60 font-mono">{{ t('stage.chat-ui.brain.saved-count', { count: favorites.length }) }}</span>
           </div>
 
           <div v-if="favorites.length === 0" class="border border-neutral-200 rounded-xl border-dashed py-4 text-center text-xs text-neutral-400 dark:border-neutral-800">
-            No favorites saved. Add one below!
+            {{ t('stage.chat-ui.brain.empty') }}
           </div>
 
           <div v-else class="max-h-40 overflow-y-auto scrollbar-thin space-y-1.5">
@@ -287,7 +289,7 @@ const activeModelDisplay = computed(() => {
                 <!-- Delete Button -->
                 <button
                   class="rounded p-1 text-neutral-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
-                  title="Remove Favorite"
+                  :title="t('stage.chat-ui.brain.remove')"
                   @click.stop="handleDeleteFavorite(fav)"
                 >
                   <div class="i-solar:trash-bin-trash-bold-duotone text-xs" />
@@ -315,18 +317,18 @@ const activeModelDisplay = computed(() => {
               @click="showAddForm = true"
             >
               <div class="i-solar:add-circle-linear text-sm" />
-              <span>Add New Favorite</span>
+              <span>{{ t('stage.chat-ui.brain.add-new') }}</span>
             </button>
 
             <!-- Form -->
             <div v-else class="space-y-2.5">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Add Favorite</span>
+                <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">{{ t('stage.chat-ui.brain.add') }}</span>
                 <button
                   class="text-[10px] text-neutral-400 font-semibold hover:text-neutral-600 dark:hover:text-neutral-200"
                   @click="showAddForm = false"
                 >
-                  Cancel
+                  {{ t('stage.chat-ui.brain.cancel') }}
                 </button>
               </div>
 
@@ -334,7 +336,7 @@ const activeModelDisplay = computed(() => {
               <input
                 v-model="newName"
                 type="text"
-                placeholder="Name (e.g. Fast Model)"
+                :placeholder="t('stage.chat-ui.brain.name-placeholder')"
                 class="w-full border border-neutral-200/60 rounded-lg bg-transparent px-2.5 py-1.5 text-xs text-neutral-800 outline-none transition-all dark:border-neutral-800 focus:border-primary-500 dark:text-neutral-200 placeholder:text-neutral-400/60 focus:ring-1 focus:ring-primary-500/20"
               >
 
@@ -358,7 +360,7 @@ const activeModelDisplay = computed(() => {
                     :disabled="isLoadingModels || availableModels.length === 0"
                   >
                     <option value="" disabled selected>
-                      {{ isLoadingModels ? 'Loading...' : availableModels.length === 0 ? 'No Models' : 'Select Model' }}
+                      {{ isLoadingModels ? t('stage.chat-ui.brain.loading') : availableModels.length === 0 ? t('stage.chat-ui.brain.no-models') : t('stage.chat-ui.brain.select-model') }}
                     </option>
                     <option v-for="model in availableModels" :key="model.id" :value="model.id">
                       {{ model.name || model.id.split('/').pop() || model.id }}
@@ -374,7 +376,7 @@ const activeModelDisplay = computed(() => {
                 @click="handleAddFavorite"
               >
                 <div class="i-solar:add-circle-bold-duotone text-sm" />
-                <span>Save Favorite</span>
+                <span>{{ t('stage.chat-ui.brain.save') }}</span>
               </button>
             </div>
           </Transition>

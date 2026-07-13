@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Button } from '@proj-airi/ui'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -38,7 +40,7 @@ const router = useRouter()
             'text-2xl font-semibold',
           ]"
         >
-          Page not found
+          {{ t('server.auth.notFound.title') }}
         </h1>
         <p
           :class="[
@@ -46,7 +48,7 @@ const router = useRouter()
             'dark:text-neutral-300',
           ]"
         >
-          This auth page does not exist.
+          {{ t('server.auth.notFound.description') }}
         </p>
       </div>
 
@@ -56,10 +58,10 @@ const router = useRouter()
         ]"
       >
         <Button @click="router.push('/sign-in')">
-          Sign in
+          {{ t('server.auth.signIn.action.signIn') }}
         </Button>
         <Button variant="secondary" @click="router.go(-1)">
-          Go back
+          {{ t('server.auth.notFound.back') }}
         </Button>
       </div>
     </section>

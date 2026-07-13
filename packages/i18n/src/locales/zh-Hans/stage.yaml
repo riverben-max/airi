@@ -160,3 +160,184 @@ profile-switcher:
   manage: 管理配置
   manage-stage: 管理舞台
 waiting: 等待中
+shared:
+  replay:
+    title: 重播动画{hotkey}
+    replaying: 正在重播...
+    replay: 重播
+    auto: 每 {interval} 毫秒自动重播
+  steppers:
+    progress: 第 {current} 步，共 {total} 步
+    step-title: 第 {step} 步{title}
+    back: 返回
+    next: 下一步
+    finish: 完成
+  stickers:
+    library: 贴纸库
+    toggle-standalone: 切换独立窗口模式
+    standalone: 独立窗口
+    clear: 清空贴纸库
+    upload: 上传
+    delete: 删除{name}
+    empty: 暂无贴纸
+  not-found:
+    title: 我们这是到哪儿了？
+    back: 返回
+  login:
+    google: 使用 Google 登录
+    github: 使用 GitHub 登录
+chat-ui:
+  feedback:
+    retrying: 正在重试消息...
+    retry-failed: 消息重试失败。
+    retry-restored: 消息重试失败，已恢复对话。
+    retry-no-user: 无法重试：此回复前没有用户消息。
+    forked: 对话分支创建成功！
+    forked-triggered: 已创建并触发对话分支！
+    forked-switched: 已创建并切换到对话分支！
+    fork-failed: 创建对话分支失败。
+    deleted-from-here: 已删除此处及之后的消息。
+    journal-generating: 正在生成日记条目...
+    journal-created: 日记条目已创建！
+    journal-failed: 创建日记条目失败。
+    empty-message: 消息内容不能为空。
+    response-updated: 回复已更新。
+    response-update-failed: 更新回复失败。
+    message-updated: 消息已更新，正在生成回复...
+    message-update-failed: 更新消息失败。
+    no-response: 角色选择在这一轮不作回应
+  edit:
+    cancel: 取消（Esc）
+    commit: 提交（Shift+Enter）
+  whisper:
+    open: 打开文字输入
+    placeholder: 给{name}发送消息...
+    send-failed: 消息发送失败，草稿已恢复。
+    close: 关闭输入框（Esc）
+  brain:
+    title: 模型与提供商
+    real-time: 实时
+    active: 当前使用
+    none: 无
+    favorites: 收藏
+    saved-count: 已保存 {count} 个
+    empty: 暂无收藏，请在下方添加！
+    remove: 移除收藏
+    add-new: 添加新收藏
+    add: 添加收藏
+    cancel: 取消
+    name-placeholder: 名称（例如：快速模型）
+    loading: 正在加载...
+    no-models: 暂无模型
+    select-model: 选择模型
+    save: 保存收藏
+  grounding:
+    title: 接地选项
+    system-sensors: 系统传感器
+    system-sensors-description: 注入实时操作系统遥测数据
+    history: 上下文历史
+    history-description: 附加近期滚动聊天记录
+    memory: 世界记忆（RAG）
+    memory-description: 语义检索长期记忆
+    topics: 近期话题
+    topics-description: 注入当前热门上下文
+    scene: 视觉场景状态
+    scene-description: 附加导演的最新草稿
+    proactivity: 主动性设置
+  images:
+    title: 添加媒体
+    screenshot: 截取屏幕
+    screenshot-description: 截图并附加到消息
+    attach: 附加图像
+    attach-description: 从电脑上传
+  memory:
+    title: 记忆与上下文
+    view-prompt: 查看系统提示词
+    view-prompt-description: 查看角色指令
+    search: 搜索记忆
+    search-description: 使用自然语言搜索
+    working: 处理中...
+    last-days: 最近 3 天
+    cached-count: 已缓存 {count}/3 天
+    rebuild: 重建
+    today: 今天
+    cached: 已缓存
+    not-cached: 未缓存
+    refresh: 刷新
+    cache-today: 缓存今天
+    sessions: 会话管理
+    manage: 记忆管理
+    proactivity: 主动性设置
+    clear: 清空消息
+  sessions:
+    title: 平行时间线
+    description: 管理故事的不同分支
+    raw-turns: 原始轮次：{count}
+    unique-turns: 唯一轮次：{count}
+    start: 开始新时间线
+    active: 当前
+    untitled: 未命名时间线
+    messages: '{count} 条消息'
+    last-active: 最后活跃于 {date}
+    change-universe: 更改世界
+    edit-title: 编辑标题
+    delete: 删除会话
+    close: 关闭时间线
+    save-title: 保存标题
+    create-picker-title: 新时间线的世界
+    migrate-picker-title: 更改时间线世界
+    create-picker-description: 为此时间线分配一个世界，或创建新的记忆池。
+    migrate-picker-description: 将此会话及其所有相关记忆和图像移至另一个世界。
+  actions:
+    menu: 消息操作
+    universe-title: 为分支时间线选择世界
+    universe-description: 选择新分支开始时使用的独立世界记忆上下文。
+dialogs:
+  hearing:
+    title: 听觉输入
+    permission: 需要麦克风权限
+    permission-description: 应用无权访问您的麦克风。请在系统设置中授予麦克风权限以启用音频输入。
+    unknown-device: 未知设备
+    select: 选择麦克风
+    toggle: 切换麦克风
+  background:
+    title: 背景选择器
+    custom-label: 自定义背景
+    no-preview: 无预览
+    remove: 移除背景
+    add: 添加自定义背景
+    preview: 预览
+    blur: 模糊
+    select: 选择背景
+    sampling: 正在取样...
+    use: 使用此背景
+  stage-background:
+    title: 舞台样式选择器
+    gallery: 图库视图
+    description: 已生成图像的历史记录。
+    none: 无
+    refresh: 刷新
+    active: 使用中
+    select: 选择
+    preview: 预览
+    download: 下载
+    delete: 删除
+    close-preview: 关闭预览
+    delete-confirm: 确定要删除这张图像吗？
+  universe:
+    title: 选择世界上下文
+    description: 决定此会话要绑定到哪条时间线或记忆池。
+    close: 关闭世界选择器
+    create: 创建新世界
+    global-world: 全局世界（默认）
+    shared: 共享记忆与上下文
+    isolated: 独立时间线记忆
+    name: 世界名称
+    name-placeholder: 例如：海边小屋、与 Chloe 的日常...
+    back: 返回选择
+    confirm: 确认分配
+  validation:
+    title: 验证详情
+    close: 关闭
+    empty: 没有失败的检查。
+    failed: 验证失败。

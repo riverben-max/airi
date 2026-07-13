@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Callout, FieldSelect } from '@proj-airi/ui'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(defineProps<{
   enabled?: boolean
@@ -13,6 +14,7 @@ const props = withDefaults(defineProps<{
   audioInputs: () => [],
   volumeLevel: 0,
 })
+const { t } = useI18n()
 
 const enabled = defineModel<boolean>('enabled')
 const selectedAudioInput = defineModel<string>('selectedAudioInput')
@@ -51,6 +53,8 @@ const ringEnabledClass = computed(() => enabled.value
           :class="[
             props.enabled ? 'bg-primary-500 text-white hover:bg-primary-600 active:scale-95' : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300 active:scale-95 dark:bg-neutral-700 dark:text-neutral-200',
           ]"
+          :aria-label="t('stage.dialogs.hearing.toggle')"
+          :aria-pressed="props.enabled"
           @click="() => enabled = !enabled"
         >
           <div :class="enabled ? 'i-ph:microphone' : 'i-ph:microphone-slash'" class="h-6 w-6" />
@@ -61,10 +65,9 @@ const ringEnabledClass = computed(() => enabled.value
 
       <!-- Permission callout when needed (Electron contexts) -->
       <div v-if="!props.granted" class="mt-3 w-full">
-        <Callout theme="orange" label="Microphone permission required">
+        <Callout theme="orange" :label="t('stage.dialogs.hearing.permission')">
           <div class="text-sm">
-            The app doesn't have permission to access your microphone.
-            Please grant microphone access in your system settings to enable audio input.
+            {{ t('stage.dialogs.hearing.permission-description') }}
           </div>
         </Callout>
       </div>
@@ -74,10 +77,10 @@ const ringEnabledClass = computed(() => enabled.value
     <div class="mt-3 w-full">
       <FieldSelect
         v-model="selectedAudioInput"
-        label="输入设备"
-        description="选择要使用的麦克风。"
-        :options="props.audioInputs.map(device => ({ label: device.label || 'Unknown Device', value: device.deviceId }))"
-        placeholder="Select microphone"
+        :label="t('stage.chat.composer.input-device')"
+        :description="t('stage.chat.composer.input-device-description')"
+        :options="props.audioInputs.map(device => ({ label: device.label || t('stage.dialogs.hearing.unknown-device'), value: device.deviceId }))"
+        :placeholder="t('stage.dialogs.hearing.select')"
         layout="vertical"
       />
     </div>

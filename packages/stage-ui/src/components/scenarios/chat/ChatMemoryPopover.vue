@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { useShortTermMemoryStore } from '../../../stores/memory-short-term'
@@ -16,7 +17,6 @@ const props = withDefaults(defineProps<{
   variant?: 'default' | 'mobile'
 }>(), {
   showCacheStatus: false,
-  title: '记忆与上下文',
   variant: 'default',
 })
 
@@ -28,6 +28,8 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { t } = useI18n()
+const triggerTitle = computed(() => props.title || t('stage.chat-ui.memory.title'))
 const shortTermMemory = useShortTermMemoryStore()
 const airiCardStore = useAiriCardStore()
 const { activeCardId } = storeToRefs(airiCardStore)
@@ -100,14 +102,14 @@ function navigateToProactivity() {
       <button
         v-if="variant === 'mobile'"
         class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md transition-all active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70"
-        :title="title"
+        :title="triggerTitle"
       >
         <div class="i-solar:history-bold-duotone size-5 text-neutral-500 dark:text-neutral-400" />
       </button>
       <button
         v-else
         class="flex cursor-pointer items-center justify-center rounded-xl p-1.5 text-neutral-500 transition-colors duration-200 ease-in-out hover:bg-neutral-200 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-        :title="title"
+        :title="triggerTitle"
       >
         <div class="i-solar:history-bold-duotone text-base" />
       </button>
@@ -122,7 +124,7 @@ function navigateToProactivity() {
       >
         <!-- Header -->
         <div class="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
-          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">记忆与上下文</span>
+          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('stage.chat-ui.memory.title') }}</span>
           <div class="i-solar:history-bold-duotone text-xs text-primary-500" />
         </div>
 
@@ -133,8 +135,8 @@ function navigateToProactivity() {
         >
           <div class="i-solar:notes-bold-duotone text-lg text-primary-600 dark:text-primary-400" />
           <div class="flex flex-col">
-            <span class="text-[13px] text-primary-900 font-semibold leading-none dark:text-primary-100">View System Prompt</span>
-            <span class="mt-1 text-[10px] text-primary-600/70 dark:text-primary-400/70">Check character instructions</span>
+            <span class="text-[13px] text-primary-900 font-semibold leading-none dark:text-primary-100">{{ t('stage.chat-ui.memory.view-prompt') }}</span>
+            <span class="mt-1 text-[10px] text-primary-600/70 dark:text-primary-400/70">{{ t('stage.chat-ui.memory.view-prompt-description') }}</span>
           </div>
         </button>
 
@@ -145,8 +147,8 @@ function navigateToProactivity() {
         >
           <div class="i-solar:magnifer-bold-duotone text-lg text-emerald-600 dark:text-emerald-400" />
           <div class="flex flex-col">
-            <span class="text-[13px] text-emerald-900 font-semibold leading-none dark:text-primary-100">Search Memories</span>
-            <span class="mt-1 text-[10px] text-emerald-600/70 dark:text-emerald-400/70">Natural language searches</span>
+            <span class="text-[13px] text-emerald-900 font-semibold leading-none dark:text-primary-100">{{ t('stage.chat-ui.memory.search') }}</span>
+            <span class="mt-1 text-[10px] text-emerald-600/70 dark:text-emerald-400/70">{{ t('stage.chat-ui.memory.search-description') }}</span>
           </div>
         </button>
 
@@ -156,7 +158,7 @@ function navigateToProactivity() {
           <div v-if="shortTermMemory.rebuilding" class="rounded-lg bg-primary-50 p-2 dark:bg-primary-900/30">
             <div class="flex items-center gap-2 text-xs text-primary-600 dark:text-primary-300">
               <div class="i-svg-spinners:pulse-ring text-sm" />
-              <span>{{ shortTermMemory.rebuildProgress || 'Working...' }}</span>
+              <span>{{ shortTermMemory.rebuildProgress || t('stage.chat-ui.memory.working') }}</span>
             </div>
           </div>
 
@@ -167,8 +169,8 @@ function navigateToProactivity() {
                 <div :class="allLast3Cached ? 'i-solar:check-circle-bold-duotone' : 'i-solar:danger-triangle-bold-duotone'" />
               </div>
               <div class="flex flex-col">
-                <span class="text-[11px] text-neutral-700 font-bold leading-none dark:text-neutral-200">Last 3 Days</span>
-                <span class="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">{{ cachedDayCount }}/3 Cached</span>
+                <span class="text-[11px] text-neutral-700 font-bold leading-none dark:text-neutral-200">{{ t('stage.chat-ui.memory.last-days') }}</span>
+                <span class="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">{{ t('stage.chat-ui.memory.cached-count', { count: cachedDayCount }) }}</span>
               </div>
             </div>
             <button
@@ -176,7 +178,7 @@ function navigateToProactivity() {
               :disabled="shortTermMemory.rebuilding"
               @click="handleRebuildFromHistory"
             >
-              Rebuild
+              {{ t('stage.chat-ui.memory.rebuild') }}
             </button>
           </div>
 
@@ -187,8 +189,8 @@ function navigateToProactivity() {
                 <div :class="isTodayCached ? 'i-solar:check-circle-bold-duotone' : 'i-solar:danger-triangle-bold-duotone'" />
               </div>
               <div class="flex flex-col">
-                <span class="text-[11px] text-neutral-700 font-bold leading-none dark:text-neutral-200">Today</span>
-                <span class="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">{{ isTodayCached ? 'Cached' : 'Not Cached' }}</span>
+                <span class="text-[11px] text-neutral-700 font-bold leading-none dark:text-neutral-200">{{ t('stage.chat-ui.memory.today') }}</span>
+                <span class="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">{{ isTodayCached ? t('stage.chat-ui.memory.cached') : t('stage.chat-ui.memory.not-cached') }}</span>
               </div>
             </div>
             <button
@@ -196,7 +198,7 @@ function navigateToProactivity() {
               :disabled="shortTermMemory.rebuilding"
               @click="handleCacheToday"
             >
-              {{ isTodayCached ? 'Refresh' : 'Cache Today' }}
+              {{ isTodayCached ? t('stage.chat-ui.memory.refresh') : t('stage.chat-ui.memory.cache-today') }}
             </button>
           </div>
         </div>
@@ -209,7 +211,7 @@ function navigateToProactivity() {
           >
             <div class="flex items-center gap-2">
               <div class="i-solar:layers-minimalistic-linear text-neutral-400" />
-              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Session Management</span>
+              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">{{ t('stage.chat-ui.memory.sessions') }}</span>
             </div>
             <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
           </button>
@@ -220,7 +222,7 @@ function navigateToProactivity() {
           >
             <div class="flex items-center gap-2">
               <div class="i-solar:settings-minimalistic-linear text-neutral-400" />
-              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Memory Management</span>
+              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">{{ t('stage.chat-ui.memory.manage') }}</span>
             </div>
             <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
           </button>
@@ -231,7 +233,7 @@ function navigateToProactivity() {
           >
             <div class="flex items-center gap-2">
               <div class="i-solar:target-linear text-neutral-400" />
-              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Proactivity Settings</span>
+              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">{{ t('stage.chat-ui.memory.proactivity') }}</span>
             </div>
             <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
           </button>
@@ -246,7 +248,7 @@ function navigateToProactivity() {
           >
             <div class="flex items-center gap-2">
               <div class="i-solar:trash-bin-2-bold-duotone text-red-400" />
-              <span class="text-xs text-red-500 font-medium dark:text-red-400">清空消息</span>
+              <span class="text-xs text-red-500 font-medium dark:text-red-400">{{ t('stage.chat-ui.memory.clear') }}</span>
             </div>
           </button>
         </div>

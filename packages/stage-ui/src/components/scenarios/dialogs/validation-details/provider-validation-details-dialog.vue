@@ -6,14 +6,15 @@ import { useMediaQuery, useResizeObserver, useScreenSafeArea } from '@vueuse/cor
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { DrawerContent, DrawerHandle, DrawerOverlay, DrawerPortal, DrawerRoot } from 'vaul-vue'
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   steps: ProviderValidationStep[]
   stepId?: string
   title?: string
-}>(), {
-  title: 'Validation details',
-})
+}>()
+const { t } = useI18n()
+const dialogTitle = computed(() => props.title || t('stage.dialogs.validation.title'))
 
 const showDialog = defineModel({ type: Boolean, default: false, required: false })
 
@@ -38,15 +39,15 @@ const selectedSteps = computed(() => {
       <DialogContent :class="['fixed', 'left-1/2', 'top-1/2', 'z-[9999]', 'max-h-full', 'max-w-2xl', 'w-[92dvw]', 'transform', 'overflow-y-scroll', 'rounded-2xl', 'bg-white', 'p-6', 'shadow-xl', 'outline-none', 'backdrop-blur-md', 'scrollbar-none', '-translate-x-1/2', '-translate-y-1/2', 'data-[state=closed]:animate-contentHide', 'data-[state=open]:animate-contentShow', 'dark:bg-neutral-900']">
         <div :class="['flex', 'items-center', 'justify-between', 'gap-2', 'mb-4']">
           <DialogTitle :class="['text-lg', 'font-semibold', 'text-neutral-900', 'dark:text-neutral-100']">
-            {{ props.title }}
+            {{ dialogTitle }}
           </DialogTitle>
           <Button size="sm" variant="secondary" @click="() => showDialog = false">
-            Close
+            {{ t('stage.dialogs.validation.close') }}
           </Button>
         </div>
         <div :class="['flex', 'flex-col', 'gap-3']">
           <div v-if="selectedSteps.length === 0" :class="['text-sm', 'text-neutral-500', 'dark:text-neutral-400']">
-            No failed checks.
+            {{ t('stage.dialogs.validation.empty') }}
           </div>
           <div
             v-for="step in selectedSteps"
@@ -60,7 +61,7 @@ const selectedSteps = computed(() => {
               </div>
             </div>
             <div :class="['mt-1', 'text-xs', 'text-neutral-600', 'dark:text-neutral-300']">
-              {{ step.reason || 'Validation failed.' }}
+              {{ step.reason || t('stage.dialogs.validation.failed') }}
             </div>
           </div>
         </div>
@@ -77,15 +78,15 @@ const selectedSteps = computed(() => {
         <DrawerHandle />
         <div :class="['flex', 'items-center', 'justify-between', 'gap-2', 'mb-4']">
           <div :class="['text-lg', 'font-semibold', 'text-neutral-900', 'dark:text-neutral-100']">
-            {{ props.title }}
+            {{ dialogTitle }}
           </div>
           <Button size="sm" variant="secondary" @click="() => showDialog = false">
-            Close
+            {{ t('stage.dialogs.validation.close') }}
           </Button>
         </div>
         <div :class="['flex', 'flex-col', 'gap-3', 'overflow-y-auto']">
           <div v-if="selectedSteps.length === 0" :class="['text-sm', 'text-neutral-500', 'dark:text-neutral-400']">
-            No failed checks.
+            {{ t('stage.dialogs.validation.empty') }}
           </div>
           <div
             v-for="step in selectedSteps"
@@ -99,7 +100,7 @@ const selectedSteps = computed(() => {
               </div>
             </div>
             <div :class="['mt-1', 'text-xs', 'text-neutral-600', 'dark:text-neutral-300']">
-              {{ step.reason || 'Validation failed.' }}
+              {{ step.reason || t('stage.dialogs.validation.failed') }}
             </div>
           </div>
         </div>

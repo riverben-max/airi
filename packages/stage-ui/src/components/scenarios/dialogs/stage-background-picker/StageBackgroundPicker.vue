@@ -2,6 +2,7 @@
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(defineProps<{
   cardId: string
@@ -9,6 +10,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   gridMaxHeightClass: 'max-h-[60vh]',
 })
+const { t } = useI18n()
 
 const cardStore = useAiriCardStore()
 const backgroundStore = useBackgroundStore()
@@ -50,7 +52,7 @@ function handleSetAsBackground(id: string) {
 }
 
 async function handleDeleteEntry(id: string) {
-  if (confirm('Are you sure you want to delete this image?')) {
+  if (confirm(t('stage.dialogs.stage-background.delete-confirm'))) {
     await backgroundStore.removeBackground(id)
   }
 }
@@ -96,10 +98,10 @@ function handlePreviewEntry(id: string, title: string) {
     <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-700/50">
       <div class="flex flex-col gap-1">
         <h3 class="text-sm text-neutral-900 font-semibold dark:text-neutral-100">
-          Gallery View
+          {{ t('stage.dialogs.stage-background.gallery') }}
         </h3>
         <p class="text-xs text-neutral-500 dark:text-neutral-400">
-          History of images generated.
+          {{ t('stage.dialogs.stage-background.description') }}
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -117,7 +119,7 @@ function handlePreviewEntry(id: string, title: string) {
             class="text-sm"
             :class="activeBackgroundId === 'none' ? 'i-solar:gallery-remove-bold' : 'i-solar:gallery-remove-linear'"
           />
-          <span>None</span>
+          <span>{{ t('stage.dialogs.stage-background.none') }}</span>
         </button>
 
         <!-- Refresh Button -->
@@ -130,7 +132,7 @@ function handlePreviewEntry(id: string, title: string) {
             class="i-lucide:refresh-cw text-xs"
             :class="{ 'animate-spin': isRefreshingGallery }"
           />
-          <span>Refresh</span>
+          <span>{{ t('stage.dialogs.stage-background.refresh') }}</span>
         </button>
       </div>
     </div>
@@ -162,19 +164,19 @@ function handlePreviewEntry(id: string, title: string) {
             @click="handleSetAsBackground(entry.id)"
           >
             <div :class="activeBackgroundId === entry.id ? 'i-solar:pin-bold' : 'i-solar:pin-linear'" />
-            {{ activeBackgroundId === entry.id ? 'ACTIVE' : 'SELECT' }}
+            {{ activeBackgroundId === entry.id ? t('stage.dialogs.stage-background.active') : t('stage.dialogs.stage-background.select') }}
           </button>
           <div class="flex gap-2">
             <button
               class="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-500/80 text-white backdrop-blur-md transition-all active:scale-95 hover:bg-neutral-600"
-              title="Preview"
+              :title="t('stage.dialogs.stage-background.preview')"
               @click="handlePreviewEntry(entry.id, entry.title)"
             >
               <div class="i-solar:eye-linear text-sm" />
             </button>
             <button
               class="h-8 w-8 flex items-center justify-center rounded-full bg-blue-500/80 text-white backdrop-blur-md transition-all active:scale-95 hover:bg-blue-500"
-              title="Download"
+              :title="t('stage.dialogs.stage-background.download')"
               @click="handleDownloadEntry(entry.id, entry.title)"
             >
               <div class="i-solar:download-square-linear text-sm" />
@@ -182,7 +184,7 @@ function handlePreviewEntry(id: string, title: string) {
             <button
               v-if="entry.type !== 'builtin'"
               class="h-8 w-8 flex items-center justify-center rounded-full bg-red-500/80 text-white backdrop-blur-md transition-all active:scale-95 hover:bg-red-500"
-              title="Delete"
+              :title="t('stage.dialogs.stage-background.delete')"
               @click="handleDeleteEntry(entry.id)"
             >
               <div class="i-solar:trash-bin-trash-linear text-sm" />
@@ -209,6 +211,7 @@ function handlePreviewEntry(id: string, title: string) {
         <!-- Close Button -->
         <button
           class="absolute right-6 top-6 h-12 w-12 flex items-center justify-center rounded-full bg-white/10 text-white transition-all active:scale-95 hover:bg-white/20"
+          :aria-label="t('stage.dialogs.stage-background.close-preview')"
           @click="previewImageUrl = null"
         >
           <div class="i-solar:close-circle-bold text-2xl" />

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(defineProps<{
   /** Tooltip for the main button */
@@ -13,6 +15,8 @@ const emit = defineEmits<{
   (e: 'attach'): void
   (e: 'screenshot'): void
 }>()
+const { t } = useI18n()
+const triggerTitle = computed(() => props.title || t('stage.chat-ui.images.title'))
 </script>
 
 <template>
@@ -22,7 +26,7 @@ const emit = defineEmits<{
       <button
         v-if="variant === 'mobile'"
         class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md transition-all active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70"
-        :title="title || '添加媒体'"
+        :title="triggerTitle"
       >
         <div class="i-solar:add-circle-bold-duotone size-5 text-neutral-500 dark:text-neutral-400" />
       </button>
@@ -31,7 +35,7 @@ const emit = defineEmits<{
       <button
         v-else
         class="h-8 w-8 flex items-center justify-center rounded-xl bg-neutral-200/20 text-neutral-500 transition-all duration-200 active:scale-95 dark:bg-neutral-800/20 hover:bg-neutral-200/40 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-800/40 dark:hover:text-neutral-200"
-        :title="title || '添加媒体'"
+        :title="triggerTitle"
       >
         <div class="i-solar:add-circle-bold text-base" />
       </button>
@@ -46,7 +50,7 @@ const emit = defineEmits<{
       >
         <!-- Header -->
         <div class="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
-          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">添加媒体</span>
+          <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase">{{ t('stage.chat-ui.images.title') }}</span>
           <div class="i-solar:add-circle-bold-duotone text-xs text-primary-500" />
         </div>
 
@@ -57,8 +61,8 @@ const emit = defineEmits<{
         >
           <div class="i-solar:monitor-camera-bold-duotone text-lg text-primary-600 dark:text-primary-400" />
           <div class="flex flex-col">
-            <span class="text-[13px] text-primary-900 font-semibold leading-none dark:text-primary-100">Take Screenshot</span>
-            <span class="mt-1 text-[10px] text-primary-600/70 dark:text-primary-400/70">Capture and attach screen</span>
+            <span class="text-[13px] text-primary-900 font-semibold leading-none dark:text-primary-100">{{ t('stage.chat-ui.images.screenshot') }}</span>
+            <span class="mt-1 text-[10px] text-primary-600/70 dark:text-primary-400/70">{{ t('stage.chat-ui.images.screenshot-description') }}</span>
           </div>
         </button>
 
@@ -69,8 +73,8 @@ const emit = defineEmits<{
         >
           <div class="i-solar:camera-add-bold-duotone text-lg text-neutral-600 dark:text-neutral-400" />
           <div class="flex flex-col">
-            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">Attach Image</span>
-            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Upload from your computer</span>
+            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">{{ t('stage.chat-ui.images.attach') }}</span>
+            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">{{ t('stage.chat-ui.images.attach-description') }}</span>
           </div>
         </button>
       </PopoverContent>

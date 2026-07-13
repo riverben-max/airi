@@ -3,12 +3,14 @@ import { useMediaQuery, useResizeObserver, useScreenSafeArea } from '@vueuse/cor
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, VisuallyHidden } from 'reka-ui'
 import { DrawerContent, DrawerHandle, DrawerOverlay, DrawerPortal, DrawerRoot } from 'vaul-vue'
 import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import StageBackgroundPicker from './StageBackgroundPicker.vue'
 
 const props = defineProps<{
   cardId: string
 }>()
+const { t } = useI18n()
 
 const showDialog = defineModel({ type: Boolean, default: false, required: false })
 
@@ -25,7 +27,7 @@ onMounted(() => screenSafeArea.update())
       <DialogOverlay class="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm data-[state=closed]:animate-fadeOut data-[state=open]:animate-fadeIn" />
       <DialogContent class="fixed left-1/2 top-1/2 z-[9999] max-h-[85vh] max-w-5xl w-[92dvw] flex flex-col transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl outline-none backdrop-blur-md -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow dark:bg-neutral-900">
         <VisuallyHidden>
-          <DialogTitle>Stage Style Picker</DialogTitle>
+          <DialogTitle>{{ t('stage.dialogs.stage-background.title') }}</DialogTitle>
         </VisuallyHidden>
         <StageBackgroundPicker
           :card-id="props.cardId"

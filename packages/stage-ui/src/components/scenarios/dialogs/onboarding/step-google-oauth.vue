@@ -3,6 +3,7 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { signIn, signOut } from '../../../../libs/auth'
 import { useAuthStore } from '../../../../stores/auth'
@@ -14,6 +15,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const authState = ref<'idle' | 'authenticating' | 'success'>('idle')
 const showAdvanced = ref(false)
@@ -75,11 +77,11 @@ async function handleDisconnect() {
       :duration="400"
       class="flex items-center gap-2"
     >
-      <button class="outline-none" @click="props.onPrevious">
+      <button class="outline-none" :aria-label="t('settings.dialogs.onboarding.common.back')" @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5 transition-colors hover:text-primary-500" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Google Authentication
+        {{ t('settings.dialogs.onboarding.remaining.google.title') }}
       </h2>
       <div class="h-5 w-5" />
     </div>
@@ -93,10 +95,10 @@ async function handleDisconnect() {
             <div class="i-solar:letter-bold-duotone h-10 w-10 animate-pulse" />
           </div>
           <h3 class="text-base text-neutral-800 font-bold dark:text-neutral-100">
-            Sign in with your Google Account
+            {{ t('settings.dialogs.onboarding.remaining.google.sign-in-title') }}
           </h3>
           <p class="max-w-xs text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-            Authenticate to find existing database backups or sync your settings dynamically to Google Drive.
+            {{ t('settings.dialogs.onboarding.remaining.google.sign-in-description') }}
           </p>
         </div>
 
@@ -106,7 +108,7 @@ async function handleDisconnect() {
           @click="startOAuth"
         >
           <div class="i-solar:letter-bold-duotone text-lg text-primary-500" />
-          <span>Sign In with Google</span>
+          <span>{{ t('settings.dialogs.onboarding.remaining.google.sign-in') }}</span>
         </button>
 
         <!-- Advanced toggle -->
@@ -115,7 +117,7 @@ async function handleDisconnect() {
             class="mx-auto flex items-center gap-1.5 text-xs text-neutral-500 font-medium outline-none transition-colors dark:text-neutral-400 hover:text-primary-500"
             @click="showAdvanced = !showAdvanced"
           >
-            <span>Configure Custom Credentials</span>
+            <span>{{ t('settings.dialogs.onboarding.remaining.google.configure') }}</span>
             <div
               class="i-solar:alt-arrow-down-linear text-xs transition-transform duration-200"
               :class="{ 'rotate-180': showAdvanced }"
@@ -131,7 +133,7 @@ async function handleDisconnect() {
             class="mt-4 w-full flex flex-col gap-3.5 border border-neutral-100 rounded-xl bg-neutral-50/50 p-4 text-left dark:border-neutral-800/80 dark:bg-neutral-900/30"
           >
             <div class="flex flex-col gap-1">
-              <label class="text-[10px] text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">OAuth Client ID</label>
+              <label class="text-[10px] text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.google.client-id') }}</label>
               <input
                 v-model="clientId"
                 type="text"
@@ -139,7 +141,7 @@ async function handleDisconnect() {
               >
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-[10px] text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Redirect URI</label>
+              <label class="text-[10px] text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.google.redirect-uri') }}</label>
               <input
                 v-model="redirectUri"
                 type="text"
@@ -159,10 +161,10 @@ async function handleDisconnect() {
         </div>
         <div>
           <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-100">
-            Connecting to Google...
+            {{ t('settings.dialogs.onboarding.remaining.google.connecting') }}
           </h3>
           <p class="mt-1 text-xs text-neutral-500">
-            Please log in and authorize the app in the browser popup window.
+            {{ t('settings.dialogs.onboarding.remaining.google.connecting-description') }}
           </p>
         </div>
       </div>
@@ -185,22 +187,22 @@ async function handleDisconnect() {
         </div>
         <div>
           <h3 class="text-base text-neutral-800 font-bold dark:text-neutral-100">
-            {{ authStore.user?.name || 'Authorized User' }}
+            {{ authStore.user?.name || t('settings.dialogs.onboarding.remaining.google.authorized-user') }}
           </h3>
           <p class="text-xs text-neutral-500 dark:text-neutral-400">
-            {{ authStore.user?.email || 'Authenticated' }}
+            {{ authStore.user?.email || t('settings.dialogs.onboarding.remaining.google.authenticated') }}
           </p>
         </div>
         <div class="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 px-4 py-2 text-xs text-emerald-600 font-medium dark:bg-emerald-500/20 dark:text-emerald-400">
           <div class="i-solar:shield-check-bold-duotone h-4 w-4" />
-          Successfully Connected
+          {{ t('settings.dialogs.onboarding.remaining.google.connected') }}
         </div>
 
         <button
           class="mt-2 text-xs text-neutral-400 transition-colors hover:text-neutral-500"
           @click="handleDisconnect"
         >
-          Disconnect Account
+          {{ t('settings.dialogs.onboarding.remaining.google.disconnect') }}
         </button>
       </div>
     </div>
@@ -213,7 +215,7 @@ async function handleDisconnect() {
       :duration="400"
       :delay="300"
       :disabled="authState !== 'success'"
-      label="Continue to Search Backups"
+      :label="t('settings.dialogs.onboarding.remaining.google.continue')"
       @click="props.onNext"
     />
   </div>

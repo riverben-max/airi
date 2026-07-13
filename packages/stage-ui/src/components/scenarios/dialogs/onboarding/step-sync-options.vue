@@ -33,11 +33,11 @@ function handleNext() {
       :duration="400"
       class="flex items-center gap-2"
     >
-      <button class="outline-none" @click="props.onPrevious">
+      <button class="outline-none" :aria-label="t('settings.dialogs.onboarding.common.back')" @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5 transition-colors hover:text-primary-500" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Choose Backup Provider
+        {{ t('settings.dialogs.onboarding.remaining.sync.title') }}
       </h2>
       <div class="h-5 w-5" />
     </div>
@@ -82,10 +82,10 @@ function handleNext() {
               </div>
             </div>
             <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-100">
-              Sign In with Google
+              {{ t('settings.dialogs.onboarding.remaining.sync.google') }}
             </h3>
             <p class="mt-2 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Link your Google Account securely to search for existing cloud backups in Google Drive or compatible object store integrations.
+              {{ t('settings.dialogs.onboarding.remaining.sync.google-description') }}
             </p>
           </div>
         </div>
@@ -120,10 +120,10 @@ function handleNext() {
               </div>
             </div>
             <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-100">
-              Manual Configuration
+              {{ t('settings.dialogs.onboarding.remaining.sync.manual') }}
             </h3>
             <p class="mt-2 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Manually connect your custom S3-compatible cloud storage (AWS, Cloudflare R2, MinIO) or target local file systems.
+              {{ t('settings.dialogs.onboarding.remaining.sync.manual-description') }}
             </p>
           </div>
         </div>

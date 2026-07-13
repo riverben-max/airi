@@ -165,3 +165,184 @@ profile-switcher:
   manage: Manage Profiles
   manage-stage: Manage Stage
 waiting: Waiting
+shared:
+  replay:
+    title: Replay animation{hotkey}
+    replaying: Replaying...
+    replay: Replay
+    auto: Auto replay every {interval}ms
+  steppers:
+    progress: Step {current} of {total}
+    step-title: Step {step}{title}
+    back: Back
+    next: Next
+    finish: Finish
+  stickers:
+    library: Sticker Library
+    toggle-standalone: Toggle standalone window mode
+    standalone: Standalone
+    clear: Clear Library
+    upload: Upload
+    delete: Delete {name}
+    empty: No stickers yet
+  not-found:
+    title: Where are we?
+    back: Go Back
+  login:
+    google: Sign in with Google
+    github: Sign in with GitHub
+chat-ui:
+  feedback:
+    retrying: Retrying message...
+    retry-failed: Failed to retry message.
+    retry-restored: Failed to retry message. Conversation restored.
+    retry-no-user: 'Cannot retry: No user message found before this response.'
+    forked: Conversation forked successfully!
+    forked-triggered: Conversation forked and triggered!
+    forked-switched: Conversation forked and switched!
+    fork-failed: Failed to fork conversation.
+    deleted-from-here: Messages deleted from here.
+    journal-generating: Generating journal entry...
+    journal-created: Journal entry created!
+    journal-failed: Failed to create journal entry.
+    empty-message: Message content cannot be empty.
+    response-updated: Response updated.
+    response-update-failed: Failed to update response.
+    message-updated: Message updated, generating response...
+    message-update-failed: Failed to update message.
+    no-response: The character chose not to respond in this turn
+  edit:
+    cancel: Cancel (Esc)
+    commit: Commit (Shift+Enter)
+  whisper:
+    open: Open text input
+    placeholder: Message to {name}...
+    send-failed: Message failed to send. Draft restored.
+    close: Close input (Esc)
+  brain:
+    title: Model & Provider
+    real-time: Real-Time
+    active: Active
+    none: None
+    favorites: Favorites
+    saved-count: '{count} saved'
+    empty: No favorites saved. Add one below!
+    remove: Remove Favorite
+    add-new: Add New Favorite
+    add: Add Favorite
+    cancel: Cancel
+    name-placeholder: Name (e.g. Fast Model)
+    loading: Loading...
+    no-models: No Models
+    select-model: Select Model
+    save: Save Favorite
+  grounding:
+    title: Grounding options
+    system-sensors: System Sensors
+    system-sensors-description: Inject real-time OS telemetry
+    history: In-Context History
+    history-description: Attach recent sliding chat turns
+    memory: Universe Memory (RAG)
+    memory-description: Semantic long-term memory lookup
+    topics: Recent Topics
+    topics-description: Inject active trending context
+    scene: Visual Scene State
+    scene-description: Attach Director's latest scratchpad
+    proactivity: Proactivity Settings
+  images:
+    title: Add media
+    screenshot: Take Screenshot
+    screenshot-description: Capture and attach screen
+    attach: Attach Image
+    attach-description: Upload from your computer
+  memory:
+    title: Memory & Context
+    view-prompt: View System Prompt
+    view-prompt-description: Check character instructions
+    search: Search Memories
+    search-description: Natural language searches
+    working: Working...
+    last-days: Last 3 Days
+    cached-count: '{count}/3 Cached'
+    rebuild: Rebuild
+    today: Today
+    cached: Cached
+    not-cached: Not Cached
+    refresh: Refresh
+    cache-today: Cache Today
+    sessions: Session Management
+    manage: Memory Management
+    proactivity: Proactivity Settings
+    clear: Clear Messages
+  sessions:
+    title: Parallel Timelines
+    description: Manage different branches of your story
+    raw-turns: '{count} Raw Turns'
+    unique-turns: '{count} Unique Turns'
+    start: Start New Timeline
+    active: Active
+    untitled: Untitled Timeline
+    messages: '{count} messages'
+    last-active: Last active {date}
+    change-universe: Change Universe
+    edit-title: Edit Title
+    delete: Delete Session
+    close: Close timelines
+    save-title: Save title
+    create-picker-title: Start New Timeline Universe
+    migrate-picker-title: Change Timeline Universe
+    create-picker-description: Assign a universe or create a new memory pool for this timeline.
+    migrate-picker-description: Move this session and all its associated memories and images to another universe.
+  actions:
+    menu: Message actions
+    universe-title: Select Universe for Forked Timeline
+    universe-description: Choose which isolated universe memory context the new branch will start in.
+dialogs:
+  hearing:
+    title: Hearing Input
+    permission: Microphone permission required
+    permission-description: The app does not have permission to access your microphone. Grant microphone access in your system settings to enable audio input.
+    unknown-device: Unknown Device
+    select: Select microphone
+    toggle: Toggle microphone
+  background:
+    title: Background Picker
+    custom-label: Custom Background
+    no-preview: No preview
+    remove: Remove background
+    add: Add custom background
+    preview: Preview
+    blur: Blur
+    select: Select a background
+    sampling: Sampling...
+    use: Use this background
+  stage-background:
+    title: Stage Style Picker
+    gallery: Gallery View
+    description: History of images generated.
+    none: None
+    refresh: Refresh
+    active: Active
+    select: Select
+    preview: Preview
+    download: Download
+    delete: Delete
+    close-preview: Close preview
+    delete-confirm: Are you sure you want to delete this image?
+  universe:
+    title: Select Universe Context
+    description: Decide which timeline/memory pool this session will bind to.
+    close: Close universe picker
+    create: Create New Universe
+    global-world: Global World (Default)
+    shared: Shared memories & context
+    isolated: Isolated timeline memories
+    name: Universe Name
+    name-placeholder: e.g. Seaside Cottage, Chloe GF...
+    back: Back to Selection
+    confirm: Confirm Assignment
+  validation:
+    title: Validation details
+    close: Close
+    empty: No failed checks.
+    failed: Validation failed.

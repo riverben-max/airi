@@ -3,6 +3,7 @@ import type { ChatHistoryItem, ChatMessage } from '../../../types/chat'
 
 import { storeToRefs } from 'pinia'
 import { computed, ref, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 import JournalMomentModal from './JournalMomentModal.vue'
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 
 const chatSession = useChatSessionStore()
 const chatOrchestrator = useChatOrchestratorStore()
+const { t } = useI18n()
 const showJournalModal = ref(false)
 
 const isEditing = ref(false)
@@ -111,13 +113,13 @@ async function handleRetry() {
   try {
     // Ingest with triggerOnly: true to generate response without appending the message again
     await chatOrchestrator.ingest('', { triggerOnly: true })
-    toast.success('Retrying message...')
+    toast.success(t('stage.chat-ui.feedback.retrying'))
   }
   catch (err) {
     console.error('[Retry] Failed:', err)
     // Restore the original messages list!
     await chatSession.setSessionMessages(activeSessionId, originalMessages)
-    toast.error('Failed to retry message. Conversation restored.')
+    toast.error(t('stage.chat-ui.feedback.retry-restored'))
   }
 }
 
@@ -148,14 +150,14 @@ async function handleFork(universeId?: string) {
     await chatOrchestrator.ingest('', { triggerOnly: true }, newSessionId)
 
     // Show toast!
-    toast.success('Conversation forked and triggered!')
+    toast.success(t('stage.chat-ui.feedback.forked-triggered'))
   }
 }
 
 function handleDeleteFollowing() {
   if (props.message.id) {
     chatSession.deleteMessagesFromHere(props.message.id)
-    toast.success('Messages deleted from here.')
+    toast.success(t('stage.chat-ui.feedback.deleted-from-here'))
   }
 }
 
@@ -204,9 +206,9 @@ async function handleJournalSubmit(data: { scope: 'all' | 'turns', turns?: numbe
     console.error('[JournalMoment] Creation failed:', err)
     throw err
   }), {
-    loading: 'Generating journal entry...',
-    success: 'Journal entry created!',
-    error: 'Failed to create journal entry.',
+    loading: t('stage.chat-ui.feedback.journal-generating'),
+    success: t('stage.chat-ui.feedback.journal-created'),
+    error: t('stage.chat-ui.feedback.journal-failed'),
   })
 
   showJournalModal.value = false
@@ -241,7 +243,7 @@ async function handleForkAndSwitch(universeId?: string) {
     await chatOrchestrator.ingest('', { triggerOnly: true }, newSessionId)
 
     // Show toast!
-    toast.success('Conversation forked and switched!')
+    toast.success(t('stage.chat-ui.feedback.forked-switched'))
   }
 }
 
@@ -283,7 +285,7 @@ async function handleCommitEdit() {
   if (editorRef.value) {
     const newText = (editorRef.value.textContent || '').trim()
     if (!newText) {
-      toast.error('Message content cannot be empty.')
+      toast.error(t('stage.chat-ui.feedback.empty-message'))
       return
     }
 
@@ -325,11 +327,11 @@ async function handleCommitEdit() {
       // Resubmit for reply generation
       await chatOrchestrator.ingest('', { triggerOnly: true }, activeSessionId)
 
-      toast.success('Message updated, generating response...')
+      toast.success(t('stage.chat-ui.feedback.message-updated'))
     }
     catch (err) {
       console.error('[EditCommit] Failed:', err)
-      toast.error('Failed to update message.')
+      toast.error(t('stage.chat-ui.feedback.message-update-failed'))
     }
     finally {
       isSavingEdit.value = false
@@ -398,7 +400,7 @@ async function handleCommitEdit() {
           >
             <button
               :disabled="isSavingEdit"
-              title="Cancel (Esc)"
+              :title="t('stage.chat-ui.edit.cancel')"
               class="h-6 w-6 flex items-center justify-center rounded-full text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/50"
               @click="handleCancelEdit"
             >
@@ -406,7 +408,7 @@ async function handleCommitEdit() {
             </button>
             <button
               :disabled="isSavingEdit"
-              title="Commit (Shift+Enter)"
+              :title="t('stage.chat-ui.edit.commit')"
               class="h-6 w-6 flex items-center justify-center rounded-full text-emerald-500 transition-colors hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/50"
               @click="handleCommitEdit"
             >

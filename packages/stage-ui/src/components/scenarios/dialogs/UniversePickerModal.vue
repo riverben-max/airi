@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useChatSessionStore } from '../../../stores/chat/session-store'
 
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 }>()
 const showDialog = defineModel<boolean>({ default: false })
 const chatSessionStore = useChatSessionStore()
+const { t } = useI18n()
 
 const existingUniverses = computed(() => {
   if (!props.characterId)
@@ -47,7 +49,7 @@ watch(showDialog, (open) => {
 
 function formatUniverseName(slug: string) {
   if (slug === 'global')
-    return 'Global World (Default)'
+    return t('stage.dialogs.universe.global-world')
   return slug
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -86,14 +88,15 @@ function handleConfirm() {
         <div class="flex items-center justify-between p-6 pb-4">
           <div class="flex flex-col">
             <DialogTitle class="text-xl text-neutral-800 font-bold tracking-tight dark:text-neutral-100">
-              {{ title || 'Select Universe Context' }}
+              {{ title || t('stage.dialogs.universe.title') }}
             </DialogTitle>
             <span class="mt-1 text-xs text-neutral-500 font-medium dark:text-neutral-400">
-              {{ description || 'Decide which timeline/memory-pool this session will bind to.' }}
+              {{ description || t('stage.dialogs.universe.description') }}
             </span>
           </div>
           <button
             class="group rounded-full p-2 text-neutral-400 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            :aria-label="t('stage.dialogs.universe.close')"
             @click="showDialog = false"
           >
             <div class="i-solar:close-circle-bold-duotone text-2xl transition-transform group-hover:scale-110" />
@@ -108,7 +111,7 @@ function handleConfirm() {
               @click="isCreatingNew = true"
             >
               <div class="i-solar:add-circle-bold-duotone text-sm" />
-              Create New Universe
+              {{ t('stage.dialogs.universe.create') }}
             </button>
           </div>
 
@@ -132,7 +135,7 @@ function handleConfirm() {
                     {{ formatUniverseName(univ) }}
                   </span>
                   <span class="text-[10px] text-neutral-400 font-semibold dark:text-neutral-500">
-                    {{ univ === 'global' ? 'Shared memories & context' : 'Isolated timeline memories' }}
+                    {{ univ === 'global' ? t('stage.dialogs.universe.shared') : t('stage.dialogs.universe.isolated') }}
                   </span>
                 </div>
               </div>
@@ -143,10 +146,10 @@ function handleConfirm() {
           <!-- Mode: Create New -->
           <div v-else class="space-y-4">
             <div class="flex flex-col gap-2">
-              <label class="text-xs text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Universe Name</label>
+              <label class="text-xs text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">{{ t('stage.dialogs.universe.name') }}</label>
               <input
                 v-model="newUniverseName"
-                placeholder="e.g. Seaside Cottage, Chloe GF..."
+                :placeholder="t('stage.dialogs.universe.name-placeholder')"
                 class="w-full border border-neutral-200 rounded-2xl bg-neutral-50/50 px-4 py-3 text-sm font-medium dark:border-neutral-800 focus:border-primary-500 dark:bg-neutral-800/30 dark:text-neutral-100 focus:outline-none"
                 autofocus
                 @keyup.enter="handleConfirm"
@@ -158,7 +161,7 @@ function handleConfirm() {
                 @click="isCreatingNew = false"
               >
                 <div class="i-solar:arrow-left-bold-duotone text-sm" />
-                Back to Selection
+                {{ t('stage.dialogs.universe.back') }}
               </button>
             </div>
           </div>
@@ -170,7 +173,7 @@ function handleConfirm() {
             @click="handleConfirm"
           >
             <div class="i-solar:check-circle-bold-duotone text-lg" />
-            Confirm Assignment
+            {{ t('stage.dialogs.universe.confirm') }}
           </button>
         </div>
       </DialogContent>

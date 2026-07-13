@@ -70,6 +70,10 @@ signIn:
     and: 和
     privacy: 隐私政策
     agreement: 继续即表示您同意我们的{terms}和{privacy}。
+notFound:
+  title: 页面未找到
+  description: 此认证页面不存在。
+  back: 返回
 verifyEmail:
   title:
     pending: 请检查收件箱

@@ -13,6 +13,115 @@ const sourceRoots = [
   'packages/stage-ui/src',
 ]
 const forbiddenEnglishByFile: Record<string, string[]> = {
+  'packages/stage-ui/src/components/animations/Replayable.vue': [
+    'Replaying...',
+    'Replay',
+  ],
+  'packages/stage-ui/src/components/auth/LoginDrawer.vue': [
+    'Sign in with Google',
+    'By continuing, you agree to our',
+  ],
+  'packages/stage-ui/src/components/misc/steppers/steppers.vue': [
+    'Finish',
+    'Next',
+  ],
+  'packages/stage-ui/src/components/scenarios/stickers/sticker-manager.vue': [
+    'Sticker Library',
+    'No stickers yet',
+  ],
+  'apps/stage-web/src/pages/[...all].vue': [
+    'Where are we?',
+    'Go Back',
+  ],
+  'apps/ui-server-auth/src/pages/[...all].vue': [
+    'Page not found',
+    'This auth page does not exist.',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/assistant-item.vue': [
+    'Retrying message...',
+    'The character chose not to respond in this turn',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/user-item.vue': [
+    'Conversation forked and triggered!',
+    'Message content cannot be empty.',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/WhisperDock.vue': [
+    'Message failed to send. Draft restored.',
+    'Close input (Esc)',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/ChatBrainPopover.vue': [
+    'Model & Provider',
+    'No favorites saved. Add one below!',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/ChatGroundingPopover.vue': [
+    'System Sensors',
+    'Universe Memory (RAG)',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/ChatImagesPopover.vue': [
+    'Take Screenshot',
+    'Attach Image',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/ChatMemoryPopover.vue': [
+    'View System Prompt',
+    'Search Memories',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/ChatSessionModal.vue': [
+    'Parallel Timelines',
+    'Start New Timeline',
+  ],
+  'packages/stage-ui/src/components/scenarios/chat/components/action-menu/index.vue': [
+    'Message actions',
+    'Select Universe for Forked Timeline',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/audio-input/hearing-config.vue': [
+    'Microphone permission required',
+    'Select microphone',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/audio-input/hearing-config-dialog.vue': [
+    'Hearing Input',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/background-picker/background-picker.vue': [
+    'Add custom background',
+    'Use this background',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/background-picker/background-picker-dialog.vue': [
+    'Background Picker',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/stage-background-picker/StageBackgroundPicker.vue': [
+    'Gallery View',
+    'History of images generated.',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/stage-background-picker/StageBackgroundDialogPicker.vue': [
+    'Stage Style Picker',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/UniversePickerModal.vue': [
+    'Create New Universe',
+    'Confirm Assignment',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/validation-details/provider-validation-details-dialog.vue': [
+    'Validation details',
+    'Validation failed.',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-character-selection.vue': [
+    'Choose Your Companion',
+    'Import Custom Card',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-google-oauth.vue': [
+    'Google Authentication',
+    'Continue to Search Backups',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-manual-adapter.vue': [
+    'Storage Adapter',
+    'Next: Selective Sync',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-start-choice.vue': [
+    'Get Started',
+    'Returning User',
+  ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-sync-options.vue': [
+    'Choose Backup Provider',
+    'Manual Configuration',
+  ],
   'packages/stage-pages/src/pages/settings/airi-card/index.vue': [
     'Find More Cards',
     'Import Character Card',
@@ -434,6 +543,25 @@ it('does not reintroduce audited English literals in production settings', () =>
 })
 
 describe('production settings source audit', () => {
+  it('keeps Phase C dynamic labels reactive and interpolated', () => {
+    const replayable = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/animations/Replayable.vue'), 'utf8')
+    const sessions = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/chat/ChatSessionModal.vue'), 'utf8')
+    const universe = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/dialogs/UniversePickerModal.vue'), 'utf8')
+
+    expect(replayable).toContain('t(\'stage.shared.replay.replaying\')')
+    expect(sessions).toContain('const pickerTitle = computed(() =>')
+    expect(sessions).toContain(':title="pickerTitle"')
+    expect(universe).toContain('return t(\'stage.dialogs.universe.global-world\')')
+  })
+
+  it('uses one localized linked agreement in the shared login drawer', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/auth/LoginDrawer.vue'), 'utf8')
+
+    expect(source).toContain('<i18n-t keypath="server.auth.signIn.footer.agreement"')
+    expect(source).toContain('<template #terms>')
+    expect(source).toContain('<template #privacy>')
+  })
+
   it('keeps translated Phase B option arrays reactive', () => {
     const acting = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/tabs/CardCreationTabActing.vue'), 'utf8')
     const vrmExpressions = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/settings/model-settings/vrm-expressions.vue'), 'utf8')
@@ -764,7 +892,7 @@ describe('simplified Chinese web localization', () => {
     const chineseAuthKeys = Object.keys(chinese).filter(key => key.startsWith('server.auth.')).sort()
     const referencedAuthKeys = referencedKeys.filter(key => key.startsWith('server.auth.'))
 
-    expect(englishAuthKeys).toHaveLength(143)
+    expect(englishAuthKeys).toHaveLength(146)
     expect(chineseAuthKeys).toEqual(englishAuthKeys)
     expect(referencedAuthKeys.length).toBeGreaterThanOrEqual(132)
     expect(referencedAuthKeys.filter(key => !englishAuthKeys.includes(key))).toEqual([])

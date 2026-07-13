@@ -3,6 +3,7 @@ import type { OnboardingStepNextHandler, OnboardingStepPrevHandler } from './typ
 
 import { Button } from '@proj-airi/ui'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface Props {
   onNext: OnboardingStepNextHandler
@@ -10,6 +11,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const adapterType = ref<'s3' | 'local'>('s3')
 
@@ -50,11 +52,11 @@ function handleNext() {
       :duration="400"
       class="flex items-center gap-2"
     >
-      <button class="outline-none" @click="props.onPrevious">
+      <button class="outline-none" :aria-label="t('settings.dialogs.onboarding.common.back')" @click="props.onPrevious">
         <div class="i-solar:alt-arrow-left-line-duotone h-5 w-5 transition-colors hover:text-primary-500" />
       </button>
       <h2 class="flex-1 text-center text-xl text-neutral-800 font-semibold md:text-left md:text-2xl dark:text-neutral-100">
-        Storage Adapter
+        {{ t('settings.dialogs.onboarding.remaining.manual.title') }}
       </h2>
       <div class="h-5 w-5" />
     </div>
@@ -68,21 +70,21 @@ function handleNext() {
           :class="adapterType === 's3' ? 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'"
           @click="adapterType = 's3'"
         >
-          S3 Compatible
+          {{ t('settings.dialogs.onboarding.remaining.manual.s3') }}
         </button>
         <button
           class="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
           :class="adapterType === 'local' ? 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'"
           @click="adapterType = 'local'"
         >
-          Local File System
+          {{ t('settings.dialogs.onboarding.remaining.manual.local') }}
         </button>
       </div>
 
       <!-- S3 Fields -->
       <div v-if="adapterType === 's3'" class="flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">Endpoint URL</label>
+          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.manual.endpoint') }}</label>
           <input
             v-model="endpoint"
             type="text"
@@ -93,7 +95,7 @@ function handleNext() {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">Bucket Name</label>
+            <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.manual.bucket') }}</label>
             <input
               v-model="bucket"
               type="text"
@@ -102,7 +104,7 @@ function handleNext() {
             >
           </div>
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">Region</label>
+            <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.manual.region') }}</label>
             <input
               v-model="region"
               type="text"
@@ -113,7 +115,7 @@ function handleNext() {
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">Access Key ID</label>
+          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.manual.access-key') }}</label>
           <input
             v-model="accessKey"
             type="text"
@@ -123,7 +125,7 @@ function handleNext() {
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">Secret Access Key</label>
+          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.manual.secret-key') }}</label>
           <input
             v-model="secretKey"
             type="password"
@@ -136,7 +138,7 @@ function handleNext() {
       <!-- Local File System Fields -->
       <div v-else class="flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">Local Directory Path</label>
+          <label class="text-xs text-neutral-600 font-semibold dark:text-neutral-400">{{ t('settings.dialogs.onboarding.remaining.manual.directory') }}</label>
           <input
             v-model="localPath"
             type="text"
@@ -157,7 +159,7 @@ function handleNext() {
       :enter="{ opacity: 1, y: 0 }"
       :duration="400"
       :delay="300"
-      label="Next: Selective Sync"
+      :label="t('settings.dialogs.onboarding.provider-resolver.next-selective-sync')"
       @click="handleNext"
     />
   </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T extends Record<string, any> | any">
 import { computed, useSlots } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(defineProps<{
   steps: T[]
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 const value = defineModel<number>({ required: false, default: 0 })
 
 const slots = useSlots()
+const { t } = useI18n()
 
 const isFirstStep = computed(() => value.value === 0)
 const isLastStep = computed(() => value.value === props.steps.length - 1)
@@ -61,7 +63,7 @@ function goToStep(index: number) {
       </div>
       <div v-else>
         <p class="text-xs text-neutral-500/50 dark:text-neutral-400">
-          Step {{ value + 1 }} of {{ steps.length }}
+          {{ t('stage.shared.steppers.progress', { current: value + 1, total: steps.length }) }}
         </p>
       </div>
 
@@ -112,7 +114,7 @@ function goToStep(index: number) {
                   index === value ? 'bg-primary-500 scale-125' : 'bg-neutral-300 dark:bg-neutral-600 hover:bg-neutral-400',
                   index < value ? 'bg-primary-300 dark:bg-primary-700 opacity-70' : '',
                 ]"
-                :title="`Step ${index + 1}${typeof step === 'object' && step !== null && 'title' in step ? `: ${step.title}` : ''}`"
+                :title="t('stage.shared.steppers.step-title', { step: index + 1, title: typeof step === 'object' && step !== null && 'title' in step ? `: ${step.title}` : '' })"
                 @click="goToStep(index)"
               />
             </slot>
@@ -127,7 +129,7 @@ function goToStep(index: number) {
               class="rounded bg-neutral-200 px-3 py-1 text-xs text-neutral-700 disabled:cursor-not-allowed dark:bg-neutral-700 hover:bg-neutral-300 dark:text-neutral-200 disabled:opacity-50 dark:hover:bg-neutral-600"
               @click="back"
             >
-              Back
+              {{ t('stage.shared.steppers.back') }}
             </button>
           </slot>
           <slot name="next-button" :next="next" :is-disabled="false" :is-last="isLastStep">
@@ -136,7 +138,7 @@ function goToStep(index: number) {
               class="rounded bg-primary-500 px-3 py-1 text-xs text-white disabled:cursor-not-allowed hover:bg-primary-600 disabled:opacity-50"
               @click="next"
             >
-              {{ isLastStep ? 'Finish' : 'Next' }}
+              {{ isLastStep ? t('stage.shared.steppers.finish') : t('stage.shared.steppers.next') }}
             </button>
           </slot>
         </div>

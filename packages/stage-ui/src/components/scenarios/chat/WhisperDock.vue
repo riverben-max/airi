@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 import { useChatOrchestratorStore } from '../../../stores/chat'
@@ -22,6 +23,7 @@ const isOpen = ref(props.open ?? false)
 const inputText = ref('')
 const inputRef = ref<HTMLInputElement>()
 const isSending = ref(false)
+const { t } = useI18n()
 
 const cardStore = useAiriCardStore()
 const consciousnessStore = useConsciousnessStore()
@@ -96,7 +98,7 @@ async function send() {
     isSending.value = false
     // Restore text draft so it is not lost
     inputText.value = text
-    toast.error('Message failed to send. Draft restored.')
+    toast.error(t('stage.chat-ui.whisper.send-failed'))
   }
 }
 
@@ -135,6 +137,7 @@ function handleKeydown(e: KeyboardEvent) {
         'active:scale-95',
         'group',
       ]"
+      :aria-label="t('stage.chat-ui.whisper.open')"
       @click="toggleDock"
     >
       <div
@@ -213,7 +216,7 @@ function handleKeydown(e: KeyboardEvent) {
         ref="inputRef"
         v-model="inputText"
         type="text"
-        :placeholder="`Message to ${characterName}...`"
+        :placeholder="t('stage.chat-ui.whisper.placeholder', { name: characterName })"
         :disabled="isSending"
         :class="[
           'flex-1',
@@ -252,7 +255,7 @@ function handleKeydown(e: KeyboardEvent) {
           'transition-all duration-200',
           'cursor-pointer',
         ]"
-        title="Close input (Esc)"
+        :title="t('stage.chat-ui.whisper.close')"
         @click="dismiss"
       >
         <div class="i-ph:x-bold size-4" />
