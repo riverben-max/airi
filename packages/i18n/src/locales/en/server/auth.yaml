@@ -24,6 +24,7 @@ electronCallback:
     closeTabManually: Some browsers do not allow this page to close itself automatically. You can close it manually.
 signIn:
   title: Sign in
+  titleWithApp: Sign in to {app}
   step:
     identify:
       heading: Sign in

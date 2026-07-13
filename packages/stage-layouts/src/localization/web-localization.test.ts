@@ -397,6 +397,37 @@ describe('production settings source audit', () => {
     expect(missing).toEqual([])
   })
 
+  it('localizes the character handle example through interpolation', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'apps/stage-web/src/pages/settings/characters/components/CharacterDialog.vue'), 'utf8')
+
+    expect(source).not.toContain('placeholder="e.g. airi-core"')
+    expect(source).toContain(':placeholder="t(\'settings.pages.characters.dialog.placeholders.handle-id-example\', { example: \'airi-core\' })"')
+  })
+
+  it('uses an accessible native button for producer voice previews', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/chat/ProducerChoiceBubble.vue'), 'utf8')
+    const controlStart = source.indexOf('<button\n              v-if="userProfileStore.voiceProfileId"')
+    const control = source.slice(controlStart, source.indexOf('</button>', controlStart) + '</button>'.length)
+
+    expect(controlStart).toBeGreaterThan(-1)
+    expect(source).not.toMatch(/<button\s+v-for="\(choice, idx\) in message\.choices"/)
+    expect(control).toContain('type="button"')
+    expect(control).toContain(':disabled="loadingIndex === idx"')
+    expect(control).toContain(':aria-busy="loadingIndex === idx"')
+    expect(control).toContain(':aria-pressed="activePlayingIndex === idx"')
+    expect(control).toContain('stage.chat.producer.loading-choice-preview')
+    expect(control).toContain('stage.chat.producer.pause-choice-preview')
+    expect(control).toContain('stage.chat.producer.preview-choice-with-voice')
+    expect(control).toContain('@click.stop="playChoiceSpeech(idx, choice.message)"')
+  })
+
+  it('uses one complete interpolated auth message for the legacy login heading', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'apps/stage-web/src/pages/auth/login.vue'), 'utf8')
+
+    expect(source).not.toContain('{{ t(\'server.auth.signIn.title\') }} AIRI Stage')
+    expect(source).toContain('{{ t(\'server.auth.signIn.titleWithApp\', { app: \'AIRI Stage\' }) }}')
+  })
+
   it('updates the default speech sample across locale changes without replacing edits', () => {
     const source = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/modules/speech.vue'), 'utf8')
 
@@ -577,7 +608,7 @@ describe('simplified Chinese web localization', () => {
     const chineseAuthKeys = Object.keys(chinese).filter(key => key.startsWith('server.auth.')).sort()
     const referencedAuthKeys = referencedKeys.filter(key => key.startsWith('server.auth.'))
 
-    expect(englishAuthKeys).toHaveLength(141)
+    expect(englishAuthKeys).toHaveLength(142)
     expect(chineseAuthKeys).toEqual(englishAuthKeys)
     expect(referencedAuthKeys.length).toBeGreaterThanOrEqual(132)
     expect(referencedAuthKeys.filter(key => !englishAuthKeys.includes(key))).toEqual([])

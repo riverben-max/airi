@@ -464,6 +464,7 @@ pages:
         voice-id: 语音 ID
         speed: 速度
       placeholders:
+        handle-id-example: '例如：{example}'
         character-name: 角色名称
         short-description: 简短描述……
       sections:

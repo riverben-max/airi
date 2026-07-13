@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
 
       <!-- Generated Options -->
       <div v-else class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <button
+        <div
           v-for="(choice, idx) in message.choices"
           :key="idx"
           :class="[
@@ -313,16 +313,27 @@ onBeforeUnmount(() => {
               ? 'border-primary-500/50 bg-primary-950/10'
               : 'border-neutral-800',
           ]"
-          @click="emit('choose', choice)"
         >
           <div class="flex items-start gap-2.5">
-            <!-- Voice icon: left edge, own dedicated space -->
-            <!-- Uses a span (not a button) to avoid nested-button DOM issues inside the card <button> -->
-            <span
+            <!-- Voice preview: left edge, own dedicated space -->
+            <button
               v-if="userProfileStore.voiceProfileId"
+              type="button"
               class="mt-0.5 cursor-pointer rounded p-0.5 transition-colors hover:bg-neutral-800/50"
-              :title="activePlayingIndex === idx ? t('stage.chat.producer.pause') : t('stage.chat.producer.preview-with-voice')"
-              @click.stop.prevent="playChoiceSpeech(idx, choice.message)"
+              :title="loadingIndex === idx
+                ? t('stage.chat.producer.loading-choice-preview', { title: choice.title })
+                : activePlayingIndex === idx
+                  ? t('stage.chat.producer.pause-choice-preview', { title: choice.title })
+                  : t('stage.chat.producer.preview-choice-with-voice', { title: choice.title })"
+              :aria-label="loadingIndex === idx
+                ? t('stage.chat.producer.loading-choice-preview', { title: choice.title })
+                : activePlayingIndex === idx
+                  ? t('stage.chat.producer.pause-choice-preview', { title: choice.title })
+                  : t('stage.chat.producer.preview-choice-with-voice', { title: choice.title })"
+              :disabled="loadingIndex === idx"
+              :aria-busy="loadingIndex === idx"
+              :aria-pressed="activePlayingIndex === idx"
+              @click.stop="playChoiceSpeech(idx, choice.message)"
             >
               <!-- Loading state -->
               <span
@@ -339,12 +350,12 @@ onBeforeUnmount(() => {
                 v-else
                 class="i-solar:user-speak-linear block text-sm text-neutral-500 transition-colors group-hover:text-neutral-300"
               />
-            </span>
+            </button>
             <!-- No voice profile: spacer to keep layout consistent -->
             <span v-else class="mt-0.5 w-4 shrink-0" />
 
             <!-- Card content -->
-            <div class="min-w-0 flex-1">
+            <button class="min-w-0 flex-1 text-left" type="button" @click="emit('choose', choice)">
               <div class="flex items-start justify-between">
                 <span class="text-xs text-neutral-400 font-bold tracking-wider uppercase transition-colors group-hover:text-primary-300">
                   {{ choice.title }}
@@ -354,9 +365,9 @@ onBeforeUnmount(() => {
               <p class="line-clamp-2 mt-1 text-xs text-neutral-300 font-medium leading-relaxed">
                 {{ choice.message }}
               </p>
-            </div>
+            </button>
           </div>
-        </button>
+        </div>
       </div>
     </div>
   </div>

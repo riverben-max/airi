@@ -489,6 +489,7 @@ pages:
         voice-id: Voice ID
         speed: Speed
       placeholders:
+        handle-id-example: 'e.g. {example}'
         character-name: Character Name
         short-description: Short description...
       sections:

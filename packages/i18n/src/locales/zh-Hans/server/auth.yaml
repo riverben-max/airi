@@ -24,6 +24,7 @@ electronCallback:
     closeTabManually: 部分浏览器不允许页面自动关闭。您可以手动关闭此标签页。
 signIn:
   title: 登录
+  titleWithApp: 登录到 {app}
   step:
     identify:
       heading: 登录

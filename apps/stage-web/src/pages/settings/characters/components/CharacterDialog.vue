@@ -228,7 +228,7 @@ const isOpen = computed({
               <!-- Identity Tab -->
               <div v-show="activeTab === 'identity'" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <FieldInput v-model="form.characterId" :label="t('settings.pages.characters.dialog.fields.handle-id')" placeholder="e.g. airi-core" required />
+                  <FieldInput v-model="form.characterId" :label="t('settings.pages.characters.dialog.fields.handle-id')" :placeholder="t('settings.pages.characters.dialog.placeholders.handle-id-example', { example: 'airi-core' })" required />
                   <FieldInput v-model="form.version" :label="t('settings.pages.characters.dialog.fields.version')" placeholder="1.0.0" />
                 </div>
 

@@ -97,8 +97,9 @@ chat:
     retry: Retry
     dismiss-suggestions: Dismiss suggestions
     dismiss: Dismiss
-    pause: Pause
-    preview-with-voice: Preview with your voice
+    loading-choice-preview: 'Loading voice preview for {title}'
+    pause-choice-preview: 'Pause voice preview for {title}'
+    preview-choice-with-voice: 'Preview {title} with your voice'
     no-voice-profile: No voice profile configured. Go to Settings > System > User Profile.
     virtual-audio-studio-inactive: Virtual Audio Studio provider is not active.
     speech-failed: Speech synthesis failed.

@@ -92,8 +92,9 @@ chat:
     retry: 重试
     dismiss-suggestions: 关闭建议
     dismiss: 关闭
-    pause: 暂停
-    preview-with-voice: 使用您的声音预览
+    loading-choice-preview: '正在加载“{title}”的语音预览'
+    pause-choice-preview: '暂停“{title}”的语音预览'
+    preview-choice-with-voice: '使用您的声音预览“{title}”'
     no-voice-profile: 尚未配置语音档案。请前往“设置 > 系统 > 用户资料”。
     virtual-audio-studio-inactive: Virtual Audio Studio 提供商未启用。
     speech-failed: 语音合成失败。

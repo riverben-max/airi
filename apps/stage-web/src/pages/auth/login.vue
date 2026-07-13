@@ -53,7 +53,7 @@ watch(isDesktop, (val) => {
 <template>
   <div v-if="isDesktop" class="min-h-screen flex flex-col items-center justify-center">
     <div class="mb-8 text-3xl font-bold">
-      {{ t('server.auth.signIn.title') }} AIRI Stage
+      {{ t('server.auth.signIn.titleWithApp', { app: 'AIRI Stage' }) }}
     </div>
     <div class="max-w-xs w-full flex flex-col gap-3">
       <Button
