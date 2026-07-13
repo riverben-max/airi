@@ -200,7 +200,7 @@ async function generateTestSpeech() {
   }
   catch (error) {
     console.error('Error generating speech:', error)
-    errorMessage.value = error instanceof Error ? error.message : 'An unknown error occurred'
+    errorMessage.value = error instanceof Error ? error.message : t('settings.pages.modules.speech.errors.unknown')
   }
   finally {
     isGenerating.value = false

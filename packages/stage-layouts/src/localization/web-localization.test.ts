@@ -13,6 +13,82 @@ const sourceRoots = [
   'packages/stage-ui/src',
 ]
 const forbiddenEnglishByFile: Record<string, string[]> = {
+  'packages/stage-pages/src/pages/settings/airi-card/index.vue': [
+    'Find More Cards',
+    'Import Character Card',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/CreateModeSelectorDialog.vue': [
+    'Create New Character Card',
+    'Guided AI Creator',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/CardDetailDialog.vue': [
+    'Preview Combined System Prompt',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/CardListItem.vue': [
+    'No description provided.',
+    'Export JSON',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/ImageTagExtractorModal.vue': [
+    'Local Image Tag Extractor',
+    'Ready. Click Run Tag Extraction below.',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/tabs/CardCreationTabActing.vue': [
+    'Idle Loop / Cycle Animations',
+    'Speech Mannerisms',
+  ],
+  'packages/stage-pages/src/pages/settings/airi-card/components/tabs/CardCreationTabBehavior.vue': [
+    'Optimize with AI',
+    'Generate with AI',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/consciousness.vue': [
+    'Add Provider',
+  ],
+  'packages/stage-pages/src/pages/settings/modules/gaming-minecraft.vue': [
+    'Integration Unavailable',
+    'Experiment with the WIP Bot',
+  ],
+  'apps/stage-web/src/pages/settings/system/index.vue': [
+    'Manage your global name, visual prompt tags, and personal TTS voice profile',
+  ],
+  'apps/stage-web/src/pages/settings/characters/components/CharacterCreate.vue': [
+    'Create New Character',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/index.vue': [
+    'We support both 2D and 3D models',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/live2d-customization.vue': [
+    'Advanced Parameters',
+    'Reset All',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/vrm.vue': [
+    'Base Idle Animation',
+    'Showing Hidden',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/model-settings/vrm-expressions.vue': [
+    'No expressions available. Load a VRM model first.',
+    'Build Outfit',
+  ],
+  'packages/stage-ui/src/components/scenarios/settings/ModelCacheManager.vue': [
+    'Downloaded inference models stored in browser cache',
+    'Clear All Cache',
+  ],
+  'packages/stage-ui/src/components/scenarios/providers/speech-streaming-playground.vue': [
+    'Streaming Playground',
+    'Test chunking',
+  ],
+  'packages/stage-ui/src/components/scenarios/providers/transcription-playground.vue': [
+    'Speaking Detected',
+  ],
+  'packages/stage-ui/src/components/menu/radio-card-detail.vue': [
+    'Show less',
+    'Suggested',
+  ],
+  'packages/stage-ui/src/components/misc/profile-switcher-popover.vue': [
+    'Manage Stage',
+  ],
+  'packages/stage-ui/src/components/modules/MessagingDiscord.vue': [
+    'Allow Direct Messages (DMs)',
+  ],
   'packages/stage-layouts/src/components/Widgets/ChatArea.vue': [
     'Describe a scene to imagine...',
     'Memory & Context for',
@@ -96,6 +172,7 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
   ],
   'packages/stage-pages/src/pages/settings/modules/speech.vue': [
     'Add Provider',
+    'An unknown error occurred',
     'No Speech Providers Configured',
     'Customize how your AI assistant speaks',
   ],
@@ -357,6 +434,23 @@ it('does not reintroduce audited English literals in production settings', () =>
 })
 
 describe('production settings source audit', () => {
+  it('keeps translated Phase B option arrays reactive', () => {
+    const acting = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/tabs/CardCreationTabActing.vue'), 'utf8')
+    const vrmExpressions = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/settings/model-settings/vrm-expressions.vue'), 'utf8')
+
+    expect(acting).toContain('const commonMoodTags = computed(() => [')
+    expect(vrmExpressions).toContain('const outfitTypeOptions = computed(() => [')
+    expect(vrmExpressions).toContain(':options="outfitTypeOptions"')
+  })
+
+  it('localizes the missing speech provider fallback in the card editor', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/airi-card/components/CardCreationDialog.vue'), 'utf8')
+    const providerLabel = source.match(/:selected-speech-provider-label="([^"]+)"/)?.[1]
+
+    expect(providerLabel).toContain('t(\'settings.pages.card.creation.speech-provider-none\')')
+    expect(providerLabel).not.toContain('\'none\'')
+  })
+
   it('ignores forbidden phrases in Vue and JavaScript comments', () => {
     const source = [
       '<!-- Add Provider -->',

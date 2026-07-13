@@ -95,7 +95,7 @@ async function handleCharaCardDownloaded(payload: { base64Data: string, filename
   }
   catch (err) {
     console.error('[Settings:Cards] Failed to process intercepted card:', err)
-    toast.error('Failed to parse intercepted card file')
+    toast.error(t('settings.pages.card.creation.list.errors.intercepted-file'))
   }
 }
 
@@ -197,33 +197,33 @@ async function onDrop(e: DragEvent) {
   }
 }
 
-const cardSourceLinks = [
+const cardSourceLinks = computed(() => [
   {
     name: 'JannyAI',
-    description: 'Character discovery and card sharing with SillyTavern-friendly exports in the ecosystem.',
+    description: t('settings.pages.card.creation.list.sources.jannyai'),
     url: 'https://jannyai.com',
   },
   {
     name: 'JanitorAI',
-    description: 'Popular character platform. Look for exports or mirrors that provide SillyTavern / chara_card_v2 PNG or JSON.',
+    description: t('settings.pages.card.creation.list.sources.janitorai'),
     url: 'https://janitorai.com',
   },
   {
     name: 'Chub AI',
-    description: 'Large character-sharing ecosystem commonly used with third-party roleplay UIs.',
+    description: t('settings.pages.card.creation.list.sources.chub'),
     url: 'https://chub.ai',
   },
   {
     name: 'Risu Realm',
-    description: 'Community character hub tied to the Risu ecosystem, useful for portable card-style prompts.',
+    description: t('settings.pages.card.creation.list.sources.risu'),
     url: 'https://realm.risuai.net',
   },
   {
     name: 'DataCat',
-    description: 'A popular database and scraping tool used to search, browse, and export character definitions as SillyTavern JSON.',
+    description: t('settings.pages.card.creation.list.sources.datacat'),
     url: 'https://datacat.run/fresh',
   },
-] as const
+])
 
 // Card list data structure
 interface CardItem {
@@ -358,7 +358,7 @@ watch(inputFiles, async (newFiles) => {
         importedCard = parseImportedCard(content)
       }
       catch (e) {
-        toast.error('Failed to parse card JSON: Malformed file')
+        toast.error(t('settings.pages.card.creation.list.errors.malformed-json'))
         return
       }
     }
@@ -369,7 +369,7 @@ watch(inputFiles, async (newFiles) => {
     const validation = safeParse(AiriCardSchema, normalizedForValidation)
     if (!validation.success) {
       const errorMsg = validation.issues.map(i => `${i.path?.[0]?.key || 'root'}: ${i.message}`).join(', ')
-      toast.error('Card validation failed', {
+      toast.error(t('settings.pages.card.creation.list.errors.validation'), {
         description: errorMsg,
       })
       console.error('[AiriCard] Validation errors:', validation.issues)
@@ -399,11 +399,11 @@ watch(inputFiles, async (newFiles) => {
     // Add card and select it
     selectedCardId.value = await addCard(renamedCard)
     isCardDialogOpen.value = true
-    toast.success('Card imported successfully')
+    toast.success(t('settings.pages.card.creation.list.success.imported'))
   }
   catch (error) {
     console.error('[AiriCard] Error processing card file:', error)
-    toast.error('Error processing card file', {
+    toast.error(t('settings.pages.card.creation.list.errors.processing'), {
       description: error instanceof Error ? error.message : 'Unknown error',
     })
   }
@@ -1052,6 +1052,7 @@ function getDisplayModelId(id: string) {
             <button
               v-if="isSearchExpanded || searchQuery"
               class="absolute right-2.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              :aria-label="t('settings.pages.card.creation.list.close-search')"
               @click="searchQuery = ''; isSearchExpanded = false"
             >
               <div i-solar:close-square-bold-duotone />
@@ -1069,7 +1070,7 @@ function getDisplayModelId(id: string) {
               { value: 'nameDesc', label: t('settings.pages.card.name_desc') },
               { value: 'recent', label: t('settings.pages.card.recent') },
             ]"
-            placeholder="Sort"
+            :placeholder="t('settings.pages.card.creation.list.sort')"
             class="h-[32px] min-w-[100px] text-xs !border-transparent !bg-transparent hover:!bg-neutral-100 dark:hover:!bg-neutral-800/50"
           />
         </div>
@@ -1084,7 +1085,7 @@ function getDisplayModelId(id: string) {
           @click="isUploadZoneOpen = !isUploadZoneOpen"
         >
           <div i-solar:upload-square-line-duotone class="text-base text-neutral-400 dark:text-neutral-500" />
-          <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Import</span>
+          <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">{{ t('settings.pages.card.creation.list.import') }}</span>
         </Button>
 
         <!-- Create Button -->
@@ -1094,7 +1095,7 @@ function getDisplayModelId(id: string) {
           @click="handleCardCreationDialog"
         >
           <div i-solar:add-square-line-duotone class="text-base text-primary-500" />
-          <span class="text-xs font-medium">Create</span>
+          <span class="text-xs font-medium">{{ t('settings.pages.card.creation.list.create') }}</span>
         </Button>
       </div>
     </div>
@@ -1231,7 +1232,7 @@ function getDisplayModelId(id: string) {
         <Button
           variant="ghost"
           icon="i-solar:close-square-bold-duotone"
-          label="Close"
+          :label="t('settings.pages.card.close')"
           @click="activeBrowserSource = null"
         />
       </div>
@@ -1271,13 +1272,13 @@ function getDisplayModelId(id: string) {
       <div :class="['i-solar:compass-bold-duotone text-2xl text-primary-500']" />
       <div :class="['flex flex-col gap-1']">
         <div :class="['text-lg font-bold']">
-          Find More Cards
+          {{ t('settings.pages.card.creation.list.find-more-title') }}
         </div>
         <div :class="['max-w-3xl text-sm opacity-80']">
-          AIRI can import standard SillyTavern-style character cards, including `chara_card_v2` PNG exports. Imported cards are a strong starting point, but they usually will not fill in AIRI-specific fields automatically.
+          {{ t('settings.pages.card.creation.list.find-more-description') }}
         </div>
         <div :class="['max-w-3xl text-sm opacity-70']">
-          After import, review and customize AIRI-only settings, especially the <strong>Acting</strong> tab, so expressions, speech tags, and motion cues actually line up with your current VRM or Live2D model.
+          {{ t('settings.pages.card.creation.list.find-more-review') }}
         </div>
       </div>
     </div>
@@ -1310,7 +1311,7 @@ function getDisplayModelId(id: string) {
     </div>
 
     <div :class="['text-xs opacity-60']">
-      Prefer exports explicitly labeled for SillyTavern, `chara_card_v2`, or ST PNG / JSON compatibility. Not every character site exports in a portable format.
+      {{ t('settings.pages.card.creation.list.compatibility-hint') }}
     </div>
   </div>
 
@@ -1323,10 +1324,10 @@ function getDisplayModelId(id: string) {
       <div class="max-w-sm flex flex-col items-center gap-4 border-2 border-primary-500 rounded-2xl border-dashed bg-neutral-900/80 p-8 text-center">
         <div i-solar:upload-square-line-duotone class="animate-bounce text-6xl text-primary-500" />
         <h3 class="text-xl font-bold">
-          Import Character Card
+          {{ t('settings.pages.card.creation.list.import-title') }}
         </h3>
         <p class="text-sm opacity-80">
-          Drop your .png (Chara Card V2) or .json files anywhere to import them into AIRI
+          {{ t('settings.pages.card.creation.list.import-description') }}
         </p>
       </div>
     </div>

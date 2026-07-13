@@ -9,6 +9,7 @@ import { Button, Callout } from '@proj-airi/ui'
 import { useLocalStorage, useMouse } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import LHackerPanel from './live2d-lhack/LHackerPanel.vue'
 import Live2D from './live2d.vue'
@@ -35,6 +36,7 @@ const props = defineProps<{
 defineEmits<{
   (e: 'extractColorsFromModel'): void
 }>()
+const { t } = useI18n()
 
 const modelSelectorOpen = ref(false)
 const positionCursor = useMouse()
@@ -88,7 +90,7 @@ const resolvedIdleAnimations = computed(() => {
   return resolveActiveIdleAnimations(activeCard.value, stageModelSelected.value)
 })
 
-const activeCardName = computed(() => activeCard.value?.name || 'Active Character')
+const activeCardName = computed(() => activeCard.value?.name || t('settings.model-select.active-character'))
 
 const currentSelectedDisplayModel = computed<DisplayModel | undefined>(() => stageModelSelectedDisplayModel.value)
 
@@ -160,27 +162,34 @@ function handleOffsetChange(offset: { x: number, y: number }) {
     ]"
   >
     <div v-if="!modelSupportCalloutDismissed" class="relative">
-      <Callout label="We support both 2D and 3D models">
+      <Callout :label="t('settings.model-select.panel-callout.support-status-header')">
+        <i18n-t keypath="settings.model-select.panel-callout.support-status" tag="p">
+          <template #select-button>
+            <strong>{{ t('settings.model-select.select-model.button') }}</strong>
+          </template>
+          <template #zip>
+            <code>.zip</code>
+          </template>
+          <template #vrm>
+            <code>.vrm</code>
+          </template>
+        </i18n-t>
         <p>
-          Click <strong>Select Model</strong> to import different formats of
-          models into catalog, currently, <code>.zip</code> (Live2D) and <code>.vrm</code> (VRM) are supported.
-        </p>
-        <p>
-          Neuro-sama uses 2D model driven by Live2D Inc. developed framework.
-          While Grok Ani (first female character announced in Grok Companion)
-          uses 3D model that is driven by VRM / MMD open formats.
+          {{ t('settings.model-select.panel-callout.model-type-example') }}
         </p>
       </Callout>
-      <div
+      <button
+        type="button"
         class="absolute right-2 top-2 cursor-pointer text-neutral-500 transition hover:text-neutral-700"
         i-solar:eye-closed-bold-duotone
+        :aria-label="t('settings.model-select.dismiss-support')"
         @click="modelSupportCalloutDismissed = true"
       />
     </div>
     <div :class="['flex w-full gap-2']">
       <ModelSelectorDialog v-model:show="modelSelectorOpen" :selected-model="currentSelectedDisplayModel" @pick="handleModelPick">
         <Button variant="secondary" class="flex-1">
-          Select Model
+          {{ t('settings.model-select.select-model.button') }}
         </Button>
       </ModelSelectorDialog>
       <Button
@@ -189,7 +198,7 @@ function handleOffsetChange(offset: { x: number, y: number }) {
         :disabled="!activeCardId"
         @click="handleApplyToActiveCharacter"
       >
-        Apply to: {{ activeCardName }}
+        {{ t('settings.model-select.apply-to', { name: activeCardName }) }}
       </Button>
     </div>
 

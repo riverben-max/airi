@@ -172,7 +172,7 @@ function handleAnimationSelect(animationName: string | number | undefined) {
   <div flex="~ col gap-4 w-full">
     <!-- === Character Customizations === -->
     <Section
-      title="Character Customizations"
+      :title="t('settings.model-settings.common.sections.character-customizations')"
       icon="i-solar:user-bold-duotone"
       :class="[
         'rounded-xl',
@@ -196,7 +196,7 @@ function handleAnimationSelect(animationName: string | number | undefined) {
         <div v-else-if="activeCharacterTab === 'animations'" :class="['w-full', 'min-w-0']">
           <!-- Base Idle Animation -->
           <div class="mb-2 px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            Base Idle Animation
+            {{ t('settings.vrm.idle-animation.title') }}
           </div>
           <!-- Controls Bar -->
           <div class="mb-2 flex items-center justify-between gap-2">
@@ -209,7 +209,7 @@ function handleAnimationSelect(animationName: string | number | undefined) {
                 <template #icon>
                   <div :class="showHiddenAnimations ? 'i-solar:eye-bold-duotone' : 'i-solar:eye-closed-bold-duotone'" />
                 </template>
-                {{ showHiddenAnimations ? 'Showing Hidden' : 'Hide Hidden' }}
+                {{ showHiddenAnimations ? t('settings.model-settings.common.actions.showing-hidden') : t('settings.model-settings.common.actions.hide-hidden') }}
               </Button>
               <Button
                 size="sm"
@@ -219,11 +219,11 @@ function handleAnimationSelect(animationName: string | number | undefined) {
                 <template #icon>
                   <div class="i-solar:pen-bold-duotone" />
                 </template>
-                {{ filterRenamedOnly ? 'Renamed Only' : 'All' }}
+                {{ filterRenamedOnly ? t('settings.model-settings.common.actions.renamed-only') : t('settings.model-settings.common.actions.all') }}
               </Button>
             </div>
             <div class="text-xs text-neutral-500">
-              {{ filteredAnimations.length }} animations
+              {{ t('settings.model-settings.common.states.animation-count', { count: filteredAnimations.length }) }}
             </div>
           </div>
           <!-- Fixed Height Scrollable List -->
@@ -239,13 +239,13 @@ function handleAnimationSelect(animationName: string | number | undefined) {
               <div class="flex items-center gap-2">
                 <div v-if="!vrmIdleAnimation" class="h-2 w-2 rounded-full bg-primary-500" />
                 <div class="text-sm text-neutral-900 font-medium dark:text-neutral-100">
-                  None
+                  {{ t('settings.model-settings.common.actions.none') }}
                 </div>
               </div>
             </div>
 
             <div v-if="filteredAnimations.length === 0" class="p-4 text-center text-sm text-neutral-500 dark:text-neutral-400">
-              No animations match filters
+              {{ t('settings.model-settings.common.states.no-animations') }}
             </div>
             <div
               v-for="animation in filteredAnimations"
@@ -271,10 +271,10 @@ function handleAnimationSelect(animationName: string | number | undefined) {
                       @keydown.enter="saveAnimationName(animation.value)"
                       @keydown.esc="cancelEditing"
                     >
-                    <button class="text-xs text-green-500 hover:text-green-600" @click="saveAnimationName(animation.value)">
+                    <button class="text-xs text-green-500 hover:text-green-600" :aria-label="t('settings.model-settings.common.actions.save-rename', { name: animation.label })" @click="saveAnimationName(animation.value)">
                       <div class="i-solar:check-circle-bold-duotone text-lg" />
                     </button>
-                    <button class="text-xs text-red-500 hover:text-red-600" @click="cancelEditing">
+                    <button class="text-xs text-red-500 hover:text-red-600" :aria-label="t('settings.model-settings.common.actions.cancel-rename', { name: animation.label })" @click="cancelEditing">
                       <div class="i-solar:close-circle-bold-duotone text-lg" />
                     </button>
                   </div>
@@ -295,7 +295,8 @@ function handleAnimationSelect(animationName: string | number | undefined) {
                       ? 'text-primary-500 hover:text-primary-600 bg-primary-500/10'
                       : 'text-neutral-400 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800',
                   ]"
-                  :title="isAnimationSelected(animation.value) ? 'Remove from Idle Cycle' : 'Add to Idle Cycle'"
+                  :title="isAnimationSelected(animation.value) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: animation.label }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: animation.label })"
+                  :aria-label="isAnimationSelected(animation.value) ? t('settings.model-settings.common.actions.remove-item-from-idle-cycle', { name: animation.label }) : t('settings.model-settings.common.actions.add-item-to-idle-cycle', { name: animation.label })"
                   @click="toggleAnimation(animation.value)"
                 >
                   <div class="i-solar:infinity-bold-duotone text-sm" />
@@ -304,7 +305,8 @@ function handleAnimationSelect(animationName: string | number | undefined) {
                 <!-- Edit Button -->
                 <button
                   class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                  title="Rename"
+                  :title="t('settings.model-settings.common.actions.rename-item', { name: animation.label })"
+                  :aria-label="t('settings.model-settings.common.actions.rename-item', { name: animation.label })"
                   @click="startEditing(animation)"
                 >
                   <div class="i-solar:pen-bold-duotone text-sm" />
@@ -313,7 +315,8 @@ function handleAnimationSelect(animationName: string | number | undefined) {
                 <!-- Visibility Toggle -->
                 <button
                   class="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                  :title="hiddenAnimations.includes(animation.value) ? 'Show' : 'Hide'"
+                  :title="hiddenAnimations.includes(animation.value) ? t('settings.model-settings.common.actions.show-item', { name: animation.label }) : t('settings.model-settings.common.actions.hide-item', { name: animation.label })"
+                  :aria-label="hiddenAnimations.includes(animation.value) ? t('settings.model-settings.common.actions.show-item', { name: animation.label }) : t('settings.model-settings.common.actions.hide-item', { name: animation.label })"
                   @click="toggleVisibility(animation.value)"
                 >
                   <div :class="hiddenAnimations.includes(animation.value) ? 'i-solar:eye-closed-bold-duotone' : 'i-solar:eye-bold-duotone'" class="text-sm" />
@@ -336,7 +339,7 @@ function handleAnimationSelect(animationName: string | number | undefined) {
 
     <!-- === Advanced Tools === -->
     <Section
-      title="Advanced"
+      :title="t('settings.model-settings.common.sections.advanced')"
       icon="i-solar:settings-bold-duotone"
       :class="[
         'rounded-xl',
@@ -434,7 +437,7 @@ function handleAnimationSelect(animationName: string | number | undefined) {
           </Callout>
         </div>
 
-        <Callout theme="lime" label="Tips!">
+        <Callout theme="lime" :label="t('settings.vrm.scale-and-position.tips-title')">
           <div class="text-[11px] text-neutral-600 leading-relaxed dark:text-neutral-400">
             {{ t('settings.vrm.scale-and-position.tips') }}
           </div>

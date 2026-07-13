@@ -4,17 +4,7 @@
 <script setup lang="ts">
 import { CharacterAvatar, CursorFloating } from '@proj-airi/stage-ui/components'
 import { DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuRoot, DropdownMenuTrigger } from 'reka-ui'
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  (e: 'select'): void
-  (e: 'activate'): void
-  (e: 'delete'): void
-  (e: 'edit'): void
-  (e: 'exportJson'): void
-  (e: 'exportPng'): void
-}>()
+import { useI18n } from 'vue-i18n'
 
 interface Props {
   id: string
@@ -27,6 +17,19 @@ interface Props {
   voiceModel: string
   displayModelId?: string
 }
+
+defineProps<Props>()
+
+const emit = defineEmits<{
+  (e: 'select'): void
+  (e: 'activate'): void
+  (e: 'delete'): void
+  (e: 'edit'): void
+  (e: 'exportJson'): void
+  (e: 'exportPng'): void
+}>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -132,7 +135,7 @@ interface Props {
             v-else
             :class="['flex-1 text-sm italic text-neutral-400 dark:text-neutral-500']"
           >
-            No description provided.
+            {{ t('settings.pages.card.creation.list-item.no-description') }}
           </p>
 
           <!-- Card stats -->
@@ -173,7 +176,8 @@ interface Props {
         :class="[
           'rounded-lg p-1.5 text-neutral-500 transition-colors dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700/50',
         ]"
-        title="Edit card"
+        :title="t('settings.pages.card.creation.list-item.edit')"
+        :aria-label="t('settings.pages.card.creation.list-item.edit')"
         @click.stop="emit('edit')"
       >
         <div
@@ -187,7 +191,8 @@ interface Props {
           :class="[
             'rounded-lg p-1.5 text-neutral-500 transition-colors dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700/50',
           ]"
-          title="Export card"
+          :title="t('settings.pages.card.creation.list-item.export')"
+          :aria-label="t('settings.pages.card.creation.list-item.export')"
           @click.stop
         >
           <div
@@ -210,7 +215,7 @@ interface Props {
               ]"
               @click.stop="emit('exportJson')"
             >
-              Export JSON
+              {{ t('settings.pages.card.creation.list-item.export-json') }}
             </DropdownMenuItem>
             <DropdownMenuItem
               :class="[
@@ -218,7 +223,7 @@ interface Props {
               ]"
               @click.stop="emit('exportPng')"
             >
-              Export PNG
+              {{ t('settings.pages.card.creation.list-item.export-png') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenuPortal>
@@ -227,6 +232,7 @@ interface Props {
       <button
         :class="['rounded-lg p-1.5 transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-700/50']"
         :disabled="isActive"
+        :aria-label="t('settings.pages.card.creation.list-item.activate')"
         @click.stop="emit('activate')"
       >
         <div
@@ -241,6 +247,7 @@ interface Props {
       <button
         v-if="id !== 'default'"
         :class="['rounded-lg p-1.5 transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-700/50']"
+        :aria-label="t('settings.pages.card.creation.list-item.delete')"
         @click.stop="emit('delete')"
       >
         <div

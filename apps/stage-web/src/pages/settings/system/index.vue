@@ -9,8 +9,8 @@ const { lastClickedIndex, setLastClickedIndex } = useRippleGridState()
 
 const settings = computed(() => [
   {
-    titleKey: 'settings.pages.system.user-profile.title',
-    description: 'Manage your global name, visual prompt tags, and personal TTS voice profile',
+    title: t('settings.pages.system.user-profile.title'),
+    description: t('settings.pages.system.user-profile.description'),
     icon: 'i-solar:user-bold-duotone',
     to: '/settings/system/user-profile',
   },

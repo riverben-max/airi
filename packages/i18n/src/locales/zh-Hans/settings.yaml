@@ -1,5 +1,6 @@
 common:
   save: 保存
+  unknown: 未知
 model-settings:
   common:
     example: '例如：{example}'
@@ -33,6 +34,8 @@ model-settings:
       reset-all: 全部重置
       show-all: 显示全部
       show-renamed: 显示已重命名项
+      cancel: 取消
+      clear-mapping: 清除映射
     states:
       no-expressions: 没有符合筛选条件的表情
       no-motions: 没有符合筛选条件的动作
@@ -56,6 +59,48 @@ model-settings:
       sky-color: 天空颜色
       ground-color: 地面颜色
       skybox-intensity: 天空盒强度
+  live2d-customization:
+    expression-summary: '{count} 个表情 · 长按进行映射'
+    advanced-parameters: 高级参数
+    toggles: 开关
+    custom-sliders: 自定义滑块
+    other-settings: 其他设置
+    map-expression: 映射 Live2D 表情
+    act-slot: 到 ACT 情绪槽位
+  vrm-expressions:
+    no-expressions: 没有可用表情。请先加载 VRM 模型。
+    expression-summary: '{count} 个表情 · {instruction}'
+    select-multiple: 可多选
+    hold-to-map: 长按进行映射
+    build-outfit: 创建服装
+    done-count: 完成（{count}）
+    wardrobe: 衣橱
+    delete-outfit: 删除服装 {name}
+    custom-extensions: 自定义扩展（{count}）
+    presets: 预设（{count}）
+    map-expression: 映射表情
+    act-slot: 到 ACT 情绪槽位
+    remove-favorite: 取消收藏
+    set-favorite: 设为收藏
+    bundle-outfit: 组合服装
+    grouping: 正在组合 {count} 个表情
+    name: 名称
+    name-example: 夏日连衣裙
+    type: 类型
+    icon: 图标
+    base-type: 基础（互斥替换）
+    overlay-type: 叠加（附加）
+    choose-icon: 选择第 {index} 个图标作为服装图标
+    save-bundle: 保存组合
+  model-cache:
+    title: 模型缓存
+    description: 存储在浏览器缓存中的已下载推理模型
+    cached: 已缓存
+    not-cached: 未缓存
+    checking: 正在检查缓存...
+    refresh: 刷新
+    clearing: 正在清除...
+    clear-all: 清除全部缓存
   audio-studio:
     library: 音色库
     new-profile: 新建配置
@@ -540,10 +585,105 @@ pages:
       studio: 工作室
       actions:
         optimize-with-ai: 使用 AI 优化
+        generate-with-ai: 使用 AI 生成
         back: 返回
         next: 下一步
         cancel: 取消
         create: 创建
+      speech-provider-none: 未配置服务来源
+      list:
+        sort: 排序
+        import: 导入
+        create: 创建
+        close-search: 关闭角色搜索
+        find-more-title: 查找更多角色卡
+        find-more-description: AIRI 可以导入标准 SillyTavern 风格的角色卡，包括 `chara_card_v2` PNG 导出文件。导入的角色卡适合作为起点，但通常不会自动填写 AIRI 专属字段。
+        find-more-review: 导入后，请检查并自定义 AIRI 专属设置，尤其是“表演”选项卡，确保表情、语音标签和动作提示与当前 VRM 或 Live2D 模型一致。
+        compatibility-hint: 建议选择明确标注支持 SillyTavern、`chara_card_v2` 或 ST PNG / JSON 兼容格式的导出文件。并非所有角色网站都提供可移植格式。
+        import-title: 导入角色卡
+        import-description: 将 .png（Chara Card V2）或 .json 文件拖放到任意位置，即可导入 AIRI
+        sources:
+          jannyai: 提供角色发现和角色卡分享，并支持生态中的 SillyTavern 兼容导出。
+          janitorai: 热门角色平台。请查找提供 SillyTavern / chara_card_v2 PNG 或 JSON 的导出或镜像。
+          chub: 常用于第三方角色扮演界面的大型角色分享生态。
+          risu: 与 Risu 生态关联的社区角色中心，可用于获取便携式角色卡提示词。
+          datacat: 用于搜索、浏览并将角色定义导出为 SillyTavern JSON 的热门数据库和抓取工具。
+        errors:
+          intercepted-file: 无法解析拦截到的角色卡文件
+          malformed-json: 无法解析角色卡 JSON：文件格式错误
+          validation: 角色卡验证失败
+          processing: 处理角色卡文件时出错
+        success:
+          imported: 角色卡导入成功
+      mode-selector:
+        title: 创建新角色卡
+        description: 选择创建新角色扮演卡的方式。
+        recommended: 推荐
+        guided-title: AI 引导创建
+        guided-description: 从 AnimaDex 的 3.6 万个角色中选择一个或多个角色，配置自定义故事提示词，并让 AI 合成角色扮演卡。
+        manual-title: 高级手动创建
+        manual-description: 手动填写角色定义、性格特征、自定义问候语和提示词，并从头配置显示模型。
+      detail:
+        gallery: 图库
+        studio: 工作室
+        edit: 编辑
+        preview-system-prompt: 预览合并后的系统提示词
+        artistry-provider: 绘图服务来源
+        artistry-model: 绘图模型（可选覆盖）
+        artistry-prompt-prefix: 绘图提示词默认前缀
+        artistry-provider-options: 绘图服务选项（JSON）
+      list-item:
+        no-description: 未提供描述。
+        edit: 编辑角色卡
+        export: 导出角色卡
+        export-json: 导出 JSON
+        export-png: 导出 PNG
+        activate: 激活角色卡
+        delete: 删除角色卡
+      image-tagger:
+        title: 本地图像标签提取器
+        model: 模型：{name}
+        preview-alt: 模型预览
+        no-preview: 未找到此模型的预览图。
+        description: 使用本地 WD14 Tagger / BLIP 流水线（WebGPU/WASM）处理角色模型预览图，以提取发型、颜色、服装和美术风格等视觉特征。
+        downloading: 正在下载本地标签模型...
+        download-progress: 已完成 {progress}%
+        running: 正在运行 WebGPU 视觉推理...
+        extracted-tags: 已提取的标签
+        ready: 准备就绪。点击下方的“运行标签提取”。
+        run: 运行标签提取
+        apply-close: 应用并关闭
+        rerun: 重新运行
+        errors:
+          model-info: 无法加载显示模型信息。
+          no-preview: 此模型没有可供分析的预览图。
+          provider: 无法初始化本地视觉服务。
+          extraction: 无法提取标签。
+      acting-editor:
+        introduction: 编写由辅助工具支持的模型表情、语音标签和说话习惯提示说明。这些字段会注入 AIRI 的提示词构建器，下方辅助项则反映当前加载的模型和所选语音服务。
+        idle-title: 待机循环动画
+        idle-description: 选择希望角色自动循环播放的动画。只选择一个动画时，它将作为默认待机循环。
+        model-expressions: ACT / 模型表情
+        model-expressions-description: 教 AIRI 使用 ACT 标记触发虚拟形象表情和动作提示。
+        available-expressions: 可用模型表情
+        no-expressions: 当前没有可用的模型表情列表。请在舞台加载模型以显示表情辅助项。
+        speech-tags: 语音标签 / 音频表情
+        speech-tags-description: 当所选语音服务支持时，教 AIRI 使用服务端语音标签。
+        speech-tags-provider: 服务 {provider} 的语音标签辅助项
+        loading-capabilities: 正在加载语音能力辅助项...
+        fallback-tags: 所选语音服务未提供标签辅助项。可改用以下核心视觉情绪标签：
+        mannerisms: 说话习惯
+        mannerisms-description: 教 AIRI 何时使用语音服务支持的说话习惯，同时不暴露底层转换细节。
+        insert-mannerisms: 插入当前语音服务提供的辅助说明
+        no-mannerisms: 当前语音服务没有可用的说话习惯辅助项。
+        mood-tags:
+          happy: 开心 / 喜悦 / 大笑 / 咧嘴笑 / 微笑
+          sad: 难过 / 哭泣 / 悲伤 / 撅嘴 / 叹气 / 呜咽
+          angry: 生气 / 愤怒 / 烦躁 / 沮丧 / 怒视
+          surprised: 惊讶 / 震惊 / 好奇 / 倒吸气 / 眨眼
+          thinking: 思考 / 沉思 / 好奇 / 嗯 / 疑问
+          blush: 脸红 / 害羞 / 尴尬 / 不自在
+          whisper: 放松 / 耳语 / 轻柔 / 平静
       generator-fields:
         model-expressions: ACT / 模型表情
         speech-expressions: 语音标签 / 音频表情
@@ -1238,6 +1378,9 @@ pages:
     gaming-minecraft:
       description: 一起玩 Minecraft！
       title: 我的世界 Minecraft
+      unavailable:
+        title: 集成暂不可用
+        description: Minecraft 机器人集成目前不可用，将在后续更新中修复。
       enable: 启用我的世界集成
       enable-description: 允许AIRI与我的世界游戏互动
       server-address: 服务器地址
@@ -1254,9 +1397,17 @@ pages:
         description: >-
           目前此 Minecraft 管理界面将作为一个被动的外壳。你可以在这里观察运行状态，但服务配置仍然存在于 Minecraft 服务文件中。
       setup:
-        title: 配置
+        title: 试用开发中的机器人
         description: >-
           你可以在下面的文件中找到设置 Minecraft bot 的说明
+        checkout: 检出 AIRI 代码仓库
+        navigate: 进入 services/minecraft 目录
+        install: 安装依赖
+        environment: 配置环境
+        environment-description: 在 .env.local 中填写必需的值
+        run: 运行机器人
+        note-label: 注意：
+        note: 此机器人仍在开发中，可能无法按预期工作。我们正在持续改进。
       runtime:
         title: 可观测
         connection: 连接
@@ -1296,6 +1447,7 @@ pages:
           select-provider: 请先选择转录服务来源
           select-device: 请先选择音频输入设备
           stream-start: 无法启动音频流，请检查麦克风权限。
+          unknown: 未知错误（无法格式化错误详情）
         status:
           transcribing-recording: 正在转录录音...
           complete: 转录完成！
@@ -1597,6 +1749,9 @@ pages:
         title: 控制与能力
         vision: 启用 VLM（视觉）图片输入
         vision-description: 允许 AIRI 读取并处理 Discord 中的图片附件
+        direct-messages: 允许私信（DM）
+        direct-messages-description: 启用或禁用机器人在私人消息中的互动（命令和聊天）。
+      active: 活跃
     speech:
       description: 语音合成
       tabs:
@@ -1604,6 +1759,8 @@ pages:
         studio: 音频工作台
       actions:
         add-provider: 添加服务来源
+      errors:
+        unknown: 发生未知错误
       empty:
         title: 尚未配置语音合成服务来源
         description: 点击此处设置语音合成服务来源
@@ -1670,6 +1827,12 @@ pages:
             error: 加载语音包失败
             loading: 正在加载语音包……
             title: 语音包
+      streaming-playground:
+        title: 流式播放测试区
+        test-chunking: 测试分块
+        test-streaming: 测试流式播放
+        chunk-meta: '{words} 个词，{reason}'
+        queued: 已加入队列
       title: 语音合成
     title: 机体模块
     vision:
@@ -2463,6 +2626,10 @@ pages:
       internal: 内部
       local: 本地
       cloud: 云端
+      suggested: 推荐
+    card-details:
+      show-more: 显示更多
+      show-less: 收起
     categories:
       chat:
         title: 聊天
@@ -2555,7 +2722,7 @@ pages:
   system:
     user-profile:
       title: 用户资料
-      description: 管理你的用户资料和语音配置
+      description: 管理你的全局名称、视觉提示词标签和个人 TTS 语音配置
     color-scheme:
       description: 更改舞台的配色方案
       title: 配色方案
@@ -3095,11 +3262,14 @@ vrm:
     from-url-placeholder: 输入 VRM 模型 URL
     title: 更换模型
   title: VRM 设置
+  idle-animation:
+    title: 默认待机动画
   scale-and-position:
     model-info-title: 模型尺寸信息
     model-info-x: 宽度（X轴）
     model-info-y: 高度（Y轴）
     model-info-z: 深度（Z轴）
+    tips-title: 提示
     tips: |
       设定模型放置的空间坐标。
       坐标轴已被可视化。
@@ -3195,21 +3365,23 @@ analytics:
     title: 此开发版本的使用数据及崩溃分析功能已禁用
 model-select:
   panel-callout:
-    support-status-header: We support both 2D and 3D models
+    support-status-header: 支持 2D 和 3D 模型
     support-status: >
-      Click {select-button} to select or import models. Currently, {zip} (for
-      Live2D and Spine models) and {vrm} (for VRM models) are supported.
+      点击{select-button}选择或导入模型。目前支持 {zip}（Live2D 和 Spine 模型）以及
+      {vrm}（VRM 模型）。
     model-type-example: >
-      Neuro-sama uses 2D model driven by framework developed by Live2D Inc,
-      while Grok Ani (in Grok Companion) uses 3D model driven by VRM / MMD open
-      formats.
+      Neuro-sama 使用由 Live2D Inc. 框架驱动的 2D 模型，而 Grok Companion 中的
+      Grok Ani 使用由 VRM / MMD 开放格式驱动的 3D 模型。
   select-model:
-    title: Model Selector
-    button: Select model
-    select: Pick
-    import: Import
-    remove: Remove
-    confirm: Confirm
+    title: 模型选择器
+    button: 选择模型
+    select: 选择
+    import: 导入
+    remove: 移除
+    confirm: 确认
+  active-character: 当前角色
+  apply-to: 应用到：{name}
+  dismiss-support: 关闭模型格式说明
 spine:
   title: Spine 设置
   scale-and-position:

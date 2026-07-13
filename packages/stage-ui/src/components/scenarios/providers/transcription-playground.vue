@@ -142,7 +142,7 @@ onStopRecord(async (recording) => {
       errorMessage.value = err instanceof Error ? err.message : String(err)
     }
     catch (sErr) {
-      errorMessage.value = 'Unknown error (failed to stringify error)'
+      errorMessage.value = t('settings.pages.modules.hearing.test.errors.unknown')
       console.error('Critical: Error stringification failed', sErr)
     }
 
@@ -277,7 +277,7 @@ onUnmounted(() => {
           :class="speakingIndicatorClass"
         />
         <span class="text-sm font-medium">
-          {{ isSpeaking ? 'Speaking Detected' : 'Silence' }}
+          {{ isSpeaking ? t('settings.pages.modules.hearing.voice-activity.detected') : t('settings.pages.modules.hearing.voice-activity.silence') }}
         </span>
       </div>
     </div>

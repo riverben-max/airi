@@ -202,14 +202,14 @@ const tabs = computed<Tab[]>(() => {
   // Gallery tab - always show
   availableTabs.push({
     id: 'gallery',
-    label: 'Gallery',
+    label: t('settings.pages.card.creation.detail.gallery'),
     icon: 'i-solar:gallery-linear',
   })
 
   // Studio tab - always show
   availableTabs.push({
     id: 'studio',
-    label: 'Studio',
+    label: t('settings.pages.card.creation.detail.studio'),
     icon: 'i-solar:magic-stick-3-linear',
   })
 
@@ -275,7 +275,7 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
                 <Button
                   variant="secondary"
                   icon="i-solar:pen-bold-duotone"
-                  label="Edit"
+                  :label="t('settings.pages.card.creation.detail.edit')"
                   @click="emit('edit', props.cardId)"
                 />
                 <!-- Activation button -->
@@ -345,7 +345,7 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
                     variant="secondary"
                     size="sm"
                     icon="i-solar:notes-bold-duotone"
-                    label="Preview Combined System Prompt"
+                    :label="t('settings.pages.card.creation.detail.preview-system-prompt')"
                     @click="showContextPreview = true"
                   />
                 </div>
@@ -467,7 +467,7 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
                   <div class="col-span-1 flex flex-col gap-1">
                     <span class="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
                       <div class="i-lucide:image text-xs" />
-                      Artistry Provider
+                      {{ t('settings.pages.card.creation.detail.artistry-provider') }}
                     </span>
                     <span class="text-sm text-neutral-700 font-medium dark:text-neutral-300">
                       {{ getModuleDisplayValue(moduleSettings.artistryProvider, defaultArtistryProvider) }}
@@ -478,10 +478,10 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
                   <div class="col-span-1 flex flex-col gap-1">
                     <span class="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
                       <div class="i-lucide:cpu text-xs" />
-                      Artistry Model (Optional Override)
+                      {{ t('settings.pages.card.creation.detail.artistry-model') }}
                     </span>
                     <span class="text-sm text-neutral-700 font-medium dark:text-neutral-300">
-                      {{ getModuleDisplayValue(moduleSettings.artistryModel, 'None') }}
+                      {{ getModuleDisplayValue(moduleSettings.artistryModel, t('settings.model-settings.common.actions.none')) }}
                     </span>
                   </div>
 
@@ -489,10 +489,10 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
                   <div class="col-span-1 flex flex-col gap-1 md:col-span-2">
                     <span class="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
                       <div class="i-lucide:type text-xs" />
-                      Artistry Prompt Default Prefix
+                      {{ t('settings.pages.card.creation.detail.artistry-prompt-prefix') }}
                     </span>
                     <span class="text-sm text-neutral-700 font-medium dark:text-neutral-300">
-                      {{ getModuleDisplayValue(moduleSettings.artistryPromptPrefix, 'None') }}
+                      {{ getModuleDisplayValue(moduleSettings.artistryPromptPrefix, t('settings.model-settings.common.actions.none')) }}
                     </span>
                   </div>
 
@@ -500,10 +500,10 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
                   <div class="col-span-1 flex flex-col gap-1 md:col-span-2">
                     <span class="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
                       <div class="i-lucide:braces text-xs" />
-                      Artistry Provider Options (JSON)
+                      {{ t('settings.pages.card.creation.detail.artistry-provider-options') }}
                     </span>
                     <span class="whitespace-pre-wrap break-all text-sm text-neutral-700 font-medium font-mono dark:text-neutral-300">
-                      {{ getModuleDisplayValue(moduleSettings.artistryOptions, 'None') }}
+                      {{ getModuleDisplayValue(moduleSettings.artistryOptions, t('settings.model-settings.common.actions.none')) }}
                     </span>
                   </div>
                 </div>

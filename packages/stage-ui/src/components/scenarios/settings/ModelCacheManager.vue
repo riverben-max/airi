@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Button } from '@proj-airi/ui'
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { clearModelCache, DEFAULT_WEB_RWKV_MODEL, formatBytes, getModelCacheSize, isModelCached } from '../../../libs/inference'
 
 const cacheSize = ref(0)
 const loading = ref(true)
 const clearing = ref(false)
+const { t } = useI18n()
 
 // Known model IDs to check cache status
 const knownModels = [
@@ -64,10 +66,10 @@ onMounted(refresh)
     <div flex items-center justify-between>
       <div>
         <h3 m-0 text-sm font-medium>
-          Model Cache
+          {{ t('settings.model-settings.model-cache.title') }}
         </h3>
         <p m-0 text-xs text-neutral-500>
-          Downloaded inference models stored in browser cache
+          {{ t('settings.model-settings.model-cache.description') }}
         </p>
       </div>
       <div
@@ -103,7 +105,7 @@ onMounted(refresh)
               : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400',
           ]"
         >
-          {{ model.cached ? 'Cached' : 'Not cached' }}
+          {{ model.cached ? t('settings.model-settings.model-cache.cached') : t('settings.model-settings.model-cache.not-cached') }}
         </span>
       </div>
     </div>
@@ -111,7 +113,7 @@ onMounted(refresh)
     <!-- Loading state -->
     <div v-else flex items-center gap-2 py-2 text-sm text-neutral-500>
       <div i-svg-spinners:ring-resize />
-      <span>Checking cache...</span>
+      <span>{{ t('settings.model-settings.model-cache.checking') }}</span>
     </div>
 
     <!-- Actions -->
@@ -119,7 +121,7 @@ onMounted(refresh)
       <Button
         variant="secondary-muted"
         size="sm"
-        label="Refresh"
+        :label="t('settings.model-settings.model-cache.refresh')"
         icon="i-solar:refresh-linear"
         :disabled="loading"
         @click="refresh"
@@ -128,7 +130,7 @@ onMounted(refresh)
         v-if="cacheSize > 0"
         variant="danger"
         size="sm"
-        :label="clearing ? 'Clearing...' : 'Clear All Cache'"
+        :label="clearing ? t('settings.model-settings.model-cache.clearing') : t('settings.model-settings.model-cache.clear-all')"
         icon="i-solar:trash-bin-trash-bold"
         :disabled="clearing || loading"
         :loading="clearing"

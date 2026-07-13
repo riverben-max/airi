@@ -82,7 +82,7 @@ function handleDeleteProvider(providerId: string) {
               v-model="activeProvider"
               name="provider"
               :value="metadata.id"
-              :title="metadata.localizedName || 'Unknown'"
+              :title="metadata.localizedName || t('settings.common.unknown')"
               :description="metadata.localizedDescription"
               @click="trackProviderClick(metadata.id, 'consciousness')"
             >
@@ -111,7 +111,7 @@ function handleDeleteProvider(providerId: string) {
               relative w-full shrink-0 rounded-xl p-3
             >
               <div i-solar:add-circle-line-duotone class="text-xl" />
-              <span class="text-sm font-medium">Add Provider</span>
+              <span class="text-sm font-medium">{{ t('settings.pages.modules.speech.actions.add-provider') }}</span>
             </RouterLink>
           </fieldset>
           <div v-else>

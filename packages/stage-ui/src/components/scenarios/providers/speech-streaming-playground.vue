@@ -4,6 +4,7 @@ import type { TTSInputChunk } from '../../../utils/tts'
 import { createQueue } from '@proj-airi/stream-kit'
 import { animate } from 'animejs'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useAudioContext } from '../../../stores/audio'
 import { chunkTTSInput } from '../../../utils/tts'
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>()
 
 const { audioContext } = useAudioContext()
+const { t } = useI18n()
 const nowSpeaking = ref(false)
 const ttsInputChunks = ref<TTSInputChunk[]>([])
 const speechGenerationIndex = ref(-1)
@@ -85,7 +87,7 @@ async function testChunking() {
 
 <template>
   <div class="flex items-center gap-1 text-sm font-medium">
-    Streaming Playground
+    {{ t('settings.pages.modules.speech.streaming-playground.title') }}
   </div>
   <div flex="~ row" gap-4>
     <button
@@ -95,7 +97,7 @@ async function testChunking() {
     >
       <div flex="~ row" items-center gap-2>
         <div i-solar:round-double-alt-arrow-right-bold-duotone />
-        <span>Test chunking</span>
+        <span>{{ t('settings.pages.modules.speech.streaming-playground.test-chunking') }}</span>
       </div>
     </button>
 
@@ -107,7 +109,7 @@ async function testChunking() {
     >
       <div flex="~ row" items-center gap-2>
         <div i-solar:round-double-alt-arrow-right-bold-duotone />
-        <span>Test streaming</span>
+        <span>{{ t('settings.pages.modules.speech.streaming-playground.test-streaming') }}</span>
       </div>
     </button>
   </div>
@@ -137,8 +139,7 @@ async function testChunking() {
             'b-purple text-purple': chunk.reason === 'flush',
           }"
         >
-          {{ chunk.words }} words,
-          {{ chunk.reason }}
+          {{ t('settings.pages.modules.speech.streaming-playground.chunk-meta', { words: chunk.words, reason: chunk.reason }) }}
         </span>
       </div>
       <Transition
@@ -157,7 +158,7 @@ async function testChunking() {
           text-sm
         >
           <div i-solar-check-circle-line-duotone />
-          <div>Queued</div>
+          <div>{{ t('settings.pages.modules.speech.streaming-playground.queued') }}</div>
         </div>
       </Transition>
     </div>

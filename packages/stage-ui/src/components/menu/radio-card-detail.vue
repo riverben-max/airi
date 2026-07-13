@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Input, TransitionVertical } from '@proj-airi/ui'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 withDefaults(defineProps<{
   id: string
@@ -27,6 +28,7 @@ withDefaults(defineProps<{
 })
 
 const modelValue = defineModel<string>({ required: true })
+const { t } = useI18n()
 
 // Track if description is expanded
 const isExpanded = ref(false)
@@ -133,7 +135,7 @@ function toggleExpansion() {
           class="mt-0.5 inline-flex items-center text-xs text-primary-500 dark:text-primary-600"
           @click.prevent="toggleExpansion"
         >
-          <span>{{ isExpanded ? 'Show less' : 'Show more' }}</span>
+          <span>{{ isExpanded ? t('settings.pages.providers.card-details.show-less') : t('settings.pages.providers.card-details.show-more') }}</span>
           <div
             :class="{ 'rotate-180': isExpanded }"
             class="transition-transform duration-200"
@@ -155,7 +157,7 @@ function toggleExpansion() {
             ]"
           >
             <div i-solar:wad-of-money-bold-duotone class="text-[10px]" />
-            <span>Free</span>
+            <span>{{ t('settings.pages.providers.filters.free') }}</span>
           </div>
         </template>
         <template v-else-if="pricing === 'paid'">
@@ -168,7 +170,7 @@ function toggleExpansion() {
             ]"
           >
             <div i-solar:card-2-bold-duotone class="text-[10px]" />
-            <span>Paid</span>
+            <span>{{ t('settings.pages.providers.filters.paid') }}</span>
           </div>
         </template>
 
@@ -182,7 +184,7 @@ function toggleExpansion() {
             ]"
           >
             <div i-solar:laptop-bold-duotone class="text-[10px]" />
-            <span>Local</span>
+            <span>{{ t('settings.pages.providers.filters.local') }}</span>
           </div>
         </template>
         <template v-else-if="deployment === 'cloud'">
@@ -195,7 +197,7 @@ function toggleExpansion() {
             ]"
           >
             <div i-solar:cloud-bold-duotone class="text-[10px]" />
-            <span>Cloud</span>
+            <span>{{ t('settings.pages.providers.filters.cloud') }}</span>
           </div>
         </template>
 
@@ -209,7 +211,7 @@ function toggleExpansion() {
             ]"
           >
             <div i-solar:star-bold-duotone class="text-[10px]" />
-            <span>Suggested</span>
+            <span>{{ t('settings.pages.providers.filters.suggested') }}</span>
           </div>
         </template>
       </div>

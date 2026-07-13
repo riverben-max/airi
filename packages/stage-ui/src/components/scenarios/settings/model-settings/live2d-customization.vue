@@ -4,6 +4,7 @@ import { Checkbox, FieldRange } from '@proj-airi/ui'
 import { useDebounceFn } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useAiriCardStore } from '../../../../stores/modules/airi-card'
 import { useSettings } from '../../../../stores/settings'
@@ -12,6 +13,7 @@ import { Container } from '../../../data-pane'
 const live2dStore = useLive2d()
 const airiCardStore = useAiriCardStore()
 const settingsStore = useSettings()
+const { t } = useI18n()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 const {
   availableExpressions,
@@ -227,13 +229,13 @@ function setToggleValue(id: string, value: boolean) {
     <!-- Header with Reset -->
     <div class="flex items-center justify-between px-2 pt-1">
       <span class="text-xs text-neutral-500 dark:text-neutral-400">
-        {{ availableExpressions.length }} expressions · hold to map
+        {{ t('settings.model-settings.live2d-customization.expression-summary', { count: availableExpressions.length }) }}
       </span>
       <button
         class="rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
         @click="resetAll"
       >
-        Reset All
+        {{ t('settings.model-settings.common.actions.reset-all') }}
       </button>
     </div>
 
@@ -264,7 +266,7 @@ function setToggleValue(id: string, value: boolean) {
     <!-- Additional Parameters -->
     <Container
       v-if="toggles.length > 0 || sliders.length > 0 || otherParams.length > 0"
-      title="Advanced Parameters"
+      :title="t('settings.model-settings.live2d-customization.advanced-parameters')"
       icon="i-solar:tuning-bold-duotone"
       :expand="false"
       class="mt-2"
@@ -273,7 +275,7 @@ function setToggleValue(id: string, value: boolean) {
         <!-- Toggles -->
         <div v-if="toggles.length > 0" class="space-y-3">
           <h3 class="text-xs font-bold tracking-wider uppercase opacity-40">
-            Toggles
+            {{ t('settings.model-settings.live2d-customization.toggles') }}
           </h3>
           <div class="grid grid-cols-1 gap-3">
             <div v-for="param in toggles" :key="param.id" class="flex items-center justify-between">
@@ -289,7 +291,7 @@ function setToggleValue(id: string, value: boolean) {
         <!-- Sliders -->
         <div v-if="sliders.length > 0" class="space-y-3">
           <h3 class="text-xs font-bold tracking-wider uppercase opacity-40">
-            Custom Sliders
+            {{ t('settings.model-settings.live2d-customization.custom-sliders') }}
           </h3>
           <div class="space-y-4">
             <FieldRange
@@ -308,7 +310,7 @@ function setToggleValue(id: string, value: boolean) {
         <!-- Others -->
         <div v-if="otherParams.length > 0" class="space-y-3">
           <h3 class="text-xs text-amber-500/80 font-bold tracking-wider uppercase opacity-60">
-            Other Settings
+            {{ t('settings.model-settings.live2d-customization.other-settings') }}
           </h3>
           <div class="space-y-4">
             <FieldRange
@@ -344,13 +346,13 @@ function setToggleValue(id: string, value: boolean) {
           <div class="w-72 border border-neutral-200 rounded-xl border-solid bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900">
             <div class="mb-3 text-center">
               <div class="text-sm text-neutral-700 font-medium dark:text-neutral-200">
-                Map Live2D Expression
+                {{ t('settings.model-settings.live2d-customization.map-expression') }}
               </div>
               <div class="mt-1 rounded-md bg-neutral-100 px-3 py-1 text-xs text-primary-500 font-mono dark:bg-neutral-800">
                 {{ availableExpressions.find(e => e.fileName === mappingTarget)?.name || mappingTarget }}
               </div>
               <div class="mt-1 text-[11px] text-neutral-400">
-                to an ACT emotion slot
+                {{ t('settings.model-settings.live2d-customization.act-slot') }}
               </div>
             </div>
 
@@ -376,13 +378,13 @@ function setToggleValue(id: string, value: boolean) {
                 class="flex-1 border border-red-300 rounded-lg border-solid bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors dark:border-red-800 dark:bg-red-900/30 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/50"
                 @click="clearMapping"
               >
-                Clear Mapping
+                {{ t('settings.model-settings.common.actions.clear-mapping') }}
               </button>
               <button
                 class="flex-1 border border-neutral-200 rounded-lg border-solid bg-neutral-50 px-3 py-1.5 text-xs text-neutral-600 transition-colors dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 @click="closeModal"
               >
-                Cancel
+                {{ t('settings.model-settings.common.actions.cancel') }}
               </button>
             </div>
           </div>

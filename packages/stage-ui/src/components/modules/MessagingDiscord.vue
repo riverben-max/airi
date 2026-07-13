@@ -146,8 +146,8 @@ function formatTimestamp(ts: number) {
         />
         <FieldCheckbox
           v-model="dmsEnabled"
-          label="Allow Direct Messages (DMs)"
-          description="Enable or disable bot interactions (commands and chat) in private direct messages."
+          :label="t('settings.pages.modules.messaging-discord.controls.direct-messages')"
+          :description="t('settings.pages.modules.messaging-discord.controls.direct-messages-description')"
         />
       </div>
     </section>
@@ -180,7 +180,7 @@ function formatTimestamp(ts: number) {
             v-if="serviceStatus.activeChannelId"
             class="mc-active-badge"
           >
-            Active
+            {{ t('settings.pages.modules.messaging-discord.active') }}
           </span>
         </div>
       </div>

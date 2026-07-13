@@ -7,6 +7,7 @@ import {
   AlertDialogRoot,
   AlertDialogTitle,
 } from 'reka-ui'
+import { useI18n } from 'vue-i18n'
 
 interface Props {
   modelValue: boolean
@@ -18,6 +19,7 @@ const emit = defineEmits<{
   (e: 'guided'): void
   (e: 'advanced'): void
 }>()
+const { t } = useI18n()
 
 function selectGuided() {
   emit('update:modelValue', false)
@@ -38,10 +40,10 @@ function selectAdvanced() {
         class="fixed left-1/2 top-1/2 z-100 max-w-xl w-[90%] border border-neutral-200/80 rounded-2xl bg-white/95 p-6 shadow-2xl -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow dark:border-neutral-800/80 dark:bg-neutral-900/95"
       >
         <AlertDialogTitle class="mb-2 text-xl text-neutral-800 font-bold dark:text-neutral-100">
-          Create New Character Card
+          {{ t('settings.pages.card.creation.mode-selector.title') }}
         </AlertDialogTitle>
         <p class="mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-          Choose how you want to create your new character roleplay card.
+          {{ t('settings.pages.card.creation.mode-selector.description') }}
         </p>
 
         <div class="grid grid-cols-1 mb-6 gap-4 md:grid-cols-2">
@@ -55,14 +57,14 @@ function selectAdvanced() {
                 <div i-solar:magic-stick-3-line-duotone class="text-2xl" />
               </div>
               <span class="rounded bg-primary-500/10 px-2 py-0.5 text-[10px] text-primary-500 font-bold tracking-wider uppercase">
-                Recommended
+                {{ t('settings.pages.card.creation.mode-selector.recommended') }}
               </span>
             </div>
             <h4 class="text-base text-neutral-800 font-bold transition-colors dark:text-neutral-200 group-hover:text-primary-600 dark:group-hover:text-primary-400">
-              Guided AI Creator
+              {{ t('settings.pages.card.creation.mode-selector.guided-title') }}
             </h4>
             <p class="mt-1 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Select one or more characters from the 36k AnimaDex catalog, configure custom story prompts, and let the AI synthesize a roleplay card.
+              {{ t('settings.pages.card.creation.mode-selector.guided-description') }}
             </p>
           </div>
 
@@ -77,10 +79,10 @@ function selectAdvanced() {
               </div>
             </div>
             <h4 class="text-base text-neutral-800 font-bold transition-colors dark:text-neutral-200 group-hover:text-neutral-900 dark:group-hover:text-white">
-              Advanced Manual Card
+              {{ t('settings.pages.card.creation.mode-selector.manual-title') }}
             </h4>
             <p class="mt-1 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              Manually fill out character definitions, personality traits, custom greeting lines, prompts, and configure display models from scratch.
+              {{ t('settings.pages.card.creation.mode-selector.manual-description') }}
             </p>
           </div>
         </div>
@@ -88,7 +90,7 @@ function selectAdvanced() {
         <div class="flex flex-row justify-end">
           <Button
             variant="secondary"
-            label="Cancel"
+            :label="t('settings.pages.card.cancel')"
             class="h-[36px] px-4 text-xs"
             @click="emit('update:modelValue', false)"
           />

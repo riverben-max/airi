@@ -2,6 +2,8 @@
 import type { SpeechCapabilitiesInfo } from '@proj-airi/stage-ui/stores/providers'
 
 import { FieldInput } from '@proj-airi/ui'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 defineProps<{
   actingModelExpressionOptions: string[]
@@ -20,6 +22,7 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'sparkle-click', fieldId: string): void
 }>()
+const { t } = useI18n()
 
 const selectedActingModelExpressionPrompt = defineModel<string>('selectedActingModelExpressionPrompt', { required: true })
 const selectedActingSpeechExpressionPrompt = defineModel<string>('selectedActingSpeechExpressionPrompt', { required: true })
@@ -35,30 +38,30 @@ function toggleIdleAnimation(name: string) {
   }
 }
 
-const FALLBACK_MOOD_TAGS = [
-  { tag: 'happy', description: 'Happy / Joy / Laugh / Grin / Smile' },
-  { tag: 'sad', description: 'Sad / Cry / Sorrow / Pout / Sigh / Whimper' },
-  { tag: 'angry', description: 'Angry / Mad / Annoy / Frustrate / Glare' },
-  { tag: 'surprised', description: 'Surprise / Shock / Wonder / Gasp / Blink' },
-  { tag: 'thinking', description: 'Think / Ponder / Curious / Hmm / Question' },
-  { tag: 'blush', description: 'Blush / Shy / Embarrassed / Awkward' },
-  { tag: 'whisper', description: 'Relaxed / Whisper / Soft / Calm' },
-]
+const commonMoodTags = computed(() => [
+  { tag: 'happy', description: t('settings.pages.card.creation.acting-editor.mood-tags.happy') },
+  { tag: 'sad', description: t('settings.pages.card.creation.acting-editor.mood-tags.sad') },
+  { tag: 'angry', description: t('settings.pages.card.creation.acting-editor.mood-tags.angry') },
+  { tag: 'surprised', description: t('settings.pages.card.creation.acting-editor.mood-tags.surprised') },
+  { tag: 'thinking', description: t('settings.pages.card.creation.acting-editor.mood-tags.thinking') },
+  { tag: 'blush', description: t('settings.pages.card.creation.acting-editor.mood-tags.blush') },
+  { tag: 'whisper', description: t('settings.pages.card.creation.acting-editor.mood-tags.whisper') },
+])
 </script>
 
 <template>
   <div class="tab-content ml-auto mr-auto w-95%">
     <p class="mb-3 text-sm text-neutral-500">
-      Author helper-backed prompt instructions for model expressions, speech tags, and speech mannerisms. These fields are injected into AIRI's prompt builder, while the helpers below reflect the currently loaded model and selected speech provider.
+      {{ t('settings.pages.card.creation.acting-editor.introduction') }}
     </p>
 
     <div class="input-list ml-auto mr-auto w-90% flex flex-col gap-8">
       <div class="border border-neutral-200 rounded-xl p-4 dark:border-neutral-700">
         <div class="mb-1 text-sm text-neutral-800 font-medium dark:text-neutral-200">
-          Idle Loop / Cycle Animations
+          {{ t('settings.pages.card.creation.acting-editor.idle-title') }}
         </div>
         <div class="mb-3 text-xs text-neutral-500">
-          Pick from the animations available which ones you would like for your character to cycle through automatically. You may pick just one if you want it to have a default set idle loop.
+          {{ t('settings.pages.card.creation.acting-editor.idle-description') }}
         </div>
         <div class="flex flex-col gap-2">
           <div class="flex flex-wrap gap-2">
@@ -85,24 +88,25 @@ const FALLBACK_MOOD_TAGS = [
           <label class="flex flex-col gap-4">
             <div>
               <div class="flex items-center gap-1 text-sm font-medium">
-                ACT / Model Expressions
+                {{ t('settings.pages.card.creation.acting-editor.model-expressions') }}
               </div>
               <div class="text-xs text-neutral-500 dark:text-neutral-400">
-                Teach AIRI how to emit ACT tokens for avatar expressions and motion cues.
+                {{ t('settings.pages.card.creation.acting-editor.model-expressions-description') }}
               </div>
             </div>
             <div class="relative w-full">
               <textarea
                 v-model="selectedActingModelExpressionPrompt"
                 rows="6"
-                placeholder="ACT / Model Expressions"
+                :placeholder="t('settings.pages.card.creation.acting-editor.model-expressions')"
                 class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
               />
               <button
                 type="button"
                 style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
                 class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-                title="Optimize with AI"
+                :title="t('settings.pages.card.creation.actions.optimize-with-ai')"
+                :aria-label="t('settings.pages.card.creation.actions.optimize-with-ai')"
                 @click.prevent="emit('sparkle-click', 'actingModelExpression')"
               >
                 <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
@@ -112,7 +116,7 @@ const FALLBACK_MOOD_TAGS = [
         </div>
         <div class="mt-3 flex flex-col gap-2">
           <div class="text-xs text-neutral-500">
-            Available model expressions
+            {{ t('settings.pages.card.creation.acting-editor.available-expressions') }}
             <span v-if="actingModelExpressionOptions.length">({{ actingModelExpressionOptions.length }})</span>
           </div>
           <div v-if="actingModelExpressionOptions.length" class="flex flex-wrap gap-2">
@@ -132,7 +136,7 @@ const FALLBACK_MOOD_TAGS = [
             </button>
           </div>
           <div v-else class="text-xs text-neutral-400">
-            No model expression list is currently available. Load a model on stage to surface expression helpers here.
+            {{ t('settings.pages.card.creation.acting-editor.no-expressions') }}
           </div>
         </div>
       </div>
@@ -142,24 +146,25 @@ const FALLBACK_MOOD_TAGS = [
           <label class="flex flex-col gap-4">
             <div>
               <div class="flex items-center gap-1 text-sm font-medium">
-                Speech Tags / Audio Expressions
+                {{ t('settings.pages.card.creation.acting-editor.speech-tags') }}
               </div>
               <div class="text-xs text-neutral-500 dark:text-neutral-400">
-                Teach AIRI how to use provider-side vocal tags when the selected speech provider supports them.
+                {{ t('settings.pages.card.creation.acting-editor.speech-tags-description') }}
               </div>
             </div>
             <div class="relative w-full">
               <textarea
                 v-model="selectedActingSpeechExpressionPrompt"
                 rows="6"
-                placeholder="Speech Tags / Audio Expressions"
+                :placeholder="t('settings.pages.card.creation.acting-editor.speech-tags')"
                 class="focus:primary-300 dark:focus:primary-400/50 text-disabled:neutral-400 dark:text-disabled:neutral-600 cursor-disabled:not-allowed w-full border-2 border-neutral-100 rounded-lg border-solid bg-neutral-50 py-1.5 pl-2 pr-9 text-sm shadow-sm outline-none transition-all duration-200 ease-in-out dark:border-neutral-900 dark:bg-neutral-950 focus:bg-neutral-50 dark:focus:bg-neutral-900"
               />
               <button
                 type="button"
                 style="position: absolute; top: 8px; right: 8px; z-index: 50; display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer; background: transparent;"
                 class="text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-primary-500 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-                title="Optimize with AI"
+                :title="t('settings.pages.card.creation.actions.optimize-with-ai')"
+                :aria-label="t('settings.pages.card.creation.actions.optimize-with-ai')"
                 @click.prevent="emit('sparkle-click', 'actingSpeechExpression')"
               >
                 <span i-ph:sparkle class="i-ph:sparkle animate-pulse text-lg" style="display: inline-block; width: 1.2em; height: 1.2em;" />
@@ -169,11 +174,10 @@ const FALLBACK_MOOD_TAGS = [
         </div>
         <div class="mt-3 flex flex-col gap-3">
           <div class="text-xs text-neutral-500">
-            Speech tag helpers for provider
-            <span class="text-neutral-700 font-medium dark:text-neutral-200">{{ selectedSpeechProviderLabel }}</span>
+            {{ t('settings.pages.card.creation.acting-editor.speech-tags-provider', { provider: selectedSpeechProviderLabel }) }}
           </div>
           <div v-if="actingSpeechCapabilitiesLoading" class="text-xs text-neutral-400">
-            Loading speech capability helpers...
+            {{ t('settings.pages.card.creation.acting-editor.loading-capabilities') }}
           </div>
           <div v-else-if="actingGroupedExpressionTags.length" class="flex flex-col gap-3">
             <div v-for="group in actingGroupedExpressionTags" :key="group.category" class="flex flex-col gap-2">
@@ -195,11 +199,11 @@ const FALLBACK_MOOD_TAGS = [
           </div>
           <div v-else class="flex flex-col gap-2">
             <div class="mb-1 text-xs text-neutral-400">
-              The selected speech provider does not expose tag helpers. Here are the core visual Mood Tags you can use instead:
+              {{ t('settings.pages.card.creation.acting-editor.fallback-tags') }}
             </div>
             <div class="flex flex-wrap gap-2">
               <button
-                v-for="item in FALLBACK_MOOD_TAGS"
+                v-for="item in commonMoodTags"
                 :key="item.tag"
                 class="border border-neutral-200 rounded-full px-3 py-1 text-xs text-neutral-600 transition-colors dark:border-neutral-700 hover:border-primary-400 dark:text-neutral-300 hover:text-primary-500"
                 :title="item.description"
@@ -215,13 +219,13 @@ const FALLBACK_MOOD_TAGS = [
       <div class="border border-neutral-200 rounded-xl p-4 dark:border-neutral-700">
         <FieldInput
           v-model="selectedActingSpeechMannerismPrompt"
-          label="Speech Mannerisms"
-          description="Teach AIRI when to use provider-supported speech mannerisms without exposing the raw transformation internals."
+          :label="t('settings.pages.card.creation.acting-editor.mannerisms')"
+          :description="t('settings.pages.card.creation.acting-editor.mannerisms-description')"
           :single-line="false"
         />
         <div class="mt-3 flex flex-col gap-3">
           <div class="text-xs text-neutral-500">
-            Insert helper blurbs from the current speech provider
+            {{ t('settings.pages.card.creation.acting-editor.insert-mannerisms') }}
           </div>
           <div v-if="actingMannerismOptions.length" class="flex flex-wrap gap-2">
             <button
@@ -235,7 +239,7 @@ const FALLBACK_MOOD_TAGS = [
             </button>
           </div>
           <div v-else class="text-xs text-neutral-400">
-            No provider-side mannerism helpers are currently available for this speech provider.
+            {{ t('settings.pages.card.creation.acting-editor.no-mannerisms') }}
           </div>
         </div>
       </div>

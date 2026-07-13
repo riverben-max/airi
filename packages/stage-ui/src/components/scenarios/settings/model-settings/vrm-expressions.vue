@@ -4,6 +4,7 @@ import { Button, Input, Select } from '@proj-airi/ui'
 import { nanoid } from 'nanoid'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useAiriCardStore } from '../../../../stores/modules/airi-card'
 import { Container } from '../../../data-pane'
@@ -11,6 +12,7 @@ import { Container } from '../../../data-pane'
 const airiCardStore = useAiriCardStore()
 const { activeCard, activeCardId } = storeToRefs(airiCardStore)
 const modelStore = useModelStore()
+const { t } = useI18n()
 const { availableExpressions, activeExpressions, emotionMappings, favoriteExpression } = storeToRefs(modelStore)
 
 const uniqueExpressions = computed(() => [...new Set(availableExpressions.value)])
@@ -24,6 +26,10 @@ const custom = computed(() =>
 )
 
 const hasExpressions = computed(() => uniqueExpressions.value.length > 0)
+const outfitTypeOptions = computed(() => [
+  { label: t('settings.model-settings.vrm-expressions.base-type'), value: 'base' },
+  { label: t('settings.model-settings.vrm-expressions.overlay-type'), value: 'overlay' },
+])
 
 // === Layer 1: Toggle ===
 function toggleExpression(name: string) {
@@ -230,12 +236,12 @@ function deleteOutfit(id: string) {
 <template>
   <div class="flex flex-col gap-2">
     <div v-if="!hasExpressions" class="p-2 text-xs text-neutral-400">
-      No expressions available. Load a VRM model first.
+      {{ t('settings.model-settings.vrm-expressions.no-expressions') }}
     </div>
     <template v-else>
       <div class="flex items-center justify-between px-2 pt-1">
         <span class="text-xs text-neutral-500 dark:text-neutral-400">
-          {{ uniqueExpressions.length }} expressions · {{ isBuildingOutfit ? 'select multiple' : 'hold to map' }}
+          {{ t('settings.model-settings.vrm-expressions.expression-summary', { count: uniqueExpressions.length, instruction: isBuildingOutfit ? t('settings.model-settings.vrm-expressions.select-multiple') : t('settings.model-settings.vrm-expressions.hold-to-map') }) }}
         </span>
         <div class="flex gap-2">
           <button
@@ -243,7 +249,7 @@ function deleteOutfit(id: string) {
             class="rounded-md bg-primary-500/10 px-2 py-0.5 text-xs text-primary-600 transition-colors hover:bg-primary-500/20"
             @click="startBuilding"
           >
-            Build Outfit
+            {{ t('settings.model-settings.vrm-expressions.build-outfit') }}
           </button>
           <div v-else class="flex gap-1">
             <button
@@ -251,13 +257,13 @@ function deleteOutfit(id: string) {
               :disabled="selectedExpressions.size === 0"
               @click="openCreationDialog"
             >
-              Done ({{ selectedExpressions.size }})
+              {{ t('settings.model-settings.vrm-expressions.done-count', { count: selectedExpressions.size }) }}
             </button>
             <button
               class="rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
               @click="cancelBuilding"
             >
-              Cancel
+              {{ t('settings.model-settings.common.actions.cancel') }}
             </button>
           </div>
           <button
@@ -265,7 +271,7 @@ function deleteOutfit(id: string) {
             class="rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
             @click="resetAll"
           >
-            Reset All
+            {{ t('settings.model-settings.common.actions.reset-all') }}
           </button>
         </div>
       </div>
@@ -273,7 +279,7 @@ function deleteOutfit(id: string) {
       <!-- Wardrobe Section -->
       <Container
         v-if="outfits.length > 0 && !isBuildingOutfit"
-        title="Wardrobe"
+        :title="t('settings.model-settings.vrm-expressions.wardrobe')"
         :expand="true"
         inner-class="grid grid-cols-2 gap-2 p-2"
         class="mt-2"
@@ -290,6 +296,7 @@ function deleteOutfit(id: string) {
           </div>
           <button
             class="absolute right-1 top-1 p-0.5 text-red-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+            :aria-label="t('settings.model-settings.vrm-expressions.delete-outfit', { name: outfit.name })"
             @click="deleteOutfit(outfit.id)"
           >
             <div i-solar:trash-bin-trash-bold-duotone class="size-3" />
@@ -300,7 +307,7 @@ function deleteOutfit(id: string) {
       <!-- Custom Extensions -->
       <Container
         v-if="custom.length > 0"
-        :title="`Custom Extensions (${custom.length})`"
+        :title="t('settings.model-settings.vrm-expressions.custom-extensions', { count: custom.length })"
         :expand="true"
         inner-class="flex flex-wrap gap-1 p-2"
         class="mt-2"
@@ -332,7 +339,7 @@ function deleteOutfit(id: string) {
       <!-- Presets -->
       <Container
         v-if="presets.length > 0"
-        :title="`Presets (${presets.length})`"
+        :title="t('settings.model-settings.vrm-expressions.presets', { count: presets.length })"
         :expand="false"
         inner-class="flex flex-wrap gap-1 p-2"
         class="mt-2"
@@ -383,13 +390,13 @@ function deleteOutfit(id: string) {
         >
           <div class="mb-3 text-center">
             <div class="text-sm text-neutral-700 font-medium dark:text-neutral-200">
-              Map Expression
+              {{ t('settings.model-settings.vrm-expressions.map-expression') }}
             </div>
             <div class="mt-1 rounded-md bg-neutral-100 px-3 py-1 text-xs text-primary-500 font-mono dark:bg-neutral-800">
               {{ mappingTarget }}
             </div>
             <div class="mt-1 text-[11px] text-neutral-400">
-              to an ACT emotion slot
+              {{ t('settings.model-settings.vrm-expressions.act-slot') }}
             </div>
           </div>
 
@@ -423,7 +430,7 @@ function deleteOutfit(id: string) {
             ]"
             @click="toggleFavorite"
           >
-            ⭐ {{ favoriteExpression === mappingTarget ? 'Remove Favorite' : 'Set as Favorite' }}
+            ⭐ {{ favoriteExpression === mappingTarget ? t('settings.model-settings.vrm-expressions.remove-favorite') : t('settings.model-settings.vrm-expressions.set-favorite') }}
           </button>
 
           <div class="mt-3 flex gap-2">
@@ -431,13 +438,13 @@ function deleteOutfit(id: string) {
               class="flex-1 border border-red-300 rounded-lg border-solid bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors dark:border-red-800 dark:bg-red-900/30 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/50"
               @click="clearMapping"
             >
-              Clear Mapping
+              {{ t('settings.model-settings.common.actions.clear-mapping') }}
             </button>
             <button
               class="flex-1 border border-neutral-200 rounded-lg border-solid bg-neutral-50 px-3 py-1.5 text-xs text-neutral-600 transition-colors dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
               @click="closeModal"
             >
-              Cancel
+              {{ t('settings.model-settings.common.actions.cancel') }}
             </button>
           </div>
         </div>
@@ -456,35 +463,32 @@ function deleteOutfit(id: string) {
         <div class="w-80 flex flex-col gap-4 border border-neutral-200 rounded-2xl border-solid bg-white p-6 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900">
           <div class="text-center">
             <h3 class="text-lg font-bold">
-              Bundle Outfit
+              {{ t('settings.model-settings.vrm-expressions.bundle-outfit') }}
             </h3>
             <p class="text-xs text-neutral-400">
-              Grouping {{ selectedExpressions.size }} expressions
+              {{ t('settings.model-settings.vrm-expressions.grouping', { count: selectedExpressions.size }) }}
             </p>
           </div>
 
           <div class="flex flex-col gap-3">
             <div class="flex flex-col gap-1">
-              <label class="text-[10px] text-neutral-400 font-bold uppercase">Name</label>
-              <Input v-model="draftOutfit.name" placeholder="e.g. Summer Dress" />
+              <label class="text-[10px] text-neutral-400 font-bold uppercase">{{ t('settings.model-settings.vrm-expressions.name') }}</label>
+              <Input v-model="draftOutfit.name" :placeholder="t('settings.model-settings.common.example', { example: t('settings.model-settings.vrm-expressions.name-example') })" />
             </div>
 
             <div class="flex flex-col gap-1">
-              <label class="text-[10px] text-neutral-400 font-bold uppercase">Type</label>
+              <label class="text-[10px] text-neutral-400 font-bold uppercase">{{ t('settings.model-settings.vrm-expressions.type') }}</label>
               <Select
                 v-model="draftOutfit.type"
-                :options="[
-                  { label: 'Base (Exclusive Swap)', value: 'base' },
-                  { label: 'Overlay (Additive)', value: 'overlay' },
-                ]"
+                :options="outfitTypeOptions"
               />
             </div>
 
             <div class="flex flex-col gap-1">
-              <label class="text-[10px] text-neutral-400 font-bold uppercase">Icon</label>
+              <label class="text-[10px] text-neutral-400 font-bold uppercase">{{ t('settings.model-settings.vrm-expressions.icon') }}</label>
               <div class="grid grid-cols-3 gap-2 rounded-lg bg-neutral-50 p-2 dark:bg-neutral-800">
                 <button
-                  v-for="icon in [
+                  v-for="(icon, index) in [
                     'i-solar:t-shirt-bold-duotone',
                     'i-solar:magic-stick-3-bold-duotone',
                     'i-solar:glasses-bold-duotone',
@@ -493,6 +497,7 @@ function deleteOutfit(id: string) {
                     'i-solar:heart-bold-duotone',
                   ]"
                   :key="icon"
+                  :aria-label="t('settings.model-settings.vrm-expressions.choose-icon', { index: index + 1 })"
                   :class="[
                     'p-2 rounded-md transition-colors flex items-center justify-center',
                     draftOutfit.icon === icon ? 'bg-primary-500 text-white' : 'hover:bg-neutral-200 dark:hover:bg-neutral-700',
@@ -507,10 +512,10 @@ function deleteOutfit(id: string) {
 
           <div class="flex gap-2 pt-2">
             <Button variant="secondary" class="flex-1" @click="showCreationDialog = false">
-              Cancel
+              {{ t('settings.model-settings.common.actions.cancel') }}
             </Button>
             <Button class="flex-1" :disabled="!draftOutfit.name" @click="saveOutfit">
-              Save Bundle
+              {{ t('settings.model-settings.vrm-expressions.save-bundle') }}
             </Button>
           </div>
         </div>

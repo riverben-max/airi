@@ -1,5 +1,6 @@
 common:
   save: Save
+  unknown: Unknown
 model-settings:
   common:
     example: 'e.g. {example}'
@@ -33,6 +34,8 @@ model-settings:
       reset-all: Reset All
       show-all: Show All
       show-renamed: Show Renamed
+      cancel: Cancel
+      clear-mapping: Clear Mapping
     states:
       no-expressions: No expressions match filters
       no-motions: No motions match filters
@@ -56,6 +59,48 @@ model-settings:
       sky-color: Sky Color
       ground-color: Ground Color
       skybox-intensity: Skybox Intensity
+  live2d-customization:
+    expression-summary: '{count} expressions · hold to map'
+    advanced-parameters: Advanced Parameters
+    toggles: Toggles
+    custom-sliders: Custom Sliders
+    other-settings: Other Settings
+    map-expression: Map Live2D Expression
+    act-slot: to an ACT emotion slot
+  vrm-expressions:
+    no-expressions: No expressions available. Load a VRM model first.
+    expression-summary: '{count} expressions · {instruction}'
+    select-multiple: select multiple
+    hold-to-map: hold to map
+    build-outfit: Build Outfit
+    done-count: 'Done ({count})'
+    wardrobe: Wardrobe
+    delete-outfit: 'Delete outfit {name}'
+    custom-extensions: 'Custom Extensions ({count})'
+    presets: 'Presets ({count})'
+    map-expression: Map Expression
+    act-slot: to an ACT emotion slot
+    remove-favorite: Remove Favorite
+    set-favorite: Set as Favorite
+    bundle-outfit: Bundle Outfit
+    grouping: 'Grouping {count} expressions'
+    name: Name
+    name-example: Summer Dress
+    type: Type
+    icon: Icon
+    base-type: Base (Exclusive Swap)
+    overlay-type: Overlay (Additive)
+    choose-icon: 'Choose {index} as the outfit icon'
+    save-bundle: Save Bundle
+  model-cache:
+    title: Model Cache
+    description: Downloaded inference models stored in browser cache
+    cached: Cached
+    not-cached: Not cached
+    checking: Checking cache...
+    refresh: Refresh
+    clearing: Clearing...
+    clear-all: Clear All Cache
   audio-studio:
     library: Voice Library
     new-profile: New Profile
@@ -567,10 +612,105 @@ pages:
       studio: Studio
       actions:
         optimize-with-ai: Optimize with AI
+        generate-with-ai: Generate with AI
         back: Back
         next: Next
         cancel: Cancel
         create: Create
+      speech-provider-none: No provider configured
+      list:
+        sort: Sort
+        import: Import
+        create: Create
+        close-search: Close character search
+        find-more-title: Find More Cards
+        find-more-description: AIRI can import standard SillyTavern-style character cards, including `chara_card_v2` PNG exports. Imported cards are a strong starting point, but they usually will not fill in AIRI-specific fields automatically.
+        find-more-review: After import, review and customize AIRI-only settings, especially the Acting tab, so expressions, speech tags, and motion cues line up with your current VRM or Live2D model.
+        compatibility-hint: Prefer exports explicitly labeled for SillyTavern, `chara_card_v2`, or ST PNG / JSON compatibility. Not every character site exports in a portable format.
+        import-title: Import Character Card
+        import-description: Drop your .png (Chara Card V2) or .json files anywhere to import them into AIRI
+        sources:
+          jannyai: Character discovery and card sharing with SillyTavern-friendly exports in the ecosystem.
+          janitorai: Popular character platform. Look for exports or mirrors that provide SillyTavern / chara_card_v2 PNG or JSON.
+          chub: Large character-sharing ecosystem commonly used with third-party roleplay UIs.
+          risu: Community character hub tied to the Risu ecosystem, useful for portable card-style prompts.
+          datacat: A popular database and scraping tool used to search, browse, and export character definitions as SillyTavern JSON.
+        errors:
+          intercepted-file: Failed to parse intercepted card file
+          malformed-json: 'Failed to parse card JSON: Malformed file'
+          validation: Card validation failed
+          processing: Error processing card file
+        success:
+          imported: Card imported successfully
+      mode-selector:
+        title: Create New Character Card
+        description: Choose how you want to create your new character roleplay card.
+        recommended: Recommended
+        guided-title: Guided AI Creator
+        guided-description: Select one or more characters from the 36k AnimaDex catalog, configure custom story prompts, and let the AI synthesize a roleplay card.
+        manual-title: Advanced Manual Card
+        manual-description: Manually fill out character definitions, personality traits, custom greeting lines, prompts, and configure display models from scratch.
+      detail:
+        gallery: Gallery
+        studio: Studio
+        edit: Edit
+        preview-system-prompt: Preview Combined System Prompt
+        artistry-provider: Artistry Provider
+        artistry-model: Artistry Model (Optional Override)
+        artistry-prompt-prefix: Artistry Prompt Default Prefix
+        artistry-provider-options: Artistry Provider Options (JSON)
+      list-item:
+        no-description: No description provided.
+        edit: Edit card
+        export: Export card
+        export-json: Export JSON
+        export-png: Export PNG
+        activate: Activate card
+        delete: Delete card
+      image-tagger:
+        title: Local Image Tag Extractor
+        model: 'Model: {name}'
+        preview-alt: Model preview
+        no-preview: No preview image found for this model.
+        description: This processes the character model preview through the local WD14 Tagger / BLIP pipeline (WebGPU/WASM) to extract visual traits such as hair style, colors, clothing, and aesthetics.
+        downloading: Downloading local tagger models...
+        download-progress: '{progress}% complete'
+        running: Running WebGPU vision inference...
+        extracted-tags: Extracted Tags
+        ready: Ready. Click Run Tag Extraction below.
+        run: Run Tag Extraction
+        apply-close: Apply & Close
+        rerun: Re-Run
+        errors:
+          model-info: Failed to load display model info.
+          no-preview: No preview image is available for this model to analyze.
+          provider: Failed to initialize the local vision provider.
+          extraction: Failed to extract tags.
+      acting-editor:
+        introduction: Author helper-backed prompt instructions for model expressions, speech tags, and speech mannerisms. These fields are injected into AIRI's prompt builder, while the helpers below reflect the currently loaded model and selected speech provider.
+        idle-title: Idle Loop / Cycle Animations
+        idle-description: Pick the animations you want the character to cycle through automatically. Select only one to use it as the default idle loop.
+        model-expressions: ACT / Model Expressions
+        model-expressions-description: Teach AIRI how to emit ACT tokens for avatar expressions and motion cues.
+        available-expressions: Available model expressions
+        no-expressions: No model expression list is currently available. Load a model on stage to show expression helpers here.
+        speech-tags: Speech Tags / Audio Expressions
+        speech-tags-description: Teach AIRI how to use provider-side vocal tags when the selected speech provider supports them.
+        speech-tags-provider: 'Speech tag helpers for provider {provider}'
+        loading-capabilities: Loading speech capability helpers...
+        fallback-tags: 'The selected speech provider does not expose tag helpers. Use these core visual Mood Tags instead:'
+        mannerisms: Speech Mannerisms
+        mannerisms-description: Teach AIRI when to use provider-supported speech mannerisms without exposing raw transformation internals.
+        insert-mannerisms: Insert helper descriptions from the current speech provider
+        no-mannerisms: No provider-side mannerism helpers are currently available for this speech provider.
+        mood-tags:
+          happy: Happy / Joy / Laugh / Grin / Smile
+          sad: Sad / Cry / Sorrow / Pout / Sigh / Whimper
+          angry: Angry / Mad / Annoy / Frustrate / Glare
+          surprised: Surprise / Shock / Wonder / Gasp / Blink
+          thinking: Think / Ponder / Curious / Hmm / Question
+          blush: Blush / Shy / Embarrassed / Awkward
+          whisper: Relaxed / Whisper / Soft / Calm
       generator-fields:
         model-expressions: ACT / Model Expressions
         speech-expressions: Speech Tags / Audio Expressions
@@ -1368,6 +1508,9 @@ pages:
     gaming-minecraft:
       description: Playing Minecraft!
       title: Minecraft
+      unavailable:
+        title: Integration Unavailable
+        description: Minecraft bot integration is currently unavailable and will be fixed in a future update.
       enable: Enable Minecraft Integration
       enable-description: Allow AIRI to interact with Minecraft game
       server-address: Server Address
@@ -1386,10 +1529,18 @@ pages:
           and traffic are visible here, but service configuration stays in the
           Minecraft service files.
       setup:
-        title: Setup
+        title: Experiment with the WIP Bot
         description: >-
           You can find the instructions for setting up the bot in the following
           file
+        checkout: Check out the AIRI repository
+        navigate: Navigate to services/minecraft
+        install: Install dependencies
+        environment: Set up the environment
+        environment-description: Fill in the required values in .env.local
+        run: Run the bot
+        note-label: 'Please note:'
+        note: The bot is still in development and may not work as expected. We are actively improving it.
       runtime:
         title: Observed runtime
         connection: Connection
@@ -1429,6 +1580,7 @@ pages:
           select-provider: Please select a transcription provider first
           select-device: Please select an audio input device first
           stream-start: Failed to start audio stream. Please check microphone permissions.
+          unknown: Unknown error (failed to format error details)
         status:
           transcribing-recording: Transcribing recording...
           complete: Transcription complete!
@@ -1736,6 +1888,9 @@ pages:
         title: Controls & Modalities
         vision: Enable VLM (Vision) Image Intake
         vision-description: Allow AIRI to read and process image attachments from Discord
+        direct-messages: Allow Direct Messages (DMs)
+        direct-messages-description: Enable or disable bot interactions (commands and chat) in private direct messages.
+      active: Active
     speech:
       description: Speech synthesis
       tabs:
@@ -1743,6 +1898,8 @@ pages:
         studio: Audio Studio Console
       actions:
         add-provider: Add Provider
+      errors:
+        unknown: An unknown error occurred
       empty:
         title: No Speech Providers Configured
         description: Click here to set up your speech providers
@@ -1812,6 +1969,12 @@ pages:
             error: Error loading Voice Packs
             loading: Loading Voice Packs...
             title: Voice Pack
+      streaming-playground:
+        title: Streaming Playground
+        test-chunking: Test chunking
+        test-streaming: Test streaming
+        chunk-meta: '{words} words, {reason}'
+        queued: Queued
       title: Speech
     title: Modules
     vision:
@@ -2036,6 +2199,9 @@ pages:
       cloud: Cloud
       suggested: Suggested
       internal: Internal
+    card-details:
+      show-more: Show more
+      show-less: Show less
     speech:
       app_local_audio:
         title: App (Local) Audio Settings
@@ -2808,6 +2974,9 @@ pages:
         title: QR scan failed
         failed: Failed to scan or connect with the QR code.
   system:
+    user-profile:
+      title: User Profile
+      description: Manage your global name, visual prompt tags, and personal TTS voice profile
     color-scheme:
       description: Change the color scheme of the stage.
       title: Color Scheme
@@ -3362,6 +3531,7 @@ vrm:
     model-info-x: Width (X)
     model-info-y: Height (Y)
     model-info-z: Depth (Z)
+    tips-title: Tips!
     tips: |
       Edit the initial position the VRM model.
       Coordinate axes are visualised.
@@ -3519,6 +3689,9 @@ model-select:
     import: Import
     remove: Remove
     confirm: Confirm
+  active-character: Active Character
+  apply-to: 'Apply to: {name}'
+  dismiss-support: Dismiss model format information
 websocket-secure-enabled:
   title: Enable Secure WebSocket (WSS)
   description: >-

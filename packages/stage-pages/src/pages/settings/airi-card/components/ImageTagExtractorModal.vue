@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from 'reka-ui'
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface Props {
   modelValue: boolean
@@ -24,6 +25,7 @@ const emit = defineEmits<{
 
 const displayModelsStore = useDisplayModelsStore()
 const providersStore = useProvidersStore()
+const { t } = useI18n()
 
 const modelInfo = ref<any>(null)
 const previewImage = ref<string | null>(null)
@@ -53,14 +55,14 @@ watch(() => [props.modelValue, props.modelId], async () => {
     }
     catch (err) {
       console.error('[TagExtractorModal] Failed to resolve display model:', err)
-      errorMessage.value = 'Failed to load display model info.'
+      errorMessage.value = t('settings.pages.card.creation.image-tagger.errors.model-info')
     }
   }
 }, { immediate: true })
 
 async function runTagExtraction() {
   if (!previewImage.value) {
-    errorMessage.value = 'No preview image available for this model to analyze.'
+    errorMessage.value = t('settings.pages.card.creation.image-tagger.errors.no-preview')
     return
   }
 
@@ -84,7 +86,7 @@ async function runTagExtraction() {
     // 2. Fetch the local vision provider instance
     const providerInstance = await providersStore.getProviderInstance<any>(providerId)
     if (!providerInstance) {
-      throw new Error('Failed to initialize local vision provider.')
+      throw new Error(t('settings.pages.card.creation.image-tagger.errors.provider'))
     }
 
     // 3. Ensure the model is loaded (and report progress)
@@ -105,7 +107,7 @@ async function runTagExtraction() {
   }
   catch (err: any) {
     console.error('[TagExtractorModal] Extraction failed:', err)
-    errorMessage.value = err.message || 'Failed to extract tags.'
+    errorMessage.value = err.message || t('settings.pages.card.creation.image-tagger.errors.extraction')
   }
   finally {
     processingImage.value = false
@@ -132,10 +134,10 @@ function handleApply() {
             </div>
             <div>
               <DialogTitle class="text-xl text-neutral-800 font-bold dark:text-neutral-100">
-                Local Image Tag Extractor
+                {{ t('settings.pages.card.creation.image-tagger.title') }}
               </DialogTitle>
               <code v-if="modelInfo?.name" class="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500 font-mono dark:bg-black/40">
-                Model: {{ modelInfo.name }}
+                {{ t('settings.pages.card.creation.image-tagger.model', { name: modelInfo.name }) }}
               </code>
             </div>
           </div>
@@ -149,12 +151,12 @@ function handleApply() {
               v-if="previewImage"
               :src="previewImage"
               class="max-h-full max-w-full rounded-lg object-contain shadow-sm"
-              alt="Model Preview"
+              :alt="t('settings.pages.card.creation.image-tagger.preview-alt')"
             >
             <div v-else class="text-center text-neutral-400 space-y-2">
               <div class="i-solar:image-broken-bold-duotone mx-auto text-4xl" />
               <p class="text-xs">
-                No preview image found for this model.
+                {{ t('settings.pages.card.creation.image-tagger.no-preview') }}
               </p>
             </div>
           </div>
@@ -163,25 +165,25 @@ function handleApply() {
           <div class="w-1/2 flex flex-col justify-between">
             <div class="flex-1 space-y-4">
               <p class="text-xs text-neutral-500 leading-relaxed">
-                This will process the preview image of your character model through the local <b>WD14 Tagger / BLIP</b> pipeline (WebGPU/WASM) to extract visual traits (e.g. hair style, colors, clothing, aesthetics).
+                {{ t('settings.pages.card.creation.image-tagger.description') }}
               </p>
 
               <!-- Loading Indicator -->
               <div v-if="loadingModel" class="flex flex-col items-center justify-center py-4 text-center space-y-3">
                 <div class="i-svg-spinners:ring-resize text-xl text-primary-500" />
                 <div class="w-full text-xs text-neutral-500">
-                  Downloading local tagger models...
+                  {{ t('settings.pages.card.creation.image-tagger.downloading') }}
                   <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
                     <div class="h-1.5 rounded-full bg-primary-500 transition-all duration-300" :style="`width: ${modelLoadProgress}%`" />
                   </div>
-                  <span class="mt-1 block text-[10px] text-neutral-400">{{ modelLoadProgress }}% complete</span>
+                  <span class="mt-1 block text-[10px] text-neutral-400">{{ t('settings.pages.card.creation.image-tagger.download-progress', { progress: modelLoadProgress }) }}</span>
                 </div>
               </div>
 
               <!-- Processing Indicator -->
               <div v-else-if="processingImage" class="flex flex-col items-center justify-center py-6 text-center space-y-2">
                 <div class="i-svg-spinners:ring-resize text-xl text-primary-500" />
-                <span class="text-xs text-neutral-500">Running WebGPU vision inference...</span>
+                <span class="text-xs text-neutral-500">{{ t('settings.pages.card.creation.image-tagger.running') }}</span>
               </div>
 
               <!-- Errors -->
@@ -191,7 +193,7 @@ function handleApply() {
 
               <!-- Extracted Result -->
               <div v-else-if="extractedTags" class="h-[180px] flex flex-col space-y-2">
-                <span class="text-xs text-neutral-400 font-semibold tracking-wider uppercase">Extracted Tags</span>
+                <span class="text-xs text-neutral-400 font-semibold tracking-wider uppercase">{{ t('settings.pages.card.creation.image-tagger.extracted-tags') }}</span>
                 <textarea
                   v-model="extractedTags"
                   readonly
@@ -201,7 +203,7 @@ function handleApply() {
 
               <!-- Placeholder -->
               <div v-else class="h-[140px] flex items-center justify-center border border-neutral-100 rounded-xl bg-neutral-50/50 text-center text-xs text-neutral-400 dark:border-neutral-800/40 dark:bg-black/10">
-                Ready. Click Run Tag Extraction below.
+                {{ t('settings.pages.card.creation.image-tagger.ready') }}
               </div>
             </div>
 
@@ -210,7 +212,7 @@ function handleApply() {
               <Button
                 v-if="!extractedTags"
                 variant="primary"
-                label="Run Tag Extraction"
+                :label="t('settings.pages.card.creation.image-tagger.run')"
                 icon="i-solar:play-circle-bold-duotone"
                 class="w-full text-xs"
                 :disabled="!previewImage || processingImage || loadingModel"
@@ -219,14 +221,14 @@ function handleApply() {
               <template v-else>
                 <Button
                   variant="primary"
-                  label="Apply & Close"
+                  :label="t('settings.pages.card.creation.image-tagger.apply-close')"
                   icon="i-solar:check-read-bold-duotone"
                   class="flex-1 text-xs"
                   @click="handleApply"
                 />
                 <Button
                   variant="secondary"
-                  label="Re-Run"
+                  :label="t('settings.pages.card.creation.image-tagger.rerun')"
                   icon="i-solar:restart-bold-duotone"
                   class="text-xs"
                   :disabled="processingImage || loadingModel"
@@ -241,7 +243,7 @@ function handleApply() {
         <div class="flex justify-end gap-2 border-t border-neutral-100 bg-neutral-50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-950">
           <Button
             variant="secondary"
-            label="Cancel"
+            :label="t('settings.pages.card.cancel')"
             class="text-xs"
             @click="emit('update:modelValue', false)"
           />

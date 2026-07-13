@@ -1356,7 +1356,7 @@ function handleGeneratorSave(newValue: string) {
             :acting-grouped-expression-tags="actingGroupedExpressionTags"
             :acting-mannerism-options="actingMannerismOptions"
             :acting-speech-capabilities-loading="actingSpeechCapabilitiesLoading"
-            :selected-speech-provider-label="selectedSpeechProvider || speechProvider || 'none'"
+            :selected-speech-provider-label="selectedSpeechProvider || speechProvider || t('settings.pages.card.creation.speech-provider-none')"
             :is-live2d="isLive2d"
             :is-vrma-expression="isVrmaExpression"
             :insert-model-expression="insertModelExpression"

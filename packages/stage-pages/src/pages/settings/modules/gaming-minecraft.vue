@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { GamingMinecraft } from '@proj-airi/stage-ui/components'
 import { Callout } from '@proj-airi/ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -11,52 +14,52 @@ import { Callout } from '@proj-airi/ui'
         <div flex items-center gap-1 font-normal>
           <div i-solar:danger-circle-bold-duotone text-lg />
           <div text-base>
-            Integration Unavailable
+            {{ t('settings.pages.modules.gaming-minecraft.unavailable.title') }}
           </div>
         </div>
       </template>
       <div text-base>
-        Minecraft bot integration is currently broken and will be fixed in the near future.
+        {{ t('settings.pages.modules.gaming-minecraft.unavailable.description') }}
       </div>
     </Callout>
 
     <!-- Instructions Section -->
     <div bg="neutral-50 dark:neutral-900/50" rounded-lg p-4 border="~ neutral-200 dark:neutral-800">
       <h3 text="base font-semibold mb-3 neutral-800 dark:neutral-200">
-        Experiment with the WIP Bot
+        {{ t('settings.pages.modules.gaming-minecraft.setup.title') }}
       </h3>
 
       <ol list="decimal pl-4 space-y-2" text="sm neutral-600 dark:neutral-300">
         <li>
           <div>
-            <span font="medium neutral-700 dark:neutral-200">Checkout the AIRI repo</span>
+            <span font="medium neutral-700 dark:neutral-200">{{ t('settings.pages.modules.gaming-minecraft.setup.checkout') }}</span>
             <code text="xs neutral-500 dark:neutral-400" block>git clone https://github.com/moeru-ai/airi</code>
           </div>
         </li>
         <li>
           <div>
-            <span font="medium neutral-700 dark:neutral-200">Navigate to services/minecraft</span>
+            <span font="medium neutral-700 dark:neutral-200">{{ t('settings.pages.modules.gaming-minecraft.setup.navigate') }}</span>
             <code text="xs neutral-500 dark:neutral-400" block>cd services/minecraft</code>
           </div>
         </li>
         <li>
           <div>
-            <span font="medium neutral-700 dark:neutral-200">Install dependencies</span>
+            <span font="medium neutral-700 dark:neutral-200">{{ t('settings.pages.modules.gaming-minecraft.setup.install') }}</span>
             <code text="xs neutral-500 dark:neutral-400" block>pnpm install</code>
           </div>
         </li>
         <li>
           <div>
-            <span font="medium neutral-700 dark:neutral-200">Setup environment</span>
+            <span font="medium neutral-700 dark:neutral-200">{{ t('settings.pages.modules.gaming-minecraft.setup.environment') }}</span>
             <code text="xs neutral-500 dark:neutral-400" block>cp .env .env.local</code>
             <div text="xs neutral-500 dark:neutral-400" mt-1>
-              Fill in the required values in .env.local
+              {{ t('settings.pages.modules.gaming-minecraft.setup.environment-description') }}
             </div>
           </div>
         </li>
         <li>
           <div>
-            <span font="medium neutral-700 dark:neutral-200">Run the bot</span>
+            <span font="medium neutral-700 dark:neutral-200">{{ t('settings.pages.modules.gaming-minecraft.setup.run') }}</span>
             <code text="xs neutral-500 dark:neutral-400" block>pnpm dev</code>
           </div>
         </li>
@@ -66,7 +69,7 @@ import { Callout } from '@proj-airi/ui'
         <div flex items-start gap-2>
           <div i-solar:info-circle-bold-duotone mt-0.5 flex-shrink-0 />
           <div>
-            <strong>Please note:</strong> The bot is still in development and may not work as expected. We're actively working on improving it.
+            <strong>{{ t('settings.pages.modules.gaming-minecraft.setup.note-label') }}</strong> {{ t('settings.pages.modules.gaming-minecraft.setup.note') }}
           </div>
         </div>
       </div>
