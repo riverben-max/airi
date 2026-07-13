@@ -2524,8 +2524,12 @@ pages:
       virtual-audio-studio:
         title: 声音工作室 (Audio Studio)
         description: 语音库 - 使用自定义音效和对话过滤构建虚拟声音配置文件
+      blip-local:
+        title: BLIP / WD（本地 WebGPU）
+        description: 通过 WebGPU 在浏览器中运行的本地设备端 BLIP / WD 视觉标注模型。
       moss-nano-local:
         title: Moss TTS (Nano)
+        description: 使用 Moss TTS 的本地设备端文本转语音引擎。
       comfyui:
         settings:
           title: ComfyUI（本地）

@@ -382,6 +382,12 @@ const allowedIdenticalEnglishMessages = new Map<string, string>([
   ['tamagotchi.settings.devtools.pages.context-flow.title', 'Context Flow'],
 ])
 
+const dynamicProviderMetadataKeys = [
+  'settings.pages.providers.provider.moss-nano-local.description',
+  'settings.pages.providers.provider.blip-local.title',
+  'settings.pages.providers.provider.blip-local.description',
+] as const
+
 function canRemainEnglish(key: string, value: unknown) {
   return typeof value === 'string'
     && allowedIdenticalEnglishMessages.get(key) === value
@@ -885,6 +891,25 @@ describe('simplified Chinese web localization', () => {
   it('accounts for every statically referenced key in an English catalog', () => {
     const missing = referencedKeys.filter(key => !(key in english))
     expect(missing).toEqual([])
+  })
+
+  it('audits dynamically referenced runtime provider metadata', () => {
+    const providerSource = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/stores/providers.ts'), 'utf8')
+    const missingRuntimeKeys = dynamicProviderMetadataKeys.filter(key => !providerSource.includes(`'${key}'`))
+    const violations = dynamicProviderMetadataKeys.flatMap((key) => {
+      const englishValue = english[key]
+      const chineseValue = chinese[key]
+
+      return [
+        ...(typeof englishValue === 'string' ? [] : [`${key}: missing English string`]),
+        ...(typeof chineseValue === typeof englishValue ? [] : [`${key}: locale type mismatch`]),
+        ...(interpolationVariables(englishValue).join('|') === interpolationVariables(chineseValue).join('|') ? [] : [`${key}: interpolation mismatch`]),
+        ...(isUntranslatedEnglishMessage(key, englishValue, chineseValue) ? [`${key}: missing Chinese translation`] : []),
+      ]
+    })
+
+    expect(missingRuntimeKeys).toEqual([])
+    expect(violations).toEqual([])
   })
 
   it('loads every server auth key without deferring or silently excluding the catalog', () => {
