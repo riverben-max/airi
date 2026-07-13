@@ -21,3 +21,15 @@ describe('chatArea voice popover', () => {
     expect(source).toMatch(/watch\(hearingPopoverOpen, async \(value\) => \{[\s\S]*?await settingsAudioDevice\.askPermission\(\)[\s\S]*?\}\)/)
   })
 })
+
+describe('dating sim chat panel', () => {
+  it('uses a draggable, resizable desktop panel while dating sim is active', () => {
+    const source = readFileSync(fileURLToPath(new URL('./ChatContainer.vue', import.meta.url)), 'utf8')
+
+    expect(source).toContain('useDatingSimStore')
+    expect(source).toContain('useDraggable')
+    expect(source).toContain('isDatingSimDesktop')
+    expect(source).toContain('chat-panel:dating-sim')
+    expect(source).toContain('resize-handle')
+  })
+})
