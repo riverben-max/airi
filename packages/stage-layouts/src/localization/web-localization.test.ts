@@ -895,7 +895,13 @@ describe('simplified Chinese web localization', () => {
 
   it('audits dynamically referenced runtime provider metadata', () => {
     const providerSource = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/stores/providers.ts'), 'utf8')
+    const visionSource = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/modules/vision.vue'), 'utf8')
     const missingRuntimeKeys = dynamicProviderMetadataKeys.filter(key => !providerSource.includes(`'${key}'`))
+    const missingVisionBindings = [
+      ':title="metadata.localizedName || metadata.name || t(\'settings.pages.providers.unknown\')"',
+      ':description="metadata.localizedDescription || metadata.description"',
+      '{ name: metadata.localizedName || metadata.name || t(\'settings.pages.providers.unknown\') }',
+    ].filter(binding => !visionSource.includes(binding))
     const violations = dynamicProviderMetadataKeys.flatMap((key) => {
       const englishValue = english[key]
       const chineseValue = chinese[key]
@@ -909,6 +915,7 @@ describe('simplified Chinese web localization', () => {
     })
 
     expect(missingRuntimeKeys).toEqual([])
+    expect(missingVisionBindings).toEqual([])
     expect(violations).toEqual([])
   })
 

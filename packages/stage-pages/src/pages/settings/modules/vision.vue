@@ -146,14 +146,14 @@ function handleDeleteProvider(providerId: string) {
               v-model="activeProvider"
               name="provider"
               :value="metadata.id"
-              :title="metadata.name || t('settings.pages.providers.unknown')"
-              :description="metadata.description"
+              :title="metadata.localizedName || metadata.name || t('settings.pages.providers.unknown')"
+              :description="metadata.localizedDescription || metadata.description"
               @click="trackProviderClick(metadata.id, 'vision')"
             >
               <template #topRight>
                 <button
                   type="button"
-                  :aria-label="t('settings.pages.providers.actions.delete-provider', { name: metadata.name || t('settings.pages.providers.unknown') })"
+                  :aria-label="t('settings.pages.providers.actions.delete-provider', { name: metadata.localizedName || metadata.name || t('settings.pages.providers.unknown') })"
                   class="rounded bg-neutral-100 p-1 text-neutral-600 transition-colors dark:bg-neutral-800/60 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
                   @click.stop.prevent="handleDeleteProvider(metadata.id)"
                 >
