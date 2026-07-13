@@ -31,5 +31,6 @@ describe('dating sim chat panel', () => {
     expect(source).toContain('isDatingSimDesktop')
     expect(source).toContain('chat-panel:dating-sim')
     expect(source).toContain('resize-handle')
+    expect(source).toMatch(/watch\(isDatingSimDesktop, \(enabled\) => \{[\s\S]*?\}, \{ immediate: true \}\)/)
   })
 })

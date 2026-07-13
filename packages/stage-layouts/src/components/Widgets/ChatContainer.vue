@@ -42,7 +42,7 @@ watch([x, y, () => panelState.value.width, () => panelState.value.height], () =>
 watch(isDatingSimDesktop, (enabled) => {
   if (enabled && panelState.value.x === 0)
     x.value = Math.max(16, window.innerWidth - panelState.value.width - 24)
-})
+}, { immediate: true })
 
 function resizePanel(event: PointerEvent) {
   if (!resizing.value || !resizeStart)
