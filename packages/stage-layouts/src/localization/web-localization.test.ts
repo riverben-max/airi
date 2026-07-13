@@ -113,6 +113,7 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
   'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-manual-adapter.vue': [
     'Storage Adapter',
     'Next: Selective Sync',
+    'Ensure the directory is write-accessible by the browser/application stage sandbox.',
   ],
   'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-start-choice.vue': [
     'Get Started',
@@ -125,6 +126,8 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
   'packages/stage-pages/src/pages/settings/airi-card/index.vue': [
     'Find More Cards',
     'Import Character Card',
+    'Unknown error',
+    'Browse {{ activeBrowserSource?.name }}',
   ],
   'packages/stage-pages/src/pages/settings/airi-card/components/CreateModeSelectorDialog.vue': [
     'Create New Character Card',
@@ -172,6 +175,9 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
   'packages/stage-ui/src/components/scenarios/settings/model-settings/vrm.vue': [
     'Base Idle Animation',
     'Showing Hidden',
+    'Theme Extraction',
+    'Extract dominant colors from the model texture to set UI theme.',
+    'Model Information',
   ],
   'packages/stage-ui/src/components/scenarios/settings/model-settings/vrm-expressions.vue': [
     'No expressions available. Load a VRM model first.',

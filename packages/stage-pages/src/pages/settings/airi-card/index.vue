@@ -404,7 +404,7 @@ watch(inputFiles, async (newFiles) => {
   catch (error) {
     console.error('[AiriCard] Error processing card file:', error)
     toast.error(t('settings.pages.card.creation.list.errors.processing'), {
-      description: error instanceof Error ? error.message : 'Unknown error',
+      description: error instanceof Error ? error.message : t('settings.pages.card.creation.list.errors.unknown'),
     })
   }
 })
@@ -1223,7 +1223,7 @@ function getDisplayModelId(id: string) {
       <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-800">
         <div class="flex items-center gap-3">
           <h3 class="text-lg text-neutral-800 font-bold dark:text-neutral-200">
-            Browse {{ activeBrowserSource?.name }}
+            {{ t('settings.pages.card.creation.list.browser-title', { name: activeBrowserSource?.name }) }}
           </h3>
           <span class="rounded bg-primary-500/10 px-2 py-0.5 text-xs text-primary-500 font-medium">
             Electron Webview

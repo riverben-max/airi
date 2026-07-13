@@ -402,7 +402,7 @@ function handleAnimationSelect(animationName: string | number | undefined) {
           </p>
 
           <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            Theme Extraction
+            {{ t('settings.vrm.theme-color-from-model.title') }}
           </div>
           <Button variant="secondary" :disabled="sceneMutationLocked" @click="$emit('extractColorsFromModel')">
             <template #icon>
@@ -411,13 +411,13 @@ function handleAnimationSelect(animationName: string | number | undefined) {
             {{ t('settings.vrm.theme-color-from-model.button-extract.title') }}
           </Button>
           <p class="px-1 text-[10px] text-neutral-400">
-            Extract dominant colors from the model texture to set UI theme.
+            {{ t('settings.vrm.theme-color-from-model.description') }}
           </p>
         </div>
 
         <div flex="~ col gap-2">
           <div class="px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
-            Model Information
+            {{ t('settings.vrm.scale-and-position.model-info-section-title') }}
           </div>
           <Callout :label="t('settings.vrm.scale-and-position.model-info-title')">
             <div class="text-[11px] text-neutral-600 space-y-1 dark:text-neutral-400">

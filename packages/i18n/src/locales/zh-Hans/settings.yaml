@@ -318,6 +318,7 @@ dialogs:
         access-key: 访问密钥 ID
         secret-key: 访问密钥
         directory: 本地目录路径
+        directory-description: 请确保浏览器或应用程序的运行沙箱对该目录具有写入权限。
       start:
         title: 开始使用
         new: 以新用户身份设置
@@ -660,8 +661,10 @@ pages:
           malformed-json: 无法解析角色卡 JSON：文件格式错误
           validation: 角色卡验证失败
           processing: 处理角色卡文件时出错
+          unknown: 未知错误
         success:
           imported: 角色卡导入成功
+        browser-title: 浏览 {name}
       mode-selector:
         title: 创建新角色卡
         description: 选择创建新角色扮演卡的方式。
@@ -3316,6 +3319,7 @@ vrm:
   idle-animation:
     title: 默认待机动画
   scale-and-position:
+    model-info-section-title: 模型信息
     model-info-title: 模型尺寸信息
     model-info-x: 宽度（X轴）
     model-info-y: 高度（Y轴）
@@ -3345,6 +3349,8 @@ vrm:
     title: 想切换至Live2D虚拟形象？
     change-to-vrm: 切换至Live2D虚拟形象设定页面
   theme-color-from-model:
+    title: 主题提取
+    description: 从模型纹理中提取主色，用于设置界面主题。
     button-extract:
       title: 提取
   skybox:

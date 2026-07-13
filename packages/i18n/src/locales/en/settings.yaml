@@ -336,6 +336,7 @@ dialogs:
         access-key: Access Key ID
         secret-key: Secret Access Key
         directory: Local Directory Path
+        directory-description: Ensure the directory is write-accessible by the browser/application stage sandbox.
       start:
         title: Get Started
         new: Set Up as New User
@@ -687,8 +688,10 @@ pages:
           malformed-json: 'Failed to parse card JSON: Malformed file'
           validation: Card validation failed
           processing: Error processing card file
+          unknown: Unknown error
         success:
           imported: Card imported successfully
+        browser-title: Browse {name}
       mode-selector:
         title: Create New Character Card
         description: Choose how you want to create your new character roleplay card.
@@ -3574,6 +3577,7 @@ vrm:
   idle-animation:
     title: Default Idle Animation
   scale-and-position:
+    model-info-section-title: Model Information
     model-info-title: Model Size Information
     model-info-x: Width (X)
     model-info-y: Height (Y)
@@ -3608,6 +3612,8 @@ vrm:
     title: Switch to Live2D Avatar?
     change-to-vrm: Click here to switch to the Live2D avatar setting
   theme-color-from-model:
+    title: Theme Extraction
+    description: Extract dominant colors from the model texture to set UI theme.
     button-extract:
       title: Extract
   skybox:

@@ -146,7 +146,7 @@ function handleNext() {
             class="w-full border border-neutral-200/60 rounded-xl bg-white/40 px-3 py-2 text-sm text-neutral-800 outline-none backdrop-blur-sm transition-colors dark:border-neutral-800/80 focus:border-primary-500 dark:bg-neutral-900/40 dark:text-neutral-100"
           >
           <p class="text-[10px] text-neutral-500">
-            Ensure the directory is write-accessible by the browser/application stage sandbox.
+            {{ t('settings.dialogs.onboarding.remaining.manual.directory-description') }}
           </p>
         </div>
       </div>
