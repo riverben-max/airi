@@ -74,7 +74,14 @@ watch(isDesktop, (val) => {
       </Button>
     </div>
     <div class="mt-8 text-xs text-gray-400">
-      {{ t('server.auth.signIn.footer.prefix') }} <a href="#" class="underline">{{ t('server.auth.signIn.footer.terms') }}</a> {{ t('server.auth.signIn.footer.and') }} <a href="#" class="underline">{{ t('server.auth.signIn.footer.privacy') }}</a>
+      <i18n-t keypath="server.auth.signIn.footer.agreement" tag="span">
+        <template #terms>
+          <a href="#" class="underline">{{ t('server.auth.signIn.footer.terms') }}</a>
+        </template>
+        <template #privacy>
+          <a href="#" class="underline">{{ t('server.auth.signIn.footer.privacy') }}</a>
+        </template>
+      </i18n-t>
     </div>
   </div>
 

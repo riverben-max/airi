@@ -27,6 +27,22 @@ const forbiddenEnglishByFile: Record<string, string[]> = {
     'Pricing',
     'No providers match your current filters.',
   ],
+  'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-sync-progress.vue': [
+    'Connecting to storage provider...',
+    'Fetching latest snapshot metadata...',
+    'Downloading message logs and SQL tables...',
+    'Applying migrations to DuckDB instance...',
+    'Verifying schema consistency and integrity...',
+    'Retrieving character cards & seed configurations...',
+    'Downloading compressed Live2D & Spine animation files...',
+    'Decompressing assets and storing to local IndexedDB caching...',
+    'Synchronizing vector embedding database...',
+    'Re-indexing local search indices...',
+    'Backup restoration completed successfully!',
+    'Local database and storage updated successfully!',
+    'Warning: Cloud sync completed with warnings.',
+    'Error during restore:',
+  ],
   'packages/stage-ui/src/components/scenarios/chat/ProducerChoiceBubble.vue': [
     'PRODUCER DIRECTIVES',
     'Regenerate choices',
@@ -428,6 +444,52 @@ describe('production settings source audit', () => {
     expect(source).toContain('{{ t(\'server.auth.signIn.titleWithApp\', { app: \'AIRI Stage\' }) }}')
   })
 
+  it('stores onboarding sync logs as locale-neutral descriptors', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/dialogs/onboarding/step-sync-progress.vue'), 'utf8')
+    const logPool = source.slice(source.indexOf('const logPool'), source.indexOf('\n\nlet intervalId'))
+
+    expect(source).not.toContain('const logs = ref<string[]>([])')
+    expect(source).toContain('interface SyncLogDescriptor')
+    expect(source).toContain('const logs = ref<SyncLogDescriptor[]>([])')
+    expect(logPool).toContain('key: \'settings.dialogs.onboarding.sync-progress.logs.connecting\'')
+    expect(logPool).not.toContain('t(')
+    expect(source).toContain('function localizeLog(log: SyncLogDescriptor)')
+    expect(source).toContain('{{ localizeLog(log) }}')
+  })
+
+  it('localizes the character voice ID placeholder', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'apps/stage-web/src/pages/settings/characters/components/CharacterDialog.vue'), 'utf8')
+
+    expect(source).not.toContain('placeholder="Voice ID"')
+    expect(source).toContain(':placeholder="t(\'settings.pages.characters.dialog.fields.voice-id\')"')
+  })
+
+  it('exposes dialog semantics on the About trigger', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-layouts/src/components/Layouts/InteractiveArea/Actions/About.vue'), 'utf8')
+    const trigger = source.slice(source.indexOf('<template>'), source.indexOf('<AboutDialog'))
+
+    expect(trigger).not.toContain('aria-pressed')
+    expect(trigger).toContain('aria-haspopup="dialog"')
+    expect(trigger).toContain(':aria-expanded="show"')
+  })
+
+  it('uses a complete localized producer profile tip', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'packages/stage-ui/src/components/scenarios/chat/ProducerGuidanceModal.vue'), 'utf8')
+
+    expect(source).not.toContain('</button>.')
+    expect(source).toContain('<i18n-t keypath="stage.chat.producer.user-profile-tip"')
+    expect(source).toContain('<template #settings>')
+  })
+
+  it('uses one localized agreement sentence with linked terms and privacy', () => {
+    const source = readFileSync(resolve(workspaceRoot, 'apps/stage-web/src/pages/auth/login.vue'), 'utf8')
+
+    expect(source).not.toContain('t(\'server.auth.signIn.footer.prefix\')')
+    expect(source).toContain('<i18n-t keypath="server.auth.signIn.footer.agreement"')
+    expect(source).toContain('<template #terms>')
+    expect(source).toContain('<template #privacy>')
+  })
+
   it('updates the default speech sample across locale changes without replacing edits', () => {
     const source = readFileSync(resolve(workspaceRoot, 'packages/stage-pages/src/pages/settings/modules/speech.vue'), 'utf8')
 
@@ -608,7 +670,7 @@ describe('simplified Chinese web localization', () => {
     const chineseAuthKeys = Object.keys(chinese).filter(key => key.startsWith('server.auth.')).sort()
     const referencedAuthKeys = referencedKeys.filter(key => key.startsWith('server.auth.'))
 
-    expect(englishAuthKeys).toHaveLength(142)
+    expect(englishAuthKeys).toHaveLength(143)
     expect(chineseAuthKeys).toEqual(englishAuthKeys)
     expect(referencedAuthKeys.length).toBeGreaterThanOrEqual(132)
     expect(referencedAuthKeys.filter(key => !englishAuthKeys.includes(key))).toEqual([])

@@ -77,7 +77,7 @@ chat:
     placeholder-length-rule: 长短回复配置指令
     user: 你
     assistant: 助手
-    user-profile-tip: 提示：您可以在以下位置配置叙述者语音：
+    user-profile-tip: 提示：您可以在{settings}中配置叙述者语音。
     user-settings: 用户设置
     cancel: 取消
     inspire-me: 启发我

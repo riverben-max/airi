@@ -262,7 +262,7 @@ const isOpen = computed({
                   <h3 class="text-sm text-neutral-900 font-semibold dark:text-neutral-100">
                     {{ t('settings.pages.characters.dialog.sections.tts') }}
                   </h3>
-                  <FieldInput v-model="form.ttsVoiceId" :label="t('settings.pages.characters.dialog.fields.voice-id')" placeholder="Voice ID" />
+                  <FieldInput v-model="form.ttsVoiceId" :label="t('settings.pages.characters.dialog.fields.voice-id')" :placeholder="t('settings.pages.characters.dialog.fields.voice-id')" />
                   <div class="flex flex-col gap-1.5">
                     <label class="text-sm text-neutral-700 font-medium dark:text-neutral-300">{{ t('settings.pages.characters.dialog.fields.speed') }}</label>
                     <input

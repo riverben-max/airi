@@ -69,6 +69,7 @@ signIn:
     terms: Terms
     and: and
     privacy: Privacy Policy
+    agreement: By continuing, you agree to our {terms} and {privacy}.
 verifyEmail:
   title:
     pending: Check your inbox

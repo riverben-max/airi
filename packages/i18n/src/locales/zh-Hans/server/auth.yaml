@@ -69,6 +69,7 @@ signIn:
     terms: 服务条款
     and: 和
     privacy: 隐私政策
+    agreement: 继续即表示您同意我们的{terms}和{privacy}。
 verifyEmail:
   title:
     pending: 请检查收件箱

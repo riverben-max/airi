@@ -285,13 +285,16 @@ function resetTemplate() {
           <div v-if="!showPromptEditor" class="flex items-start gap-2 border-t border-neutral-200/50 px-5 py-3 dark:border-neutral-700/50">
             <div class="i-solar:info-circle-linear mt-0.5 shrink-0 text-sm text-neutral-400" />
             <p class="text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-              {{ t('stage.chat.producer.user-profile-tip') }}
-              <button
-                class="text-primary-500 font-semibold underline underline-offset-2 transition-colors hover:text-primary-400"
-                @click="emit('openUserProfile')"
-              >
-                {{ t('stage.chat.producer.user-settings') }}
-              </button>.
+              <i18n-t keypath="stage.chat.producer.user-profile-tip" tag="span">
+                <template #settings>
+                  <button
+                    class="text-primary-500 font-semibold underline underline-offset-2 transition-colors hover:text-primary-400"
+                    @click="emit('openUserProfile')"
+                  >
+                    {{ t('stage.chat.producer.user-settings') }}
+                  </button>
+                </template>
+              </i18n-t>
             </p>
           </div>
 

@@ -12,25 +12,30 @@ interface Props {
   onPrevious: OnboardingStepPrevHandler
 }
 
+interface SyncLogDescriptor {
+  key: string
+  params?: Record<string, string | number>
+}
+
 const props = defineProps<Props>()
 const { t } = useI18n()
 
 const progress = ref(0)
-const logs = ref<string[]>([])
+const logs = ref<SyncLogDescriptor[]>([])
 const syncComplete = ref(false)
 
-const logPool = [
-  'Connecting to storage provider...',
-  'Fetching latest snapshot metadata...',
-  'Downloading message logs and SQL tables...',
-  'Applying migrations to DuckDB instance...',
-  'Verifying schema consistency and integrity...',
-  'Retrieving character cards & seed configurations...',
-  'Downloading compressed Live2D & Spine animation files...',
-  'Decompressing assets and storing to local IndexedDB caching...',
-  'Synchronizing vector embedding database...',
-  'Re-indexing local search indices...',
-  'Backup restoration completed successfully!',
+const logPool: SyncLogDescriptor[] = [
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.connecting' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.fetching-metadata' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.downloading-data' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.applying-migrations' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.verifying-schema' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.retrieving-characters' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.downloading-assets' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.decompressing-assets' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.synchronizing-vectors' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.reindexing-search' },
+  { key: 'settings.dialogs.onboarding.sync-progress.logs.restoration-complete' },
 ]
 
 let intervalId: any
@@ -46,7 +51,7 @@ onMounted(() => {
 
       // Add logs at different milestones
       const poolIndex = Math.floor((progress.value / 100) * logPool.length)
-      if (poolIndex < logPool.length && !logs.value.includes(logPool[poolIndex])) {
+      if (poolIndex < logPool.length && !logs.value.some(log => log.key === logPool[poolIndex].key)) {
         logs.value.push(logPool[poolIndex])
       }
     }
@@ -67,15 +72,18 @@ onMounted(() => {
       // Perform force restore from remote setup
       const success = await syncStore.forceRestoreFromRemote({ skipReload: true })
       if (success) {
-        logs.value.push('Local database and storage updated successfully!')
+        logs.value.push({ key: 'settings.dialogs.onboarding.sync-progress.logs.storage-updated' })
       }
       else {
-        logs.value.push('Warning: Cloud sync completed with warnings.')
+        logs.value.push({ key: 'settings.dialogs.onboarding.sync-progress.logs.completed-with-warnings' })
       }
     }
     catch (e: any) {
       console.error('[StepSyncProgress] Failed to restore from cloud:', e)
-      logs.value.push(`Error during restore: ${e.message || String(e)}`)
+      logs.value.push({
+        key: 'settings.dialogs.onboarding.sync-progress.logs.restore-error',
+        params: { error: e.message || String(e) },
+      })
     }
     finally {
       if (intervalId) {
@@ -95,6 +103,10 @@ onUnmounted(() => {
 
 function handleFinish() {
   props.onNext()
+}
+
+function localizeLog(log: SyncLogDescriptor) {
+  return t(log.key, log.params ?? {})
 }
 </script>
 
@@ -134,7 +146,7 @@ function handleFinish() {
         <div v-for="(log, idx) in logs" :key="idx" class="flex gap-2">
           <span class="text-neutral-400 dark:text-neutral-600">[{{ 100 + idx }}]</span>
           <span :class="{ 'text-primary-500 dark:text-primary-400 font-bold': idx === logs.length - 1 && !syncComplete, 'text-emerald-500 font-bold': idx === logs.length - 1 && syncComplete }">
-            {{ log }}
+            {{ localizeLog(log) }}
           </span>
         </div>
       </div>

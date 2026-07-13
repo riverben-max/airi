@@ -82,7 +82,7 @@ chat:
     placeholder-length-rule: Short/long reply configuration instruction
     user: You
     assistant: Assistant
-    user-profile-tip: "Tip: You can configure the narrator's voice in"
+    user-profile-tip: "Tip: You can configure the narrator's voice in {settings}."
     user-settings: user settings
     cancel: Cancel
     inspire-me: Inspire me
