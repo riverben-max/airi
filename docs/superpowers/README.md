@@ -22,7 +22,7 @@
 | 2026-07-11 | 头像菜单 Flux 入口与本地化 | `done` | [Design](specs/2026-07-11-header-avatar-flux-menu-localization-design.md) | [Plan](plans/2026-07-11-header-avatar-flux-menu-localization.md) | [`791812663`](https://github.com/riverben-max/airi/commit/79181266366741c65c3dcf9d1999259faae72782) |
 | 2026-07-11 | 管理后台上游模型发现 | `done` | [Design](specs/2026-07-11-admin-upstream-model-discovery-design.md) | [Plan](plans/2026-07-11-admin-upstream-model-discovery.md) | [`141b3eee5`](https://github.com/riverben-max/airi/commit/141b3eee5) |
 | 2026-07-12 | Web 语音输入设备刷新 | `done` | [Design](specs/2026-07-12-web-voice-input-device-refresh-design.md) | [Plan](plans/2026-07-12-web-voice-input-device-refresh.md) | [`cfee37470`](https://github.com/riverben-max/airi/commit/cfee374701230c901bd98307cf6ee0550ba21723) |
-| 2026-07-13 | Web 用户界面中文化 | `done` | [Design](specs/2026-07-13-web-interface-localization-design.md) | [Plan](plans/2026-07-13-web-interface-localization.md) | [`3c5e4da58`](https://github.com/riverben-max/airi/commit/3c5e4da5875c143a0d7d3a614e11b06caf7bbf14)；完成全量静态审计、stage-layouts 44/44 测试、生产构建（4,825 个模块）及桌面/移动端浏览器 QA；高复杂度实验/内部界面按批准边界保留 |
+| 2026-07-13 | Web 用户界面中文化 | `done` | [Design](specs/2026-07-13-web-interface-localization-design.md) | [Plan](plans/2026-07-13-web-interface-localization.md) | [`1519e6165`](https://github.com/riverben-max/airi/commit/1519e61653b4b011c8d1936a44a00c2540ae36a1)；完成全量静态审计、stage-layouts 44/44 测试、生产构建（4,825 个模块）及桌面/移动端浏览器 QA；高复杂度实验/内部界面按批准边界保留 |
 
 ## 维护规则
 
