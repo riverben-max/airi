@@ -10,10 +10,11 @@ import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&u
 
 import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
 import { useBackgroundThemeColor } from '@proj-airi/stage-layouts/composables/theme-color'
-import { useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
+import { BackgroundKind, useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
 import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
+import { useBackgroundStore as useSceneBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useLLM } from '@proj-airi/stage-ui/stores/llm'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
@@ -72,6 +73,20 @@ const isMobile = breakpoints.smaller('md')
 
 const backgroundStore = useBackgroundStore()
 const { selectedOption, sampledColor } = storeToRefs(backgroundStore)
+const sceneBackgroundStore = useSceneBackgroundStore()
+const stageBackground = computed(() => {
+  const src = sceneBackgroundStore.activeBackgroundUrl
+  if (!src)
+    return selectedOption.value
+
+  return {
+    id: 'active-scene-background',
+    label: 'Active scene background',
+    description: 'Selected in scene settings',
+    kind: BackgroundKind.Image,
+    src,
+  }
+})
 const backgroundSurface = useTemplateRef<InstanceType<typeof BackgroundProvider>>('backgroundSurface')
 
 const { syncBackgroundTheme } = useBackgroundThemeColor({ backgroundSurface, selectedOption, sampledColor })
@@ -200,7 +215,7 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
   <BackgroundProvider
     ref="backgroundSurface"
     class="widgets top-widgets"
-    :background="selectedOption"
+    :background="stageBackground"
     :top-color="sampledColor"
   >
     <div flex="~ col" relative z-2 w-100vw of-hidden h-dvh>
