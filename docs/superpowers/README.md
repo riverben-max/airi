@@ -24,7 +24,7 @@
 | 2026-07-12 | Web 语音输入设备刷新 | `done` | [Design](specs/2026-07-12-web-voice-input-device-refresh-design.md) | [Plan](plans/2026-07-12-web-voice-input-device-refresh.md) | [`cfee37470`](https://github.com/riverben-max/airi/commit/cfee374701230c901bd98307cf6ee0550ba21723) |
 | 2026-07-13 | Web 用户界面中文化 | `done` | [Design](specs/2026-07-13-web-interface-localization-design.md) | [Plan](plans/2026-07-13-web-interface-localization.md) | [`1519e6165`](https://github.com/riverben-max/airi/commit/1519e61653b4b011c8d1936a44a00c2540ae36a1)；完成全量静态审计、stage-layouts 44/44 测试、生产构建（4,825 个模块）及桌面/移动端浏览器 QA；高复杂度实验/内部界面按批准边界保留 |
 | 2026-07-15 | 生产 Redis 公网暴露修复 | `done` | - | [Plan](plans/2026-07-15-production-redis-exposure-fix.md) | [`05a3f117f`](https://github.com/riverben-max/airi/commit/05a3f117f502c522ab6be6f7ebf12903cd75d06e)；Redis 已仅绑定本机，路由配置已恢复并完成生产验收 |
-| 2026-07-15 | 管理后台模型接入简化 | `in-progress` | - | [Plan](plans/2026-07-15-admin-gateway-simple-config.md) | 已完成表单简化与默认模型保存缺陷回归测试；等待生产构建和部署验收 |
+| 2026-07-15 | 管理后台模型接入简化 | `done` | - | [Plan](plans/2026-07-15-admin-gateway-simple-config.md) | [`feb1a0cae`](https://github.com/riverben-max/airi/commit/feb1a0cae)；相关测试、生产构建和线上静态资源验收通过 |
 
 ## 维护规则
 
