@@ -21,7 +21,8 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - '6379:6379'
+      # Redis stores runtime router configuration and must never be exposed publicly.
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:

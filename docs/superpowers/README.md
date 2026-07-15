@@ -23,6 +23,7 @@
 | 2026-07-11 | 管理后台上游模型发现 | `done` | [Design](specs/2026-07-11-admin-upstream-model-discovery-design.md) | [Plan](plans/2026-07-11-admin-upstream-model-discovery.md) | [`141b3eee5`](https://github.com/riverben-max/airi/commit/141b3eee5) |
 | 2026-07-12 | Web 语音输入设备刷新 | `done` | [Design](specs/2026-07-12-web-voice-input-device-refresh-design.md) | [Plan](plans/2026-07-12-web-voice-input-device-refresh.md) | [`cfee37470`](https://github.com/riverben-max/airi/commit/cfee374701230c901bd98307cf6ee0550ba21723) |
 | 2026-07-13 | Web 用户界面中文化 | `done` | [Design](specs/2026-07-13-web-interface-localization-design.md) | [Plan](plans/2026-07-13-web-interface-localization.md) | [`1519e6165`](https://github.com/riverben-max/airi/commit/1519e61653b4b011c8d1936a44a00c2540ae36a1)；完成全量静态审计、stage-layouts 44/44 测试、生产构建（4,825 个模块）及桌面/移动端浏览器 QA；高复杂度实验/内部界面按批准边界保留 |
+| 2026-07-15 | 生产 Redis 公网暴露修复 | `in-progress` | - | [Plan](plans/2026-07-15-production-redis-exposure-fix.md) | 已完成临时公网阻断；等待永久端口绑定、配置恢复与生产验收 |
 
 ## 维护规则
 
