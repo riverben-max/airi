@@ -291,6 +291,14 @@ function trimmedOrUndefined(value: string | undefined): string | undefined {
   return trimmed || undefined
 }
 
+export function normalizeOfficialGatewayBaseURL(baseURL: string, providerKind: OfficialGatewayProviderKind): string {
+  const url = new URL(baseURL.trim())
+  if (providerKind === 'openai-compatible' && url.pathname === '/')
+    url.pathname = '/v1'
+
+  return url.toString().replace(/\/$/u, '')
+}
+
 function officialChatGatewaySlice(input: OfficialChatGatewayInput): AdminRouterConfigLlmSlice {
   const plaintextKey = trimmedOrUndefined(input.apiKey)
   const keyEntryId = trimmedOrUndefined(input.keyEntryId)
@@ -300,7 +308,7 @@ function officialChatGatewaySlice(input: OfficialChatGatewayInput): AdminRouterC
     kind: input.providerKind,
     modelName: input.routerModelId.trim(),
     overrideModel: input.upstreamModel.trim(),
-    baseURL: input.baseURL.trim(),
+    baseURL: normalizeOfficialGatewayBaseURL(input.baseURL, input.providerKind),
     ...(plaintextKey ? { plaintextKey } : {}),
     ...(plaintextKey && keyEntryId ? { keyEntryId } : {}),
     ...(!plaintextKey && existingKeyEntryId ? { existingKeyEntryId } : {}),
@@ -474,10 +482,14 @@ export async function applyRouterConfig(input: AdminRouterConfigApplyInput, remo
 }
 
 export async function discoverUpstreamModels(input: UpstreamModelDiscoveryInput, remoteClient: AdminRemoteClient = adminClient, signal?: AbortSignal): Promise<string[]> {
+  const normalizedInput = {
+    ...input,
+    baseURL: normalizeOfficialGatewayBaseURL(input.baseURL, input.providerKind),
+  }
   const options = requestOptions(signal)
   const response = options
-    ? await remoteClient.api.admin.config.router.models.$post({ json: input }, options)
-    : await remoteClient.api.admin.config.router.models.$post({ json: input })
+    ? await remoteClient.api.admin.config.router.models.$post({ json: normalizedInput }, options)
+    : await remoteClient.api.admin.config.router.models.$post({ json: normalizedInput })
   return (await readJson(response, 'Failed to discover upstream models')).models
 }
 
@@ -497,7 +509,11 @@ export async function applyOfficialChatGateway(input: OfficialChatGatewayInput, 
     slices: [officialChatGatewaySlice(input)],
     ...(input.setAsDefault ? { defaults: { chatModel: input.routerModelId.trim() } } : {}),
   }, remoteClient, signal)
-  const aliases = await syncCapabilityAliases('llm', remoteClient, signal)
+  const hasDefaultChatModel = typeof routerConfig.preview.DEFAULT_CHAT_MODEL === 'string'
+    && routerConfig.preview.DEFAULT_CHAT_MODEL.trim().length > 0
+  const aliases = hasDefaultChatModel
+    ? await syncCapabilityAliases('llm', remoteClient, signal)
+    : []
   const model = await createModel({
     capability: 'chat',
     routerModelId: input.routerModelId.trim(),

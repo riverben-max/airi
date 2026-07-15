@@ -3285,6 +3285,8 @@ pages:
       createTitle: Configure official chat
       editTitle: Edit official chat
       newGateway: New gateway
+      simpleDescription: Usually you only need the Base URL and API Key. Models are discovered automatically, and other fields can keep their defaults.
+      advancedSettings: Advanced settings (usually unchanged)
       providers:
         openaiCompatible: OpenAI Compatible
         openrouter: OpenRouter
@@ -3321,9 +3323,10 @@ pages:
         noMissingKeys: Required config is present
         noKeyEntry: Not recorded
       messages:
-        saved: Official chat gateway saved; auto alias and billable model synced.
+        saved: Official chat gateway saved; routing and billable model synced.
         modelsFetched: Fetched {count} upstream models. Select one to use.
         noModelsFound: The upstream returned no available models.
+        modelRequired: A model could not be selected automatically. Fetch and select a model first.
       empty:
         routerSlices:
           title: No upstream routes configured

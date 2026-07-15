@@ -218,12 +218,32 @@ function formPayload(): OfficialChatGatewayInput {
   }
 }
 
+function applyDiscoveredModel(model: string) {
+  form.upstreamModel = model
+  if (!selectedRouterModelId.value || !form.routerModelId.trim())
+    form.routerModelId = model
+  if (!selectedRouterModelId.value || !form.displayName.trim())
+    form.displayName = model
+}
+
+function preferredDiscoveredModel(models: string[]): string | null {
+  const candidates = [form.upstreamModel, form.routerModelId, defaultChatModel.value, 'gpt-5.5']
+  return candidates.find(candidate => candidate && models.includes(candidate))
+    ?? (models.length === 1 ? models[0] : null)
+}
+
 async function saveGateway() {
   actionLoading.value = true
   formError.value = null
   formMessage.value = null
 
   try {
+    if (!form.upstreamModel.trim())
+      await discoverModels()
+    if (!form.upstreamModel.trim())
+      throw new Error(t('settings.pages.admin.officialGateway.messages.modelRequired'))
+
+    applyDiscoveredModel(form.upstreamModel.trim())
     await applyOfficialChatGateway(formPayload())
     form.apiKey = ''
     formMessage.value = t('settings.pages.admin.officialGateway.messages.saved')
@@ -238,7 +258,7 @@ async function saveGateway() {
   }
 }
 
-async function discoverModels() {
+async function discoverModels(): Promise<string[]> {
   modelDiscoveryLoading.value = true
   formError.value = null
   formMessage.value = null
@@ -252,13 +272,18 @@ async function discoverModels() {
       existingKeyEntryId: form.existingKeyEntryId.trim() || form.keyEntryId.trim() || undefined,
     })
     discoveredModels.value = models
+    const preferredModel = preferredDiscoveredModel(models)
+    if (preferredModel)
+      applyDiscoveredModel(preferredModel)
     formMessage.value = models.length > 0
       ? t('settings.pages.admin.officialGateway.messages.modelsFetched', { count: models.length })
       : t('settings.pages.admin.officialGateway.messages.noModelsFound')
+    return models
   }
   catch (err) {
     discoveredModels.value = []
     formError.value = messageFromError(err)
+    return []
   }
   finally {
     modelDiscoveryLoading.value = false
@@ -505,50 +530,9 @@ onMounted(() => {
       </div>
 
       <form :class="['grid gap-3']" @submit.prevent="saveGateway">
-        <label :class="['grid gap-1 text-sm']">
-          <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.provider') }}</span>
-          <select v-model="form.providerKind" :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']">
-            <option v-for="providerKind in providerKinds" :key="providerKind" :value="providerKind">
-              {{ providerLabel(providerKind) }}
-            </option>
-          </select>
-        </label>
-
-        <label :class="['grid gap-1 text-sm']">
-          <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.routerModelId') }}</span>
-          <input
-            v-model="form.routerModelId"
-            required
-            :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']"
-            placeholder="openai/gpt-5-mini"
-          >
-        </label>
-
-        <label :class="['grid gap-1 text-sm']">
-          <span :class="['flex items-center justify-between gap-2 font-medium']">
-            <span>{{ t('settings.pages.admin.officialGateway.fields.upstreamModel') }}</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              icon="i-solar:refresh-bold-duotone"
-              :loading="modelDiscoveryLoading"
-              @click="discoverModels"
-            >
-              {{ t('settings.pages.admin.officialGateway.actions.fetchModels') }}
-            </Button>
-          </span>
-          <input
-            v-model="form.upstreamModel"
-            list="official-gateway-upstream-models"
-            required
-            :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']"
-            placeholder="gpt-5-mini"
-          >
-          <datalist id="official-gateway-upstream-models">
-            <option v-for="model in discoveredModels" :key="model" :value="model" />
-          </datalist>
-        </label>
+        <p :class="['rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-950 dark:text-neutral-300']">
+          {{ t('settings.pages.admin.officialGateway.simpleDescription') }}
+        </p>
 
         <label :class="['grid gap-1 text-sm']">
           <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.baseURL') }}</span>
@@ -572,38 +556,73 @@ onMounted(() => {
         </label>
 
         <label :class="['grid gap-1 text-sm']">
-          <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.keyEntryId') }}</span>
+          <span :class="['flex items-center justify-between gap-2 font-medium']">
+            <span>{{ t('settings.pages.admin.officialGateway.fields.upstreamModel') }}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              icon="i-solar:refresh-bold-duotone"
+              :loading="modelDiscoveryLoading"
+              @click="discoverModels"
+            >
+              {{ t('settings.pages.admin.officialGateway.actions.fetchModels') }}
+            </Button>
+          </span>
           <input
-            v-model="form.keyEntryId"
+            v-model="form.upstreamModel"
+            list="official-gateway-upstream-models"
             :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']"
-            placeholder="openai-compatible-prod-1"
+            placeholder="gpt-5.5"
           >
+          <datalist id="official-gateway-upstream-models">
+            <option v-for="model in discoveredModels" :key="model" :value="model" />
+          </datalist>
         </label>
 
-        <label :class="['grid gap-1 text-sm']">
-          <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.displayName') }}</span>
-          <input v-model="form.displayName" required :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']">
-        </label>
-
-        <label :class="['grid gap-1 text-sm']">
-          <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.fluxPerCall') }}</span>
-          <input v-model.number="form.fluxPerCall" type="number" min="0" required :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']">
-        </label>
-
-        <div :class="['grid gap-2 text-sm']">
-          <label :class="['flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700']">
-            <input v-model="form.setAsDefault" type="checkbox">
-            <span>{{ t('settings.pages.admin.officialGateway.fields.setAsDefault') }}</span>
-          </label>
-          <label :class="['flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700']">
-            <input v-model="form.enabled" type="checkbox">
-            <span>{{ t('settings.pages.admin.officialGateway.fields.enabled') }}</span>
-          </label>
-          <label :class="['flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700']">
-            <input v-model="form.priceEnabled" type="checkbox">
-            <span>{{ t('settings.pages.admin.officialGateway.fields.priceEnabled') }}</span>
-          </label>
-        </div>
+        <details :class="['rounded-lg border border-neutral-200 dark:border-neutral-700']">
+          <summary :class="['cursor-pointer px-3 py-2 text-sm font-medium']">
+            {{ t('settings.pages.admin.officialGateway.advancedSettings') }}
+          </summary>
+          <div :class="['grid gap-3 border-t border-neutral-200 p-3 dark:border-neutral-700']">
+            <label :class="['grid gap-1 text-sm']">
+              <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.provider') }}</span>
+              <select v-model="form.providerKind" :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']">
+                <option v-for="providerKind in providerKinds" :key="providerKind" :value="providerKind">
+                  {{ providerLabel(providerKind) }}
+                </option>
+              </select>
+            </label>
+            <label :class="['grid gap-1 text-sm']">
+              <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.routerModelId') }}</span>
+              <input v-model="form.routerModelId" :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']" placeholder="gpt-5.5">
+            </label>
+            <label :class="['grid gap-1 text-sm']">
+              <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.keyEntryId') }}</span>
+              <input v-model="form.keyEntryId" :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']" placeholder="openai-compatible-prod-1">
+            </label>
+            <label :class="['grid gap-1 text-sm']">
+              <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.displayName') }}</span>
+              <input v-model="form.displayName" :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']">
+            </label>
+            <label :class="['grid gap-1 text-sm']">
+              <span :class="['font-medium']">{{ t('settings.pages.admin.officialGateway.fields.fluxPerCall') }}</span>
+              <input v-model.number="form.fluxPerCall" type="number" min="0" required :class="['rounded-lg border border-neutral-200 bg-white px-3 py-2 outline-none dark:border-neutral-700 dark:bg-neutral-950']">
+            </label>
+            <label :class="['flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700']">
+              <input v-model="form.setAsDefault" type="checkbox">
+              <span>{{ t('settings.pages.admin.officialGateway.fields.setAsDefault') }}</span>
+            </label>
+            <label :class="['flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700']">
+              <input v-model="form.enabled" type="checkbox">
+              <span>{{ t('settings.pages.admin.officialGateway.fields.enabled') }}</span>
+            </label>
+            <label :class="['flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700']">
+              <input v-model="form.priceEnabled" type="checkbox">
+              <span>{{ t('settings.pages.admin.officialGateway.fields.priceEnabled') }}</span>
+            </label>
+          </div>
+        </details>
 
         <Button type="submit" size="sm" :loading="actionLoading">
           {{ t('settings.pages.admin.officialGateway.actions.saveGateway') }}

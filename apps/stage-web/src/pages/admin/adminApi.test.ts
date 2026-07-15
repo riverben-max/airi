@@ -20,6 +20,7 @@ import {
   listModels,
   listPlans,
   listUsers,
+  normalizeOfficialGatewayBaseURL,
   seedDefaultPlans,
   setUserFlux,
   syncCapabilityAliases,
@@ -334,6 +335,13 @@ describe('admin API adapter', () => {
     })
   })
 
+  it('adds the conventional /v1 path when an OpenAI-compatible root URL is entered', () => {
+    expect(normalizeOfficialGatewayBaseURL('https://api.example.test/', 'openai-compatible'))
+      .toBe('https://api.example.test/v1')
+    expect(normalizeOfficialGatewayBaseURL('https://api.example.test/v1', 'openai-compatible'))
+      .toBe('https://api.example.test/v1')
+  })
+
   it('maps official chat gateway setup to router config, alias sync, and billable model upsert', async () => {
     const client = createMockClient()
 
@@ -378,6 +386,43 @@ describe('admin API adapter', () => {
     expect(result.routerConfig.preview.DEFAULT_CHAT_MODEL).toBe('openai/gpt-5-mini')
     expect(result.aliases).toHaveLength(1)
     expect(result.model.routerModelId).toBe('openai/gpt-4.1-mini')
+  })
+
+  it('saves a gateway without syncing aliases when no default model is selected', async () => {
+    const client = createMockClient()
+    vi.mocked(client.api.admin.config.router.$post).mockResolvedValueOnce(okJson({
+      applied: [],
+      invalidatedKeys: ['LLM_ROUTER_CONFIG'],
+      preview: {},
+    }))
+
+    await expect(applyOfficialChatGateway({
+      providerKind: 'openai-compatible',
+      routerModelId: 'gpt-5.5',
+      upstreamModel: 'gpt-5.5',
+      baseURL: 'https://api.example.test/',
+      apiKey: 'sk-test',
+      displayName: 'gpt-5.5',
+      fluxPerCall: 1,
+      setAsDefault: false,
+      enabled: true,
+      priceEnabled: true,
+    }, client)).resolves.toMatchObject({ aliases: [] })
+
+    expect(client.api.admin.config.router.$post).toHaveBeenCalledWith({
+      json: {
+        mode: 'merge',
+        dryRun: false,
+        slices: [{
+          kind: 'openai-compatible',
+          modelName: 'gpt-5.5',
+          overrideModel: 'gpt-5.5',
+          baseURL: 'https://api.example.test/v1',
+          plaintextKey: 'sk-test',
+        }],
+      },
+    })
+    expect(client.api.admin['capability-aliases'].sync.$post).not.toHaveBeenCalled()
   })
 
   it('uses Better Auth admin routes for ban and unban', async () => {
