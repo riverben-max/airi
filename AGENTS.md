@@ -36,15 +36,16 @@
 
 生产站点是 `https://airi.aifamily.vip/`，通过 `ssh airi-vps` 连接。部署仅在用户要求时执行，并默认从已经推送到 `fork/main` 的明确 commit 构建。
 
-- 服务器源码目录是 `/root/airi`，Web 静态目录是 `/www/wwwroot/airi-web`，认证 UI 位于 `/www/wwwroot/airi-web/ui`，备份放在 `/root/deploy-backups`。
+- 服务器源码目录是 `/root/airi`，备份放在 `/root/deploy-backups`。主站存在两个必须同步的静态目录：`/www/wwwroot/airi.aifamily.vip`（HTTPS vhost 的资源目录）和 `/www/wwwroot/airi-web`（本机 `5173` vhost 的目录）。认证 UI 位于 `/www/wwwroot/airi-web/ui`。
+- 不要只同步其中一个静态目录。当前 HTTPS vhost 的 `/index.html` 与 `/sw.js` 会反向代理到 `127.0.0.1:5173`，而 `5173` 的 root 是 `/www/wwwroot/airi-web`；只更新 `airi.aifamily.vip` 会导致服务器资源已更新、但公网 HTML 仍引用旧版入口。
 - 不要把服务器 IP、密钥、token、SMTP 密码或其他 secret 写入仓库和交付说明。
 - 部署前备份将被替换的内容。不要覆盖 `/root/airi/apps/server/.env` 和 `.env.local`；部署前后校验这两个文件的 SHA-256，确认没有变化。
 - 本地前端构建使用 Node 24；服务器 `airi-api` 固定使用 Node.js `22.20.0`，实际二进制为 `/www/server/nvm/versions/node/v22.20.0/bin/node`。`ssh airi-vps` 的默认 `node` 当前是 Node 18，不能用于判断或操作 API 运行时；用 `ss -ltnp | grep ':6112'` 定位进程，再检查 `/proc/<pid>/exe --version`。
 - 非交互 SSH shell 的 `PATH` 不包含 `pm2`。不要因 `pm2: command not found` 重启或重装服务；先通过端口 `6112`、`/proc` 进程路径和 API 响应检查服务。仅在已定位项目 PM2 可执行路径且用户授权时操作 `airi-api`。
 - PM2 只操作 `airi-api`。不要重启、删除或清理 `oai-reverse-proxy` 及其他服务。
 - `apps/stage-web/.env.production` 必须设置 `VITE_SERVER_URL=https://airi.aifamily.vip`，避免前端错误请求 `api.airi.build`。
-- 发布主站静态文件时必须保留 `/ui`，例如使用 `rsync --delete --exclude=/ui/***`；不要让主站同步删除认证 UI。
-- 部署后按改动范围验证，至少确认 `airi-api` online、Node 版本正确、主页和相关 API 返回正常、根 HTML 引用了本次构建资源。涉及 UI 时再进行真实浏览器检查。
+- 发布主站静态文件时，必须先分别备份两个静态目录，并将同一份 `apps/stage-web/dist` 同步到两处；每次同步都保留 `/ui`、`.user.ini`、`.htaccess` 与 `.well-known`，例如使用 `rsync --delete --exclude=/ui/*** --exclude=.user.ini --exclude=.htaccess --exclude=.well-known/***`。不要让主站同步删除认证 UI 或服务器控制文件。
+- 部署后按改动范围验证，至少确认 `airi-api` online、Node 版本正确、两个静态目录都含有本次构建的入口资源，并用公网请求确认主页 HTML 确实引用该入口；仅看到其中一个服务器目录已更新不能视为发布成功。涉及 UI 时再进行真实浏览器检查。
 
 ## 默认收尾
 
