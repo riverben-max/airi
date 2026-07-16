@@ -2455,9 +2455,9 @@ pages:
               placeholder: http://localhost:8188
           cors:
             title: CORS Block Detected
-            description: ComfyUI blocks requests from other applications by default. To
-              allow AIRI to connect, you must start ComfyUI with the
-              `--enable-cors-header "*"` flag.
+            description_prefix: ComfyUI blocks requests from other applications by default. To
+              allow AIRI to connect, start ComfyUI with
+            description_suffix: to allow requests from AIRI.
             command: python main.py --enable-cors-header "*"
           workflows:
             title: Workflow Templates
@@ -2475,6 +2475,8 @@ pages:
           upload:
             prompt: Drop or select a workflow_api.json file
             invalid_json: Invalid JSON
+            unknown_node: Unknown node {id}
+            unknown_type: Unknown type
             workflow_name:
               label: Workflow Name
               description: Give this workflow a recognizable name

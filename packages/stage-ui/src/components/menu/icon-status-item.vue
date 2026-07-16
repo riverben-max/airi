@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 const props = defineProps<{
   title: string
   description?: string
@@ -11,6 +13,8 @@ const props = defineProps<{
   deployment?: 'local' | 'cloud'
   beginnerRecommended?: boolean
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -95,7 +99,7 @@ const props = defineProps<{
             ]"
           >
             <div i-solar:wad-of-money-bold-duotone class="text-xs" />
-            <span>Free</span>
+            <span>{{ t('settings.pages.providers.filters.free') }}</span>
           </div>
         </template>
         <template v-else-if="props.pricing === 'paid'">
@@ -108,7 +112,7 @@ const props = defineProps<{
             ]"
           >
             <div i-solar:card-2-bold-duotone class="text-xs" />
-            <span>Paid</span>
+            <span>{{ t('settings.pages.providers.filters.paid') }}</span>
           </div>
         </template>
 
@@ -122,7 +126,7 @@ const props = defineProps<{
             ]"
           >
             <div i-solar:laptop-bold-duotone class="text-xs" />
-            <span>Local</span>
+            <span>{{ t('settings.pages.providers.filters.local') }}</span>
           </div>
         </template>
         <template v-else-if="props.deployment === 'cloud'">
@@ -135,7 +139,7 @@ const props = defineProps<{
             ]"
           >
             <div i-solar:cloud-bold-duotone class="text-xs" />
-            <span>Cloud</span>
+            <span>{{ t('settings.pages.providers.filters.cloud') }}</span>
           </div>
         </template>
 
@@ -149,7 +153,7 @@ const props = defineProps<{
             ]"
           >
             <div i-solar:star-bold-duotone class="text-xs" />
-            <span>Suggested</span>
+            <span>{{ t('settings.pages.providers.filters.suggested') }}</span>
           </div>
         </template>
       </div>
