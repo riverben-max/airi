@@ -6,12 +6,13 @@ import type { ProviderSectionInput, ProviderSourceCard } from './officialProvide
 import { IconStatusItem, RippleGrid } from '@proj-airi/stage-ui/components'
 import { useAnalytics } from '@proj-airi/stage-ui/composables'
 import { useRippleGridState } from '@proj-airi/stage-ui/composables/use-ripple-grid-state'
+import { useArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { buildOfficialProviderSections } from './officialProviderBoundary'
+import { buildCustomerProviderSections } from './officialProviderBoundary'
 
 interface ProviderBlockConfig {
   id: string
@@ -22,6 +23,7 @@ interface ProviderBlockConfig {
 }
 
 const { t } = useI18n()
+const artistryStore = useArtistryStore()
 const providersStore = useProvidersStore()
 const { lastClickedIndex, setLastClickedIndex } = useRippleGridState()
 const { trackProviderClick } = useAnalytics()
@@ -32,6 +34,24 @@ const {
   allAudioTranscriptionProvidersMetadata,
   allVisionProvidersMetadata,
 } = storeToRefs(providersStore)
+
+const allArtistryProvidersMetadata = computed<ProviderSourceCard[]>(() => [
+  {
+    id: 'comfyui',
+    category: 'artistry',
+    icon: 'i-solar:gallery-bold-duotone',
+    iconColor: 'text-indigo-500',
+    name: 'ComfyUI',
+    localizedName: 'ComfyUI',
+    description: 'Local image generation runner.',
+    localizedDescription: t('settings.pages.providers.categories.artistry.items.comfyui.description'),
+    configured: !!artistryStore.comfyuiServerUrl,
+    to: '/settings/providers/artistry/comfyui',
+    pricing: 'free',
+    deployment: 'local',
+    beginnerRecommended: true,
+  },
+])
 
 const providerBlocksConfig = computed<ProviderBlockConfig[]>(() => [
   {
@@ -47,6 +67,13 @@ const providerBlocksConfig = computed<ProviderBlockConfig[]>(() => [
     title: t('settings.pages.providers.categories.vision.title'),
     description: t('settings.pages.providers.categories.vision.description'),
     providersRef: allVisionProvidersMetadata,
+  },
+  {
+    id: 'artistry',
+    icon: 'i-solar:palette-bold-duotone',
+    title: t('settings.pages.providers.categories.artistry.title'),
+    description: t('settings.pages.providers.categories.artistry.description'),
+    providersRef: allArtistryProvidersMetadata,
   },
   {
     id: 'speech',
@@ -73,7 +100,7 @@ const providerBlocks = computed(() => {
     providers: block.providersRef.value,
   }))
 
-  return buildOfficialProviderSections(sections)
+  return buildCustomerProviderSections(sections)
 })
 </script>
 

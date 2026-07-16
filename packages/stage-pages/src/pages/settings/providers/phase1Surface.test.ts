@@ -15,6 +15,7 @@ const officialProviderPagePaths = new Set([
   'speech/official-provider-speech.vue',
   'speech/official-provider-speech-streaming.vue',
   'transcription/official-provider-transcription.vue',
+  'artistry/comfyui.vue',
 ])
 
 const providerCategoriesWithConcretePages = new Set([
@@ -67,15 +68,15 @@ function isNonOfficialConcreteProviderPage(path: string): boolean {
 }
 
 describe('phase 1 provider settings surface', () => {
-  it('does not expose third-party provider setup from the supported providers index', () => {
+  it('exposes only supported provider setup from the supported providers index', () => {
     const text = readWorkspaceFile('index.vue')
 
-    expect(text).not.toContain('useArtistryStore')
+    expect(text).toContain('useArtistryStore')
     expect(text).not.toContain('useSyncEngineStore')
     expect(text).not.toContain('isCustomProvidersDisabled')
-    expect(text).not.toContain('/settings/providers/artistry')
+    expect(text).toContain('/settings/providers/artistry/comfyui')
     expect(text).not.toContain('/settings/providers/cloud')
-    expect(text).not.toContain('ComfyUI')
+    expect(text).toContain('ComfyUI')
     expect(text).not.toContain('Replicate')
     expect(text).not.toContain('Nano Banana')
     expect(text).not.toContain('S3-Compatible Cloud Storage')
@@ -95,6 +96,7 @@ describe('phase 1 provider settings surface', () => {
     expect(blockedProviderPages).toContain('vision/lm-studio.vue')
     expect(blockedProviderPages).toContain('cloud/local-fs.vue')
     expect(blockedProviderPages).toContain('cloud/s3.vue')
+    expect(blockedProviderPages).not.toContain('artistry/comfyui.vue')
     expect(blockedProviderPages).not.toContain('chat/official-provider.vue')
     expect(blockedProviderPages).not.toContain('speech/official-provider-speech.vue')
 

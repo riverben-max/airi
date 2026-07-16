@@ -14,7 +14,6 @@ export interface ProviderSourceCard {
   deployment?: 'local' | 'cloud'
   beginnerRecommended?: boolean
 }
-
 export interface ProviderSectionInput {
   id: string
   icon: string
@@ -45,12 +44,31 @@ export function isOfficialProviderCard(provider: Pick<ProviderSourceCard, 'id'>)
 }
 
 export function buildOfficialProviderSections(sections: ProviderSectionInput[]): ProviderSection[] {
+  return buildProviderSections(sections, isOfficialProviderCard)
+}
+
+const CUSTOMER_VISIBLE_PROVIDER_IDS = new Set([
+  'comfyui',
+])
+
+export function isCustomerVisibleProviderCard(provider: Pick<ProviderSourceCard, 'id'>): boolean {
+  return isOfficialProviderCard(provider) || CUSTOMER_VISIBLE_PROVIDER_IDS.has(provider.id)
+}
+
+export function buildCustomerProviderSections(sections: ProviderSectionInput[]): ProviderSection[] {
+  return buildProviderSections(sections, isCustomerVisibleProviderCard)
+}
+
+function buildProviderSections(
+  sections: ProviderSectionInput[],
+  isVisible: (provider: Pick<ProviderSourceCard, 'id'>) => boolean,
+): ProviderSection[] {
   let renderIndex = 0
 
   return sections
     .map((section) => {
       const providers = section.providers
-        .filter(isOfficialProviderCard)
+        .filter(isVisible)
         .map(provider => ({
           ...provider,
           renderIndex: renderIndex++,

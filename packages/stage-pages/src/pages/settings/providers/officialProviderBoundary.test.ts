@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildCustomerProviderSections,
   buildOfficialProviderSections,
+  isCustomerVisibleProviderCard,
   isOfficialProviderCard,
   isSupportedProviderSettingsRoute,
 } from './officialProviderBoundary'
@@ -81,6 +83,19 @@ describe('official provider boundary', () => {
     expect(isOfficialProviderCard({ id: 'elevenlabs' })).toBe(false)
     expect(isOfficialProviderCard({ id: 'replicate' })).toBe(false)
     expect(isOfficialProviderCard({ id: 'comfyui' })).toBe(false)
+  })
+
+  it('keeps the restored local ComfyUI provider visible alongside official cards', () => {
+    expect(isCustomerVisibleProviderCard({ id: 'comfyui' })).toBe(true)
+    expect(buildCustomerProviderSections([
+      {
+        id: 'artistry',
+        icon: 'i-solar:palette-bold-duotone',
+        title: 'Artistry',
+        description: 'Image generation',
+        providers: [replicate, { ...replicate, id: 'comfyui' }],
+      },
+    ]).flatMap(section => section.providers.map(provider => provider.id))).toEqual(['comfyui'])
   })
 
   it('allows only official dynamic chat and vision provider settings routes', () => {
