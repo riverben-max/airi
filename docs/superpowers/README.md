@@ -25,6 +25,7 @@
 | 2026-07-13 | Web 用户界面中文化 | `done` | [Design](specs/2026-07-13-web-interface-localization-design.md) | [Plan](plans/2026-07-13-web-interface-localization.md) | [`1519e6165`](https://github.com/riverben-max/airi/commit/1519e61653b4b011c8d1936a44a00c2540ae36a1)；完成全量静态审计、stage-layouts 44/44 测试、生产构建（4,825 个模块）及桌面/移动端浏览器 QA；高复杂度实验/内部界面按批准边界保留 |
 | 2026-07-15 | 生产 Redis 公网暴露修复 | `done` | - | [Plan](plans/2026-07-15-production-redis-exposure-fix.md) | [`05a3f117f`](https://github.com/riverben-max/airi/commit/05a3f117f502c522ab6be6f7ebf12903cd75d06e)；Redis 已仅绑定本机，路由配置已恢复并完成生产验收 |
 | 2026-07-15 | 管理后台模型接入简化 | `done` | - | [Plan](plans/2026-07-15-admin-gateway-simple-config.md) | [`feb1a0cae`](https://github.com/riverben-max/airi/commit/feb1a0cae)；相关测试、生产构建和线上静态资源验收通过 |
+| 2026-07-17 | New API 服务器迁移 | `in-progress` | - | [Plan](plans/2026-07-17-new-api-server-migration.md) | 正在从旧服务器在线复制到 `8.137.153.77`；旧服务器保持不变 |
 
 ## 维护规则
 
