@@ -144,6 +144,12 @@ export function createAdminProviderCatalogRoutes(deps: AdminProviderCatalogRoute
         throw createNotFoundError('Billable model not found')
       return c.json(deleted)
     })
+    .delete('/models/:id/permanent', async (c) => {
+      const deleted = await deps.service.permanentlyDeleteBillableModel(c.req.param('id'))
+      if (!deleted)
+        throw createNotFoundError('Billable model not found')
+      return c.json(deleted)
+    })
     .get('/tts/models', async (c) => {
       return c.json(await deps.service.listTtsModels())
     })

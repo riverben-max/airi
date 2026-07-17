@@ -3296,6 +3296,7 @@ pages:
         reloadConfig: Reload config
         fetchModels: Fetch models
         saveGateway: Save and sync
+        deleteModel: Delete billable model
       columns:
         provider: Provider
         routerModel: Router model
@@ -3306,6 +3307,7 @@ pages:
         flux: Flux
         status: Status
         updatedAt: Updated
+        actions: Actions
       fields:
         provider: Provider
         routerModelId: Router model ID
@@ -3329,6 +3331,8 @@ pages:
         modelsFetched: Fetched {count} upstream models. Select one to use.
         noModelsFound: The upstream returned no available models.
         modelRequired: A model could not be selected automatically. Fetch and select a model first.
+        confirmDelete: Delete billable model “{name}”? This will not remove the upstream route and cannot be undone.
+        deleted: Billable model “{name}” deleted.
       empty:
         routerSlices:
           title: No upstream routes configured

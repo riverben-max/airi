@@ -5,7 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { createProviderCatalogService } from '.'
 import { mockDB } from '../../../libs/mock-db'
-import { capabilityAliases, capabilityAliasRoutes, providerCatalogTtsModels, providerCatalogTtsVoices } from '../../../schemas/provider-catalog'
+import { billableModelPrices, billableModels, capabilityAliases, capabilityAliasRoutes, providerCatalogTtsModels, providerCatalogTtsVoices } from '../../../schemas/provider-catalog'
 import { ApiError } from '../../../utils/error'
 
 import * as schema from '../../../schemas'
@@ -20,10 +20,30 @@ describe('providerCatalogService', () => {
   })
 
   beforeEach(async () => {
+    await db.delete(billableModelPrices)
+    await db.delete(billableModels)
     await db.delete(capabilityAliasRoutes)
     await db.delete(capabilityAliases)
     await db.delete(providerCatalogTtsVoices)
     await db.delete(providerCatalogTtsModels)
+  })
+
+  it('permanently deletes a billable model and its price', async () => {
+    const model = await service.upsertBillableModel({
+      capability: 'chat',
+      routerModelId: 'chat-delete-me',
+      displayName: 'Delete me',
+      fluxPerCall: 5,
+    })
+
+    await expect(service.permanentlyDeleteBillableModel(model.id)).resolves.toMatchObject({
+      id: model.id,
+      fluxPerCall: 5,
+      priceEnabled: true,
+    })
+    await expect(service.listBillableModels('chat')).resolves.toEqual([])
+    await expect(db.select().from(billableModelPrices)).resolves.toEqual([])
+    await expect(service.permanentlyDeleteBillableModel(model.id)).resolves.toBeNull()
   })
 
   it('syncs the default LLM auto alias and runtime model routes as enabled', async () => {

@@ -11,7 +11,7 @@ import { Button } from '@proj-airi/ui'
 import { computed, onMounted, reactive, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { applyOfficialChatGateway, discoverUpstreamModels, formatDate, getRouterConfig } from '../adminApi'
+import { applyOfficialChatGateway, discoverUpstreamModels, formatDate, getRouterConfig, permanentlyDeleteModel } from '../adminApi'
 
 const props = defineProps<{
   models: AdminModel[]
@@ -32,6 +32,7 @@ const actionLoading = shallowRef(false)
 const formError = shallowRef<string | null>(null)
 const formMessage = shallowRef<string | null>(null)
 const modelDiscoveryLoading = shallowRef(false)
+const deletingModelId = shallowRef<string | null>(null)
 const discoveredModels = shallowRef<string[]>([])
 
 const form = reactive({
@@ -258,6 +259,29 @@ async function saveGateway() {
   }
 }
 
+async function deleteBillableModel(model: AdminModel) {
+  if (!confirm(t('settings.pages.admin.officialGateway.messages.confirmDelete', { name: model.displayName })))
+    return
+
+  deletingModelId.value = model.id
+  formError.value = null
+  formMessage.value = null
+
+  try {
+    await permanentlyDeleteModel(model.id)
+    if (selectedRouterModelId.value === model.routerModelId)
+      resetForm()
+    formMessage.value = t('settings.pages.admin.officialGateway.messages.deleted', { name: model.displayName })
+    emit('refresh')
+  }
+  catch (err) {
+    formError.value = messageFromError(err)
+  }
+  finally {
+    deletingModelId.value = null
+  }
+}
+
 async function discoverModels(): Promise<string[]> {
   modelDiscoveryLoading.value = true
   formError.value = null
@@ -469,6 +493,9 @@ onMounted(() => {
                 <th :class="['px-3 py-2 font-medium']">
                   {{ t('settings.pages.admin.officialGateway.columns.updatedAt') }}
                 </th>
+                <th :class="['w-14 px-3 py-2 font-medium']">
+                  <span class="sr-only">{{ t('settings.pages.admin.officialGateway.columns.actions') }}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -499,6 +526,19 @@ onMounted(() => {
                 </td>
                 <td :class="['px-3 py-2 text-xs text-neutral-500 dark:text-neutral-400']">
                   {{ formatDate(model.updatedAt) }}
+                </td>
+                <td :class="['px-3 py-2 text-right']">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="danger"
+                    icon="i-solar:trash-bin-trash-linear"
+                    :class="['h-8 w-8 p-0!']"
+                    :loading="deletingModelId === model.id"
+                    :title="t('settings.pages.admin.officialGateway.actions.deleteModel')"
+                    :aria-label="t('settings.pages.admin.officialGateway.actions.deleteModel')"
+                    @click.stop="deleteBillableModel(model)"
+                  />
                 </td>
               </tr>
             </tbody>

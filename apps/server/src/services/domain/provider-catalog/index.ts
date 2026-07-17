@@ -337,6 +337,17 @@ export function createProviderCatalogService(db: Database) {
       return { ...updatedModel, fluxPerCall: price?.fluxPerCall ?? null, priceEnabled: price?.enabled ?? false }
     },
 
+    async permanentlyDeleteBillableModel(id: string): Promise<BillableModelWithPrice | null> {
+      const price = await db.query.billableModelPrices.findFirst({ where: eq(billableModelPrices.modelId, id) })
+      const [deletedModel] = await db.delete(billableModels)
+        .where(eq(billableModels.id, id))
+        .returning()
+      if (!deletedModel)
+        return null
+
+      return { ...deletedModel, fluxPerCall: price?.fluxPerCall ?? null, priceEnabled: price?.enabled ?? false }
+    },
+
     async getFixedModelPrice(input: { capability: BillableModelCapability, routerModelId: string }): Promise<number | null> {
       const rows = await db.select({ fluxPerCall: billableModelPrices.fluxPerCall })
         .from(billableModels)

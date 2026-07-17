@@ -21,6 +21,7 @@ import {
   listPlans,
   listUsers,
   normalizeOfficialGatewayBaseURL,
+  permanentlyDeleteModel,
   seedDefaultPlans,
   setUserFlux,
   syncCapabilityAliases,
@@ -131,6 +132,9 @@ function createMockClient(): AdminRemoteClient {
             ':id': {
               $patch: vi.fn(async () => okJson(createAdminModel())),
               $delete: vi.fn(async () => okJson(createAdminModel({ enabled: false }))),
+              permanent: {
+                $delete: vi.fn(async () => okJson(createAdminModel())),
+              },
             },
           },
         },
@@ -153,6 +157,9 @@ function createMockClient(): AdminRemoteClient {
                 DEFAULT_CHAT_MODEL: 'openai/gpt-5-mini',
               },
             })),
+            models: {
+              $post: vi.fn(async () => okJson({ models: [] })),
+            },
           },
         },
         'capability-aliases': {
@@ -243,6 +250,7 @@ describe('admin API adapter', () => {
     await createModel(input, client)
     await updateModel('model-1', { enabled: false, priceEnabled: false }, client)
     await disableModel('model-1', client)
+    await permanentlyDeleteModel('model-1', client)
 
     expect(client.api.admin['provider-catalog'].models.$get).toHaveBeenCalledWith()
     expect(client.api.admin['provider-catalog'].models.$post).toHaveBeenCalledWith({ json: input })
@@ -251,6 +259,7 @@ describe('admin API adapter', () => {
       json: { enabled: false, priceEnabled: false },
     })
     expect(client.api.admin['provider-catalog'].models[':id'].$delete).toHaveBeenCalledWith({ param: { id: 'model-1' } })
+    expect(client.api.admin['provider-catalog'].models[':id'].permanent.$delete).toHaveBeenCalledWith({ param: { id: 'model-1' } })
   })
 
   it('maps subscription plan operations to plan routes', async () => {
@@ -317,8 +326,7 @@ describe('admin API adapter', () => {
 
   it('maps upstream model discovery to the router config route', async () => {
     const client = createMockClient()
-    const models = { $post: vi.fn(async () => okJson({ models: ['gpt-5-mini'] })) }
-    ;(client.api.admin.config.router as { models?: typeof models }).models = models
+    vi.mocked(client.api.admin.config.router.models.$post).mockResolvedValueOnce(okJson({ models: ['gpt-5-mini'] }))
 
     await expect(discoverUpstreamModels({
       providerKind: 'openai-compatible',
@@ -326,7 +334,7 @@ describe('admin API adapter', () => {
       plaintextKey: 'sk-test',
     }, client)).resolves.toEqual(['gpt-5-mini'])
 
-    expect(models.$post).toHaveBeenCalledWith({
+    expect(client.api.admin.config.router.models.$post).toHaveBeenCalledWith({
       json: {
         providerKind: 'openai-compatible',
         baseURL: 'https://gateway.example/v1',

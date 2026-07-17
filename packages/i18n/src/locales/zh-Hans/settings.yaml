@@ -3044,6 +3044,7 @@ pages:
         reloadConfig: 重载配置
         fetchModels: 获取模型
         saveGateway: 保存并同步
+        deleteModel: 删除计费模型
       columns:
         provider: 服务商
         routerModel: 路由模型
@@ -3054,6 +3055,7 @@ pages:
         flux: Flux
         status: 状态
         updatedAt: 更新时间
+        actions: 操作
       fields:
         provider: 服务商
         routerModelId: 路由模型 ID
@@ -3077,6 +3079,8 @@ pages:
         modelsFetched: 已获取 {count} 个上游模型，可直接选择。
         noModelsFound: 上游未返回可用模型。
         modelRequired: 未能自动确定模型，请先获取并选择一个模型。
+        confirmDelete: 确定删除计费模型“{name}”吗？这不会删除上游路由，且无法撤销。
+        deleted: 已删除计费模型“{name}”。
       empty:
         routerSlices:
           title: 尚未配置上游路由

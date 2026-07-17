@@ -102,6 +102,7 @@ function createService(): ProviderCatalogService {
     })),
     updateTtsVoice: vi.fn(async (_id, input) => ({ id: 'voice-1', ...input })),
     assertTtsVoiceEnabled: vi.fn(),
+    permanentlyDeleteBillableModel: vi.fn(async id => ({ id, routerModelId: 'chat-model' })),
   } as unknown as ProviderCatalogService
 }
 
@@ -183,6 +184,16 @@ describe('admin provider catalog routes', () => {
     })
 
     expect(res.status).toBe(404)
+  })
+
+  it('permanently deletes a billable model', async () => {
+    const service = createService()
+    const app = createTestApp({ user: ADMIN, service })
+
+    const res = await jsonRequest(app, 'DELETE', '/api/admin/provider-catalog/models/model-1/permanent')
+
+    expect(res.status).toBe(200)
+    expect(service.permanentlyDeleteBillableModel).toHaveBeenCalledWith('model-1')
   })
 
   it('generates and stores a TTS voice preview data URL', async () => {

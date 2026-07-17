@@ -249,6 +249,9 @@ export interface AdminRemoteClient {
           ':id': {
             $patch: (params: { param: { id: string }, json: AdminModelUpdateInput }, options?: RequestOptions) => Promise<JsonResponse<AdminModel>>
             $delete: (params: { param: { id: string } }, options?: RequestOptions) => Promise<JsonResponse<AdminModel>>
+            permanent: {
+              $delete: (params: { param: { id: string } }, options?: RequestOptions) => Promise<JsonResponse<AdminModel>>
+            }
           }
         }
       }
@@ -463,6 +466,14 @@ export async function disableModel(id: string, remoteClient: AdminRemoteClient =
     ? await remoteClient.api.admin['provider-catalog'].models[':id'].$delete({ param: { id } }, options)
     : await remoteClient.api.admin['provider-catalog'].models[':id'].$delete({ param: { id } })
   return await readJson(response, 'Failed to disable admin model')
+}
+
+export async function permanentlyDeleteModel(id: string, remoteClient: AdminRemoteClient = adminClient, signal?: AbortSignal): Promise<AdminModel> {
+  const options = requestOptions(signal)
+  const response = options
+    ? await remoteClient.api.admin['provider-catalog'].models[':id'].permanent.$delete({ param: { id } }, options)
+    : await remoteClient.api.admin['provider-catalog'].models[':id'].permanent.$delete({ param: { id } })
+  return await readJson(response, 'Failed to delete admin model')
 }
 
 export async function getRouterConfig(remoteClient: AdminRemoteClient = adminClient, signal?: AbortSignal): Promise<AdminRouterConfigCurrent> {
